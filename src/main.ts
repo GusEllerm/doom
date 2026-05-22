@@ -7,7 +7,7 @@ import { renderViewmodel } from './render/viewmodel';
 import { loadAssets } from './engine/assets';
 import { manifest, tileTextureKey } from './assets/manifest';
 import { Game } from './game/state';
-import { devLevelJSON } from './world/devLevel';
+import { LEVELS } from './world/levels';
 import { updatePickups } from './world/triggers';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -19,7 +19,7 @@ ctx.imageSmoothingEnabled = false;
 const assets = loadAssets(manifest);
 const input = new Input();
 input.install(canvas);
-const game = new Game([devLevelJSON]);
+const game = new Game(LEVELS);
 game.start();
 
 const depth = new Float32Array(BUF_W);
