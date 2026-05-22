@@ -3,6 +3,7 @@ import type { Level } from '../world/level';
 import type { Player } from './player';
 import { tryMove } from '../world/collision';
 import { castRay } from '../render/raycaster';
+import type { Doors } from '../world/doors';
 
 export type EnemyKind = 'imp' | 'grunt';
 export type EnemyState = 'idle' | 'chase' | 'attack' | 'dying';
@@ -53,7 +54,7 @@ export class Enemy implements Entity {
     return hit.perpDist >= dist - 0.05;
   }
 
-  update(dt: number, lvl: Level, player: Player) {
+  update(dt: number, lvl: Level, player: Player, doors?: Doors) {
     if (this.state === 'dying') {
       this.removeAfter -= dt;
       if (this.removeAfter <= 0) this.dead = true;
@@ -85,7 +86,7 @@ export class Enemy implements Entity {
       const speed = stats.speed * dt;
       const nx = (dx / dist) * speed;
       const ny = (dy / dist) * speed;
-      const next = tryMove(lvl, { x: this.x, y: this.y }, nx, ny, 0.25);
+      const next = tryMove(lvl, { x: this.x, y: this.y }, nx, ny, 0.25, doors);
       this.x = next.x;
       this.y = next.y;
     }

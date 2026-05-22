@@ -3,6 +3,7 @@ import { tryMove } from '../world/collision';
 import type { InputSnapshot } from '../engine/input';
 import type { Enemy } from './enemy';
 import { WEAPONS, fireHitscan } from './weapons';
+import type { Doors } from '../world/doors';
 
 const MOVE_SPEED = 3.0;
 const TURN_SPEED = 0.0025;
@@ -36,14 +37,14 @@ export class Player {
     this.health = Math.max(0, this.health - dmg);
   }
 
-  update(dt: number, input: InputSnapshot, lvl: Level, enemies: Enemy[]) {
+  update(dt: number, input: InputSnapshot, lvl: Level, enemies: Enemy[], doors?: Doors) {
     this.angle += input.yawDelta * TURN_SPEED;
     const cos = Math.cos(this.angle), sin = Math.sin(this.angle);
     const fwd = input.forward * MOVE_SPEED * dt;
     const str = input.strafe * MOVE_SPEED * dt;
     const dx = cos * fwd + Math.cos(this.angle + Math.PI / 2) * str;
     const dy = sin * fwd + Math.sin(this.angle + Math.PI / 2) * str;
-    const next = tryMove(lvl, { x: this.x, y: this.y }, dx, dy, RADIUS);
+    const next = tryMove(lvl, { x: this.x, y: this.y }, dx, dy, RADIUS, doors);
     this.moving = Math.hypot(next.x - this.x, next.y - this.y) > 1e-4;
     this.x = next.x;
     this.y = next.y;
@@ -51,6 +52,7 @@ export class Player {
     if (input.weaponSlot === 0 || input.weaponSlot === 1) {
       this.weapon = input.weaponSlot;
     }
+    if (input.interact && doors) doors.tryOpenNear(this.x, this.y);
     if (input.fire) this.fire(lvl, enemies);
   }
 

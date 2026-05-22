@@ -25,7 +25,9 @@ export function castRay(lvl: Level, px: number, py: number, rdx: number, rdy: nu
     if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
     else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
     const tile = lvl.tileAt(mapX, mapY);
-    const solid = isSolid ? isSolid(mapX, mapY, tile) : lvl.isSolid(mapX + 0.5, mapY + 0.5);
+    const solid = isSolid
+      ? isSolid(mapX, mapY, tile)
+      : (tile !== 0 && tile < 100);
     if (solid) {
       const perp = side === 0
         ? (mapX - px + (1 - stepX) / 2) / rx
