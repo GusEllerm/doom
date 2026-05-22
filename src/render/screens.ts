@@ -1,137 +1,263 @@
 import { BUF_W, BUF_H } from './raycaster';
+import { PALETTE, text, centeredText, makeEmbers, updateEmbers, renderEmbers, skullBullet, bevelPanel, type EmberField } from './theme';
+import type { Menu } from '../game/menu';
 
-// Animated background helper — diagonal demonic gradient with subtle scrolling.
+const titleEmbers: EmberField = makeEmbers(40, BUF_W, BUF_H);
+const winEmbers: EmberField = makeEmbers(25, BUF_W, BUF_H);
+const deathEmbers: EmberField = makeEmbers(20, BUF_W, BUF_H);
+
+export function tickEmbers(dt: number) {
+  updateEmbers(titleEmbers, dt, BUF_W, BUF_H);
+  updateEmbers(winEmbers, dt, BUF_W, BUF_H);
+  updateEmbers(deathEmbers, dt, BUF_W, BUF_H);
+}
+
 function backdrop(ctx: CanvasRenderingContext2D, time: number, hue: 'red' | 'green' | 'amber') {
-  const palette = hue === 'red'
-    ? ['#1a0000', '#3a0808', '#6a1010']
+  const stops = hue === 'red'
+    ? ['#0a0306', '#2a0808', PALETTE.bloodLo]
     : hue === 'green'
-    ? ['#001a00', '#083a08', '#106a10']
-    : ['#1a1408', '#3a2a08', '#5a4010'];
-  const grad = ctx.createLinearGradient(0, 0, 0, BUF_H);
-  grad.addColorStop(0, palette[0]!);
-  grad.addColorStop(0.6, palette[1]!);
-  grad.addColorStop(1, palette[2]!);
-  ctx.fillStyle = grad;
+    ? ['#040c04', '#0a3010', PALETTE.bileLo]
+    : ['#100804', '#2a1a08', PALETTE.amberLo];
+  const g = ctx.createLinearGradient(0, 0, 0, BUF_H);
+  g.addColorStop(0, stops[0]!);
+  g.addColorStop(0.6, stops[1]!);
+  g.addColorStop(1, stops[2]!);
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, BUF_W, BUF_H);
-
   // Scanlines
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
   for (let y = 0; y < BUF_H; y += 2) ctx.fillRect(0, y, BUF_W, 1);
-
   // Pulse vignette
-  const pulse = 0.5 + 0.5 * Math.sin(time * 2);
-  const v = ctx.createRadialGradient(BUF_W / 2, BUF_H / 2, 40, BUF_W / 2, BUF_H / 2, 200);
+  const pulse = 0.5 + 0.5 * Math.sin(time * 1.6);
+  const v = ctx.createRadialGradient(BUF_W / 2, BUF_H / 2, 30, BUF_W / 2, BUF_H / 2, 220);
   v.addColorStop(0, 'rgba(0,0,0,0)');
-  v.addColorStop(1, `rgba(0,0,0,${0.35 + pulse * 0.2})`);
+  v.addColorStop(1, `rgba(0,0,0,${0.45 + pulse * 0.15})`);
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, BUF_W, BUF_H);
 }
 
-function bigText(ctx: CanvasRenderingContext2D, text: string, y: number, color: string, size = 36) {
-  ctx.font = `bold ${size}px monospace`;
-  // Drop shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  const w = ctx.measureText(text).width;
-  ctx.fillText(text, (BUF_W - w) / 2 + 2, y + 2);
+function doomLogo(ctx: CanvasRenderingContext2D, time: number) {
+  const cx = BUF_W / 2;
+  const y = 64;
+  // Shadow drop
+  ctx.font = 'bold 56px monospace';
+  const w = ctx.measureText('DOOM').width;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillText('DOOM', cx - w / 2 + 4, y + 4);
   // Outline
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-  ctx.strokeText(text, (BUF_W - w) / 2, y);
-  ctx.fillStyle = color;
-  ctx.fillText(text, (BUF_W - w) / 2, y);
+  ctx.lineWidth = 5;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.strokeText('DOOM', cx - w / 2, y);
+  // Fill — vertical gradient red→amber, pulsing slightly
+  const pulse = 0.5 + 0.5 * Math.sin(time * 1.4);
+  const grad = ctx.createLinearGradient(0, y - 36, 0, y + 4);
+  grad.addColorStop(0, `rgba(255,${120 + pulse * 30 | 0},80,1)`);
+  grad.addColorStop(0.55, PALETTE.bloodHi);
+  grad.addColorStop(1, PALETTE.bloodLo);
+  ctx.fillStyle = grad;
+  ctx.fillText('DOOM', cx - w / 2, y);
+  // Drips
+  ctx.fillStyle = PALETTE.bloodMid;
+  ctx.fillRect(cx - w / 2 + 10, y + 4, 3, 8);
+  ctx.fillRect(cx + 12, y + 4, 2, 6);
+  ctx.fillRect(cx + w / 2 - 14, y + 4, 3, 10);
 }
 
-function smallText(ctx: CanvasRenderingContext2D, text: string, y: number, color: string, size = 10) {
-  ctx.font = `${size}px monospace`;
-  const w = ctx.measureText(text).width;
-  ctx.fillStyle = color;
-  ctx.fillText(text, (BUF_W - w) / 2, y);
-}
-
-export function renderTitle(ctx: CanvasRenderingContext2D, time: number) {
+export function renderTitle(ctx: CanvasRenderingContext2D, time: number, menu: Menu) {
   backdrop(ctx, time, 'red');
-  bigText(ctx, 'DOOM', 80, '#ff3030', 48);
-  bigText(ctx, 'BROWSER EDITION', 110, '#ffaa40', 14);
+  renderEmbers(ctx, titleEmbers);
+  doomLogo(ctx, time);
+  centeredText(ctx, 'BROWSER  EDITION', BUF_W / 2, 86, {
+    size: 9, color: PALETTE.amberHi, shadow: true,
+  });
 
-  // Controls panel
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(60, 130, BUF_W - 120, 40);
-  ctx.strokeStyle = '#7a1010'; ctx.lineWidth = 1;
-  ctx.strokeRect(60, 130, BUF_W - 120, 40);
-  ctx.font = '8px monospace';
-  ctx.fillStyle = '#dcd0c0';
+  // Menu
+  const menuTopY = 122;
+  const itemH = 18;
+  for (let i = 0; i < menu.list.length; i++) {
+    const item = menu.list[i]!;
+    const y = menuTopY + i * itemH;
+    const selected = i === menu.selected;
+    if (selected) {
+      // Selection chrome — skull bullets on each side, slight glow.
+      const w = 160;
+      const x = (BUF_W - w) / 2;
+      ctx.fillStyle = 'rgba(255,48,48,0.18)';
+      ctx.fillRect(x, y - 11, w, 16);
+      ctx.fillStyle = 'rgba(255,48,48,0.6)';
+      ctx.fillRect(x, y - 11, w, 1);
+      ctx.fillRect(x, y + 4, w, 1);
+      skullBullet(ctx, x + 10, y - 3, 4, PALETTE.bloodHi);
+      skullBullet(ctx, x + w - 10, y - 3, 4, PALETTE.bloodHi);
+    }
+    centeredText(ctx, item.label, BUF_W / 2, y, {
+      size: 12,
+      color: item.disabled ? PALETTE.paperLo : selected ? PALETTE.bone : PALETTE.paperHi,
+      shadow: true,
+      outline: selected,
+    });
+  }
+
+  // Footer hint
+  centeredText(ctx, '↑↓ select   ENTER / LMB confirm', BUF_W / 2, BUF_H - 18, {
+    size: 8, color: PALETTE.paperLo,
+  });
+  centeredText(ctx, 'WASD move · MOUSE aim · LMB fire · E doors · 1/2 weapons', BUF_W / 2, BUF_H - 6, {
+    size: 8, color: PALETTE.paperLo,
+  });
+}
+
+interface EndStats {
+  killCount: number;
+  shotsFired: number;
+  shotsHit: number;
+  timeSeconds: number;
+  levelName: string;
+}
+
+function statsBlock(ctx: CanvasRenderingContext2D, stats: EndStats, topY: number) {
+  const w = 200, h = 60;
+  const x = (BUF_W - w) / 2, y = topY;
+  bevelPanel(ctx, x, y, w, h);
+  ctx.font = '9px monospace';
+  const acc = stats.shotsFired ? Math.round(stats.shotsHit / stats.shotsFired * 100) : 0;
+  const mins = Math.floor(stats.timeSeconds / 60);
+  const secs = Math.floor(stats.timeSeconds % 60).toString().padStart(2, '0');
+  const lines = [
+    ['KILLS',    `${stats.killCount}`],
+    ['ACCURACY', `${acc}%`],
+    ['TIME',     `${mins}:${secs}`],
+  ];
+  for (let i = 0; i < lines.length; i++) {
+    const [label, value] = lines[i]!;
+    text(ctx, label!, x + 14, y + 16 + i * 14, { size: 9, color: PALETTE.paperLo, weight: 'normal' });
+    text(ctx, value!, x + w - 14 - ctx.measureText(value!).width, y + 16 + i * 14, { size: 9, color: PALETTE.bone });
+  }
+}
+
+export function renderDeath(ctx: CanvasRenderingContext2D, time: number, stats: EndStats) {
+  backdrop(ctx, time, 'red');
+  renderEmbers(ctx, deathEmbers);
+  ctx.fillStyle = 'rgba(80,0,0,0.4)';
+  ctx.fillRect(0, 0, BUF_W, BUF_H);
+
+  // Big YOU DIED with shadow + outline
+  ctx.font = 'bold 38px monospace';
+  const t = 'YOU DIED';
+  const tw = ctx.measureText(t).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillText(t, (BUF_W - tw) / 2 + 3, 70);
+  ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.strokeText(t, (BUF_W - tw) / 2, 70);
+  const grad = ctx.createLinearGradient(0, 38, 0, 78);
+  grad.addColorStop(0, '#ff8060');
+  grad.addColorStop(1, PALETTE.bloodMid);
+  ctx.fillStyle = grad;
+  ctx.fillText(t, (BUF_W - tw) / 2, 70);
+
+  centeredText(ctx, stats.levelName, BUF_W / 2, 84, { size: 9, color: PALETTE.paperHi });
+  statsBlock(ctx, stats, 96);
+
+  const blink = (Math.sin(time * 3.5) + 1) / 2;
+  centeredText(ctx, 'CLICK / FIRE TO TRY AGAIN', BUF_W / 2, BUF_H - 14, {
+    size: 10, color: `rgba(255,210,90,${0.55 + blink * 0.45})`, shadow: true,
+  });
+}
+
+export function renderWin(ctx: CanvasRenderingContext2D, time: number, stats: EndStats) {
+  backdrop(ctx, time, 'green');
+  renderEmbers(ctx, winEmbers);
+
+  ctx.font = 'bold 40px monospace';
+  const t = 'VICTORY';
+  const tw = ctx.measureText(t).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillText(t, (BUF_W - tw) / 2 + 3, 64);
+  ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.strokeText(t, (BUF_W - tw) / 2, 64);
+  const grad = ctx.createLinearGradient(0, 32, 0, 72);
+  grad.addColorStop(0, '#d0ffd0');
+  grad.addColorStop(1, PALETTE.bileMid);
+  ctx.fillStyle = grad;
+  ctx.fillText(t, (BUF_W - tw) / 2, 64);
+
+  centeredText(ctx, 'The foundry burns behind you.', BUF_W / 2, 84, {
+    size: 9, color: PALETTE.paperHi,
+  });
+  statsBlock(ctx, stats, 96);
+
+  const blink = (Math.sin(time * 3) + 1) / 2;
+  centeredText(ctx, 'CLICK / FIRE FOR TITLE', BUF_W / 2, BUF_H - 14, {
+    size: 10, color: `rgba(200,255,170,${0.55 + blink * 0.45})`, shadow: true,
+  });
+}
+
+export function renderPause(ctx: CanvasRenderingContext2D, menu: Menu) {
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, BUF_W, BUF_H);
+  // Banner
+  ctx.font = 'bold 22px monospace';
+  const t = 'PAUSED';
+  const tw = ctx.measureText(t).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillText(t, (BUF_W - tw) / 2 + 2, 50);
+  ctx.lineWidth = 3; ctx.lineJoin = 'round';
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.strokeText(t, (BUF_W - tw) / 2, 50);
+  ctx.fillStyle = PALETTE.amberHi;
+  ctx.fillText(t, (BUF_W - tw) / 2, 50);
+
+  const itemH = 16;
+  const topY = 74;
+  for (let i = 0; i < menu.list.length; i++) {
+    const item = menu.list[i]!;
+    const y = topY + i * itemH;
+    const selected = i === menu.selected;
+    if (selected) {
+      const w = 150;
+      const x = (BUF_W - w) / 2;
+      ctx.fillStyle = 'rgba(255,210,80,0.16)';
+      ctx.fillRect(x, y - 10, w, 14);
+      skullBullet(ctx, x + 10, y - 3, 3, PALETTE.amberHi);
+      skullBullet(ctx, x + w - 10, y - 3, 3, PALETTE.amberHi);
+    }
+    centeredText(ctx, item.label, BUF_W / 2, y, {
+      size: 11,
+      color: item.disabled ? PALETTE.paperLo : selected ? PALETTE.bone : PALETTE.paperHi,
+      shadow: true,
+    });
+  }
+
+  // Controls reference
+  const refY = topY + menu.list.length * itemH + 18;
+  centeredText(ctx, 'CONTROLS', BUF_W / 2, refY, { size: 8, color: PALETTE.amberMid });
   const lines = [
     '[WASD] move   [MOUSE] aim   [LMB] fire',
-    '[E] doors   [1/2] weapons   [ESC] release mouse',
+    '[E] doors   [1/2] weapons   [F1] debug',
   ];
   for (let i = 0; i < lines.length; i++) {
-    const lw = ctx.measureText(lines[i]!).width;
-    ctx.fillText(lines[i]!, (BUF_W - lw) / 2, 146 + i * 12);
+    centeredText(ctx, lines[i]!, BUF_W / 2, refY + 12 + i * 10, {
+      size: 8, color: PALETTE.paperLo, weight: 'normal',
+    });
   }
-
-  // Press fire prompt — pulsing
-  const blink = (Math.sin(time * 5) + 1) / 2;
-  ctx.fillStyle = `rgba(255,${Math.floor(180 + blink * 75)},80,${0.6 + blink * 0.4})`;
-  smallText(ctx, 'CLICK / FIRE TO BEGIN', 188, ctx.fillStyle as string, 11);
-}
-
-export function renderDeath(ctx: CanvasRenderingContext2D, time: number, killCount: number, levelName: string) {
-  backdrop(ctx, time, 'red');
-  // Heavy red wash
-  ctx.fillStyle = 'rgba(80,0,0,0.45)';
-  ctx.fillRect(0, 0, BUF_W, BUF_H);
-  bigText(ctx, 'YOU DIED', 90, '#ff4040', 36);
-  smallText(ctx, levelName, 112, '#bbb');
-  smallText(ctx, `Kills: ${killCount}`, 128, '#ccc');
-  const blink = (Math.sin(time * 4) + 1) / 2;
-  ctx.fillStyle = `rgba(255,200,80,${0.5 + blink * 0.5})`;
-  smallText(ctx, 'CLICK TO TRY AGAIN', 160, ctx.fillStyle as string, 11);
-}
-
-export function renderWin(ctx: CanvasRenderingContext2D, time: number, killCount: number) {
-  backdrop(ctx, time, 'green');
-  bigText(ctx, 'VICTORY', 80, '#90ff90', 38);
-  smallText(ctx, 'You have escaped the foundry.', 110, '#cfeacc');
-  smallText(ctx, `Total kills: ${killCount}`, 128, '#cfeacc');
-  const blink = (Math.sin(time * 4) + 1) / 2;
-  ctx.fillStyle = `rgba(200,255,180,${0.5 + blink * 0.5})`;
-  smallText(ctx, 'CLICK FOR TITLE', 160, ctx.fillStyle as string, 11);
-}
-
-export function renderPause(ctx: CanvasRenderingContext2D) {
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(0, 0, BUF_W, BUF_H);
-  bigText(ctx, 'PAUSED', 70, '#ffd060', 28);
-  ctx.font = '9px monospace';
-  ctx.fillStyle = '#ddd';
-  const lines = [
-    'WASD   — move / strafe',
-    'MOUSE  — aim',
-    'LMB    — fire weapon',
-    'E      — open door',
-    '1 / 2  — pistol / shotgun',
-    'ESC    — release mouse',
-  ];
-  for (let i = 0; i < lines.length; i++) {
-    const w = ctx.measureText(lines[i]!).width;
-    ctx.fillText(lines[i]!, (BUF_W - w) / 2, 105 + i * 12);
-  }
-  ctx.fillStyle = '#aaa';
-  const r = 'Click to resume';
-  const rw = ctx.measureText(r).width;
-  ctx.fillText(r, (BUF_W - rw) / 2, 190);
 }
 
 export function renderLevelIntro(ctx: CanvasRenderingContext2D, name: string, fade: number) {
   const alpha = Math.min(1, fade);
-  ctx.fillStyle = `rgba(0,0,0,${0.5 * alpha})`;
-  ctx.fillRect(0, BUF_H / 2 - 30, BUF_W, 40);
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = `rgba(255,210,120,${alpha})`;
-  const w = ctx.measureText(name).width;
-  ctx.fillText(name, (BUF_W - w) / 2, BUF_H / 2 - 6);
-  ctx.font = '8px monospace';
-  ctx.fillStyle = `rgba(220,200,180,${alpha * 0.8})`;
-  const sub = 'Rip and tear';
-  const sw = ctx.measureText(sub).width;
-  ctx.fillText(sub, (BUF_W - sw) / 2, BUF_H / 2 + 6);
+  // Vignette band
+  const g = ctx.createLinearGradient(0, BUF_H / 2 - 26, 0, BUF_H / 2 + 14);
+  g.addColorStop(0, `rgba(0,0,0,0)`);
+  g.addColorStop(0.4, `rgba(0,0,0,${0.65 * alpha})`);
+  g.addColorStop(1, `rgba(0,0,0,0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, BUF_H / 2 - 30, BUF_W, 44);
+  centeredText(ctx, name, BUF_W / 2, BUF_H / 2 - 8, {
+    size: 14, color: `rgba(255,210,120,${alpha})`, shadow: true, outline: true,
+  });
+  centeredText(ctx, 'RIP AND TEAR', BUF_W / 2, BUF_H / 2 + 6, {
+    size: 8, color: `rgba(220,200,180,${alpha * 0.85})`,
+  });
 }

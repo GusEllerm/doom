@@ -2,6 +2,7 @@ import { BUF_W, BUF_H } from './raycaster';
 import type { Player } from '../entities/player';
 import { WEAPONS } from '../entities/weapons';
 import type { Assets } from '../engine/assets';
+import { PALETTE, text, metallicStrip } from './theme';
 
 export interface PickupMessage { text: string; t: number; }
 
@@ -11,11 +12,11 @@ export interface HUDState {
   hurtFlashT: number;
   hoveredEnemy: boolean;
   killCount: number;
-  hitMarkerT: number;     // red X on crosshair when a shot lands
-  wallSparkT: number;     // yellow spark when a shot hits a wall
+  hitMarkerT: number;
+  wallSparkT: number;
 }
 
-const HUD_H = 36;
+const HUD_H = 38;
 
 function pickFace(player: Player, hurtFlashT: number): string {
   if (player.health <= 0) return 'face_dead';
@@ -42,22 +43,24 @@ export function renderHUD(
   }
 
   // Pickup feed (above HUD, bottom-left)
-  let feedY = BUF_H - HUD_H - 6;
-  ctx.font = '8px monospace';
+  let feedY = BUF_H - HUD_H - 4;
   for (let i = hud.pickupFeed.length - 1; i >= 0; i--) {
     const m = hud.pickupFeed[i]!;
     const alpha = Math.min(1, m.t / 0.4);
-    ctx.fillStyle = `rgba(0,0,0,${0.55 * alpha})`;
-    const w = ctx.measureText(m.text).width + 8;
-    ctx.fillRect(6, feedY - 8, w, 10);
-    ctx.fillStyle = `rgba(255,220,120,${alpha})`;
-    ctx.fillText(m.text, 10, feedY - 1);
-    feedY -= 12;
+    ctx.font = 'bold 9px monospace';
+    const w = ctx.measureText(m.text).width + 14;
+    // backdrop tab
+    ctx.fillStyle = `rgba(20,10,5,${0.75 * alpha})`;
+    ctx.fillRect(4, feedY - 10, w, 12);
+    ctx.fillStyle = `rgba(255,210,80,${alpha})`;
+    ctx.fillRect(4, feedY - 10, 2, 12);
+    text(ctx, m.text, 12, feedY, { size: 9, color: `rgba(255,225,140,${alpha})`, shadow: true });
+    feedY -= 14;
   }
 
-  // Crosshair (red on enemy hover; grows during cooldown for fire readiness)
+  // Crosshair
   const cx = BUF_W / 2, cy = BUF_H / 2 - HUD_H / 2;
-  ctx.fillStyle = hud.hoveredEnemy ? '#ff3030' : '#fff';
+  ctx.fillStyle = hud.hoveredEnemy ? PALETTE.bloodHi : PALETTE.bone;
   ctx.fillRect(cx - 1, cy - 6, 2, 4);
   ctx.fillRect(cx - 1, cy + 2, 2, 4);
   ctx.fillRect(cx - 6, cy - 1, 4, 2);
@@ -66,7 +69,6 @@ export function renderHUD(
     ctx.fillStyle = 'rgba(255,40,40,0.25)';
     ctx.fillRect(cx - 7, cy - 7, 14, 14);
   }
-  // Yellow wall-impact spark (a brief puff at the crosshair on miss)
   if (hud.wallSparkT > 0) {
     const alpha = Math.min(1, hud.wallSparkT / 0.15);
     ctx.fillStyle = `rgba(255,220,80,${alpha * 0.8})`;
@@ -78,7 +80,6 @@ export function renderHUD(
     ctx.arc(cx, cy, 2, 0, Math.PI * 2);
     ctx.fill();
   }
-  // Red hit-marker X when a shot lands on an enemy
   if (hud.hitMarkerT > 0) {
     const alpha = Math.min(1, hud.hitMarkerT / 0.2);
     ctx.strokeStyle = `rgba(255,80,80,${alpha})`;
@@ -89,60 +90,73 @@ export function renderHUD(
     ctx.stroke();
   }
 
-  // HUD bar background
+  // HUD bar
   const top = BUF_H - HUD_H;
-  const grad = ctx.createLinearGradient(0, top, 0, BUF_H);
-  grad.addColorStop(0, '#1a1418');
-  grad.addColorStop(1, '#0a070a');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, top, BUF_W, HUD_H);
-  // bevel
-  ctx.fillStyle = '#3a2a2a'; ctx.fillRect(0, top, BUF_W, 1);
-  ctx.fillStyle = 'rgba(255,200,160,0.07)'; ctx.fillRect(0, top + 1, BUF_W, 1);
+  metallicStrip(ctx, 0, top, BUF_W, HUD_H);
 
-  // Face portrait — centered
+  // Section dividers
+  ctx.fillStyle = 'rgba(255,200,160,0.10)';
+  const divs = [88, 138, 178, 230];
+  for (const d of divs) {
+    ctx.fillRect(d, top + 4, 1, HUD_H - 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(d + 1, top + 4, 1, HUD_H - 8);
+    ctx.fillStyle = 'rgba(255,200,160,0.10)';
+  }
+
+  // HEALTH — red, large
+  text(ctx, `${Math.max(0, player.health | 0)}%`, 10, top + 24, {
+    size: 18, color: PALETTE.bloodHi, shadow: true, outline: true,
+  });
+  text(ctx, 'HEALTH', 10, top + 33, { size: 7, color: PALETTE.paperLo, weight: 'normal' });
+
+  // ARMOR — cyan
+  text(ctx, `${player.armor | 0}%`, 96, top + 24, {
+    size: 14, color: PALETTE.cyanHi, shadow: true,
+  });
+  text(ctx, 'ARMOR', 96, top + 33, { size: 7, color: PALETTE.paperLo, weight: 'normal' });
+
+  // Face portrait (centered between armor and weapon)
   const face = assets.sprite(pickFace(player, hud.hurtFlashT));
-  const faceW = 28, faceH = 28;
+  const faceW = 30, faceH = 30;
   const faceX = (BUF_W - faceW) / 2;
   const faceY = top + (HUD_H - faceH) / 2;
-  ctx.fillStyle = '#000';
+  // bezel
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(faceX - 3, faceY - 3, faceW + 6, faceH + 6);
+  ctx.fillStyle = '#3a2a2e';
   ctx.fillRect(faceX - 2, faceY - 2, faceW + 4, faceH + 4);
-  ctx.fillStyle = '#444';
+  ctx.fillStyle = PALETTE.steelLo;
   ctx.fillRect(faceX - 1, faceY - 1, faceW + 2, faceH + 2);
+  // Idle blink
+  const blink = (Math.sin(time * 0.7) > 0.985 || Math.sin(time * 0.9 + 2) > 0.985);
   ctx.drawImage(face, faceX, faceY, faceW, faceH);
+  if (blink && player.health > 0) {
+    ctx.fillStyle = PALETTE.ink;
+    ctx.fillRect(faceX + 8, faceY + 14, 4, 2);
+    ctx.fillRect(faceX + 18, faceY + 14, 4, 2);
+  }
 
-  // Left cluster: HEALTH + ARMOR
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = '#ff3030';
-  ctx.fillText(`${Math.max(0, player.health | 0)}%`, 14, top + 18);
-  ctx.font = '7px monospace'; ctx.fillStyle = '#aaa';
-  ctx.fillText('HEALTH', 14, top + 28);
-
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = '#40c0ff';
-  ctx.fillText(`${player.armor | 0}%`, 66, top + 18);
-  ctx.font = '7px monospace'; ctx.fillStyle = '#aaa';
-  ctx.fillText('ARMOR', 66, top + 28);
-
-  // Right cluster: AMMO + WEAPON
+  // AMMO — amber, right cluster
   const w = WEAPONS[player.weapon]!;
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = '#ffd040';
   const ammoStr = `${player.ammo[w.ammoKey]}`;
+  ctx.font = 'bold 18px monospace';
   const ammoW = ctx.measureText(ammoStr).width;
-  ctx.fillText(ammoStr, BUF_W - 14 - ammoW, top + 18);
-  ctx.font = '7px monospace'; ctx.fillStyle = '#aaa';
-  ctx.fillText('AMMO', BUF_W - 14 - 28, top + 28);
+  text(ctx, ammoStr, BUF_W - 10 - ammoW, top + 24, {
+    size: 18, color: PALETTE.amberHi, shadow: true, outline: true,
+  });
+  text(ctx, 'AMMO', BUF_W - 10 - 28, top + 33, {
+    size: 7, color: PALETTE.paperLo, weight: 'normal',
+  });
 
-  // Weapon name
-  ctx.font = 'bold 9px monospace';
-  ctx.fillStyle = '#ffd070';
-  const wn = w.key.toUpperCase();
-  const wnW = ctx.measureText(wn).width;
-  ctx.fillText(wn, BUF_W - 14 - wnW - 60, top + 14);
-  ctx.font = '7px monospace'; ctx.fillStyle = '#888';
-  ctx.fillText(`KILLS ${hud.killCount}`, BUF_W - 14 - 60, top + 28);
-
-  // Level name strip (top-right while in level, fades after 4s)
-  void levelName; void time;
+  // WEAPON name + kills (middle-right cluster)
+  text(ctx, w.key.toUpperCase(), BUF_W - 78, top + 14, {
+    size: 9, color: PALETTE.amberMid,
+  });
+  text(ctx, `KILLS ${hud.killCount}`, BUF_W - 78, top + 24, {
+    size: 7, color: PALETTE.paperLo, weight: 'normal',
+  });
+  text(ctx, levelName, BUF_W - 78, top + 33, {
+    size: 7, color: PALETTE.steelHi, weight: 'normal',
+  });
 }
