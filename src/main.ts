@@ -178,6 +178,19 @@ if (!HEADLESS) {
 if (AUTO_START) {
   if (!HEADLESS) audio.init();
   startNewRun();
+  if (HEADLESS) input.paused = false; // headless never trips pointer lock
+}
+
+/** Transition into active play: arm pointer lock, request it now (we're still
+ * in the user-gesture window from the click that triggered this), and
+ * optimistically clear input.paused so the game starts ticking immediately.
+ * If the lock request actually fails, pointerlockchange will reset paused. */
+function enterPlay() {
+  input.wantsPointerLock = true;
+  if (!HEADLESS) {
+    input.paused = false;
+    try { canvas.requestPointerLock(); } catch { /* ignore */ }
+  }
 }
 
 // Menu navigation polling — independent of the game-loop pause/active state so
@@ -230,6 +243,13 @@ canvas.addEventListener('mousedown', (ev) => {
   if (row !== null && menu) {
     menu.select(row);
     menuMouseClicked = true;
+    // If the click will start/resume play, request pointer lock RIGHT NOW
+    // while we're still inside the user-gesture event handler. The rAF
+    // callback that processes the action may otherwise be too far away.
+    const action = menu.list[row]?.action;
+    if ((action === 'play' || action === 'resume' || action === 'restart') && !HEADLESS) {
+      try { canvas.requestPointerLock(); } catch { /* */ }
+    }
   }
 });
 
@@ -288,7 +308,11 @@ startLoop(
       const confirm = pollMenuInput(titleMenu);
       if (confirm === 'confirm') {
         const action = titleMenu.activate();
-        if (action === 'play') { audio.init(); startNewRun(); }
+        if (action === 'play') {
+          audio.init();
+          startNewRun();
+          enterPlay();
+        }
         else if (action === 'controls') showControls = true;
       }
       return;
@@ -313,8 +337,7 @@ startLoop(
       if (confirm === 'confirm') {
         const action = pauseMenu.activate();
         if (action === 'resume') {
-          // Re-arm pointer lock so the next canvas click re-grabs the cursor.
-          input.wantsPointerLock = true;
+          enterPlay();
         } else if (action === 'restart') {
           game.restart();
           hud.killCount = 0;
@@ -322,6 +345,7 @@ startLoop(
           shotsFiredCount = 0;
           shotsHitCount = 0;
           onLevelStart();
+          enterPlay();
         } else if (action === 'controls') {
           showControls = true;
         } else if (action === 'title') {
