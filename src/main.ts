@@ -1,9 +1,12 @@
 import { startLoop } from './engine/loop';
 import { Input } from './engine/input';
-import { renderWalls, BUF_W, BUF_H } from './render/raycaster';
+import { renderScene, BUF_W, BUF_H } from './render/raycaster';
+import { makeFloorTexture, makeCeilingTexture } from './render/textureCache';
 import { renderSprites } from './render/sprites';
-import { renderHUD } from './render/hud';
+import { renderHUD, type HUDState } from './render/hud';
 import { renderViewmodel } from './render/viewmodel';
+import { fireHitscan } from './entities/weapons';
+import { renderTitle, renderDeath, renderWin, renderPause, renderLevelIntro } from './render/screens';
 import { loadAssets } from './engine/assets';
 import { manifest, tileTextureKey } from './assets/manifest';
 import { Game } from './game/state';
@@ -26,6 +29,21 @@ const input = new Input();
 input.install(canvas, { headless: HEADLESS });
 const audio = new AudioMixer();
 const game = new Game(LEVELS);
+
+const hud: HUDState = {
+  damageFlash: 0,
+  pickupFeed: [],
+  hurtFlashT: 0,
+  hoveredEnemy: false,
+  killCount: 0,
+};
+
+const PICKUP_LABEL: Record<string, string> = {
+  health: '+25 HEALTH',
+  armor: '+25 ARMOR',
+  pistol_ammo: '+20 BULLETS',
+  shotgun_ammo: '+6 SHELLS',
+};
 
 
 // Debug hooks for the playtest harness. Exposed unconditionally — they're
@@ -50,15 +68,20 @@ window.__level = () => game.active ? {
 } : null;
 
 const depth = new Float32Array(BUF_W);
+const frameBuffer = ctx.createImageData(BUF_W, BUF_H);
+const floorTex = makeFloorTexture();
+const ceilingTex = makeCeilingTexture();
 const textureFor = (tile: number) => assets.texture(tileTextureKey[tile] ?? 'brick');
 
-// Wire audio to game events
-game.player.events = {
-  onFire: (slot) => audio.playSfx(slot === 0 ? 'pistol' : 'shotgun'),
-  onHit: () => audio.playSfx('enemy_hit'),
-  onKill: (e) => audio.playSfx(e.kind === 'imp' ? 'enemy_death_imp' : 'enemy_death_grunt'),
-  onDryFire: () => audio.playSfx('dryfire'),
-};
+function wirePlayerEvents() {
+  game.player.events = {
+    onFire: (slot) => audio.playSfx(slot === 0 ? 'pistol' : 'shotgun'),
+    onHit: () => audio.playSfx('enemy_hit'),
+    onKill: (e) => { audio.playSfx(e.kind === 'imp' ? 'enemy_death_imp' : 'enemy_death_grunt'); hud.killCount++; },
+    onDryFire: () => audio.playSfx('dryfire'),
+  };
+}
+wirePlayerEvents();
 
 let frames = 0, fps = 0, fpsAcc = 0;
 let levelIntroT = 0;
@@ -75,13 +98,7 @@ function onLevelStart() {
   lastLevelIdx = game.levelIndex;
   levelIntroT = 2.5;
   audio.startMusic();
-  // Re-wire player events (new Player on restart)
-  game.player.events = {
-    onFire: (slot) => audio.playSfx(slot === 0 ? 'pistol' : 'shotgun'),
-    onHit: () => audio.playSfx('enemy_hit'),
-    onKill: (e) => audio.playSfx(e.kind === 'imp' ? 'enemy_death_imp' : 'enemy_death_grunt'),
-    onDryFire: () => audio.playSfx('dryfire'),
-  };
+  wirePlayerEvents();
 }
 
 if (!HEADLESS) {
@@ -131,7 +148,23 @@ startLoop(
     for (let i = a.enemies.length - 1; i >= 0; i--) {
       if (a.enemies[i]!.dead) a.enemies.splice(i, 1);
     }
-    updatePickups(a.pickups, game.player, { onPickup: () => audio.playSfx('pickup') });
+    updatePickups(a.pickups, game.player, {
+      onPickup: (kind) => {
+        audio.playSfx('pickup');
+        hud.pickupFeed.push({ text: PICKUP_LABEL[kind] ?? kind, t: 2.0 });
+      },
+    });
+    // Tick pickup feed
+    for (const m of hud.pickupFeed) m.t -= dt;
+    hud.pickupFeed = hud.pickupFeed.filter((m) => m.t > 0);
+    hud.hurtFlashT = Math.max(0, hud.hurtFlashT - dt * 2);
+
+    // Detect hovered enemy at the crosshair for HUD feedback.
+    {
+      const dxLook = Math.cos(game.player.angle), dyLook = Math.sin(game.player.angle);
+      const hit = fireHitscan(a.level, a.enemies, game.player.x, game.player.y, dxLook, dyLook);
+      hud.hoveredEnemy = !!hit && hit.enemy.state !== 'dying';
+    }
     a.doors.update(dt);
 
     const exitTile = a.level.tileAt(game.player.x, game.player.y);
@@ -143,11 +176,12 @@ startLoop(
     }
 
     if (game.player.health < prevHp) {
-      game.damageFlash = 1.0;
+      hud.damageFlash = 1.0;
+      hud.hurtFlashT = 0.5;
       audio.playSfx('player_hurt');
     }
     game.prevHealth = game.player.health;
-    game.damageFlash = Math.max(0, game.damageFlash - dt * 2);
+    hud.damageFlash = Math.max(0, hud.damageFlash - dt * 2);
 
     if (game.player.health <= 0) {
       game.phase = 'dead';
@@ -161,15 +195,16 @@ startLoop(
   },
   () => {
     if (game.phase === 'title') {
-      drawCenteredScreen('DOOM', 'Click to start  ·  WASD + mouse  ·  LMB fire  ·  E doors  ·  1/2 weapons', '#f44');
+      renderTitle(ctx, game.time);
     } else if (game.phase === 'win') {
-      drawCenteredScreen('YOU WIN', 'Click to return to title', '#4f4');
+      renderWin(ctx, game.time, hud.killCount);
     } else if (!game.active) {
       ctx.fillStyle = '#000'; ctx.fillRect(0, 0, BUF_W, BUF_H);
     } else {
       const a = game.active;
-      renderWalls(ctx, a.level, game.player.x, game.player.y, game.player.angle, {
+      renderScene(ctx, a.level, game.player.x, game.player.y, game.player.angle, {
         depth, textureFor, isSolid: isSolidForRaycast,
+        floor: floorTex, ceiling: ceilingTex, frameBuffer,
       });
       const sprites = [
         ...a.enemies.map((e) => ({ x: e.x, y: e.y, img: assets.sprite(e.spriteKey) })),
@@ -177,34 +212,16 @@ startLoop(
       ];
       renderSprites(ctx, sprites, game.player.x, game.player.y, game.player.angle, depth);
       renderViewmodel(ctx, game.player, game.time, assets);
-      renderHUD(ctx, game.player, game.damageFlash);
+      renderHUD(ctx, game.player, hud, assets, a.level.name, game.time);
 
       if (levelIntroT > 0 && lastLevelIdx === game.levelIndex) {
-        const alpha = Math.min(1, levelIntroT);
-        ctx.fillStyle = `rgba(0,0,0,${0.4 * alpha})`;
-        ctx.fillRect(0, BUF_H / 2 - 22, BUF_W, 30);
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-        ctx.font = '12px monospace';
-        const txt = a.level.name;
-        const tw = ctx.measureText(txt).width;
-        ctx.fillText(txt, (BUF_W - tw) / 2, BUF_H / 2);
+        renderLevelIntro(ctx, a.level.name, levelIntroT);
       }
 
       if (game.phase === 'dead') {
-        ctx.fillStyle = 'rgba(60,0,0,0.7)';
-        ctx.fillRect(0, 0, BUF_W, BUF_H);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 24px monospace';
-        const tw = ctx.measureText('YOU DIED').width;
-        ctx.fillText('YOU DIED', (BUF_W - tw) / 2, BUF_H / 2 - 8);
-        ctx.font = '10px monospace';
-        const sw = ctx.measureText('Click to restart level').width;
-        ctx.fillText('Click to restart level', (BUF_W - sw) / 2, BUF_H / 2 + 14);
+        renderDeath(ctx, game.time, hud.killCount, a.level.name);
       } else if (input.paused) {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(0, 0, BUF_W, BUF_H);
-        ctx.fillStyle = '#fff'; ctx.font = '12px monospace';
-        const tw = ctx.measureText('Click to play').width;
-        ctx.fillText('Click to play', (BUF_W - tw) / 2, 100);
+        renderPause(ctx);
       }
     }
 
@@ -217,12 +234,3 @@ startLoop(
   },
 );
 
-function drawCenteredScreen(title: string, sub: string, color: string) {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, BUF_W, BUF_H);
-  ctx.fillStyle = color; ctx.font = 'bold 32px monospace';
-  const tw = ctx.measureText(title).width;
-  ctx.fillText(title, (BUF_W - tw) / 2, BUF_H / 2 - 8);
-  ctx.fillStyle = '#aaa'; ctx.font = '10px monospace';
-  const sw = ctx.measureText(sub).width;
-  ctx.fillText(sub, (BUF_W - sw) / 2, BUF_H / 2 + 18);
-}

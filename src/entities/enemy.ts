@@ -26,10 +26,22 @@ export class Enemy implements Entity {
   state: EnemyState = 'idle';
   attackCooldown = 0;
   removeAfter = Infinity;
+  animTime = 0;
 
   constructor(public x: number, public y: number, public kind: EnemyKind, private events: EnemyEvents = {}) {
     this.spriteKey = kind + '_front';
     this.health = STATS[kind].health;
+  }
+
+  private updateSprite() {
+    if (this.state === 'dying') { this.spriteKey = this.kind + '_dying'; return; }
+    if (this.state === 'attack') { this.spriteKey = this.kind + '_attack'; return; }
+    if (this.state === 'chase') {
+      const frame = Math.floor(this.animTime * 4) % 2;
+      this.spriteKey = this.kind + (frame === 0 ? '_frontA' : '_frontB');
+      return;
+    }
+    this.spriteKey = this.kind + '_front';
   }
 
   takeDamage(amount: number) {
@@ -37,8 +49,8 @@ export class Enemy implements Entity {
     this.health -= amount;
     if (this.health <= 0) {
       this.state = 'dying';
-      this.spriteKey = this.kind + '_dying';
       this.removeAfter = 8;
+      this.updateSprite();
       this.events.onDeath?.(this.kind);
       return;
     }
@@ -55,6 +67,7 @@ export class Enemy implements Entity {
   }
 
   update(dt: number, lvl: Level, player: Player, doors?: Doors) {
+    this.animTime += dt;
     if (this.state === 'dying') {
       this.removeAfter -= dt;
       if (this.removeAfter <= 0) this.dead = true;
@@ -78,6 +91,7 @@ export class Enemy implements Entity {
         this.events.onAttack?.(this.kind);
         this.events.onPlayerHit?.(stats.damage);
       }
+      this.updateSprite();
       return;
     }
 
@@ -90,5 +104,6 @@ export class Enemy implements Entity {
       this.x = next.x;
       this.y = next.y;
     }
+    this.updateSprite();
   }
 }
