@@ -187,7 +187,9 @@ export function createWorld(canvas: HTMLCanvasElement): WorldRenderer {
     for (let i = 0; i < 4; i++) b.normals.push(nx, ny, nz);
     // UVs: bottom-left -> bottom-right -> top-right -> top-left
     b.uvs.push(0, 1, 1, 1, 1, 0, 0, 0);
-    b.indices.push(idx, idx + 1, idx + 2, idx, idx + 2, idx + 3);
+    // Reverse the triangle winding so the outward normal points away from the
+    // wall interior (three.js front-face = CCW vertices from camera POV).
+    b.indices.push(idx, idx + 2, idx + 1, idx, idx + 3, idx + 2);
   }
 
   function buildFloorCeiling(lvl: Level, opts: WallOptions) {
