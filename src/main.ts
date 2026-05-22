@@ -17,11 +17,37 @@ canvas.width = BUF_W;
 canvas.height = BUF_H;
 ctx.imageSmoothingEnabled = false;
 
+const params = new URLSearchParams(location.search);
+const HEADLESS = params.get('headless') === '1';
+const AUTO_START = params.get('start') === '1' || HEADLESS;
+
 const assets = loadAssets(manifest);
 const input = new Input();
-input.install(canvas);
+input.install(canvas, { headless: HEADLESS });
 const audio = new AudioMixer();
 const game = new Game(LEVELS);
+
+
+// Debug hooks for the playtest harness. Exposed unconditionally — they're
+// read-only references and the overhead is zero.
+declare global {
+  interface Window {
+    __game?: Game;
+    __input?: Input;
+    __audio?: AudioMixer;
+    __level?: () => unknown;
+  }
+}
+window.__game = game;
+window.__input = input;
+window.__audio = audio;
+window.__level = () => game.active ? {
+  name: game.active.level.name,
+  width: game.active.level.width,
+  height: game.active.level.height,
+  enemiesAlive: game.active.enemies.length,
+  pickupsRemaining: game.active.pickups.filter((p) => !p.taken).length,
+} : null;
 
 const depth = new Float32Array(BUF_W);
 const textureFor = (tile: number) => assets.texture(tileTextureKey[tile] ?? 'brick');
@@ -58,7 +84,15 @@ function onLevelStart() {
   };
 }
 
-canvas.addEventListener('click', () => audio.init(), { once: true });
+if (!HEADLESS) {
+  canvas.addEventListener('click', () => audio.init(), { once: true });
+}
+
+if (AUTO_START) {
+  if (!HEADLESS) audio.init();
+  game.start();
+  onLevelStart();
+}
 
 startLoop(
   (dt) => {

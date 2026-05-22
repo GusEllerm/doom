@@ -7,27 +7,42 @@ export interface InputSnapshot {
   weaponSlot: number | null;
 }
 
+export interface InputOptions {
+  headless?: boolean;
+  // Headless mode: skip pointer lock, treat arrow keys as yaw, start unpaused on first input.
+}
+
 export class Input {
   private pressed = new Set<string>();
   private mouseDx = 0;
   private fireLatched = false;
   private interactLatched = false;
   private slotLatched: number | null = null;
-  paused = true; // start paused until user clicks canvas to grant pointer lock
+  paused = true;
+  private headless = false;
+  private yawPerArrowKeyPx = 25; // virtual mouse movement per frame while arrow held
 
-  install(canvas: HTMLCanvasElement) {
+  install(canvas: HTMLCanvasElement, opts: InputOptions = {}) {
+    this.headless = !!opts.headless;
+    if (this.headless) this.paused = false;
     addEventListener('keydown', (e) => this._press(e.code));
     addEventListener('keyup', (e) => this._release(e.code));
-    canvas.addEventListener('click', () => canvas.requestPointerLock());
-    document.addEventListener('pointerlockchange', () => {
-      this.paused = document.pointerLockElement !== canvas;
-    });
-    addEventListener('mousemove', (e) => {
-      if (!this.paused) this._mouseMove(e.movementX);
-    });
-    addEventListener('mousedown', (e) => {
-      if (!this.paused && e.button === 0) this.fireLatched = true;
-    });
+    if (!this.headless) {
+      canvas.addEventListener('click', () => canvas.requestPointerLock());
+      document.addEventListener('pointerlockchange', () => {
+        this.paused = document.pointerLockElement !== canvas;
+      });
+      addEventListener('mousemove', (e) => {
+        if (!this.paused) this._mouseMove(e.movementX);
+      });
+      addEventListener('mousedown', (e) => {
+        if (!this.paused && e.button === 0) this.fireLatched = true;
+      });
+    } else {
+      // Headless: F key fires (since LMB without pointer lock is awkward to script).
+      // Also accept synthetic mousedown for completeness.
+      addEventListener('mousedown', (e) => { if (e.button === 0) this.fireLatched = true; });
+    }
   }
 
   _press(code: string) {
@@ -35,6 +50,7 @@ export class Input {
     if (code === 'KeyE') this.interactLatched = true;
     if (code === 'Digit1') this.slotLatched = 0;
     if (code === 'Digit2') this.slotLatched = 1;
+    if (this.headless && code === 'KeyF') this.fireLatched = true;
   }
 
   _release(code: string) {
@@ -52,10 +68,15 @@ export class Input {
   snapshot(): InputSnapshot {
     const fwd = (this.pressed.has('KeyW') ? 1 : 0) - (this.pressed.has('KeyS') ? 1 : 0);
     const str = (this.pressed.has('KeyD') ? 1 : 0) - (this.pressed.has('KeyA') ? 1 : 0);
+    let yaw = this.mouseDx;
+    if (this.headless) {
+      if (this.pressed.has('ArrowLeft')) yaw -= this.yawPerArrowKeyPx;
+      if (this.pressed.has('ArrowRight')) yaw += this.yawPerArrowKeyPx;
+    }
     const s: InputSnapshot = {
       forward: fwd,
       strafe: str,
-      yawDelta: this.mouseDx,
+      yawDelta: yaw,
       fire: this.fireLatched || this.pressed.has('Space'),
       interact: this.interactLatched,
       weaponSlot: this.slotLatched,
