@@ -11,6 +11,8 @@ export interface HUDState {
   hurtFlashT: number;
   hoveredEnemy: boolean;
   killCount: number;
+  hitMarkerT: number;     // red X on crosshair when a shot lands
+  wallSparkT: number;     // yellow spark when a shot hits a wall
 }
 
 const HUD_H = 36;
@@ -53,7 +55,7 @@ export function renderHUD(
     feedY -= 12;
   }
 
-  // Crosshair (red on enemy hover)
+  // Crosshair (red on enemy hover; grows during cooldown for fire readiness)
   const cx = BUF_W / 2, cy = BUF_H / 2 - HUD_H / 2;
   ctx.fillStyle = hud.hoveredEnemy ? '#ff3030' : '#fff';
   ctx.fillRect(cx - 1, cy - 6, 2, 4);
@@ -63,6 +65,28 @@ export function renderHUD(
   if (hud.hoveredEnemy) {
     ctx.fillStyle = 'rgba(255,40,40,0.25)';
     ctx.fillRect(cx - 7, cy - 7, 14, 14);
+  }
+  // Yellow wall-impact spark (a brief puff at the crosshair on miss)
+  if (hud.wallSparkT > 0) {
+    const alpha = Math.min(1, hud.wallSparkT / 0.15);
+    ctx.fillStyle = `rgba(255,220,80,${alpha * 0.8})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5 + (1 - alpha) * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,255,220,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Red hit-marker X when a shot lands on an enemy
+  if (hud.hitMarkerT > 0) {
+    const alpha = Math.min(1, hud.hitMarkerT / 0.2);
+    ctx.strokeStyle = `rgba(255,80,80,${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx + 8, cy + 8);
+    ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx - 8, cy + 8);
+    ctx.stroke();
   }
 
   // HUD bar background

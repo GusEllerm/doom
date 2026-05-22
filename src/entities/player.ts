@@ -4,6 +4,8 @@ import type { InputSnapshot } from '../engine/input';
 import type { Enemy } from './enemy';
 import { WEAPONS, fireHitscan } from './weapons';
 import type { Doors } from '../world/doors';
+import { telemetry } from '../engine/telemetry';
+import { debug } from '../render/debug';
 
 const MOVE_SPEED = 3.0;
 const TURN_SPEED = 0.0025;
@@ -24,10 +26,11 @@ export class Player {
   cooldown = 0;
   moving = false;
   events: PlayerEvents = {};
+  lastShotWallDist = 0;
 
   constructor(public x: number, public y: number, public angle: number) {}
 
-  takeDamage(amount: number) {
+  takeDamage(amount: number, source = 'unknown') {
     let dmg = amount;
     if (this.armor > 0) {
       const absorbed = Math.min(this.armor, dmg / 2);
@@ -35,6 +38,7 @@ export class Player {
       dmg -= absorbed;
     }
     this.health = Math.max(0, this.health - dmg);
+    telemetry.push({ type: 'damage_taken', t: performance.now() / 1000, from: source, amount, healthAfter: this.health });
   }
 
   update(dt: number, input: InputSnapshot, lvl: Level, enemies: Enemy[], doors?: Doors) {
@@ -52,33 +56,56 @@ export class Player {
     if (input.weaponSlot === 0 || input.weaponSlot === 1) {
       this.weapon = input.weaponSlot;
     }
-    if (input.interact && doors) doors.tryOpenNear(this.x, this.y);
+    if (input.interact && doors) {
+      const opened = doors.tryOpenNear(this.x, this.y);
+      telemetry.push({ type: 'door_interact', t: performance.now() / 1000, x: this.x, y: this.y, opened });
+    }
     if (input.fire) this.fire(lvl, enemies);
   }
 
   fire(lvl: Level, enemies: Enemy[]) {
+    const now = performance.now() / 1000;
     if (this.cooldown > 0) return;
     const w = WEAPONS[this.weapon]!;
     if (this.ammo[w.ammoKey] < w.ammoPerShot) {
       this.events.onDryFire?.();
+      telemetry.push({ type: 'shot_dryfire', t: now, weapon: w.key });
       this.cooldown = 0.15;
       return;
     }
     this.ammo[w.ammoKey] -= w.ammoPerShot;
     this.cooldown = w.cooldown;
     this.events.onFire?.(this.weapon);
+    let hitsThisShot = 0;
+    let nearestDist: number | null = null;
+    let wallImpactDist = 0;
     for (let i = 0; i < w.rays; i++) {
       const spread = w.rays === 1 ? 0 : (i - (w.rays - 1) / 2) * w.spread / (w.rays - 1);
       const a = this.angle + spread;
       const hit = fireHitscan(lvl, enemies, this.x, this.y, Math.cos(a), Math.sin(a));
-      if (hit) {
+      if (i === 0) wallImpactDist = hit.wallT;
+      if (hit.enemy) {
+        hitsThisShot++;
+        if (nearestDist === null || hit.t < nearestDist) nearestDist = hit.t;
         const wasAlive = hit.enemy.state !== 'dying';
         hit.enemy.takeDamage(w.damage);
+        telemetry.push({
+          type: 'shot_target', t: now, weapon: w.key,
+          targetKind: hit.enemy.kind, damage: w.damage, distance: hit.t,
+          killed: wasAlive && hit.enemy.state === 'dying',
+        });
         if (wasAlive) {
           this.events.onHit?.(hit.enemy);
           if (hit.enemy.state === 'dying') this.events.onKill?.(hit.enemy);
         }
       }
     }
+    this.lastShotWallDist = wallImpactDist;
+    telemetry.push({ type: 'shot', t: now, weapon: w.key, rays: w.rays, hits: hitsThisShot, nearestDistance: nearestDist });
+    debug.lastShot = {
+      ox: this.x, oy: this.y,
+      dx: Math.cos(this.angle), dy: Math.sin(this.angle),
+      t: performance.now() / 1000, hit: hitsThisShot > 0,
+    };
   }
 }

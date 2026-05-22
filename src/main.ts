@@ -7,6 +7,8 @@ import { renderHUD, type HUDState } from './render/hud';
 import { renderViewmodel } from './render/viewmodel';
 import { fireHitscan } from './entities/weapons';
 import { renderTitle, renderDeath, renderWin, renderPause, renderLevelIntro } from './render/screens';
+import { telemetry } from './engine/telemetry';
+import { debug, recordFrame, renderDebug } from './render/debug';
 import { loadAssets } from './engine/assets';
 import { manifest, tileTextureKey } from './assets/manifest';
 import { Game } from './game/state';
@@ -36,6 +38,8 @@ const hud: HUDState = {
   hurtFlashT: 0,
   hoveredEnemy: false,
   killCount: 0,
+  hitMarkerT: 0,
+  wallSparkT: 0,
 };
 
 const PICKUP_LABEL: Record<string, string> = {
@@ -54,11 +58,25 @@ declare global {
     __input?: Input;
     __audio?: AudioMixer;
     __level?: () => unknown;
+    __telemetry?: typeof telemetry;
+    __events?: () => unknown;
+    __metrics?: () => unknown;
+    __debugOverlay?: boolean;
+    __debug?: typeof debug;
   }
 }
 window.__game = game;
 window.__input = input;
 window.__audio = audio;
+window.__telemetry = telemetry;
+window.__events = () => telemetry.all();
+window.__metrics = () => telemetry.derive();
+window.__debug = debug;
+addEventListener('keydown', (e) => {
+  if (e.code === 'F1') { debug.enabled = !debug.enabled; e.preventDefault(); }
+  // In headless mode, allow toggling via Q (function keys are reserved by the browser).
+  if (e.code === 'KeyQ' && HEADLESS) { debug.enabled = !debug.enabled; }
+});
 window.__level = () => game.active ? {
   name: game.active.level.name,
   width: game.active.level.width,
@@ -75,8 +93,16 @@ const textureFor = (tile: number) => assets.texture(tileTextureKey[tile] ?? 'bri
 
 function wirePlayerEvents() {
   game.player.events = {
-    onFire: (slot) => audio.playSfx(slot === 0 ? 'pistol' : 'shotgun'),
-    onHit: () => audio.playSfx('enemy_hit'),
+    onFire: (slot) => {
+      audio.playSfx(slot === 0 ? 'pistol' : 'shotgun');
+      // Default to "miss → wall spark" — overridden below on hit.
+      hud.wallSparkT = 0.18;
+    },
+    onHit: () => {
+      audio.playSfx('enemy_hit');
+      hud.hitMarkerT = 0.25;
+      hud.wallSparkT = 0; // suppress the miss spark if we connected
+    },
     onKill: (e) => { audio.playSfx(e.kind === 'imp' ? 'enemy_death_imp' : 'enemy_death_grunt'); hud.killCount++; },
     onDryFire: () => audio.playSfx('dryfire'),
   };
@@ -99,6 +125,18 @@ function onLevelStart() {
   levelIntroT = 2.5;
   audio.startMusic();
   wirePlayerEvents();
+  if (game.active) {
+    telemetry.push({
+      type: 'level_start',
+      t: performance.now() / 1000,
+      level: game.active.level.name,
+      index: game.levelIndex,
+    });
+    // Re-bind enemy events to record source on damage.
+    for (const e of game.active.enemies) {
+      e['events'] = { onPlayerHit: (d: number) => game.player.takeDamage(d, e.kind) } as any;
+    }
+  }
 }
 
 if (!HEADLESS) {
@@ -111,8 +149,19 @@ if (AUTO_START) {
   onLevelStart();
 }
 
+let lastFrameStart = 0;
+let renderStart = 0;
+
 startLoop(
   (dt) => {
+    const frameStart = performance.now();
+    if (lastFrameStart > 0) {
+      const gap = frameStart - lastFrameStart;
+      recordFrame(gap);
+      if (gap > 33) telemetry.push({ type: 'frame_slow', t: frameStart / 1000, ms: gap });
+    }
+    lastFrameStart = frameStart;
+    renderStart = frameStart;
     game.time += dt;
     if (levelIntroT > 0) levelIntroT -= dt;
 
@@ -158,12 +207,14 @@ startLoop(
     for (const m of hud.pickupFeed) m.t -= dt;
     hud.pickupFeed = hud.pickupFeed.filter((m) => m.t > 0);
     hud.hurtFlashT = Math.max(0, hud.hurtFlashT - dt * 2);
+    hud.hitMarkerT = Math.max(0, hud.hitMarkerT - dt * 4);
+    hud.wallSparkT = Math.max(0, hud.wallSparkT - dt * 6);
 
     // Detect hovered enemy at the crosshair for HUD feedback.
     {
       const dxLook = Math.cos(game.player.angle), dyLook = Math.sin(game.player.angle);
       const hit = fireHitscan(a.level, a.enemies, game.player.x, game.player.y, dxLook, dyLook);
-      hud.hoveredEnemy = !!hit && hit.enemy.state !== 'dying';
+      hud.hoveredEnemy = !!hit.enemy && hit.enemy.state !== 'dying';
     }
     a.doors.update(dt);
 
@@ -171,7 +222,10 @@ startLoop(
     if (exitTile === 100) {
       const before = game.levelIndex;
       const moved = game.advanceLevel();
-      if (moved && game.levelIndex !== before) onLevelStart();
+      if (moved && game.levelIndex !== before) {
+        telemetry.push({ type: 'level_advance', t: performance.now() / 1000, from: before, to: game.levelIndex });
+        onLevelStart();
+      }
       if (!moved) audio.stopMusic();
     }
 
@@ -204,6 +258,7 @@ startLoop(
       const a = game.active;
       renderScene(ctx, a.level, game.player.x, game.player.y, game.player.angle, {
         depth, textureFor, isSolid: isSolidForRaycast,
+        doorOpenRatio: (x, y) => a.doors.openRatio(x, y),
         floor: floorTex, ceiling: ceilingTex, frameBuffer,
       });
       const sprites = [
@@ -212,6 +267,7 @@ startLoop(
       ];
       renderSprites(ctx, sprites, game.player.x, game.player.y, game.player.angle, depth);
       renderViewmodel(ctx, game.player, game.time, assets);
+      renderDebug(ctx, a, game.player, depth, Math.PI / 3);
       renderHUD(ctx, game.player, hud, assets, a.level.name, game.time);
 
       if (levelIntroT > 0 && lastLevelIdx === game.levelIndex) {

@@ -4,6 +4,7 @@ import type { Player } from './player';
 import { tryMove } from '../world/collision';
 import { castRay } from '../render/raycaster';
 import type { Doors } from '../world/doors';
+import { telemetry } from '../engine/telemetry';
 
 export type EnemyKind = 'imp' | 'grunt';
 export type EnemyState = 'idle' | 'chase' | 'attack' | 'dying';
@@ -27,6 +28,10 @@ export class Enemy implements Entity {
   attackCooldown = 0;
   removeAfter = Infinity;
   animTime = 0;
+  private lastX = 0;
+  private lastY = 0;
+  private stationarySeconds = 0;
+  private stuckReported = false;
 
   constructor(public x: number, public y: number, public kind: EnemyKind, private events: EnemyEvents = {}) {
     this.spriteKey = kind + '_front';
@@ -52,6 +57,7 @@ export class Enemy implements Entity {
       this.removeAfter = 8;
       this.updateSprite();
       this.events.onDeath?.(this.kind);
+      telemetry.push({ type: 'enemy_death', t: performance.now() / 1000, kind: this.kind, x: this.x, y: this.y });
       return;
     }
     if (this.state === 'idle') this.state = 'chase';
@@ -90,6 +96,7 @@ export class Enemy implements Entity {
         this.attackCooldown = stats.attackCd;
         this.events.onAttack?.(this.kind);
         this.events.onPlayerHit?.(stats.damage);
+        telemetry.push({ type: 'enemy_attack', t: performance.now() / 1000, kind: this.kind, distance: dist });
       }
       this.updateSprite();
       return;
@@ -98,12 +105,34 @@ export class Enemy implements Entity {
     this.state = 'chase';
     if (dist > 0.001) {
       const speed = stats.speed * dt;
-      const nx = (dx / dist) * speed;
-      const ny = (dy / dist) * speed;
+      let nx = (dx / dist) * speed;
+      let ny = (dy / dist) * speed;
+      // Unstick: if we've been stationary for a moment, our direct-pursuit
+      // vector is jammed against a wall corner. Pick a sideways direction so
+      // we can escape and try again next frame.
+      if (this.stationarySeconds > 0.5) {
+        const wiggle = this.stationarySeconds > 1.2 ? Math.PI / 2 : Math.PI / 4;
+        const sign = ((this.stationarySeconds * 7) | 0) % 2 === 0 ? 1 : -1;
+        const a = Math.atan2(dy, dx) + sign * wiggle;
+        nx = Math.cos(a) * speed;
+        ny = Math.sin(a) * speed;
+      }
       const next = tryMove(lvl, { x: this.x, y: this.y }, nx, ny, 0.25, doors);
+      const moved = Math.hypot(next.x - this.x, next.y - this.y);
       this.x = next.x;
       this.y = next.y;
+      if (moved < 0.002) {
+        this.stationarySeconds += dt;
+        if (this.stationarySeconds > 2 && !this.stuckReported) {
+          telemetry.push({ type: 'enemy_stuck', t: performance.now() / 1000, kind: this.kind, x: this.x, y: this.y, secondsStuck: this.stationarySeconds });
+          this.stuckReported = true;
+        }
+      } else {
+        this.stationarySeconds = 0;
+        this.stuckReported = false;
+      }
     }
+    this.lastX = this.x; this.lastY = this.y;
     this.updateSprite();
   }
 }

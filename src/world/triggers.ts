@@ -1,4 +1,5 @@
 import type { Player } from '../entities/player';
+import { telemetry } from '../engine/telemetry';
 
 export type PickupKind = 'health' | 'armor' | 'pistol_ammo' | 'shotgun_ammo';
 
@@ -33,6 +34,7 @@ export function updatePickups(pickups: Pickup[], player: Player, events: PickupE
       apply(p.kind, player);
       p.taken = true;
       events.onPickup?.(p.kind);
+      telemetry.push({ type: 'pickup', t: performance.now() / 1000, kind: p.kind, x: p.x, y: p.y });
     }
   }
 }
