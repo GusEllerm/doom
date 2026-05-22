@@ -10,6 +10,7 @@ import { debug } from '../render/debug';
 const MOVE_SPEED = 3.0;
 const TURN_SPEED = 0.0025;
 const RADIUS = 0.25;
+const PITCH_LIMIT = Math.PI / 3;
 
 export interface PlayerEvents {
   onFire?: (weapon: 0 | 1) => void;
@@ -27,6 +28,7 @@ export class Player {
   moving = false;
   events: PlayerEvents = {};
   lastShotWallDist = 0;
+  pitch = 0;
 
   constructor(public x: number, public y: number, public angle: number) {}
 
@@ -43,6 +45,9 @@ export class Player {
 
   update(dt: number, input: InputSnapshot, lvl: Level, enemies: Enemy[], doors?: Doors) {
     this.angle += input.yawDelta * TURN_SPEED;
+    this.pitch -= input.pitchDelta * TURN_SPEED;
+    if (this.pitch > PITCH_LIMIT) this.pitch = PITCH_LIMIT;
+    if (this.pitch < -PITCH_LIMIT) this.pitch = -PITCH_LIMIT;
     const cos = Math.cos(this.angle), sin = Math.sin(this.angle);
     const fwd = input.forward * MOVE_SPEED * dt;
     const str = input.strafe * MOVE_SPEED * dt;

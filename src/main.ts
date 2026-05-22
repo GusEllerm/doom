@@ -1,8 +1,7 @@
 import { startLoop } from './engine/loop';
 import { Input } from './engine/input';
-import { renderScene, BUF_W, BUF_H } from './render/raycaster';
+import { BUF_W, BUF_H } from './render/raycaster';
 import { makeFloorTexture, makeCeilingTexture } from './render/textureCache';
-import { renderSprites } from './render/sprites';
 import { renderHUD, type HUDState } from './render/hud';
 import { renderViewmodel } from './render/viewmodel';
 import { fireHitscan } from './entities/weapons';
@@ -16,11 +15,14 @@ import { LEVELS } from './world/levels';
 import { updatePickups } from './world/triggers';
 import { AudioMixer } from './engine/audio';
 import { Menu } from './game/menu';
+import { createWorld } from './render3d/world';
+import { SpritePool } from './render3d/sprites';
 
-const canvas = document.getElementById('game') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d')!;
-canvas.width = BUF_W;
-canvas.height = BUF_H;
+const world = document.getElementById('world') as HTMLCanvasElement;
+const overlay = document.getElementById('overlay') as HTMLCanvasElement;
+const ctx = overlay.getContext('2d')!;
+overlay.width = BUF_W;
+overlay.height = BUF_H;
 ctx.imageSmoothingEnabled = false;
 
 const params = new URLSearchParams(location.search);
@@ -29,9 +31,36 @@ const AUTO_START = params.get('start') === '1' || HEADLESS;
 
 const assets = loadAssets(manifest);
 const input = new Input();
-input.install(canvas, { headless: HEADLESS });
+// All input listens on the overlay canvas so cursor/pointer-lock is consistent.
+input.install(overlay, { headless: HEADLESS });
 const audio = new AudioMixer();
 const game = new Game(LEVELS);
+
+const renderer3d = createWorld(world);
+const spritePool = new SpritePool(renderer3d.spriteLayer);
+
+// Convert the procedural floor/ceiling buffers into HTMLImageElements
+// (the three.js renderer takes <img>, not raw pixel arrays).
+function rawToImage(raw: { w: number; h: number; data: Uint8ClampedArray }): HTMLImageElement {
+  const c = document.createElement('canvas');
+  c.width = raw.w; c.height = raw.h;
+  const g = c.getContext('2d')!;
+  const id = g.createImageData(raw.w, raw.h);
+  id.data.set(raw.data);
+  g.putImageData(id, 0, 0);
+  const img = new Image();
+  img.src = c.toDataURL();
+  return img;
+}
+const floorImg = rawToImage(makeFloorTexture());
+const ceilingImg = rawToImage(makeCeilingTexture());
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer3d.setSize(w, h);
+}
+addEventListener('resize', resize);
+resize();
 
 const hud: HUDState = {
   damageFlash: 0,
@@ -50,7 +79,6 @@ const PICKUP_LABEL: Record<string, string> = {
   shotgun_ammo: '+6 SHELLS',
 };
 
-// Menus
 type TitleAction = 'play' | 'controls';
 type PauseAction = 'resume' | 'restart' | 'controls' | 'title';
 const titleMenu = new Menu<TitleAction>([
@@ -65,10 +93,10 @@ const pauseMenu = new Menu<PauseAction>([
 ]);
 let showControls = false;
 
-// Stats accumulator for end screens.
 let runStartTime = 0;
 let shotsFiredCount = 0;
 let shotsHitCount = 0;
+let activeLevelIndex = -1;
 
 declare global {
   interface Window {
@@ -79,7 +107,6 @@ declare global {
     __telemetry?: typeof telemetry;
     __events?: () => unknown;
     __metrics?: () => unknown;
-    __debugOverlay?: boolean;
     __debug?: typeof debug;
     __menu?: { title: Menu; pause: Menu };
   }
@@ -106,10 +133,8 @@ window.__level = () => game.active ? {
   pickupsRemaining: game.active.pickups.filter((p) => !p.taken).length,
 } : null;
 
-const depth = new Float32Array(BUF_W);
-const frameBuffer = ctx.createImageData(BUF_W, BUF_H);
-const floorTex = makeFloorTexture();
-const ceilingTex = makeCeilingTexture();
+const depth = new Float32Array(BUF_W); // legacy slot for debug overlay
+
 const textureFor = (tile: number) => assets.texture(tileTextureKey[tile] ?? 'brick');
 
 function wirePlayerEvents() {
@@ -134,15 +159,7 @@ wirePlayerEvents();
 let fps = 0, frames = 0, fpsAcc = 0;
 let levelIntroT = 0;
 let lastLevelIdx = -1;
-// Menu input latches: keys are edge-triggered (must be released before re-firing)
 let menuKeyState = { up: false, down: false, confirm: false };
-
-function isSolidForRaycast(x: number, y: number, tile: number): boolean {
-  if (tile === 0) return false;
-  if (tile === 9) return game.active ? game.active.doors.isBlocking(x, y) : true;
-  if (tile >= 100) return false;
-  return true;
-}
 
 function onLevelStart() {
   lastLevelIdx = game.levelIndex;
@@ -159,6 +176,15 @@ function onLevelStart() {
     for (const e of game.active.enemies) {
       e['events' as never] = { onPlayerHit: (d: number) => game.player.takeDamage(d, e.kind) } as never;
     }
+    if (activeLevelIndex !== game.levelIndex) {
+      activeLevelIndex = game.levelIndex;
+      renderer3d.setLevel(game.active.level, game.active.doors, {
+        textureFor,
+        floor: floorImg,
+        ceiling: ceilingImg,
+      });
+      spritePool.clear();
+    }
   }
 }
 
@@ -169,32 +195,28 @@ function startNewRun() {
   runStartTime = performance.now() / 1000;
   shotsFiredCount = 0;
   shotsHitCount = 0;
+  activeLevelIndex = -1; // force scene rebuild
   onLevelStart();
 }
 
 if (!HEADLESS) {
-  canvas.addEventListener('click', () => audio.init(), { once: true });
+  overlay.addEventListener('click', () => audio.init(), { once: true });
 }
 if (AUTO_START) {
   if (!HEADLESS) audio.init();
   startNewRun();
-  if (HEADLESS) input.paused = false; // headless never trips pointer lock
+  if (HEADLESS) input.paused = false;
 }
 
-/** Transition into active play: arm pointer lock, request it now (we're still
- * in the user-gesture window from the click that triggered this), and
- * optimistically clear input.paused so the game starts ticking immediately.
- * If the lock request actually fails, pointerlockchange will reset paused. */
 function enterPlay() {
   input.wantsPointerLock = true;
   if (!HEADLESS) {
     input.paused = false;
-    try { canvas.requestPointerLock(); } catch { /* ignore */ }
+    try { overlay.requestPointerLock(); } catch { /* */ }
   }
 }
 
-// Menu navigation polling — independent of the game-loop pause/active state so
-// menus work even when game logic is suspended.
+// Menu input
 function pollMenuInput(menu: Menu): 'confirm' | null {
   const up = input.isDown('ArrowUp') || input.isDown('KeyW');
   const down = input.isDown('ArrowDown') || input.isDown('KeyS');
@@ -204,37 +226,30 @@ function pollMenuInput(menu: Menu): 'confirm' | null {
   if (down && !menuKeyState.down) menu.next();
   if (confirm && !menuKeyState.confirm) result = 'confirm';
   menuKeyState = { up, down, confirm };
-  // Hover-driven selection from the mouse position recorded by the canvas
-  // listener below. Click action is set on mousedown and consumed here.
   if (menuMouseRow !== null) {
     menu.select(menuMouseRow);
-    if (menuMouseClicked) {
-      menuMouseClicked = false;
-      result = 'confirm';
-    }
+    if (menuMouseClicked) { menuMouseClicked = false; result = 'confirm'; }
   } else if (menuMouseClicked) {
     menuMouseClicked = false;
   }
   return result;
 }
 
-// Mouse state for menus. These are updated by listeners on the canvas, then
-// consumed by pollMenuInput().
 let menuMouseRow: number | null = null;
 let menuMouseClicked = false;
 function bufCoords(ev: MouseEvent): { x: number; y: number } {
-  const rect = canvas.getBoundingClientRect();
-  const sx = canvas.width / rect.width;
-  const sy = canvas.height / rect.height;
+  const rect = overlay.getBoundingClientRect();
+  const sx = overlay.width / rect.width;
+  const sy = overlay.height / rect.height;
   return { x: (ev.clientX - rect.left) * sx, y: (ev.clientY - rect.top) * sy };
 }
-canvas.addEventListener('mousemove', (ev) => {
+overlay.addEventListener('mousemove', (ev) => {
   if (!isMenuPhase()) return;
   const { x, y } = bufCoords(ev);
   const menu = activeMenu();
   menuMouseRow = menu ? menu.hitTest(x, y) : null;
 });
-canvas.addEventListener('mousedown', (ev) => {
+overlay.addEventListener('mousedown', (ev) => {
   if (ev.button !== 0) return;
   if (!isMenuPhase()) return;
   const { x, y } = bufCoords(ev);
@@ -243,12 +258,9 @@ canvas.addEventListener('mousedown', (ev) => {
   if (row !== null && menu) {
     menu.select(row);
     menuMouseClicked = true;
-    // If the click will start/resume play, request pointer lock RIGHT NOW
-    // while we're still inside the user-gesture event handler. The rAF
-    // callback that processes the action may otherwise be too far away.
     const action = menu.list[row]?.action;
     if ((action === 'play' || action === 'resume' || action === 'restart') && !HEADLESS) {
-      try { canvas.requestPointerLock(); } catch { /* */ }
+      try { overlay.requestPointerLock(); } catch { /* */ }
     }
   }
 });
@@ -259,7 +271,6 @@ function isMenuPhase(): boolean {
   if (input.paused && game.phase === 'playing') return true;
   return false;
 }
-
 function activeMenu(): Menu | null {
   if (showControls) return null;
   if (game.phase === 'title') return titleMenu;
@@ -279,6 +290,16 @@ function makeEndStats(levelName: string) {
 
 let lastFrameStart = 0;
 
+// Sync the three.js camera to player state.
+function syncCamera() {
+  if (!game.active) return;
+  renderer3d.camera.position.set(game.player.x, 0.5, game.player.y);
+  // World yaw: in our 2D math, angle=0 means facing +x. In three.js, we want
+  // the camera to look along +x at angle 0 too. Camera yaw in YXZ order with
+  // y rotation: -π/2 looks along +x. So camera.rotation.y = -angle - π/2.
+  renderer3d.camera.rotation.set(game.player.pitch, -game.player.angle - Math.PI / 2, 0);
+}
+
 startLoop(
   (dt) => {
     const frameStart = performance.now();
@@ -292,7 +313,6 @@ startLoop(
     tickEmbers(dt);
     if (levelIntroT > 0) levelIntroT -= dt;
 
-    // CONTROLS overlay (can open from title or pause). Esc / click closes.
     if (showControls) {
       input.wantsPointerLock = false;
       const closeKey = input.isDown('Escape') || input.isDown('Enter');
@@ -302,26 +322,25 @@ startLoop(
       return;
     }
 
-    // Title menu
     if (game.phase === 'title') {
       input.wantsPointerLock = false;
       const confirm = pollMenuInput(titleMenu);
       if (confirm === 'confirm') {
         const action = titleMenu.activate();
-        if (action === 'play') {
-          audio.init();
-          startNewRun();
-          enterPlay();
-        }
+        if (action === 'play') { audio.init(); startNewRun(); enterPlay(); }
         else if (action === 'controls') showControls = true;
       }
       return;
     }
-
-    // Win/dead screens consume any fire key to advance.
     if (game.phase === 'dead') {
       const snap = input.snapshot();
-      if (snap.fire) { game.restart(); hud.killCount = 0; runStartTime = performance.now() / 1000; shotsFiredCount = 0; shotsHitCount = 0; onLevelStart(); }
+      if (snap.fire) {
+        game.restart();
+        hud.killCount = 0; runStartTime = performance.now() / 1000;
+        shotsFiredCount = 0; shotsHitCount = 0;
+        activeLevelIndex = -1;
+        onLevelStart();
+      }
       return;
     }
     if (game.phase === 'win') {
@@ -329,29 +348,21 @@ startLoop(
       if (snap.fire) { audio.stopMusic(); game.toTitle(); }
       return;
     }
-
-    // Pause: input.paused is set on pointer-lock loss. Hand input to the pause menu.
     if (input.paused) {
       input.wantsPointerLock = false;
       const confirm = pollMenuInput(pauseMenu);
       if (confirm === 'confirm') {
         const action = pauseMenu.activate();
-        if (action === 'resume') {
-          enterPlay();
-        } else if (action === 'restart') {
+        if (action === 'resume') enterPlay();
+        else if (action === 'restart') {
           game.restart();
-          hud.killCount = 0;
-          runStartTime = performance.now() / 1000;
-          shotsFiredCount = 0;
-          shotsHitCount = 0;
+          hud.killCount = 0; runStartTime = performance.now() / 1000;
+          shotsFiredCount = 0; shotsHitCount = 0;
+          activeLevelIndex = -1;
           onLevelStart();
           enterPlay();
-        } else if (action === 'controls') {
-          showControls = true;
-        } else if (action === 'title') {
-          audio.stopMusic();
-          game.toTitle();
-        }
+        } else if (action === 'controls') showControls = true;
+        else if (action === 'title') { audio.stopMusic(); game.toTitle(); }
       }
       return;
     }
@@ -382,6 +393,7 @@ startLoop(
       hud.hoveredEnemy = !!hit.enemy && hit.enemy.state !== 'dying';
     }
     a.doors.update(dt);
+    renderer3d.updateDoors();
 
     const exitTile = a.level.tileAt(game.player.x, game.player.y);
     if (exitTile === 100) {
@@ -409,42 +421,50 @@ startLoop(
 
     if (snap.interact) audio.playSfx('door');
 
-    // Only request pointer lock during active play (not in menus / overlays).
     input.wantsPointerLock = game.phase === 'playing' && !showControls && !input.paused && !HEADLESS;
   },
   () => {
+    // 3D world pass
+    if (game.active && (game.phase === 'playing' || game.phase === 'dead')) {
+      syncCamera();
+      // Update sprite billboards
+      const a = game.active;
+      const entries: Array<{ id: string; x: number; y: number; img: HTMLImageElement; height: number; baseY?: number }> = [];
+      a.enemies.forEach((e, i) => {
+        entries.push({ id: `enemy-${i}`, x: e.x, y: e.y, img: assets.sprite(e.spriteKey), height: 0.85, baseY: 0.45 });
+      });
+      a.pickups.forEach((p, i) => {
+        if (!p.taken) entries.push({ id: `pickup-${i}`, x: p.x, y: p.y, img: assets.sprite(p.spriteKey), height: 0.4, baseY: 0.25 });
+      });
+      spritePool.update(entries);
+      renderer3d.render();
+    } else {
+      // Render a static black background through three.js so the world canvas
+      // isn't stale/garbage on menu screens.
+      renderer3d.renderer.clear();
+    }
+
+    // 2D overlay pass (HUD / viewmodel / screens)
+    ctx.clearRect(0, 0, BUF_W, BUF_H);
     if (game.phase === 'title') {
       renderTitle(ctx, game.time, titleMenu);
     } else if (game.phase === 'win') {
       const a = game.active;
       renderWin(ctx, game.time, makeEndStats(a?.level.name ?? ''));
-    } else if (!game.active) {
-      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, BUF_W, BUF_H);
-    } else {
+    } else if (game.active) {
       const a = game.active;
-      renderScene(ctx, a.level, game.player.x, game.player.y, game.player.angle, {
-        depth, textureFor, isSolid: isSolidForRaycast,
-        doorOpenRatio: (x, y) => a.doors.openRatio(x, y),
-        floor: floorTex, ceiling: ceilingTex, frameBuffer,
-      });
-      const sprites = [
-        ...a.enemies.map((e) => ({ x: e.x, y: e.y, img: assets.sprite(e.spriteKey) })),
-        ...a.pickups.filter((p) => !p.taken).map((p) => ({ x: p.x, y: p.y, img: assets.sprite(p.spriteKey), vOffset: 0.25 })),
-      ];
-      renderSprites(ctx, sprites, game.player.x, game.player.y, game.player.angle, depth);
       renderViewmodel(ctx, game.player, game.time, assets);
+      // The 2D debug overlay still works (minimap + frame graph) but the
+      // hitbox circles are stale (they referenced raycaster screen coords).
+      // Keep the minimap + frame graph; skip hitboxes inside the dispatcher
+      // by passing an empty depth array — renderDebug handles that.
       renderDebug(ctx, a, game.player, depth, Math.PI / 3);
       renderHUD(ctx, game.player, hud, assets, a.level.name, game.time);
-
       if (levelIntroT > 0 && lastLevelIdx === game.levelIndex && !input.paused && game.phase !== 'dead') {
         renderLevelIntro(ctx, a.level.name, levelIntroT);
       }
-
-      if (game.phase === 'dead') {
-        renderDeath(ctx, game.time, makeEndStats(a.level.name));
-      } else if (input.paused) {
-        renderPause(ctx, pauseMenu);
-      }
+      if (game.phase === 'dead') renderDeath(ctx, game.time, makeEndStats(a.level.name));
+      else if (input.paused) renderPause(ctx, pauseMenu);
     }
     if (showControls) renderControlsOverlay(ctx);
 

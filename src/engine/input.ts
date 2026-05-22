@@ -2,6 +2,7 @@ export interface InputSnapshot {
   forward: number;
   strafe: number;
   yawDelta: number;
+  pitchDelta: number;
   fire: boolean;
   interact: boolean;
   weaponSlot: number | null;
@@ -15,6 +16,7 @@ export interface InputOptions {
 export class Input {
   private pressed = new Set<string>();
   private mouseDx = 0;
+  private mouseDy = 0;
   private fireLatched = false;
   private interactLatched = false;
   private slotLatched: number | null = null;
@@ -38,7 +40,7 @@ export class Input {
         this.paused = document.pointerLockElement !== canvas;
       });
       addEventListener('mousemove', (e) => {
-        if (!this.paused) this._mouseMove(e.movementX);
+        if (!this.paused) this._mouseMove(e.movementX, e.movementY);
       });
       addEventListener('mousedown', (e) => {
         if (!this.paused && e.button === 0) this.fireLatched = true;
@@ -62,8 +64,9 @@ export class Input {
     this.pressed.delete(code);
   }
 
-  _mouseMove(dx: number) {
+  _mouseMove(dx: number, dy = 0) {
     this.mouseDx += dx;
+    this.mouseDy += dy;
   }
 
   isDown(code: string): boolean {
@@ -74,6 +77,7 @@ export class Input {
     const fwd = (this.pressed.has('KeyW') ? 1 : 0) - (this.pressed.has('KeyS') ? 1 : 0);
     const str = (this.pressed.has('KeyD') ? 1 : 0) - (this.pressed.has('KeyA') ? 1 : 0);
     let yaw = this.mouseDx;
+    let pitch = this.mouseDy;
     if (this.headless) {
       if (this.pressed.has('ArrowLeft')) yaw -= this.yawPerArrowKeyPx;
       if (this.pressed.has('ArrowRight')) yaw += this.yawPerArrowKeyPx;
@@ -82,11 +86,13 @@ export class Input {
       forward: fwd,
       strafe: str,
       yawDelta: yaw,
+      pitchDelta: pitch,
       fire: this.fireLatched || this.pressed.has('Space'),
       interact: this.interactLatched,
       weaponSlot: this.slotLatched,
     };
     this.mouseDx = 0;
+    this.mouseDy = 0;
     this.fireLatched = false;
     this.interactLatched = false;
     this.slotLatched = null;
