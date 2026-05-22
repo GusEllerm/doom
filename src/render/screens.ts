@@ -74,22 +74,23 @@ export function renderTitle(ctx: CanvasRenderingContext2D, time: number, menu: M
 
   // Menu
   const menuTopY = 122;
-  const itemH = 18;
+  const itemH = 20;
+  const rowW = 180;
+  menu.rows = [];
   for (let i = 0; i < menu.list.length; i++) {
     const item = menu.list[i]!;
     const y = menuTopY + i * itemH;
     const selected = i === menu.selected;
+    const rowX = (BUF_W - rowW) / 2;
+    menu.rows.push({ x: rowX, y: y - 12, w: rowW, h: 18, index: i });
     if (selected) {
-      // Selection chrome — skull bullets on each side, slight glow.
-      const w = 160;
-      const x = (BUF_W - w) / 2;
       ctx.fillStyle = 'rgba(255,48,48,0.18)';
-      ctx.fillRect(x, y - 11, w, 16);
+      ctx.fillRect(rowX, y - 12, rowW, 18);
       ctx.fillStyle = 'rgba(255,48,48,0.6)';
-      ctx.fillRect(x, y - 11, w, 1);
-      ctx.fillRect(x, y + 4, w, 1);
-      skullBullet(ctx, x + 10, y - 3, 4, PALETTE.bloodHi);
-      skullBullet(ctx, x + w - 10, y - 3, 4, PALETTE.bloodHi);
+      ctx.fillRect(rowX, y - 12, rowW, 1);
+      ctx.fillRect(rowX, y + 6, rowW, 1);
+      skullBullet(ctx, rowX + 10, y - 3, 4, PALETTE.bloodHi);
+      skullBullet(ctx, rowX + rowW - 10, y - 3, 4, PALETTE.bloodHi);
     }
     centeredText(ctx, item.label, BUF_W / 2, y, {
       size: 12,
@@ -100,11 +101,37 @@ export function renderTitle(ctx: CanvasRenderingContext2D, time: number, menu: M
   }
 
   // Footer hint
-  centeredText(ctx, '↑↓ select   ENTER / LMB confirm', BUF_W / 2, BUF_H - 18, {
+  centeredText(ctx, '↑↓ navigate    ENTER / CLICK confirm', BUF_W / 2, BUF_H - 8, {
     size: 8, color: PALETTE.paperLo,
   });
-  centeredText(ctx, 'WASD move · MOUSE aim · LMB fire · E doors · 1/2 weapons', BUF_W / 2, BUF_H - 6, {
-    size: 8, color: PALETTE.paperLo,
+}
+
+export function renderControlsOverlay(ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(0, 0, BUF_W, BUF_H);
+  // Title
+  centeredText(ctx, 'CONTROLS', BUF_W / 2, 36, {
+    size: 22, color: PALETTE.amberHi, shadow: true, outline: true,
+  });
+  // Panel
+  const w = 240, h = 110, x = (BUF_W - w) / 2, y = 56;
+  bevelPanel(ctx, x, y, w, h);
+  const rows: [string, string][] = [
+    ['MOVE / STRAFE',    'W A S D'],
+    ['AIM',              'MOUSE'],
+    ['FIRE WEAPON',      'LEFT MOUSE'],
+    ['OPEN DOOR',        'E'],
+    ['SELECT WEAPON',    '1  /  2'],
+    ['RELEASE MOUSE',    'ESC'],
+    ['DEBUG OVERLAY',    'F1'],
+  ];
+  for (let i = 0; i < rows.length; i++) {
+    const [label, key] = rows[i]!;
+    text(ctx, label!, x + 14, y + 18 + i * 13, { size: 8, color: PALETTE.paperHi, weight: 'normal' });
+    text(ctx, key!, x + w - 14 - ctx.measureText(key!).width, y + 18 + i * 13, { size: 8, color: PALETTE.amberHi });
+  }
+  centeredText(ctx, 'ESC / CLICK to return', BUF_W / 2, BUF_H - 14, {
+    size: 9, color: PALETTE.paperLo,
   });
 }
 
@@ -210,19 +237,21 @@ export function renderPause(ctx: CanvasRenderingContext2D, menu: Menu) {
   ctx.fillStyle = PALETTE.amberHi;
   ctx.fillText(t, (BUF_W - tw) / 2, 50);
 
-  const itemH = 16;
+  const itemH = 18;
   const topY = 74;
+  const rowW = 160;
+  menu.rows = [];
   for (let i = 0; i < menu.list.length; i++) {
     const item = menu.list[i]!;
     const y = topY + i * itemH;
     const selected = i === menu.selected;
+    const rowX = (BUF_W - rowW) / 2;
+    menu.rows.push({ x: rowX, y: y - 11, w: rowW, h: 16, index: i });
     if (selected) {
-      const w = 150;
-      const x = (BUF_W - w) / 2;
-      ctx.fillStyle = 'rgba(255,210,80,0.16)';
-      ctx.fillRect(x, y - 10, w, 14);
-      skullBullet(ctx, x + 10, y - 3, 3, PALETTE.amberHi);
-      skullBullet(ctx, x + w - 10, y - 3, 3, PALETTE.amberHi);
+      ctx.fillStyle = 'rgba(255,210,80,0.18)';
+      ctx.fillRect(rowX, y - 11, rowW, 16);
+      skullBullet(ctx, rowX + 10, y - 3, 3, PALETTE.amberHi);
+      skullBullet(ctx, rowX + rowW - 10, y - 3, 3, PALETTE.amberHi);
     }
     centeredText(ctx, item.label, BUF_W / 2, y, {
       size: 11,

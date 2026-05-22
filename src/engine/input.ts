@@ -19,8 +19,11 @@ export class Input {
   private interactLatched = false;
   private slotLatched: number | null = null;
   paused = true;
+  /** When false, clicking the canvas will not request pointer lock. Used to
+   * keep the cursor visible on menu/overlay screens. */
+  wantsPointerLock = false;
   private headless = false;
-  private yawPerArrowKeyPx = 25; // virtual mouse movement per frame while arrow held
+  private yawPerArrowKeyPx = 25;
 
   install(canvas: HTMLCanvasElement, opts: InputOptions = {}) {
     this.headless = !!opts.headless;
@@ -28,7 +31,9 @@ export class Input {
     addEventListener('keydown', (e) => this._press(e.code));
     addEventListener('keyup', (e) => this._release(e.code));
     if (!this.headless) {
-      canvas.addEventListener('click', () => canvas.requestPointerLock());
+      canvas.addEventListener('click', () => {
+        if (this.wantsPointerLock) canvas.requestPointerLock();
+      });
       document.addEventListener('pointerlockchange', () => {
         this.paused = document.pointerLockElement !== canvas;
       });

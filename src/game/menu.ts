@@ -6,13 +6,28 @@ export interface MenuItem<A extends string = string> {
   disabled?: boolean;
 }
 
+export interface MenuRow {
+  x: number; y: number; w: number; h: number; index: number;
+}
+
 export class Menu<A extends string = string> {
   selected = 0;
   private items: MenuItem<A>[];
+  rows: MenuRow[] = []; // populated by the renderer each frame for hit-testing
 
   constructor(items: MenuItem<A>[]) {
     this.items = items;
     this.normalize();
+  }
+
+  hitTest(px: number, py: number): number | null {
+    for (const r of this.rows) {
+      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
+        if (this.items[r.index]?.disabled) return null;
+        return r.index;
+      }
+    }
+    return null;
   }
 
   get list(): readonly MenuItem<A>[] { return this.items; }

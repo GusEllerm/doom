@@ -6,7 +6,7 @@ import { renderSprites } from './render/sprites';
 import { renderHUD, type HUDState } from './render/hud';
 import { renderViewmodel } from './render/viewmodel';
 import { fireHitscan } from './entities/weapons';
-import { renderTitle, renderDeath, renderWin, renderPause, renderLevelIntro, tickEmbers } from './render/screens';
+import { renderTitle, renderDeath, renderWin, renderPause, renderLevelIntro, tickEmbers, renderControlsOverlay } from './render/screens';
 import { telemetry } from './engine/telemetry';
 import { debug, recordFrame, renderDebug } from './render/debug';
 import { loadAssets } from './engine/assets';
@@ -51,18 +51,19 @@ const PICKUP_LABEL: Record<string, string> = {
 };
 
 // Menus
-type TitleAction = 'play' | 'continue' | 'about';
-type PauseAction = 'resume' | 'restart' | 'title';
+type TitleAction = 'play' | 'controls';
+type PauseAction = 'resume' | 'restart' | 'controls' | 'title';
 const titleMenu = new Menu<TitleAction>([
   { label: 'NEW GAME', action: 'play' },
-  { label: 'CONTINUE', action: 'continue', disabled: true },
-  { label: 'CONTROLS', action: 'about', disabled: true },
+  { label: 'CONTROLS', action: 'controls' },
 ]);
 const pauseMenu = new Menu<PauseAction>([
   { label: 'RESUME',         action: 'resume' },
   { label: 'RESTART LEVEL',  action: 'restart' },
+  { label: 'CONTROLS',       action: 'controls' },
   { label: 'QUIT TO TITLE',  action: 'title' },
 ]);
+let showControls = false;
 
 // Stats accumulator for end screens.
 let runStartTime = 0;
@@ -190,7 +191,60 @@ function pollMenuInput(menu: Menu): 'confirm' | null {
   if (down && !menuKeyState.down) menu.next();
   if (confirm && !menuKeyState.confirm) result = 'confirm';
   menuKeyState = { up, down, confirm };
+  // Hover-driven selection from the mouse position recorded by the canvas
+  // listener below. Click action is set on mousedown and consumed here.
+  if (menuMouseRow !== null) {
+    menu.select(menuMouseRow);
+    if (menuMouseClicked) {
+      menuMouseClicked = false;
+      result = 'confirm';
+    }
+  } else if (menuMouseClicked) {
+    menuMouseClicked = false;
+  }
   return result;
+}
+
+// Mouse state for menus. These are updated by listeners on the canvas, then
+// consumed by pollMenuInput().
+let menuMouseRow: number | null = null;
+let menuMouseClicked = false;
+function bufCoords(ev: MouseEvent): { x: number; y: number } {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  return { x: (ev.clientX - rect.left) * sx, y: (ev.clientY - rect.top) * sy };
+}
+canvas.addEventListener('mousemove', (ev) => {
+  if (!isMenuPhase()) return;
+  const { x, y } = bufCoords(ev);
+  const menu = activeMenu();
+  menuMouseRow = menu ? menu.hitTest(x, y) : null;
+});
+canvas.addEventListener('mousedown', (ev) => {
+  if (ev.button !== 0) return;
+  if (!isMenuPhase()) return;
+  const { x, y } = bufCoords(ev);
+  const menu = activeMenu();
+  const row = menu ? menu.hitTest(x, y) : null;
+  if (row !== null && menu) {
+    menu.select(row);
+    menuMouseClicked = true;
+  }
+});
+
+function isMenuPhase(): boolean {
+  if (showControls) return true;
+  if (game.phase === 'title') return true;
+  if (input.paused && game.phase === 'playing') return true;
+  return false;
+}
+
+function activeMenu(): Menu | null {
+  if (showControls) return null;
+  if (game.phase === 'title') return titleMenu;
+  if (input.paused && game.phase === 'playing') return pauseMenu;
+  return null;
 }
 
 function makeEndStats(levelName: string) {
@@ -218,12 +272,24 @@ startLoop(
     tickEmbers(dt);
     if (levelIntroT > 0) levelIntroT -= dt;
 
+    // CONTROLS overlay (can open from title or pause). Esc / click closes.
+    if (showControls) {
+      input.wantsPointerLock = false;
+      const closeKey = input.isDown('Escape') || input.isDown('Enter');
+      if (closeKey && !menuKeyState.confirm) showControls = false;
+      if (menuMouseClicked) { menuMouseClicked = false; showControls = false; }
+      menuKeyState = { up: false, down: false, confirm: closeKey };
+      return;
+    }
+
     // Title menu
     if (game.phase === 'title') {
+      input.wantsPointerLock = false;
       const confirm = pollMenuInput(titleMenu);
       if (confirm === 'confirm') {
         const action = titleMenu.activate();
         if (action === 'play') { audio.init(); startNewRun(); }
+        else if (action === 'controls') showControls = true;
       }
       return;
     }
@@ -242,12 +308,13 @@ startLoop(
 
     // Pause: input.paused is set on pointer-lock loss. Hand input to the pause menu.
     if (input.paused) {
+      input.wantsPointerLock = false;
       const confirm = pollMenuInput(pauseMenu);
       if (confirm === 'confirm') {
         const action = pauseMenu.activate();
         if (action === 'resume') {
-          // The next canvas click will re-acquire pointer lock; nothing to do here
-          // beyond signalling intent. In headless tests, paused never trips.
+          // Re-arm pointer lock so the next canvas click re-grabs the cursor.
+          input.wantsPointerLock = true;
         } else if (action === 'restart') {
           game.restart();
           hud.killCount = 0;
@@ -255,6 +322,8 @@ startLoop(
           shotsFiredCount = 0;
           shotsHitCount = 0;
           onLevelStart();
+        } else if (action === 'controls') {
+          showControls = true;
         } else if (action === 'title') {
           audio.stopMusic();
           game.toTitle();
@@ -315,6 +384,9 @@ startLoop(
     }
 
     if (snap.interact) audio.playSfx('door');
+
+    // Only request pointer lock during active play (not in menus / overlays).
+    input.wantsPointerLock = game.phase === 'playing' && !showControls && !input.paused && !HEADLESS;
   },
   () => {
     if (game.phase === 'title') {
@@ -350,6 +422,7 @@ startLoop(
         renderPause(ctx, pauseMenu);
       }
     }
+    if (showControls) renderControlsOverlay(ctx);
 
     if (debug.enabled) {
       ctx.fillStyle = '#0f0';
