@@ -213,13 +213,39 @@ async function press(page: Page, key: string, ms = 60) {
         const i = tiles.findIndex((t: number) => t === 100);
         if (i < 0) return null;
         const ex = i % w, ey = Math.floor(i / w);
-        // Teleport directly onto exit pad (simulates "successful play through").
         g.player.x = ex + 0.5; g.player.y = ey + 0.5;
         return { ex, ey };
       });
       if (!tp) return false;
       await page.waitForTimeout(150);
       const s = await inspect(page);
+      // After advance, verify the player can actually take a step. Catches
+      // spawn-in-wall bugs that the static test would also catch, but here
+      // we get a screenshot of the broken state.
+      if (s.phase === 'playing' && (s.levelIndex ?? 0) > 0) {
+        const before = await page.evaluate(() => {
+          const g = (window as any).__game;
+          return { x: g.player.x, y: g.player.y };
+        });
+        await press(page, 'KeyW', 250);
+        await press(page, 'KeyA', 100);
+        await press(page, 'KeyD', 100);
+        const after = await page.evaluate(() => {
+          const g = (window as any).__game;
+          return { x: g.player.x, y: g.player.y };
+        });
+        const moved = Math.hypot(after.x - before.x, after.y - before.y);
+        if (moved < 0.05) {
+          await page.evaluate((info: any) => {
+            (window as any).__telemetry.push({
+              type: 'player_oob',
+              t: performance.now() / 1000,
+              x: info.x, y: info.y,
+            });
+          }, before);
+          await snap(`spawn-stuck-level-${s.levelIndex}`);
+        }
+      }
       return s.phase === 'playing' && (s.levelIndex ?? 0) > 0 || s.phase === 'win';
     }
 
