@@ -5,3 +5,5 @@ dist/
 .vite/
 package-lock.json
 playtest/results/
+.worktrees/
+wads/
