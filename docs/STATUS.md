@@ -1,5 +1,7 @@
 # STATUS
 
+> **PAUSED by user request 2026-09-14.** Do not dispatch new work until user says resume. Completed/queued agents' outputs may appear uncommitted in `docs/research/` — review and commit on resume, don't discard.
+
 > Resume point. Overwrite this file after every dispatch or integration.
 > After a context reset: read this, then ROADMAP.md, then the last ~50 lines of JOURNAL.md, then run `git status`, `git worktree list`, `git branch`.
 
@@ -27,13 +29,14 @@ None yet. M1 (WAD/data decoding) begins after research + architecture.
 | R12 Freedoom | docs/research/12-freedoom.md | 206c8e0c | dispatched |
 
 ## Blockers
-- None. Network access confirmed; Playwright chromium already installed locally.
+- PAUSE requested by user. In-flight: R01–R03 running, R04–R12 + T00 queued (harness cap: 3 concurrent; cannot cancel queued agents from this harness — on resume, reconcile their outputs against TASKS.md).
 - No `origin` remote → local commits only, no pushes (per hard rule 3).
 
-## Next actions
-1. Integrate scaffold + research notes onto main.
-2. Dispatch architect(s): ARCHITECTURE.md + roadmap refinement.
-3. Plan M1 (WAD/data decoding) into leaf tasks; start dispatching.
+## Next actions (on resume)
+1. Collect all research reports; commit `docs/research/*`; mark R01–R12 verified in TASKS.md.
+2. Integrate T00 branch (review + run checks on main) once done.
+3. Dispatch architect(s): ARCHITECTURE.md + roadmap refinement.
+4. Plan M1 (WAD/data decoding) into leaf tasks; start dispatching.
 
 ## Environment facts
 - node v22.22.1, npm 10.9.4, git 2.50.1 (macOS)
