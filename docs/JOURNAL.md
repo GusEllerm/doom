@@ -18,3 +18,4 @@ Append-only log of events, surprises and lessons.
 - Lesson: agent context is not durable across pauses. Durable state = files in git + agent reports. All re-dispatch briefs now demand: WRITE THE FILE EARLY, append as you go, so a cutoff leaves usable output.
 - Survivor reports yielded verified leads (id source path linuxdoom-1.10, real MF_* flag values, state_t misc fields, doomednum present, Freedoom v0.13.0 hint) — embedded into re-dispatch briefs.
 - Re-dispatched: R01,R02,R04..R12,T00 (12 units, new IDs in STATUS.md).
+- R02 (graphics) done, committed. Correction captured: vanilla lightnum = (lightlevel>>LIGHTSEGSHIFT)+extralight (not *16); palette usage from st_stuff.c; freedoom1.wad v0.13.0 inspected in /tmp (repo clean of WADs).

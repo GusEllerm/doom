@@ -6,7 +6,7 @@ Ids are stable; never renumber.
 | ID | Title | Milestone | Depends | Status | Branch | Verification |
 |---|---|---|---|---|---|---|
  | R01 | Research: WAD container + map lumps | M0 | — | dispatched | agent bf9d13fd | — |
- | R02 | Research: graphics data (PLAYPAL/COLORMAP/patches/flats/textures/sprites/anims) | M0 | — | dispatched | agent 7fd0fc27 | — |
+ | R02 | Research: graphics data (PLAYPAL/COLORMAP/patches/flats/textures/sprites/anims) | M0 | — | done | docs/research/02-graphics-data.md | committed; verified vs id source |
 | R03 | Research: BSP renderer | M0 | — | done | docs/research/03-bsp-renderer.md | committed 9187736 |
  | R04 | Research: simulation core (tic loop, fixed point, physics, blockmap, PRNG) | M0 | — | dispatched | agent aeafe550 | — |
  | R05 | Research: line/sector specials | M0 | — | dispatched | agent 95fb9480 | — |
