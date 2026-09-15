@@ -1,9 +1,11 @@
 node_modules/
 dist/
+wads/
+*.wad
+.worktrees/
+playwright-report/
+test-results/
 .DS_Store
 *.log
 .vite/
-package-lock.json
 playtest/results/
-.worktrees/
-wads/
