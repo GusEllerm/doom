@@ -3,7 +3,7 @@
 > UNPAUSED and RE-DISPATCHED 2026-09-14. All agents from the first dispatch were cleaned up by the harness during the pause; only R03's note survived (committed). All 12 remaining work units re-dispatched fresh.
 
 ## Current phase
-Phase 1 (research) in progress — 5/12 notes committed. Wave 2 re-dispatched after a fleet-wide connection error (2026-09-15), offline-first + outline-file-first.
+Phase 1 (research) in progress — 5/12 notes committed. Wave 3 dispatched 2026-09-15 after infra 500-wave killed R09-R12+T00 (outlines survived; briefs say: fill existing outline, write-per-section).
 
 ## Milestone
 M0 (research + architecture + scaffold).
@@ -17,11 +17,11 @@ R01 wad-container, R02 graphics-data, R03 bsp-renderer, R04 simulation-core, R05
 | R06 map objects | docs/research/06-map-objects.md | agent cb9238ff |
 | R07 monster AI | docs/research/07-monster-ai.md | agent 91b5256e |
 | R08 weapons/player | docs/research/08-weapons-player.md | agent ef0455de |
-| R09 UI | docs/research/09-ui.md | agent e52fa8f5 |
-| R10 audio | docs/research/10-audio.md | agent 0f436ab9 |
-| R11 persistence | docs/research/11-persistence.md | agent 69b48644 |
-| R12 Freedoom | docs/research/12-freedoom.md | agent ba7ff0f7 |
-| T00 scaffold | branch task/00-scaffold | agent 59c9c7e2 |
+| R09 UI | agent bc0cbf4d | agent e52fa8f5 |
+| R10 audio | agent 694352f8 | agent 0f436ab9 |
+| R11 persistence | agent 89da8ab8 | agent 69b48644 |
+| R12 Freedoom | agent f7bdc557 | agent ba7ff0f7 |
+| T00 scaffold | agent 288dff5b | agent 59c9c7e2 |
 
 ## Local caches (use these; network flaky)
 - /tmp/DOOM-master — full id GPL source mirror (linuxdoom-1.10/)
