@@ -21,3 +21,8 @@ Append-only log of events, surprises and lessons.
 - R02 (graphics) done, committed. Correction captured: vanilla lightnum = (lightlevel>>LIGHTSEGSHIFT)+extralight (not *16); palette usage from st_stuff.c; freedoom1.wad v0.13.0 inspected in /tmp (repo clean of WADs).
 - R04 (simulation core) done: 594 lines, PRNG table + movement constants quoted from source.
 - R01 (WAD container) done: 326 lines; E1M1 empirical parse confirms record sizes. Note: GitHub release-asset URLs 404 from sub-agent sandboxes — fetch-freedoom may need the browser_download_url direct path or a mirror; R12/T00 to confirm.
+
+## 2026-09-15 — Connection-error wave; re-dispatch wave 2 (offline-first)
+- A fleet-wide "Connection error" killed R06-R12 + T00 (some at 0 tool uses). R05 finished just before and its file is committed (swept in via c60ca66/1837348; HEAD content = full 630 lines).
+- Mitigation: /tmp now holds LOCAL CACHES: /tmp/DOOM-master (full id GPL mirror incl. linuxdoom-1.10), /tmp/doomsrc (89 loose files), /tmp/freedoom-0.13.0/ (freedoom1.wad, freedoom2.wad, CREDITS.txt, COPYING.txt), /tmp/chocolate-doom-master. Wave-2 briefs direct agents to read these instead of fetching over the flaky network.
+- Lesson: researchers' "write file early" must be "create outline file in step 1"; R06/07/08 burned 3.5M tokens without ever creating their file.
