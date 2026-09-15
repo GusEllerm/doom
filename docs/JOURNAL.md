@@ -29,3 +29,8 @@ Append-only log of events, surprises and lessons.
 - R08 (weapons/player) done offline-first: 718 lines, ~30 verbatim quotes; corrected LOWERSPEED=FRACUNIT*6 premise from brief. 6/12 notes in.
 - R07 (monster AI) done: 1292 lines w/ full function quotes (A_Chase, P_Move, P_LookForPlayers, P_CheckSight...). 7/12.
 - R06 done: 833 lines; mobjinfo 137-row table script-extracted; P_KillMobj/P_TouchSpecialThing quoted. 8/12.
+
+## 2026-09-15 — Infra wave 2 (harness 500 "cannot schedule new futures after shutdown")
+- Killed R09 (partial: 47-line outline + some research done), R10 (outline), R11 (outline), R12 (0 uses), T00 (0 uses). Not resumable (cleaned up).
+- Outlines committed (write-early rule paid off — skeletons + some sections survive).
+- Wave 3 re-dispatch: R09-R12 resume-from-outline, T00 third attempt. If T00 dies again (3rd), orchestrator builds scaffold directly (recorded as D006 fallback).

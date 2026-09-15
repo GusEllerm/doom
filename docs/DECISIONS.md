@@ -26,3 +26,7 @@ Pinned facts (queried from api.github.com now): repo freedoom/freedoom, tag v0.1
 - zip: https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip (24,143,781 B)
 - zip sha256 (from signed CHECKSUM file): 3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59
 Choice: fetch-freedoom downloads the zip, verifies its sha256, extracts freedoom1.wad (+ freedoom2.wad for stretch) into wads/, records the extracted WAD's sha256 in release.json. PGP sig verification is a future option, noted.
+
+## D006 — T00 fallback: orchestrator builds scaffold directly
+Context: two T00 dispatches lost purely to harness infra failures (never started). Rule prefers delegation, but §10 says move on when blocked.
+Choice: third dispatch attempt now. If it fails again, orchestrator implements the scaffold itself on branch task/00-scaffold and notes it in JOURNAL.
