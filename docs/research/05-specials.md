@@ -26,17 +26,11 @@ Dispatch call sites (p_map.c):
 `P_CrossSpecialLine(int linenum, int side, mobj_t* thing)` — p_spec.c:
 
 ```c
-// Things that should NOT trigger specials...
-switch (thing->type) {
-  case MT_ROCKET: case MT_PLASMA: case MT_BFG:
-  case MT_TROOPSHOT: case MT_HEADSHOT: case MT_BRUISERSHOT:
-    return;
-}
-// Non-player things may ONLY activate:
-case 39: case 97: case 125: case 126:   // teleports
-case 4:  // RAISE DOOR
-case 10: case 88: // PLAT DOWN-WAIT-UP-STAY
-  ok = 1; else return;
+// Things that should NOT trigger specials... (p_spec.c)
+case MT_ROCKET: case MT_PLASMA: case MT_BFG:
+case MT_TROOPSHOT: case MT_HEADSHOT: case MT_BRUISERSHOT: return;
+// Non-player things may ONLY activate: 39, 97, 125, 126 (teleports),
+// 4 (RAISE DOOR), 10 & 88 (PLAT DOWN-WAIT-UP-STAY); else return.
 ```
 
 One-shot ("W1") = the case body ends with `line->special = 0;`. Retrigger ("WR") = no clear.
@@ -168,11 +162,7 @@ GR (identical effect, no clear): 72=`lowerAndCrush`, 73=`crushAndRaise`, 74=`EV_
 97=`EV_Teleport` (monster-allowed), 98=`turboLower`, 105=`blazeRaise`, 106=`blazeOpen`, 107=`blazeClose`,
 120=`blazeDWUS`, 126=teleport monster-only, 128=`raiseFloorToNearest`, 129=`raiseFloorTurbo`.
 
-Special 48 (`scroll wall, side 1`) is handled not in the dispatcher but in `P_UpdateSpecials` (p_spec.c):
-collected into `linespeciallist[]` by `P_SpawnSpecials`, then per tic:
-`sides[line->sidenum[0]].textureoffset += FRACUNIT;`.
-
-Unused in 1.10 code: 124-as-sliding-door (case 124 in `P_UseSpecialLine` is a no-op `break` marked "UNUSED?"), the whole sliding-door system is `#if 0`.
+Special 48 (`scroll wall, side 1`) is not in the dispatcher: `P_SpawnSpecials` collects it into `linespeciallist[]` and `P_UpdateSpecials` (p_spec.c) does `sides[line->sidenum[0]].textureoffset += FRACUNIT;` per tic. The whole sliding-door system (special 124-as-slide) is `#if 0`'d in 1.10.
 
 Confidence: High (verbatim transcription). Cross-check: specials 24/46/47 are shoot; no 78, 85, 101? (101 exists as S1 only), 142+ absent.
 
@@ -402,12 +392,11 @@ typedef enum { build8, turbo16 } stair_e;
 **Stairs `EV_BuildStairs(line, type)`:** per tagged sector chain:
 
 ```
-build8:  speed = FLOORSPEED/4; stairsize = 8*FRACUNIT
-turbo16: speed = FLOORSPEED*4; stairsize = 16*FRACUNIT
-first sector: dest = floorheight + stairsize; texture = sec->floorpic;
-then chain: find 2-sided line whose FRONT side belongs to current sector,
-backsector with same floorpic (`texture`), dest += stairsize each hop, spawn
-T_MoveFloor thinker per sector; stop when no candidate. (Simple walk; no rebuild logic in 1.10.)
+build8: speed=FLOORSPEED/4, stairsize=8*FRACUNIT | turbo16: speed=FLOORSPEED*4, stairsize=16*FRACUNIT
+first sector dest = floorheight + stairsize; texture = sec->floorpic;
+then chain: find 2-sided line whose FRONT side belongs to current sector, backsector
+with same floorpic (`texture`), dest += stairsize each hop, one T_MoveFloor thinker per
+sector; stop when no candidate. (Simple walk; no rebuild logic in 1.10.)
 ```
 
 **Donut `EV_DoDonut(line)`** (p_spec.c): tagged sector s1 (the slime ring's center handled per s2):
@@ -591,10 +580,7 @@ Confidence: High.
 
 - `alphSwitchList[]`: ~41 pairs `{SW1xxx, SW2xxx, episode}`; `P_InitSwitchList` builds `switchlist[]` as flat alternating `[tex1,tex2,tex1,tex2,...]` filtered by gamemode (episode 1/2/3); terminates with `switchlist[index] = -1`, `numswitches = index/2`.
 - **The pairing trick:** lookup index `i`, replace with `switchlist[i ^ 1]` (xor 1 flips between SW1↔SW2). No `'+'-1` name arithmetic in 1.10 (that's a DeHackEd/texture-list technique; here it is index xor).
-- `P_ChangeSwitchTexture(line, useAgain)`:
-  1. `if (!useAgain) line->special = 0;`  ← this is where S1/W-shoot switches disarm.
-  2. sound = `sfx_swtchn`, or `sfx_swtchx` if `line->special == 11` (exit switch) — checked BEFORE clearing... note: for special 11 the code clears special first then checks `line->special == 11`, so in practice the exit switch plays `sfx_swtchn`; replicate the quirk if byte-exact.
-  3. Scan side0's top/mid/bottom textures against `switchlist[0..numswitches*2)`; on match: set to `switchlist[i^1]`, `if (useAgain) P_StartButton(line, where, oldTexture, BUTTONTIME)`.
+- `P_ChangeSwitchTexture(line, useAgain)`: (1) `if (!useAgain) line->special = 0;` ← where S1/W-shoot switches disarm. (2) sound = `sfx_swtchn`, or `sfx_swtchx` if `line->special == 11` — but the clear happens FIRST, so for special 11 the check sees 0 and the exit switch in fact plays `sfx_swtchn`; replicate the quirk if byte-exact. (3) Scan side0's top/mid/bottom textures against `switchlist[0..numswitches*2)`; on match set to `switchlist[i^1]`, `if (useAgain) P_StartButton(line, where, oldTexture, BUTTONTIME)`.
 - `P_StartButton` — max `MAXBUTTONS=16` slots; same line already pressed → no-op (keeps original timer). `BUTTONTIME = 35` tics (1 s).
 - Button revert tick logic in `P_UpdateSpecials` (p_spec.c): decrement `btimer`; at 0 restore the old texture into the recorded `where` (top/middle/bottom), `S_StartSound(sfx_swtchn)`, `memset` the slot.
 
@@ -635,8 +621,7 @@ Confidence: High.
 
 ## Confidence summary
 
-- Sections 1–4, 6–9, 11–13: **High** — transcribed directly from fetched raw 1.10 sources this session.
-- Section 5: High except skull-key item availability in Doom 1 WADs (Medium; code supports checking both, mobj availability build-dependent).
+- Sections 1–4, 6–9, 11–13: **High** — transcribed directly from fetched raw 1.10 sources this session. Section 5 High except skull-key item availability in Doom 1 WADs (Medium).
 - Section 2 class labels (W1/WR/S1/SR/G1/GR): **Medium-High** — names are industry-standard labels, the 1.10 source itself has no class taxonomy; every mapping was derived from `line->special = 0` presence/absence and the dispatch function the case lives in.
 - Prompt-lore corrections recorded: no health/17 damage formula, no 128+P_Random light formulas, no P_CanUnlock, no P_FindSectorsOnSides tag-0 fallback, no 128-bit secret sector flag, no bonuscount secret bonus, filename `p_ceilng.c`.
 

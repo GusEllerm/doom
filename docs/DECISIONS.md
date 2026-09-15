@@ -19,3 +19,10 @@ Choice: treat it purely as lesson material. Known past failures to defend agains
 
 ## D004 — Worktree location
 Implementer worktrees live in `.worktrees/<task-id>` (git-ignored). Keeps repo root clean; branches follow `task/<id>-<slug>`.
+
+## D005 — Freedoom pinned release (orchestrator-verified 2026-09-14)
+Context: releases ship no per-WAD assets; guessing .../download/<tag>/freedoom1.wad 404s (explains R01's sandbox 404s).
+Pinned facts (queried from api.github.com now): repo freedoom/freedoom, tag v0.13.0.
+- zip: https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip (24,143,781 B)
+- zip sha256 (from signed CHECKSUM file): 3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59
+Choice: fetch-freedoom downloads the zip, verifies its sha256, extracts freedoom1.wad (+ freedoom2.wad for stretch) into wads/, records the extracted WAD's sha256 in release.json. PGP sig verification is a future option, noted.
