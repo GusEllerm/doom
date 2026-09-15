@@ -28,3 +28,4 @@ Append-only log of events, surprises and lessons.
 - Lesson: researchers' "write file early" must be "create outline file in step 1"; R06/07/08 burned 3.5M tokens without ever creating their file.
 - R08 (weapons/player) done offline-first: 718 lines, ~30 verbatim quotes; corrected LOWERSPEED=FRACUNIT*6 premise from brief. 6/12 notes in.
 - R07 (monster AI) done: 1292 lines w/ full function quotes (A_Chase, P_Move, P_LookForPlayers, P_CheckSight...). 7/12.
+- R06 done: 833 lines; mobjinfo 137-row table script-extracted; P_KillMobj/P_TouchSpecialThing quoted. 8/12.
