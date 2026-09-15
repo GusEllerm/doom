@@ -594,11 +594,172 @@ Key semantics (all confirmed from the quote):
 Confidence: High (verbatim).
 
 
-## 7. P_KillMobj
-(pending)
+## 7. P_KillMobj — full quote (p_inter.c:666-758)
 
-## 8. Item pickup (P_TouchSpecialThing, P_Give*)
-(pending)
+Note: in linuxdoom-1.10 `P_KillMobj` lives in **p_inter.c**, not p_mobj.c. It is called only from `P_DamageMobj` when `target->health -= damage` drops to `<= 0` (p_inter.c:888-892).
+
+```c
+void
+P_KillMobj (mobj_t*	source, mobj_t*	target)
+{
+    mobjtype_t	item;
+    mobj_t*	mo;
+	
+    target->flags &= ~(MF_SHOOTABLE|MF_FLOAT|MF_SKULLFLY);
+
+    if (target->type != MT_SKULL)
+	target->flags &= ~MF_NOGRAVITY;
+
+    target->flags |= MF_CORPSE|MF_DROPOFF;
+    target->height >>= 2;
+
+    if (source && source->player)
+    {
+	// count for intermission
+	if (target->flags & MF_COUNTKILL)
+	    source->player->killcount++;	
+
+	if (target->player)
+	    source->player->frags[target->player-players]++;
+    }
+    else if (!netgame && (target->flags & MF_COUNTKILL) )
+    {
+	// count all monster deaths,
+	// even those caused by other monsters
+	players[0].killcount++;
+    }
+    
+    if (target->player)
+    {
+	// count environment kills against you
+	if (!source)	
+	    target->player->frags[target->player-players]++;
+			
+	target->flags &= ~MF_SOLID;
+	target->player->playerstate = PST_DEAD;
+	P_DropWeapon (target->player);
+
+	if (target->player == &players[consoleplayer]
+	    && automapactive)
+	{
+	    // don't die in auto map,
+	    // switch view prior to dying
+	    AM_Stop ();
+	}
+	
+    }
+
+    if (target->health < -target->info->spawnhealth 
+	&& target->info->xdeathstate)
+    {
+	P_SetMobjState (target, target->info->xdeathstate);
+    }
+    else
+	P_SetMobjState (target, target->info->deathstate);
+    target->tics -= P_Random()&3;
+
+    if (target->tics < 1)
+	target->tics = 1;
+		
+
+    // Drop stuff.
+    switch (target->type)
+    {
+      case MT_WOLFSS:
+      case MT_POSSESSED:
+	item = MT_CLIP;
+	break;
+	
+      case MT_SHOTGUY:
+	item = MT_SHOTGUN;
+	break;
+	
+      case MT_CHAINGUY:
+	item = MT_CHAINGUN;
+	break;
+	
+      default:
+	return;
+    }
+
+    mo = P_SpawnMobj (target->x,target->y,ONFLOORZ, item);
+    mo->flags |= MF_DROPPED;	// special versions of items
+}
+```
+
+Facts to carry over:
+- **Gib threshold**: `health < -spawnhealth` (strictly less than the *negative* spawn health; e.g. zombieman dies at 0, gibbed at < -20) AND `xdeathstate != S_NULL` -> gib ("extreme death") state; else normal death state. Death state's entry tics get `-= P_Random()&3` (min 1) for desync.
+- Corpse mechanics: clears `MF_SHOOTABLE|MF_FLOAT|MF_SKULLFLY` (plus `MF_NOGRAVITY` unless MT_SKULL lost soul), sets `MF_CORPSE|MF_DROPOFF`, `height >>= 2` (now a flat shootable-blocking-free slab). No `MF_CORPSE` "gore" objects spawned here — gore (MT_GIBS etc.) only appears via xdeathstate sprites; there are no separate gibs mobjs in Doom 1.
+- **Player death branch**: `playerstate = PST_DEAD`, `P_DropWeapon`, `MF_SOLID` cleared, automap exit; environment kill (source NULL) self-frags.
+- **Dropped weapons**: only MT_POSSESSED/MT_WOLFSS -> clip, MT_SHOTGUY -> shotgun, MT_CHAINGUY -> chaingun, each spawned with `MF_DROPPED`.
+- **No boss checks, no A_BrainDie, no barrel logic in Doom 1 P_KillMobj.** (A_BrainDie exists in p_enemy.c:1896 for Doom 2's boss brain states but is unreachable in Doom 1 maps.) `A_BossDeath` (p_enemy.c:1606) is a death-state action, level-mapped, not part of P_KillMobj.
+- Barrel explosion: barrel's `deathstate = S_BEXP` whose state action `A_Explode` fires (section 9) — no special casing in P_KillMobj.
+
+Confidence: High (verbatim).
+
+
+## 8. Item pickup — P_TouchSpecialThing + P_Give* (p_inter.c)
+
+Trigger: `P_CheckMissileRange`/`P_TouchSpecialThing` is called from `P_GroupMove`/`P_TryMove` via `P_SpecialThing` (p_map.c) when a player with `MF_SPECIAL`-flag mobj overlaps. Reach test (p_inter.c:347-352): `delta = special->z - toucher->z; if (delta > toucher->height || delta < -8*FRACUNIT) return;`. Dead toucher (`health <= 0`) bails. **Dispatch is by `special->sprite`, not mobjtype** (p_inter.c:363).
+
+Full switch (p_inter.c:336-655) — `give` call, message id, sound:
+
+| SPR_ | give action | message (d_englsh.h) | sound |
+|---|---|---|---|
+| ARM1 | P_GiveArmor(p,1) | GOTARMOR "Picked up a security armor vest." | itemup |
+| ARM2 | P_GiveArmor(p,2) | GOTMEGA "Picked up a mega armor!" | itemup |
+| BON1 | `health++` cap 200 | GOTHTHBONUS | itemup |
+| BON2 | `armorpoints++` cap 200, armortype=1 if 0 | GOTARMBONUS | itemup |
+| SOUL | `health += 100` cap 200 | GOTSUPER | getpow |
+| MEGA | **commercial mode only** (`gamemode != commercial` return); health=200 + P_GiveArmor(2) | GOTMSPHERE | getpow |
+| BKEY/YKEY/RKEY/BSKU/YSKU/RSKU | P_GiveCard(...) (net: leave for others — `return` after giving in netgame, no pickup removal) | GOTBLUECARD etc. | itemup |
+| STIM | P_GiveBody(p,10) | GOTSTIM | itemup |
+| MEDI | P_GiveBody(p,25); message GOTMEDINEED if health<25 else GOTMEDIKIT | | itemup |
+| PINV | P_GivePower(pw_invulnerability) | GOTINVUL | getpow |
+| PSTR | P_GivePower(pw_strength); pending weapon fist | GOTBERSERK | getpow |
+| PINS | P_GivePower(pw_invisibility) | GOTINVIS | getpow |
+| SUIT | P_GivePower(pw_ironfeet) | GOTSUIT | getpow |
+| PMAP | P_GivePower(pw_allmap) | GOTMAP | getpow |
+| PVIS | P_GivePower(pw_infrared) | GOTVISOR | getpow |
+| CLIP | if `MF_DROPPED`: P_GiveAmmo(am_clip,**0**) => 5 (=clipammo/2, x2 on baby/nightmare=10); else num=1 => 10 | GOTCLIP | itemup |
+| AMMO | P_GiveAmmo(am_clip,5) => 50 | GOTCLIPBOX | itemup |
+| ROCK | P_GiveAmmo(am_misl,1) => 1 rocket | GOTROCKET | itemup |
+| BROK | P_GiveAmmo(am_misl,5) => 5 | GOTROCKBOX | itemup |
+| CELL | P_GiveAmmo(am_cell,1) => 20 | GOTCELL | itemup |
+| CELP | P_GiveAmmo(am_cell,5) => 100 | GOTCELLBOX | itemup |
+| SHEL | P_GiveAmmo(am_shell,1) => 4 | GOTSHELLS | itemup |
+| SBOX | P_GiveAmmo(am_shell,5) => 20 | GOTSHELLBOX | itemup |
+| BPAK | if !backpack: **all maxammo *= 2** once; then P_GiveAmmo(i,1) for every ammo type | GOTBACKPACK | itemup |
+| BFUG | P_GiveWeapon(wp_bfg, dropped=false) | GOTBFG9000 | wpnup |
+| MGUN | P_GiveWeapon(wp_chaingun, dropped=MF_DROPPED flag) | GOTCHAINGUN | wpnup |
+| CSAW | P_GiveWeapon(wp_chainsaw, false) | GOTCHAINSAW | wpnup |
+| LAUN | P_GiveWeapon(wp_missile, false) | GOTLAUNCHER | wpnup |
+| PLAS | P_GiveWeapon(wp_plasma, false) | GOTPLASMA | wpnup |
+| SHOT | P_GiveWeapon(wp_shotgun, dropped flag) | GOTSHOTGUN | wpnup |
+| SGN2 | P_GiveWeapon(wp_supershotgun, dropped flag) | GOTSHOTGUN2 | wpnup |
+| default | `I_Error("P_SpecialThing: Unknown gettable thing")` | | |
+
+After a successful case: `if (flags & MF_COUNTITEM) itemcount++; P_RemoveMobj(special); bonuscount += BONUSADD;` play sound for consoleplayer (p_inter.c:645-655). A `return` inside a case means "not picked up" (stays in map).
+
+### P_GiveAmmo semantics (p_inter.c:67-... + arrays at p_inter.c:58-59)
+
+```c
+int maxammo[NUMAMMO]  = {200, 50, 300, 50};   // am_clip, am_shell, am_cell, am_misl (doomdef.h:201-208)
+int clipammo[NUMAMMO] = {10, 4, 20, 1};       // 1 clip load per ammo type
+```
+Order = `ammotype_t` `am_clip, am_shell, am_cell, am_misl` (d_player.h). `num` = clip loads: `num==0 ? clipammo/2 : num*clipammo`; baby/nightmare skill: `num <<= 1` (double). Already-at-max early-outs (`ammo==maxammo` -> false, no pickup). If we were at 0, may switch `pendingweapon` per preference ladder (clip->chaingun/pistol, shell->shotgun, cell->plasma, misl->missile).
+
+### P_GiveWeapon (p_inter.c ~150-215)
+Dropped vs found: dropped gives 1 clip, found gives 2 clips of its ammo. In netgame non-dropped weapons are left alone for everyone (`deathmatch!=2 && !dropped`): grant + `P_GiveAmmo(...,5)` (dm) or 2 (coop) and return false (item stays logically but mobj is removed by caller? — it returns false so P_TouchSpecialThing returns early WITHOUT removing the mobj... in netgame path it self-handles sound and returns).
+
+### P_GiveBody / P_GiveArmor / P_GiveCard / P_GivePower (p_inter.c:225-330)
+- P_GiveBody: `MAXHEALTH=100` cap (d_player.h), returns false at full health; syncs `mo->health`.
+- P_GiveArmor: `hits = armortype*100`; refuses if `armorpoints >= hits`.
+- P_GiveCard: idempotent, sets `cards[card]=1`, `bonuscount = BONUSADD`.
+- P_GivePower: timed powers set INVULNTICS/INVISTICS/INFRATICS/IRONTICS; `pw_strength` also `P_GiveBody(100)`; berserk fist bonus is `damage *= 10` in A_Punch (p_pspr.c:478-479); untimed (map) returns false if already owned.
+
+Confidence: High for switch content and numbers (verbatim); note MF_DROPPED ammo = half clip.
+
 
 ## 9. Barrels and exploding mobjs
 (pending)

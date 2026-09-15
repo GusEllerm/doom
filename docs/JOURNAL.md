@@ -27,3 +27,4 @@ Append-only log of events, surprises and lessons.
 - Mitigation: /tmp now holds LOCAL CACHES: /tmp/DOOM-master (full id GPL mirror incl. linuxdoom-1.10), /tmp/doomsrc (89 loose files), /tmp/freedoom-0.13.0/ (freedoom1.wad, freedoom2.wad, CREDITS.txt, COPYING.txt), /tmp/chocolate-doom-master. Wave-2 briefs direct agents to read these instead of fetching over the flaky network.
 - Lesson: researchers' "write file early" must be "create outline file in step 1"; R06/07/08 burned 3.5M tokens without ever creating their file.
 - R08 (weapons/player) done offline-first: 718 lines, ~30 verbatim quotes; corrected LOWERSPEED=FRACUNIT*6 premise from brief. 6/12 notes in.
+- R07 (monster AI) done: 1292 lines w/ full function quotes (A_Chase, P_Move, P_LookForPlayers, P_CheckSight...). 7/12.
