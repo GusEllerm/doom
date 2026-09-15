@@ -3,13 +3,13 @@
 Research notes for the TypeScript recreation (Doom 1 format, Freedoom target).
 Sources: id Software linuxdoom-1.10 (`/tmp/DOOM-master/linuxdoom-1.10/`), `/tmp/freedoom-0.13.0/freedoom1.wad`.
 
-Status: IN PROGRESS (sections filled as drafted).
+Status: COMPLETE. All sections filled; corrections to predecessor facts noted inline.
 
 ## Table of contents
 1. State machine semantics (P_SetMobjState, P_MobjThinker)
 2. SPR_* sprite enum (full list, 4-char codes)
-3. mobjinfo[] — full transcription of all 118 MT_ entries (script-extracted)
-4. FRAME_* bit constants, rotation/mirror rules (r_things.c/h)
+3. mobjinfo[] — full transcription of all 137 MT_ entries (script-extracted)
+4. Frame bits (FF_*), rotation/mirror rules (r_things.c)
 5. Thing numbering: Doom1 doomednum + Freedoom Phase 1 evidence (E1M1 THINGS histogram)
 6. P_SpawnMapThing — exact code, skill/ambush filters
 7. P_KillMobj — full quote (gib thresholds, corpse, barrels, player branch)
@@ -27,7 +27,7 @@ Spot-checked against `info.h`, `p_mobj.c/h` in `/tmp/DOOM-master/linuxdoom-1.10/
 - NUMSPRITES = **138** (SPR_TROO=0 .. SPR_TLP2=137), confirmed by script.
 - All 25 `MF_*` values confirmed exactly as listed in the task brief, incl. `MF_TRANSLATION = 0xc000000`, `MF_TRANSSHIFT = 26` (p_mobj.h:117-204).
 - `MAXTICS` **does not exist** in linuxdoom-1.10 (grep: zero matches). Infinite states use `tics == -1`, handled in `P_MobjThinker` (p_mobj.c:441). See section 1.
-- E1M1 THINGS check (freedoom1.wad): all 292 E1M1 thing types are valid Doom 1 doomednums (monsters 3004/9/3001/3002, barrels 2035, items 2046-2049, teleporter 14). Doom 2-only numbers (6072, 4001) appear **nowhere** in 7 sampled maps. **Freedoom Phase 1 uses the Doom 1 thing numbering.**
+- E1M1 THINGS check (freedoom1.wad): all 292 E1M1 thing types are valid Doom 1 doomednums (monsters 3004/9/3001/3002, barrels 2035, items 2005-2049 slots incl. bonuses 2014/2015). Doom 2-only numbers (6072, 4001) appear **nowhere** in 7 sampled maps. **Freedoom Phase 1 uses the Doom 1 thing numbering.**
 
 Confidence: High (direct grep/sed/script verification).
 
@@ -274,7 +274,7 @@ Confidence: High for order/codes (script-transcribed enum). Medium for a few Doo
 ## 3. mobjinfo[] — full transcription (all 137 entries)
 
 Dumped by script from `info.c:1106` (`mobjinfo_t mobjinfo[NUMMOBJTYPES]`, 137 entries — see baseline correction: NOT 118).
-Notes on encoding: `—` = `sfx_None`; radius/height/speed columns show FRACUNIT multipliers (i.e. map units, `n*FRACUNIT`); mass/damage/health are plain ints; `S_NULL` shown as `NULL`. Flags are `MF_*` ORs.
+Notes on encoding: `—` = `sfx_None`; a bare `0` in a state column means `S_NULL` (written `0` in the C source); radius/height/speed columns show FRACUNIT multipliers (i.e. map units, `n*FRACUNIT`); mass/damage/health are plain ints. Flags are `MF_*` ORs (`&#124;` = escaped `|`).
 
 | idx | mobjtype | doomednum | spawnstate | spawnhealth | seestate | seesound | reactiontime | attacksound | painstate | painchance | painsound | meleestate | missilestate | deathstate | xdeathstate | deathsound | speed | radius | height | mass | damage | activesound | flags | raisestate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---
@@ -461,7 +461,7 @@ Confidence: High (verbatim).
 
 ## 5. Thing numbering — Doom 1 vs Doom 2, and what Freedoom Phase 1 uses
 
-`doomednum` (mobjinfo field 0) is the THINGS `type` (int16 at byte offset 6 of the 10-byte thing record) understood by `P_SpawnMapThing`. Verified numbers in our table: 3004=MT_POSSESSED, 9=MT_SHOTGUY, 3001=MT_TROOP, 3002=MT_SERGEANT, 3005=MT_HEAD, 3006=MT_SKULL, 7=MT_SPIDER, 16=MT_CYBORG, 2035=MT_BARREL, 2005/2014/2015/2011/2012 = green armor/stimpack/medikit/clip/shells, 2006/2046/2047/2048/2049 = cells box/berserk/soul/envirosuit/invul (see section 3 rows for full mapping).
+`doomednum` (mobjinfo field 0) is the THINGS `type` (int16 at byte offset 6 of the 10-byte thing record) understood by `P_SpawnMapThing`. Verified numbers in our table: 3004=MT_POSSESSED, 9=MT_SHOTGUY, 3001=MT_TROOP, 3002=MT_SERGEANT, 3005=MT_HEAD, 3006=MT_SKULL, 7=MT_SPIDER, 16=MT_CYBORG, 2035=MT_BARREL. Full item table (MF_SPECIAL rows, script-extracted): 2001 shotgun, 2002 chaingun, 2003 launcher, 2004 plasma, 2005 chainsaw, 2006 BFG, 2007 clip, 2008 shells, 8 backpack, 2010 rocket, 2011 stimpack, 2012 medikit, 2013 soul sphere, 2014 health bonus, 2015 armor bonus, 2018 green armor, 2019 mega armor, 2022 invul, 2023 berserk, 2024 invis, 2025 envirosuit, 2026 automap, 2045 visor, 2046 rocket box, 2047 cell, 2048 bullets box, 2049 shell box, 82 super shotgun, 83 mega sphere; keys: 5 blue card, 6 yellow card, 13 red card, 40 blue skull, 38 red skull, 39 yellow skull (from spawnstates S_BKEY/S_YKEY/S_RKEY/S_BSKULL/S_RSKULL/S_YSKULL).
 
 **CRITICAL CHECK (script, freedoom-0.13.0/freedoom1.wad, IWAD, 3163 lumps).** Parsed THINGS for E1M1, E1M2, E1M3, E1M9, E2M1, E3M1, E4M1. E1M1 has 292 things; histogram of `type` values (count):
 
@@ -762,10 +762,72 @@ Confidence: High for switch content and numbers (verbatim); note MF_DROPPED ammo
 
 
 ## 9. Barrels and exploding mobjs
-(pending)
 
-## 10. Port notes: mobj_t fields and state-table encoding
-(pending)
+There is no `A_BAllExplode`; the real action is **A_Explode** (p_enemy.c:1596-1601):
+
+```c
+void A_Explode (mobj_t* thingy)
+{
+    P_RadiusAttack ( thingy, thingy->target, 128 );
+}
+```
+
+`P_RadiusAttack` is defined in p_map.c:1202+ (damage 128 at center, distance-scaled, `b1 = (b - blast->radius) <= dist` loop over blockthings; `source` credit for kills, so a barrel killed by a player inherits `target` = shooter when the barrel's `target` was set... barrels have `target` NULL unless damaged — environmental chain explosions still credit players via the chain source).
+
+Barrel in Doom 1 (script row, section 3 idx 30):
+- `MT_BARREL`, **doomednum 2035**, spawnhealth **20**, states: spawn `S_BAR1` (`{SPR_BAR1,0,6} -> S_BAR2`) / `S_BAR2` (`{SPR_BAR1,1,6} -> S_BAR1`, idle flicker loop); death `S_BEXP` -> `S_BEXP2` -> `S_BEXP3` -> `S_BEXP4` -> `S_BEXP5` -> `S_NULL`; no pain/raise/xdeath; `deathsound = sfx_barexp`; radius 10, height 42, mass 100; `flags = MF_SOLID|MF_SHOOTABLE|MF_NOBLOOD`; `raisestate S_NULL`.
+- Explosion state actions (info.c:944-948): `S_BEXP2` (5 tics) calls **A_Scream** — A_Scream (p_enemy.c) plays `info->deathsound` verbatim (with pod-thud random variants; full volume for spider/cyborg) — so the barrel boom `sfx_barexp` is triggered there; `S_BEXP4` (frame D, 10 tics) calls **A_Explode** -> the actual `P_RadiusAttack(...,128)`.
+- Death trigger: barrels are plain MF_SHOOTABLE mobjs; any `P_DamageMobj` reducing health <= 0 goes through generic `P_KillMobj` -> `deathstate S_BEXP`. No special barrel case anywhere in Doom 1 code.
+- Burning (non-explodable) barrel: in this Doom 1 source it is **`MT_MISC77`, doomednum 70**, spawnstate `S_BBAR1` (FCAN frames A/B/C, 4 tics loop), health 1000, `flags = MF_SOLID` only (not shootable), no death state. There is no `MT_LIGHTBARREL` symbol in info.h (that name is Doom 2's, doomednum 2028 there); **Doom 1's 2028 = `MT_MISC31`** (S_COLU column torch decor) — Freedoom maps' 2028 things must be interpreted with the Doom 1 table.
+
+Confidence: High for MT_BARREL/states/A_Explode (verbatim + script); High for "no light barrel mobjtype in Doom 1" (grep info.h: no MT_LIGHTBARREL symbol).
+
+
+## 10. Notes for our TypeScript port
+
+### mobj_t fields actually needed (verbatim from p_mobj.h struct, v1.10)
+
+`thinker (prev/next + function)`, `x,y,z` (fixed), sector links `snext/sprev`, blocklinks `bnext/bprev`, `subsector`, `angle`, `sprite`, `frame`, `floorz`, `ceilingz`, `radius`, `height`, `momx/momy/momz`, `validcount`, `type`, `info` (derived: `&mobjinfo[type]`), `tics`, `state` (pointer -> use index), `flags`, `health`, `movedir`, `movecount`, `target`, `reactiontime`, `threshold`, `player` (backref or null), `lastlook`, `spawnpoint` (mapthing copy for item respawn/nightmare respawn), `tracer`.
+
+No `damage`, no `id`, no `flags2` in this Doom 1 source. `info` can be dropped in TS (index by `type`). `state` should be a `stateId` number, with `S_NULL = 0` sentinel; sector/block links can stay as intrusive lists for exactness, or be replaced by spatial queries — but keep `validcount` if P_RadiusAttack / line-of-sight algorithms are transcribed literally.
+
+### Suggested state-table encoding
+
+```ts
+// sprite index: u16 (0..137); frame word: u16 = frameIndex | (fullbright ? 0x8000 : 0)
+// tics: i16 (-1 = forever, 0 = advance-in-one-call via the P_SetMobjState loop)
+// action: ActionId enum (0 = none), nextstate: stateId (0 = S_NULL)
+interface State {
+  sprite: number;
+  frame: number;     // already OR-ed
+  tics: number;
+  action: ActionId;  // numeric dispatch: switch(action) in a step() — keeps replay deterministic
+  nextstate: number;
+  misc1: number;
+  misc2: number;
+}
+```
+
+- Transcribe `states[]` (967 rows = NUMSTATES, info.c:193-...) as a flat const array in source order so `statenum_t` values equal enum order (needed if any code computes `state - states` offsets; P_XYMovement does: `(player->mo->state - states) - S_PLAY_RUN1 < 4` — port as stateId arithmetic!).
+- Same for `mobjinfo[]`: keep array order == MT_ enum order (section 3 idx column) so `type` indexes work; doomednum lookup at spawn can be a `Map<number, MobjType>` built at init (Doom did a linear scan + `I_Error` on unknown; log-and-skip is safer for our port but note the behavioral difference).
+- Action functions: implement as `ActionId` enum + switch (avoid closures if you want cheap serialization/determinism); P_SetMobjState must run the action on entry and loop while `tics === 0`, and return boolean alive.
+- MF_* as bit flags in a 32-bit int (JS bitwise is i32 — MF_TRANSLATION 0xc000000 is fine; `1<<26` for TRANSSHIFT); store in `number`.
+- Radius/height/speed: fixed-point (16.16) — store raw ints (`16 << 16`) to match `n*FRACUNIT` exactly.
+- Sprite frame interpretation (section 4): at load, parse `SPRITE + letter + digit [+ letter]` lump names into `sprites[i].frames[f] = { rotate: boolean, lump[8], flip[8] }`; rotation choice formula `rot = ((viewAng - thing.angle) + ANG45/2*9) >>> 29` requires 64-bit-safe angle math (JS: use `>>>` on low word carefully or BigInt-free emulation as done for angles elsewhere; see doc 03).
+
+Confidence: Medium-High (design recommendation grounded in the verified code).
 
 ## Sources
-(pending)
+
+- `/tmp/DOOM-master/linuxdoom-1.10/info.h` (spritenum_t:31-176, statenum_t, mobjtype_t, state_t:1147, mobjinfo_t:1305) and `info.c` (sprnames:40, states[]:~193, mobjinfo[]:1106, 137 entries)
+- `p_mobj.c` (P_SetMobjState:48, P_ExplodeMissile:90, P_XYMovement, P_MobjThinker:413, P_NightmareRespawn, P_RemoveMobsq/itemrespawn, P_RespawnSpecials, P_SpawnMapThing:704)
+- `p_mobj.h` (MF_* flags:117-204, mobj_t struct)
+- `p_inter.c` (maxammo/clipammo:58-59, P_GiveAmmo:67, P_GiveWeapon, P_GiveBody:225, P_GiveArmor, P_GiveCard, P_GivePower:287, P_TouchSpecialThing:336, P_KillMobj:666, P_DamageMobj:773)
+- `p_inter.h`, `d_player.h` (MAXHEALTH via p_local.h:33; player ammo arrays), `doomdef.h` (MTF_*:140-145, sk_* skill enum, am_*:201-208, INVULNTICS:235)
+- `r_things.c` (R_InitSprites/R_InstallSpriteLump:106-157, lump-name parse:218-236, R_ProjectSprite rotation:520), `p_pspr.h:50-51` (FF_FULLBRIGHT/FF_FRAMEMASK)
+- `p_enemy.c` (A_Scream, A_Explode:1598, A_BossDeath:1606, A_BrainDie:1896)
+- `p_map.c` (P_RadiusAttack:1206), `p_local.h` (MTF refs, P_SpecialThing call)
+- `/tmp/freedoom-0.13.0/freedoom1.wad` — binary THINGS parse of E1M1/E1M2/E1M3/E1M9/E2M1/E3M1/E4M1 (script, python struct)
+- Predecessor-verified baseline numbers (task brief) — spot-checked; corrections noted inline (NUMMOBJTYPES 137 not 118; 23 mobjinfo fields not 24; no FRAME_* constants; no MAXTICS)
+
+
