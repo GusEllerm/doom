@@ -20,3 +20,4 @@ Append-only log of events, surprises and lessons.
 - Re-dispatched: R01,R02,R04..R12,T00 (12 units, new IDs in STATUS.md).
 - R02 (graphics) done, committed. Correction captured: vanilla lightnum = (lightlevel>>LIGHTSEGSHIFT)+extralight (not *16); palette usage from st_stuff.c; freedoom1.wad v0.13.0 inspected in /tmp (repo clean of WADs).
 - R04 (simulation core) done: 594 lines, PRNG table + movement constants quoted from source.
+- R01 (WAD container) done: 326 lines; E1M1 empirical parse confirms record sizes. Note: GitHub release-asset URLs 404 from sub-agent sandboxes — fetch-freedoom may need the browser_download_url direct path or a mirror; R12/T00 to confirm.
