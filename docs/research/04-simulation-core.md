@@ -30,31 +30,18 @@ pre-release/leaked DOOM sources, which differ from the released 1.10):
 ```c
 while (1)
 {
-    // frame syncronous IO operations
-    I_StartFrame ();
-
-    // process one or more tics
+    I_StartFrame ();                 // frame syncronous IO operations
     if (singletics)
-    {
-        I_StartTic ();
-        D_ProcessEvents ();
+    {   I_StartTic ();  D_ProcessEvents ();
         G_BuildTiccmd (&netcmds[consoleplayer][maketic%BACKUPTICS]);
-        if (advancedemo)
-            D_DoAdvanceDemo ();
-        M_Ticker ();
-        G_Ticker ();
-        gametic++;
-        maketic++;
+        if (advancedemo)  D_DoAdvanceDemo ();
+        M_Ticker ();  G_Ticker ();
+        gametic++;  maketic++;
     }
     else
-    {
         TryRunTics (); // will run at least one tic
-    }
-
     S_UpdateSounds (players[consoleplayer].mo);// move positional sounds
-
-    // Update display, next frame, with current state.
-    D_Display ();
+    D_Display ();                    // Update display, next frame, with current state.
     ...
 ```
 
@@ -70,12 +57,7 @@ while (1)
 ```c
 switch (gamestate)
 {
-  case GS_LEVEL:
-    P_Ticker ();
-    ST_Ticker ();
-    AM_Ticker ();
-    HU_Ticker ();
-    break;
+  case GS_LEVEL: P_Ticker (); ST_Ticker (); AM_Ticker (); HU_Ticker (); break;
   case GS_INTERMISSION: WI_Ticker (); break;
   case GS_FINALE:       F_Ticker (); break;
   case GS_DEMOSCREEN:   D_PageTicker (); break;
@@ -238,20 +220,12 @@ Confidence: High (all tables and constants read directly).
 `m_random.c` (verified). State: `int rndindex = 0; int prndindex = 0;`
 
 ```c
-int P_Random (void)   // note source comment: "// Which one is deterministic?"
-{
-    prndindex = (prndindex+1)&0xff;
-    return rndtable[prndindex];
-}
-
-int M_Random (void)
-{
-    rndindex = (rndindex+1)&0xff;
-    return rndtable[rndindex];
-}
-
+int P_Random (void) { prndindex = (prndindex+1)&0xff; return rndtable[prndindex]; }
+int M_Random (void) { rndindex  = (rndindex+1)&0xff;  return rndtable[rndindex]; }
 void M_ClearRandom (void) { rndindex = prndindex = 0; }
 ```
+
+(The source comments `P_Random` with "// Which one is deterministic?")
 
 **Full `rndtable[256]`** (transcribed programmatically from the raw `m_random.c`; exactly 256 values, order preserved; indices 0-255):
 
@@ -445,12 +419,7 @@ Confidence: High.
 
 ## 9. Gravity and Z movement
 
-`p_mobj.c:P_ZMovement` + `p_local.h` (verified):
-
-```c
-#define GRAVITY		FRACUNIT          // p_local.h:53  (= 1<<16, NOT 1<<15)
-#define FLOATSPEED		(FRACUNIT*4)    // p_local.h:30
-```
+`p_mobj.c:P_ZMovement` + `p_local.h` (verified): `#define GRAVITY FRACUNIT` (`p_local.h:53`, = 1<<16, **not** 1<<15); `#define FLOATSPEED (FRACUNIT*4)` (`p_local.h:30`).
 
 ```c
 mo->z += mo->momz;
@@ -460,7 +429,6 @@ if ( mo->flags & MF_FLOAT && mo->target) {   // float toward target height band
     else if (delta>0 && dist < (delta*3) ) mo->z += FLOATSPEED;
 }
 if (mo->z <= mo->floorz) {
-    ...
     if (mo->momz < 0) {
 	if (mo->player && mo->momz < -GRAVITY*8) {
 	    mo->player->deltaviewheight = mo->momz>>3;   // squat + oof
@@ -472,10 +440,8 @@ if (mo->z <= mo->floorz) {
     ...missiles explode...
 }
 else if (! (mo->flags & MF_NOGRAVITY) ) {
-    if (mo->momz == 0)
-	mo->momz = -GRAVITY*2;
-    else
-	mo->momz -= GRAVITY;
+    if (mo->momz == 0) mo->momz = -GRAVITY*2;
+    else               mo->momz -= GRAVITY;
 }
 if (mo->z + mo->height > mo->ceilingz) { if (mo->momz > 0) mo->momz = 0;
     mo->z = mo->ceilingz - mo->height; ... }
@@ -493,16 +459,11 @@ Confidence: High for 1.10 absence of fall damage; recalled (not verified here): 
 
 ```c
 void P_InitThinkers (void) { thinkercap.prev = thinkercap.next = &thinkercap; }
-
 void P_AddThinker (thinker_t* thinker)   // appended at list tail
-{
-    thinkercap.prev->next = thinker; thinker->next = &thinkercap;
-    thinker->prev = thinkercap.prev; thinkercap.prev = thinker;
-}
-
+{   thinkercap.prev->next = thinker; thinker->next = &thinkercap;
+    thinker->prev = thinkercap.prev; thinkercap.prev = thinker;  }
 // "Deallocation is lazy -- it will not actually be freed until its thinking turn comes up."
 void P_RemoveThinker (thinker_t* thinker) { thinker->function.acv = (actionf_v)(-1); }
-
 void P_RunThinkers (void)
 {
     currentthinker = thinkercap.next;
@@ -620,15 +581,14 @@ Confidence: High.
 
 ## Sources
 
-All from https://raw.githubusercontent.com/id-Software/DOOM/master/linuxdoom-1.10/ :
-`d_main.c`, `d_net.c/.h`, `d_event.h`, `d_ticcmd.h`, `d_player.h`, `doomdef.h`,
-`g_game.c/.h`, `p_user.c`, `p_map.c`, `p_maputl.c`, `p_local.h`, `p_mobj.c/.h`,
-`p_tick.c`, `p_setup.c`, `p_enemy.c`, `p_pspr.c`, `p_inter.c`, `p_spec.c`,
-`m_fixed.c/.h`, `m_bbox.c`, `m_random.c`, `tables.c/.h`, `r_main.c`, `info.c`,
-`i_system.h`, `i_video.c`.
+All files fetched from https://raw.githubusercontent.com/id-Software/DOOM/master/linuxdoom-1.10/ :
+`d_main.c`, `d_net.c/.h`, `d_event.h`, `d_ticcmd.h`, `d_player.h`, `doomdef.h`, `g_game.c/.h`,
+`p_user.c`, `p_map.c`, `p_maputl.c`, `p_local.h`, `p_mobj.c/.h`, `p_tick.c`, `p_setup.c`,
+`p_enemy.c`, `p_pspr.c`, `p_inter.c`, `p_spec.c`, `m_fixed.c/.h`, `m_bbox.c`, `m_random.c`,
+`tables.c/.h`, `r_main.c`, `info.c`, `i_system.h`, `i_video.c`.
 
 Overall confidence: **High** — every constant above was read from fetched source.
 Recalled/unverified (flagged inline): platform `I_GetTime` internals; the 1994-leak
-counterparts (`THRESHOLD 0x8000`, `p_deferedthinkers`, `bobmove 0x0ccccc d`,
+counterparts (`THRESHOLD 0x8000`, `p_deferedthinkers`, `bobmove 0x0ccccccd`,
 `dropoff` parameter, `SLIDEFIXANGLE`, fall damage `13*FRACUNIT`, `P_IsTooFast`)
 which are asserted here only as *absent* from 1.10 (absence verified by grep).
