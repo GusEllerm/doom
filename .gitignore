@@ -9,3 +9,4 @@ test-results/
 *.log
 .vite/
 playtest/results/
+.pi/
