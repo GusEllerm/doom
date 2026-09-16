@@ -27,7 +27,7 @@ Future tasks will be added as architects decompose milestones.
 |---|---|---|---|---|---|---|
 | M1-01 | Contract: wad types + decode signatures | M1 | — | done (merged 89bdb7b) | — | — |
 | A-INT1 | ESLint import-boundary zones | M1 | — | done (merged 886b852) | — | — |
-| A-FX1 | core/fixed.ts + BigInt-oracle tests | M2(w0) | M1-01(loose) | dispatched | — | — |
+| A-FX1 | core/fixed.ts + BigInt-oracle tests | M2(w0) | M1-01(loose) | done | merged 0e77c58 | oracle-green |
 | M1-02 | WadFile parse/lookup | M1 | M1-01 | done | merged | green on main |
 | M1-03 | PLAYPAL/COLORMAP decoders | M1 | M1-01 | planned | agent a5389860 | — |
 | M1-04 | Patch decoder | M1 | M1-01 | planned | agent def8e6eb | — |
@@ -36,7 +36,7 @@ Future tasks will be added as architects decompose milestones.
 | M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | planned | — | — |
 | M1-08 | Debug viewer page | M1 | M1-02..07 | planned | — | — |
 | M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | planned | — | — |
-| M2-01 | Grid BSP splitter (fixtures) | M2 | M1-05 | planned | — | — |
+| M2-01 | Grid BSP splitter (fixtures) | M2 | M1-05 | dispatched (agent 32c6c9b7) | — | — |
 | M2-02 | Rectangle-spec map generator + BSP property test | M2 | M2-01 | planned | — | — |
 | M2-03 | mapdata lump decoder | M2 | M1-02,M2-02 | planned | — | — |
 | M2-04 | Sim map setup (p_setup) | M2 | M2-03 | planned | — | — |
