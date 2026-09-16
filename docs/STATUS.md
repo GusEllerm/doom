@@ -3,6 +3,7 @@
 > UNPAUSED and RE-DISPATCHED 2026-09-14. All agents from the first dispatch were cleaned up by the harness during the pause; only R03's note survived (committed). All 12 remaining work units re-dispatched fresh.
 
 ## Current phase
+Phase 2 DONE (architecture + plans + roadmap accepted). M1 wave 0 in flight (contract, eslint boundaries, fixed core).
 T00 scaffold MERGED (main green: check/e2e/build/fetch-freedoom).
 Phase 1 (research) in progress — 5/12 notes committed. Wave 3 dispatched 2026-09-15 after infra 500-wave killed R09-R12+T00 (outlines survived; briefs say: fill existing outline, write-per-section).
 
