@@ -37,7 +37,9 @@ interface ParsedWad {
 
 function readWad(bytes: Uint8Array): ParsedWad {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const identification = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
+  const identification = String.fromCharCode(
+    view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3),
+  );
   const numlumps = view.getInt32(4, true);
   const infotableofs = view.getInt32(8, true);
   const entries: DirEntry[] = [];
@@ -83,8 +85,12 @@ describe('WadBuilder structural contract', () => {
     expect(wad.identification).toBe('IWAD');
     expect(wad.numlumps).toBe(6);
     expect(wad.infotableofs).toBe(wad.bytes.length - 6 * 16);
+    // Even-size lump at an even offset needs NO pad byte (0/1-byte rule).
     expect(buildWad([{ name: 'X', data: new Uint8Array(2) }], 'PWAD')
-      .byteLength).toBe(12 + 2 + 1 + 16);
+      .byteLength).toBe(12 + 2 + 16);
+    // Odd-size lump gets exactly one NUL pad byte.
+    expect(buildWad([{ name: 'X', data: new Uint8Array(3) }], 'PWAD')
+      .byteLength).toBe(12 + 3 + 1 + 16);
   });
 
   it('dir entries follow insertion order with strictly increasing offsets', () => {
@@ -92,11 +98,19 @@ describe('WadBuilder structural contract', () => {
     expect(wad.entries.map((e) => e.name)).toEqual([
       'S_START', 'ODDLUMP', 'EVENLUMP', 'DUPNAME', 'DUPNAME', 'S_END',
     ]);
+    // Offsets are non-decreasing; a size-0 marker SHARES the offset of the
+    // next lump (R01 §2: 0-size lumps still have a position), so strict
+    // increase is only required after a non-empty lump.
     wad.entries.forEach((e, i) => {
-      if (i > 0) expect(e.offset).toBeGreaterThan(wad.entries[i - 1]!.offset);
+      if (i > 0) {
+        const prev = wad.entries[i - 1]!;
+        if (prev.size > 0) expect(e.offset).toBeGreaterThan(prev.offset);
+        else expect(e.offset).toBe(prev.offset);
+      }
     });
-    // first data position is 12; ODDLUMP follows the even marker offset.
+    // first data position is 12; the zero-size S_START marker shares it.
     expect(wad.entries[0]!.offset).toBe(12);
+    expect(wad.entries[1]!.offset).toBe(12);
   });
 
   it('pads every lump so all offsets are even; markers are size 0', () => {
@@ -152,11 +166,12 @@ describe('WadBuilder structural contract', () => {
       'FIXP0', 'FIXP1', 'P_END', 'S_START', 'BON1A0', 'S_FIX0',
       'PLAYA2A8', 'S_END', 'DSFIX',
     ]);
-    // Patch header sanity: 2x2, colofs[0] = 8 + 4*2 = 16 (R01 §14).
+    // Patch header sanity: 2x2, colofs[0] = 8 + 4*2 = 16 LUMP-RELATIVE
+    // (R01 §14: "columnofs are byte offsets from lump start").
     const view = new DataView(parsed.bytes.buffer, parsed.bytes.byteOffset);
     const p = parsed.entries[6]!;
     expect([view.getInt16(p.offset, true), view.getInt16(p.offset + 2, true)]).toEqual([2, 2]);
-    expect(view.getInt32(p.offset + 8, true)).toBe(p.offset + 16);
+    expect(view.getInt32(p.offset + 8, true)).toBe(16);
     expect(patch2x2().length).toBe(p.size); // same geometry => same length
   });
 });
