@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DOOM WAD debug viewer (dev-only, M1-08)</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; background: #141414; color: #d8d8d8;
+        font: 12px/1.4 ui-monospace, Menlo, monospace; }
+      body { padding: 8px; }
+      header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+      h1 { font-size: 14px; margin: 0; }
+      .tab { background: #222; color: #ccc; border: 1px solid #444; padding: 3px 10px; cursor: pointer; }
+      .tab.active { background: #384; color: #fff; }
+      table { border-collapse: collapse; }
+      th, td { text-align: left; padding: 1px 8px; border-bottom: 1px solid #2a2a2a; }
+      tr.sel { background: #223; }
+      button { background: #262626; color: #ddd; border: 1px solid #444; cursor: pointer; }
+      canvas.px { image-rendering: pixelated; background:
+        repeating-conic-gradient(#333 0% 25%, #111 0% 50%) 0 0 / 16px 16px; border: 1px solid #555; }
+      #sprite-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+      #sprite-grid .cell { text-align: center; }
+      pre { background: #101010; border: 1px solid #333; padding: 6px; overflow: auto; max-height: 40vh; }
+      .list { display: flex; flex-wrap: wrap; gap: 4px; max-height: 30vh; overflow: auto; }
+      .list button { padding: 2px 6px; }
+      label { display: inline-flex; align-items: center; gap: 4px; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>DOOM WAD viewer</h1>
+      <button class="tab active" data-test-id="tab-lumps">Lumps</button>
+      <button class="tab" data-test-id="tab-textures">Textures</button>
+      <button class="tab" data-test-id="tab-sprites">Sprites</button>
+      <span data-test-id="wad-status" data-state="loading"></span>
+      <span data-test-id="wad-loaded" hidden>loaded</span>
+      <span data-test-id="wad-missing" hidden>missing</span>
+    </header>
+
+    <div data-test-id="wad-picker" hidden>
+      <input type="file" accept=".wad" data-test-id="wad-file" />
+    </div>
+
+    <header>
+      <label>palette bank <input type="range" min="0" max="13" value="0" data-test-id="palette-bank" />
+        <span data-test-id="palette-bank-value">0</span></label>
+      <label>COLORMAP <input type="checkbox" data-test-id="colormap-toggle" /></label>
+      <label>light <input type="range" min="0" max="33" value="0" data-test-id="light-level" />
+        <span data-test-id="light-level-value">0</span></label>
+    </header>
+
+    <section data-test-id="panel-lumps">
+      <div>
+        <span data-test-id="lump-count">0</span> lumps
+        <input type="search" placeholder="name filter" data-test-id="lump-filter" />
+        <button data-test-id="lump-prev">prev</button>
+        <span data-test-id="lump-page">page 1/1</span>
+        <button data-test-id="lump-next">next</button>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>name</th><th>size</th><th>kind</th></tr></thead>
+        <tbody data-test-id="lump-rows"></tbody>
+      </table>
+      <div>
+        <div data-test-id="preview-name"></div>
+        <div data-test-id="preview-info"></div>
+        <div data-test-id="preview-graphic"></div>
+        <pre data-test-id="hex-preview"></pre>
+      </div>
+    </section>
+
+    <section data-test-id="panel-textures" hidden>
+      <input type="search" placeholder="texture filter" data-test-id="texture-filter" />
+      <div class="list" data-test-id="texture-rows"></div>
+      <div data-test-id="texture-name"></div>
+      <div data-test-id="texture-preview"></div>
+    </section>
+
+    <section data-test-id="panel-sprites" hidden>
+      <input type="search" placeholder="sprite filter" data-test-id="sprite-filter" />
+      <div data-test-id="sprite-warnings"></div>
+      <div class="list" data-test-id="sprite-rows"></div>
+      <div data-test-id="sprite-name"></div>
+      <div id="sprite-grid" data-test-id="sprite-grid"></div>
+    </section>
+
+    <script type="module" src="/src/viewer/main.ts"></script>
+  </body>
+</html>
