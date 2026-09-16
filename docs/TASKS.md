@@ -33,7 +33,7 @@ Future tasks will be added as architects decompose milestones.
 | M1-04 | Patch decoder | M1 | M1-01 | planned | agent def8e6eb | — |
 | M1-05 | Fixture-WAD micro-builder | M1 | M1-01 | done | merged | green on main |
 | M1-06 | Flat + TEXTURE1/PNAMES decoders | M1 | M1-04,M1-05 | planned | — | — |
-| M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | planned | — | — |
+| M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | done | merged 24a7d1e | goldens ran |
 | M1-08 | Debug viewer page | M1 | M1-02..07 | planned | — | — |
 | M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | planned | — | — |
 | M2-01 | Grid BSP splitter (fixtures) | M2 | M1-05 | dispatched (agent 32c6c9b7) | — | — |
