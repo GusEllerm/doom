@@ -67,3 +67,6 @@ Append-only log of events, surprises and lessons.
 - M1-06 merged: PNAMES 1049, TEXTURE1 801 + TEXTURE2 162 textures, sha256-composed goldens. Race resolved cleanly (attempt-2 tree). DecodedFlat contract comment fixed (row-major).
 - M1-08 viewer dispatched (milestone exit); M2-03 dispatched (wave 1 parallel).
 - M2-02 merged (8 mapgen tests incl. blockmap union == all linedefs property).
+
+## 2026-09-16 — 🏁 M1 EXIT CRITERIA MET
+Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/texture from freedoom1.wad with PLAYPAL+COLORMAP controls; playwright e2e 4/4 green incl. deep links + 404 fallback. Notable find by the viewer agent: vanilla patches tolerate 0-3 byte post padding (patch-header heuristic updated). M1-09 (golden consolidation) + M2-03 close out the wave.
