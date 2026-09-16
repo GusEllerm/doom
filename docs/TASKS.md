@@ -25,13 +25,13 @@ Future tasks will be added as architects decompose milestones.
 ## M1/M2 + cross-cutting tasks (from docs/design/M1-plan.md, M2-plan.md — full briefs live there)
 | ID | Title | Milestone | Depends | Status | Branch | Verification |
 |---|---|---|---|---|---|---|
-| M1-01 | Contract: wad types + decode signatures | M1 | — | dispatched | — | — |
+| M1-01 | Contract: wad types + decode signatures | M1 | — | done (merged 89bdb7b) | — | — |
 | A-INT1 | ESLint import-boundary zones | M1 | — | dispatched | — | — |
 | A-FX1 | core/fixed.ts + BigInt-oracle tests | M2(w0) | M1-01(loose) | dispatched | — | — |
-| M1-02 | WadFile parse/lookup | M1 | M1-01 | planned | — | — |
-| M1-03 | PLAYPAL/COLORMAP decoders | M1 | M1-01 | planned | — | — |
-| M1-04 | Patch decoder | M1 | M1-01 | planned | — | — |
-| M1-05 | Fixture-WAD micro-builder | M1 | M1-01 | planned | — | — |
+| M1-02 | WadFile parse/lookup | M1 | M1-01 | planned | agent dad45982 | — |
+| M1-03 | PLAYPAL/COLORMAP decoders | M1 | M1-01 | planned | agent a5389860 | — |
+| M1-04 | Patch decoder | M1 | M1-01 | planned | agent def8e6eb | — |
+| M1-05 | Fixture-WAD micro-builder | M1 | M1-01 | planned | agent cb2f3703 | — |
 | M1-06 | Flat + TEXTURE1/PNAMES decoders | M1 | M1-04,M1-05 | planned | — | — |
 | M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | planned | — | — |
 | M1-08 | Debug viewer page | M1 | M1-02..07 | planned | — | — |
