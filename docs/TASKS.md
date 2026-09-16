@@ -21,3 +21,28 @@ Ids are stable; never renumber.
 | T01 | Test fixture tooling: WAD writer + tiny synthetic map builder | M0 | T00 | planned | — | — |
 
 Future tasks will be added as architects decompose milestones.
+
+## M1/M2 + cross-cutting tasks (from docs/design/M1-plan.md, M2-plan.md — full briefs live there)
+| ID | Title | Milestone | Depends | Status | Branch | Verification |
+|---|---|---|---|---|---|---|
+| M1-01 | Contract: wad types + decode signatures | M1 | — | dispatched | — | — |
+| A-INT1 | ESLint import-boundary zones | M1 | — | dispatched | — | — |
+| A-FX1 | core/fixed.ts + BigInt-oracle tests | M2(w0) | M1-01(loose) | dispatched | — | — |
+| M1-02 | WadFile parse/lookup | M1 | M1-01 | planned | — | — |
+| M1-03 | PLAYPAL/COLORMAP decoders | M1 | M1-01 | planned | — | — |
+| M1-04 | Patch decoder | M1 | M1-01 | planned | — | — |
+| M1-05 | Fixture-WAD micro-builder | M1 | M1-01 | planned | — | — |
+| M1-06 | Flat + TEXTURE1/PNAMES decoders | M1 | M1-04,M1-05 | planned | — | — |
+| M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | planned | — | — |
+| M1-08 | Debug viewer page | M1 | M1-02..07 | planned | — | — |
+| M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | planned | — | — |
+| M2-01 | Grid BSP splitter (fixtures) | M2 | M1-05 | planned | — | — |
+| M2-02 | Rectangle-spec map generator + BSP property test | M2 | M2-01 | planned | — | — |
+| M2-03 | mapdata lump decoder | M2 | M1-02,M2-02 | planned | — | — |
+| M2-04 | Sim map setup (p_setup) | M2 | M2-03 | planned | — | — |
+| M2-05 | Blockmap runtime + BSP point loc | M2 | M2-04 | planned | — | — |
+| M2-06 | Sim skeleton + headless harness | M2 | M2-04 | planned | — | — |
+| M2-07 | Noclip fly movement + debug wiring | M2 | M2-05,M2-06 | planned | — | — |
+| M2-08 | Automap state machine | M2 | M2-06 | planned | — | — |
+| M2-09 | Automap renderer + arrow | M2 | M2-05,M2-08 | planned | — | — |
+| M2-10 | Golden automap frames + M2 e2e | M2 | M2-09 | planned | — | — |
