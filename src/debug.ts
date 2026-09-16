@@ -1,45 +1,182 @@
 /**
- * Installs window.__doom (typed no-op stubs until the engine parts exist).
- * Active in dev builds or when the page URL contains ?test=1.
+ * Installs window.__doom (ARCHITECTURE §7). Active in dev builds or when the
+ * page URL contains ?test=1.
+ *
+ * M2-07 wiring: the `sim` sub-API drives the deterministic core directly —
+ * import rule for this entry: sim + types ONLY (eslint zones leave src/
+ * root unrestricted; the discipline is manual here: no platform, no render,
+ * no input imports — keyboard wiring belongs to main.ts/platform).
+ * loadMap stays a stub: boot (wadload → G_InitGame → attach) is main.ts
+ * wiring (M2-plan lists main.ts under M2-07 but this branch's ownership
+ * excludes it — see DEVIATIONS); until then headless/tests attach states
+ * directly.
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
-import type { CaptureResult, DebugStateSnapshot, DoomDebugApi } from './types/debug';
+import { runHeadless } from './sim/game';
+import {
+  CF_GODMODE,
+  CF_NOCLIP,
+  MF_NOCLIP,
+  MF_NOGRAVITY,
+  ONFLOORZ
+} from './sim/player';
+import { hashState, type GameState } from './sim/state';
+import { emptyInput, type GameInput } from './sim/ticcmd';
+import type {
+  CaptureResult,
+  DebugStateLive,
+  DebugStateSnapshot,
+  DoomDebugApi,
+  SimDebugApi
+} from './types/debug';
 
 const RENDER_WIDTH = 320;
 const RENDER_HEIGHT = 200;
 
-function notReady(note: string): never {
-  throw new Error(`debug API not implemented yet: ${note}`);
-}
-
-let godMode = false;
-let noclip = false;
+/** Live state driven by this entry (attached by platform boot or tests). */
+let attached: GameState | null = null;
+/** Sticky e2e input override (null = per-call/empty input). */
+let inputOverride: GameInput | null = null;
 let paused = false;
 
-const api: DoomDebugApi = {
-  loadMap(mapName: string): void {
-    notReady(`loadMap(${mapName})`);
+function requireState(): GameState {
+  if (!attached) throw new Error('no simulation attached (loadMap/main boot pending)');
+  return attached;
+}
+
+/** BAM (u32) → degrees [0,360), exact via the 2^32 circle. */
+export function bamToDeg(bam: number): number {
+  return ((bam >>> 0) / 4294967296) * 360;
+}
+
+/** Degrees → BAM (floor on the 2^32 circle; debug warp is exact-deg, not
+ * the THINGS ANG45*(deg/45) quantization of p_mobj.c). */
+export function degToBam(deg: number): number {
+  const d = ((deg % 360) + 360) % 360;
+  return Math.floor((d / 360) * 4294967296) >>> 0;
+}
+
+function setNoclipOnPlayer(state: GameState, enabled: boolean): boolean {
+  const p = state.players[0]!;
+  if (enabled) p.cheats |= CF_NOCLIP;
+  else p.cheats &= ~CF_NOCLIP;
+  // mirror the per-tic p_user.c sync so the flag reads back before a tic
+  if (p.cheats & CF_NOCLIP) p.mo.flags |= MF_NOCLIP | MF_NOGRAVITY;
+  else p.mo.flags &= ~(MF_NOCLIP | MF_NOGRAVITY);
+  return (p.cheats & CF_NOCLIP) !== 0;
+}
+
+function liveSnapshot(state: GameState): DebugStateLive {
+  const p = state.players[0]!;
+  return {
+    ready: true,
+    gametic: state.gametic,
+    leveltime: state.leveltime,
+    map: state.map.name,
+    gamestate: 'GS_LEVEL',
+    player: {
+      x: p.mo.x,
+      y: p.mo.y,
+      z: p.mo.z,
+      angleDeg: bamToDeg(p.mo.angle),
+      health: p.health,
+      // G9-pinned defaults (subsystems land post-M2, see types/debug.ts):
+      armor: 0,
+      ammo: [],
+      weapons: 0,
+      powerups: {},
+      onGroundSector: -1,
+      noclip: (p.cheats & CF_NOCLIP) !== 0
+    },
+    sectors: { count: state.map.sectors.count },
+    thinkers: { count: 0 },
+    render: { hom: -1 },
+    hash: hashState(state)
+  };
+}
+
+/** Exported singleton (tests/headless attach states directly; the browser
+ * gets the same object via window.__doom.sim once installed). */
+export const debugSim: SimDebugApi = {
+  attach(state: GameState): GameState {
+    attached = state;
+    return state;
   },
-  warp(): void {
-    notReady('warp()');
+  detach(): void {
+    attached = null;
+    inputOverride = null;
+  },
+  getState(): GameState | null {
+    return attached;
+  },
+  setNoclip(enabled: boolean): boolean {
+    return setNoclipOnPlayer(requireState(), enabled);
+  },
+  getNoclip(): boolean {
+    return ((requireState().players[0]?.cheats ?? 0) & CF_NOCLIP) !== 0;
+  },
+  runTics(tics: number, input?: Partial<GameInput> | null): number {
+    const state = requireState();
+    const snap: GameInput | undefined = input ? { ...emptyInput(), ...input } : inputOverride ?? undefined;
+    return runHeadless(state, tics, snap ? () => ({ ...snap }) : undefined);
+  },
+  setInput(input: Partial<GameInput> | null): void {
+    inputOverride = input ? { ...emptyInput(), ...input } : null;
+  },
+  getInput(): GameInput | null {
+    return inputOverride ? { ...inputOverride } : null;
+  },
+  warp(x: number, y: number, z?: number, angleDeg?: number): void {
+    const p = requireState().players[0]!;
+    p.mo.x = x | 0;
+    p.mo.y = y | 0;
+    p.mo.z = z === undefined ? ONFLOORZ : z | 0;
+    if (angleDeg !== undefined) p.mo.angle = degToBam(angleDeg);
+    // teleport semantics (§7): reactiontime lockout deliberately NOT set —
+    // debug warps must not silently swallow the tics a test steps next.
+  }
+};
+
+/** The same singleton installed as window.__doom by installDebugApi(). */
+export const debugApi: DoomDebugApi = {
+  sim: debugSim,
+  loadMap(mapName: string): void {
+    throw new Error(
+      `loadMap(${mapName}): main.ts sim boot is pending (M2-07 DEVIATIONS); ` +
+        `attach a state via __doom.sim.attach(state) in the meantime`
+    );
+  },
+  warp(x: number, y: number, z?: number, angleDeg?: number): void {
+    debugSim.warp(x, y, z, angleDeg);
   },
   god(enabled?: boolean): boolean {
-    if (enabled !== undefined) godMode = enabled;
-    return godMode;
+    if (attached) {
+      const p = attached.players[0]!;
+      if (enabled !== undefined) {
+        if (enabled) p.cheats |= CF_GODMODE;
+        else p.cheats &= ~CF_GODMODE;
+      }
+      return (p.cheats & CF_GODMODE) !== 0;
+    }
+    return false;
   },
   noclip(enabled?: boolean): boolean {
-    if (enabled !== undefined) noclip = enabled;
-    return noclip;
+    if (!attached) return false;
+    if (enabled === undefined) return debugSim.getNoclip();
+    return debugSim.setNoclip(enabled);
   },
-  step(): void {
-    notReady('step()');
+  step(tics: number): number {
+    // §7: run exactly n tics with empty input (pause state irrelevant —
+    // step is the explicit driver), return the post-run hash.
+    return debugSim.runTics(tics);
   },
   pause(next?: boolean): boolean {
     if (next !== undefined) paused = next;
     return paused;
   },
   state(): DebugStateSnapshot {
-    return { ready: false, note: 'scaffold stub: no simulation yet' };
+    if (!attached) return { ready: false, note: 'no simulation attached yet' };
+    return liveSnapshot(attached);
   },
   capture(): CaptureResult {
     return {
@@ -59,5 +196,5 @@ declare global {
 export function installDebugApi(): void {
   const wantDebug = import.meta.env.DEV || new URLSearchParams(location.search).has('test');
   if (!wantDebug) return;
-  window.__doom = api;
+  window.__doom = debugApi;
 }

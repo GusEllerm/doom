@@ -5,11 +5,58 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-export interface DebugStateSnapshot {
-  /** Placeholder shape until the simulation exists (M5+). */
+import type { GameInput } from '../sim/ticcmd';
+import type { GameState } from '../sim/state';
+
+/* ------------------------------------------------------------------ */
+/* state() snapshot (ARCHITECTURE §7 discriminated union)              */
+/* ------------------------------------------------------------------ */
+
+/** Before the first successful boot/attach (M2-07: pre-loadMap). */
+export interface DebugStatePending {
   ready: false;
   note: string;
 }
+
+/**
+ * §7 shape with M2-relevant fields real (gametic/leveltime/map/player
+ * fixed coords/health/hash) and the not-yet-existing subsystems pinned to
+ * documented defaults (gap G9): armor 0, ammo [] (no weapon inventory
+ * pre-M7), weapons 0 (bitmask), powerups {}, onGroundSector -1, thinkers 0
+ * (no thinker arena pre-M5), render.hom -1 (no renderer pre-M3).
+ * `noclip` is the M2 addition mirroring CF_NOCLIP.
+ */
+export interface DebugStateLive {
+  ready: true;
+  gametic: number;
+  leveltime: number;
+  map: string;
+  gamestate: 'GS_LEVEL';
+  player: {
+    /** fixed (mo->x) */
+    x: number;
+    /** fixed */
+    y: number;
+    /** fixed (ONFLOORZ until P_CalcHeight) */
+    z: number;
+    /** degrees [0,360) derived from the BAM angle */
+    angleDeg: number;
+    health: number;
+    armor: number;
+    ammo: number[];
+    weapons: number;
+    powerups: Record<string, number>;
+    onGroundSector: number;
+    noclip: boolean;
+  };
+  sectors: { count: number };
+  thinkers: { count: number };
+  render: { hom: number };
+  /** §3.4 hashState() */
+  hash: number;
+}
+
+export type DebugStateSnapshot = DebugStatePending | DebugStateLive;
 
 export interface CaptureResult {
   width: number;
@@ -18,21 +65,55 @@ export interface CaptureResult {
   indices: Uint8Array;
 }
 
-export interface DoomDebugApi {
-  /** Load a map by name (e.g. "E1M1") and start playing it. */
-  loadMap(mapName: string): void;
-  /** Move the player (fixed-point units; angle in degrees). */
+/* ------------------------------------------------------------------ */
+/* sim sub-API (M2-07): direct deterministic-core access for tests/e2e */
+/* ------------------------------------------------------------------ */
+
+export interface SimDebugApi {
+  /** Attach the live GameState the sim/debug surface drives (wired by the
+   * platform boot or directly by headless tests; returns it back). */
+  attach(state: GameState): GameState;
+  /** Detach (state() reports ready:false afterwards). */
+  detach(): void;
+  /** The live GameState object itself (null until attached). Read freely;
+   * writes belong to runTics/setNoclip/warp. */
+  getState(): GameState | null;
+  /** Set/clear CF_NOCLIP on player 0 (cheat-equivalent path, §7); returns
+   * the resulting state. Also mirrors the per-tic flag sync
+   * (p_user.c) so it is visible before the next tic. */
+  setNoclip(enabled: boolean): boolean;
+  /** Read CF_NOCLIP on player 0. */
+  getNoclip(): boolean;
+  /** Run exactly n tics (G_Ticker path, §3.2) with the given input snapshot
+   * (or the sticky setInput override, else empty); returns hashState(). */
+  runTics(tics: number, input?: Partial<GameInput> | null): number;
+  /** Sticky input override applied to every later runTics/tic until reset
+   * (e2e scripted-input hook; null clears it). */
+  setInput(input: Partial<GameInput> | null): void;
+  /** Teleport semantics (§7): direct fixed-set + angleDeg→BAM, z defaults
+   * to the ONFLOORZ token. Requires an attached state. */
   warp(x: number, y: number, z?: number, angleDeg?: number): void;
-  /** Toggle/read god mode. Returns current state. */
+  /** Current GameInput produced by the sticky override (debug introspection). */
+  getInput(): GameInput | null;
+}
+
+export interface DoomDebugApi {
+  /** Load map by name ('E1M1'|'MAP01') and enter GS_LEVEL at the start position. Throws on unknown map. */
+  loadMap(mapName: string): void;
+  /** Teleport player 0 (teleport-move semantics, noclip-safe): fixed-point x/y, optional fixed z and BAM degrees [0,360). Setup only — never substitutes for movement-under-test. */
+  warp(x: number, y: number, z?: number, angleDeg?: number): void;
+  /** set/get CF_GODMODE (cheat-equivalent path). Returns resulting state. */
   god(enabled?: boolean): boolean;
-  /** Toggle/read noclip. Returns current state. */
+  /** set/get CF_NOCLIP. Returns resulting state. */
   noclip(enabled?: boolean): boolean;
-  /** Advance the simulation exactly n tics (35 Hz). */
-  step(tics: number): void;
-  /** Pause/unpause. Returns current paused state. */
+  /** Run exactly n tics through the §3.2 path with empty input (or scripted cmds); pauses sim during call; returns hashState() after the last tic. */
+  step(tics: number): number;
+  /** set/get menu-pause equivalent (sim freeze; rendering continues). Returns state. */
   pause(paused?: boolean): boolean;
   /** Read-only snapshot of simulation state. */
   state(): DebugStateSnapshot;
   /** Grab the current 320x200 indexed framebuffer. */
   capture(): CaptureResult;
+  /** Direct sim-core surface (M2-07): state access, noclip, tic stepping. */
+  sim: SimDebugApi;
 }
