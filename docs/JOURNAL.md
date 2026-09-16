@@ -90,3 +90,4 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 - Main state: M1 complete; M2-01..08 merged. No agents running.
 - RESUME QUEUE: M2-09 automap RENDERER + main.ts boot wiring (deps M2-05+M2-08 ✓ — ready to dispatch; include M2-07's follow-up: rAF tic loop + debugSim.attach + loadMap wiring) → M2-10 exit e2e (arrow moves in noclip on screen). Then M2 close + M3 planning wave.
 - Resumed per user. Dispatched M2-09 (agent 0ba62557): framebuffer + AM_drawFline port + player arrow + main.ts boot (fetch→E1M1→35Hz rAF loop) + automap e2e. This task puts the first map pixels on screen.
+- M2-09 attempt-1: infra death (Connection error), ZERO commits (stayed in read phase 27 tool uses despite write-early mandate). Attempt-2 (9266d5a8) briefed with FIRST-ACTION=stub-commit rule hardened.
