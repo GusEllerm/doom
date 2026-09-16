@@ -42,3 +42,7 @@ Append-only log of events, surprises and lessons.
 - R11 done: vanilla savegame stream quoted (no QuotePointer in 1.10; raw pointers neutralized by rebuild-on-load) + our tagged-binary design. 9/12.
 - R12 done (empirical): Phase 1 = 4 episodes x 9 maps. Thing numbering = Doom1 (16,083 things, all maps). TWO ENGINE FEATURES FOUND: (1) DEHACKED lump present — fullbright firing-frame tweaks only; need minimal DEH parser or transcribed constants; (2) Freedoom D_* music is SMF (MIDI files), vanilla is MUS → both decoders needed (adjusts R10/ARCHITECTURE scope).
 - R09 done: 408 lines; status bar widget coords, STCFN font loader, Freedoom UI synthesize list. 11/12 notes; only R10 halves running.
+
+## 2026-09-15 — Phase 1 COMPLETE: 12/12 research notes committed
+- R10 finished via the split-two-agents pattern (worked perfectly — both halves wrote in place). Final data points: vanilla sound path has NO 0x7F wrapping (settled from code + byte histograms); Freedoom D_* music is 100% SMF (41 lumps), MUS spec still documented for vanilla compatibility.
+- Phase 1 exit criteria met (notes exist for all topics). Architect dispatched next; per §8 an architect must also confirm notes suffice for design.
