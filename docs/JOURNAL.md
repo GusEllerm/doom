@@ -82,3 +82,4 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 - Dispatched: M2-05 (blockmap+bsp point-loc, agent d2b743b3), M2-06 (sim skeleton + vanilla PRNG table + determinism harness, agent ef653f9a). Briefs mandate audit-branch.sh + no blind add -A.
 - M2-06 merged (rndtable byte-identical to m_random.c; 1000-tic determinism goldens incl. E1M1). M2-07 (8904a739) + M2-08 (d62d873b) dispatched. Running: M2-05, M2-07, M2-08.
 - M2-05 merged: CSR blockmap decode + BSP walker; E1M1 ssectors@start pinned.
+- M2-07 merged: movement goldens pinned (walk 35tic @0° step 51199/19 — table-exact); turn = polling not events; D009 filed for M5.
