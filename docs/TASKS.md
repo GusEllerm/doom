@@ -35,7 +35,7 @@ Future tasks will be added as architects decompose milestones.
 | M1-06 | Flat + TEXTURE1/PNAMES decoders | M1 | M1-04,M1-05 | done | merged (M1-06 merge commit) | goldens ran |
 | M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | done | merged 24a7d1e | goldens ran |
 | M1-08 | Debug viewer page | M1 | M1-02..07 | done | merged | e2e green |
-| M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | dispatched (agent 09f5b3da) | — | — |
+| M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | done | merged d57944a | 301/301, 0 skips |
 | M2-01 | Grid BSP splitter (fixtures) | M2 | M1-05 | done | merged 1491c41 | green |
 | M2-02 | Rectangle-spec map generator + BSP property test | M2 | M2-01 | done | merged | green |
 | M2-03 | mapdata lump decoder | M2 | M1-02,M2-02 | done | merged 0bcadcf | 33 tests, E1M1 goldens |
