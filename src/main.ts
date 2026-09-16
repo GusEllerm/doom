@@ -42,9 +42,11 @@ function draw(): void {
 }
 
 function loop(): void {
-  draw();
   requestAnimationFrame(loop);
 }
 
 installDebugApi();
+// Paint synchronously so the canvas is never blank, even before the first
+// animation frame (headless browsers can delay rAF).
+draw();
 requestAnimationFrame(loop);

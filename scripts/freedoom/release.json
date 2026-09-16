@@ -1,0 +1,22 @@
+{
+  "$comment": "Pinned Freedoom release facts. Verify/update via the GitHub latest-release API. See docs/DECISIONS.md D005.",
+  "repo": "freedoom/freedoom",
+  "tag": "v0.13.0",
+  "zipUrl": "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip",
+  "zipSha256": "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59",
+  "entries": [
+    {
+      "zipPath": "freedoom-0.13.0/freedoom1.wad",
+      "target": "wads/freedoom1.wad",
+      "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d",
+      "size": 28795076,
+      "required": true
+    },
+    {
+      "zipPath": "freedoom-0.13.0/freedoom2.wad",
+      "target": "wads/freedoom2.wad",
+      "sha256": "a8772e088847032510d97ba2312406a6998f21cbab44d4ff10696faa9c0ecd4b",
+      "required": false
+    }
+  ]
+}
