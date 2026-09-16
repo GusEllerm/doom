@@ -38,6 +38,18 @@ export function indexToRgba(
   return base[bank * 256 + color] as number;
 }
 
+/**
+ * palettes.ts packs 0xAARRGGBB — in little-endian memory that lays out as
+ * [B,G,R,A] (asserted in src/wad/palettes.test.ts), but ImageData needs
+ * [R,G,B,A]. Swap the R/B halves to get the Uint32 value whose LE bytes are
+ * the ImageData order.
+ */
+export function toImageDataRgba(packed: number): number {
+  return (
+    (packed & 0xff00ff00) | (((packed & 0xff) << 16) | ((packed >>> 16) & 0xff))
+  ) >>> 0;
+}
+
 function view32(data: Uint8ClampedArray): Uint32Array {
   // ImageData data is always created over a fresh ArrayBuffer with byteOffset 0.
   return new Uint32Array(data.buffer, data.byteOffset, data.byteLength >>> 2);
@@ -64,7 +76,7 @@ export function blitFlat(ctx: BlitContext, pixels: Uint8Array): void {
   const v = view32(ctx.data);
   const { base, bank, colormapRow } = ctx;
   for (let i = 0; i < ctx.width * ctx.height; i++) {
-    v[i] = indexToRgba(base, bank, pixels[i] as number, colormapRow) >>> 0;
+    v[i] = toImageDataRgba(indexToRgba(base, bank, pixels[i] as number, colormapRow));
   }
 }
 
@@ -92,7 +104,7 @@ export function blitColumns(
     for (let r = 0; r < col.length; r++) {
       const idx = col[r] as number;
       if (transparentZero && idx === 0) continue;
-      put(v, width, dx, y0 + r, indexToRgba(base, bank, idx, colormapRow));
+      put(v, width, dx, y0 + r, toImageDataRgba(indexToRgba(base, bank, idx, colormapRow)));
     }
   }
 }
