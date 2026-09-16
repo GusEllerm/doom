@@ -182,8 +182,7 @@ export interface SectorArrays {
   /** P_GroupLines: number of linedefs bordering the sector. */
   readonly lineCount: Int32Array;
   /** CSR slice bounds into {@link RuntimeMap.sectorLineIndex}. */
-  readonly lineStart: Int32Array;
-  /** fixed bbox of all bordered linedef vertices. */
+  readonly lineStart: Int32Array;/** fixed bbox of all bordered linedef vertices. */
   readonly bboxLeft: Int32Array;
   readonly bboxRight: Int32Array;
   readonly bboxTop: Int32Array;
@@ -253,6 +252,10 @@ export interface RuntimeMap {
   readonly sectors: SectorArrays;
   readonly nodes: NodeArrays;
   readonly subsectors: SubsectorArrays;
+
+  /** P_GroupLines sector line tables: line indices per sector slice, in
+   * ascending linedef order (sector s → [lineStart[s], lineStart[s]+lineCount[s])). */
+  readonly sectorLineIndex: Int32Array;
 
   /**
    * Render-side SEGS stay in MapData (plan: renderer derives its own seg
@@ -505,6 +508,9 @@ export function buildMapFromData(md: MapData): RuntimeMap {
       );
     }
     segFront[i] = md.sideDefs[sideNum]!.sector;
+    // Fidelity note: vanilla picks the seg backsector from the ML_TWOSIDED
+    // flag (P_LoadSegs); we key off the −1 sidenum sentinel, which is what
+    // P_LoadLineDefs uses for line->backsector and what sane wads agree on.
     const other = seg.side === 0 ? ln.back : ln.front;
     segBack[i] = other === -1 ? -1 : md.sideDefs[other]!.sector;
   }
@@ -686,6 +692,7 @@ export function buildMapFromData(md: MapData): RuntimeMap {
       left: nLeft,
     },
     subsectors: { count: numSs, segCount: ssCount, segStart: ssStart, sector: ssSector },
+    sectorLineIndex,
     numSegs,
     segSectorFront: segFront,
     segSectorBack: segBack,
