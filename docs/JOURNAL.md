@@ -57,3 +57,4 @@ Append-only log of events, surprises and lessons.
 2. Freedoom data != vanilla lore: palette0 e255 = (167,107,107) not white; COLORMAP row0 maps 168→4 (not pure identity). All goldens must be pinned from freedoom1.wad bytes, never from memory. R02 note's "vanilla expectations" phrasing misled the test author.
 - Also: added @types/node devDep (test tooling needs fs/url types; tsconfig include += tests — surfaced one strict-null bug in eslint-rules test, fixed).
 - M1-02 merged via cherry-pick x2 (harness junk commit dropped again — recurring, auto-filter in salvage flow). WadFile live on main: parse/last-match/zero-copy/marker-skip, 15 tests. Follow-up: switch palettes golden-test mini-parser to real WadFile.
+- M1-05 merged (conflict in eslint-rules test resolved keeping main's null-guard). Palettes goldens migrated to real WadFile. M1-07 dispatched (sprite census). M1-06 waits on M1-04.
