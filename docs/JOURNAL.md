@@ -70,3 +70,9 @@ Append-only log of events, surprises and lessons.
 
 ## 2026-09-16 — 🏁 M1 EXIT CRITERIA MET
 Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/texture from freedoom1.wad with PLAYPAL+COLORMAP controls; playwright e2e 4/4 green incl. deep links + 404 fallback. Notable find by the viewer agent: vanilla patches tolerate 0-3 byte post padding (patch-header heuristic updated). M1-09 (golden consolidation) + M2-03 close out the wave.
+- M2-03 merged (E1M1 loadMap goldens run on main). M2-04 dispatched (p_setup runtime; M2-05/06 unlock behind it). FIXMAP↔loadMap round-trip green across fixture boundary.
+
+## 2026-09-16 — M1 COMPLETE + symlink footgun lesson
+- M1-09 merged (d57944a): integration goldens + round-trip + e2e hardening. 301/301 tests, 0 skips.
+- HAZARD FOUND: harness auto-commits capture untracked paths; `.gitignore` `wads/` (dir form) does NOT match a *symlink* named `wads` — M2-03's harness commit committed such a symlink (absolute path into main checkout), and merging it DESTROYED the real wads/ dir (git rm + symlink). Fixed: symlink removed, wad restored (sha 7323bcc… verified), ignore rule now includes bare `wads`. 
+- RULE ADDED to salvage/merge flow: junk-commit filter must flag ANY commit touching node_modules OR wads OR *.wad OR symlinks (mode 120000) — check `git show --raw` modes, not just paths.
