@@ -40,3 +40,4 @@ Append-only log of events, surprises and lessons.
 - NEW infra issue: Xcode license gate broke /usr/bin/git (the "terminated"/license errors). Workaround D007: CLT git path. User should run sudo xcodebuild -license accept.
 - Lesson: an orchestrator-side `git add -A` swept a live researcher's mid-write file into a task branch — never bulk-add docs while agents are writing in the shared checkout; stage explicit paths only.
 - R11 done: vanilla savegame stream quoted (no QuotePointer in 1.10; raw pointers neutralized by rebuild-on-load) + our tagged-binary design. 9/12.
+- R12 done (empirical): Phase 1 = 4 episodes x 9 maps. Thing numbering = Doom1 (16,083 things, all maps). TWO ENGINE FEATURES FOUND: (1) DEHACKED lump present — fullbright firing-frame tweaks only; need minimal DEH parser or transcribed constants; (2) Freedoom D_* music is SMF (MIDI files), vanilla is MUS → both decoders needed (adjusts R10/ARCHITECTURE scope).
