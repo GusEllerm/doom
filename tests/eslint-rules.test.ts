@@ -20,6 +20,7 @@ const eslint = new ESLint();
 /** Lint `code` as if it lived at `filePath`; return boundary-rule ruleIds. */
 async function boundary(filePath: string, code: string): Promise<string[]> {
   const [result] = await eslint.lintText(code, { filePath });
+  if (!result) return [];
   return result.messages
     .filter((m) => m.ruleId !== null && BOUNDARY_RULES.has(m.ruleId))
     .map((m) => m.ruleId as string);
