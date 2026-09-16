@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { buildWad } from '../../tests/fixtures/wadWriter';
+import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
 import {
   blockmapInfo,
   loadMap,
@@ -599,6 +600,49 @@ describe('malformed maps raise MapDataError', () => {
     // terminated but referencing line 99 (only 4 lines exist)
     expect(() => miniMap({ blockmap: buildBlockmap(0, 0, 1, 1, [[99]]) })).toThrow(/references line 99 out of range/);
     expect(() => blockmapInfo(new Uint8Array(8))).toThrow(MapDataError);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M2-02 fixture-generator round trip (acceptance #1)                  */
+/* ------------------------------------------------------------------ */
+
+describe('fixture round trip (M2-02 mapBuilder)', () => {
+  it('spec → lumps → decode equals spec counts, lights, specials, tags', () => {
+    const spec: RectMapSpec = {
+      rooms: [
+        { x: 0, y: 0, w: 256, h: 256, lightLevel: 128, special: 7, tag: 3 },
+        { x: 256, y: 0, w: 256, h: 256, lightLevel: 200, special: 9, tag: 5, ceilingHeight: 160 },
+      ],
+      doors: [{ x1: 256, y1: 64, x2: 256, y2: 192, special: 1, tag: 3 }],
+      things: [
+        { x: 8, y: 8, type: 1, flags: 3 },
+        { x: 300, y: 8, angle: 90, type: 2035 },
+      ],
+    };
+    const wad = WadFile.parse(buildFixtureMapWad(spec, 'FIXMAP').buffer as ArrayBuffer);
+    const md = loadMap(wad, 'FIXMAP');
+    expect(md.name).toBe('FIXMAP');
+    expect(thingCount(md)).toBe(2);
+    expect(thingAt(md, 0)).toEqual({ x: 8, y: 8, angle: 0, type: 1, flags: 3 });
+    expect(thingAt(md, 1).angle).toBe(90);
+    // sector 0 = void, room i at index i+1 (mapBuilder convention)
+    expect(md.sectors.length).toBe(spec.rooms.length + 1);
+    spec.rooms.forEach((room, i) => {
+      expect([md.sectors[i + 1]!.lightLevel, md.sectors[i + 1]!.special, md.sectors[i + 1]!.tag]).toEqual([
+        room.lightLevel, room.special, room.tag,
+      ]);
+      expect(md.sectors[i + 1]!.ceilingLh).toBe(room.ceilingHeight ?? 128);
+    });
+    // door line: two-sided, special/tag from the spec
+    expect(md.lineDefs.some((l) => l.special === 1 && l.tag === 3 && l.back !== -1 && (l.flags & 0x004) !== 0)).toBe(true);
+    // BSP invariant + seg tiling completeness
+    expect(md.nodes.length).toBe(md.ssectors.length - 1);
+    expect(md.ssectors.reduce((n, s) => n + s.numsegs, 0)).toBe(md.segs.length);
+    expect(md.segs.every((s) => s.line >= 0)).toBe(true);
+    expect(() => blockmapInfo(md)).not.toThrow(); // loadMap already walked every list
+    // reject sized linearly for the sector count
+    expect(md.reject.byteLength).toBe(Math.ceil(md.sectors.length ** 2 / 8));
   });
 });
 
