@@ -40,9 +40,10 @@ export function looksLikeFlatName(name: string): boolean {
 /**
  * Header-only patch sanity check (does NOT walk posts; decodePatch remains
  * the authoritative test — call it in a try/catch). Checks: minimum length,
- * positive sane dimensions, columnofs table fits, first offset is on a
- * 4-byte boundary ≥ 16 (patches in a WAD are 1-4 aligned between columns;
- * the *header* fields themselves must be 4-aligned, R01 §14).
+ * positive sane dimensions, and that the columnofs table itself fits inside
+ * the lump. Post padding is 0-3 bytes (R01 §14), so columnofs values are NOT
+ * generally 4-aligned (freedoom's AGB128_1 has offset 306); alignment is
+ * therefore not tested here — decodePatch's per-column bounds check is.
  */
 export function looksLikePatchHeader(bytes: Uint8Array): boolean {
   if (bytes.length < 16) return false;
@@ -53,7 +54,7 @@ export function looksLikePatchHeader(bytes: Uint8Array): boolean {
   if (bytes.length < 16 + width * 4) return false;
   for (let c = 0; c < Math.min(width, 4); c++) {
     const ofs = view.getUint32(16 + c * 4, true);
-    if (ofs < 16 || ofs >= bytes.length || (ofs & 3) !== 0) return false;
+    if (ofs < 16 || ofs >= bytes.length) return false;
   }
   return true;
 }

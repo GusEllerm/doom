@@ -72,11 +72,16 @@ describe('looksLikePatchHeader', () => {
     const zero = miniPatch(0);
     expect(looksLikePatchHeader(zero)).toBe(false);
   });
-  it('rejects unaligned or out-of-range column offsets', () => {
-    const unaligned = miniPatch(1, 19);
-    expect(looksLikePatchHeader(unaligned)).toBe(false);
+  it('accepts unaligned column offsets (vanilla post padding is 0-3 bytes)', () => {
+    // freedoom1 AGB128_1-style: width 8, first columnofs = 306 (not 4-aligned)
+    const buf = new Uint8Array(400);
+    const v = new DataView(buf.buffer);
+    v.setInt16(0, 8, true);
+    v.setInt16(2, 128, true);
+    for (let c = 0; c < 8; c++) v.setUint32(16 + c * 4, 306 + 4 * c, true);
+    expect(looksLikePatchHeader(buf)).toBe(true);
   });
-  it('rejects columnofs past the lump end', () => {
+  it('rejects columnofs below the header or past the lump end', () => {
     const short = new Uint8Array(20);
     const v = new DataView(short.buffer);
     v.setInt16(0, 1, true);
