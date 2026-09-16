@@ -64,3 +64,4 @@ Append-only log of events, surprises and lessons.
 ## 2026-09-16 — RACE LESSON: M1-06 double-dispatch
 - I judged attempt-1 (e0563d45) dead from a truncated "terminated" notification + an empty `git -C <worktree> status` (dir already gone ⇒ silent empty). It was ALIVE; both attempts raced on branch task/M1-06-textures. Salvaged: pinned attempt-1 chain to salvage/M1-06-e0563d45 (fd87a39).
 - Rules going forward: (1) before re-dispatching a "dead" agent, require BOTH a failure notification AND branch evidence (log/commits), never the worktree-dir probe alone; (2) re-dispatches get branch <id>-<slug>-t2 to make races structurally impossible; (3) verify 'flat row->column transpose' claims against R02 during M1-06 review — flats are row-major 4096 in vanilla.
+- M1-06 merged: PNAMES 1049, TEXTURE1 801 + TEXTURE2 162 textures, sha256-composed goldens. Race resolved cleanly (attempt-2 tree). DecodedFlat contract comment fixed (row-major).
