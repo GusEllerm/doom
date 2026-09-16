@@ -37,7 +37,7 @@ Future tasks will be added as architects decompose milestones.
 | M1-08 | Debug viewer page | M1 | M1-02..07 | dispatched (agent 631a47ef) | — | — |
 | M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | planned | — | — |
 | M2-01 | Grid BSP splitter (fixtures) | M2 | M1-05 | done | merged 1491c41 | green |
-| M2-02 | Rectangle-spec map generator + BSP property test | M2 | M2-01 | dispatched (agent c492780a) | — | — |
+| M2-02 | Rectangle-spec map generator + BSP property test | M2 | M2-01 | done | merged | green |
 | M2-03 | mapdata lump decoder | M2 | M1-02,M2-02 | dispatched (agent c3787018) | — | — |
 | M2-04 | Sim map setup (p_setup) | M2 | M2-03 | planned | — | — |
 | M2-05 | Blockmap runtime + BSP point loc | M2 | M2-04 | planned | — | — |

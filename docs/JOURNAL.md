@@ -66,3 +66,4 @@ Append-only log of events, surprises and lessons.
 - Rules going forward: (1) before re-dispatching a "dead" agent, require BOTH a failure notification AND branch evidence (log/commits), never the worktree-dir probe alone; (2) re-dispatches get branch <id>-<slug>-t2 to make races structurally impossible; (3) verify 'flat row->column transpose' claims against R02 during M1-06 review — flats are row-major 4096 in vanilla.
 - M1-06 merged: PNAMES 1049, TEXTURE1 801 + TEXTURE2 162 textures, sha256-composed goldens. Race resolved cleanly (attempt-2 tree). DecodedFlat contract comment fixed (row-major).
 - M1-08 viewer dispatched (milestone exit); M2-03 dispatched (wave 1 parallel).
+- M2-02 merged (8 mapgen tests incl. blockmap union == all linedefs property).
