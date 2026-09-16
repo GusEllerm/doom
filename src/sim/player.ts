@@ -8,8 +8,9 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { angAdd, FRACBITS, FRACUNIT } from '../core/fixed';
-import { ANG45 } from '../core/constants';
+import { angAdd, FixedMul, FRACBITS, FRACUNIT } from '../core/fixed';
+import { ANG45, ANG90, ANGLETOFINESHIFT } from '../core/constants';
+import { finecosine, finesine } from '../core/tables';
 import type { MapThing } from '../wad/mapdata';
 
 import { createTiccmd, type Ticcmd } from './ticcmd';
@@ -25,6 +26,14 @@ export const ONFLOORZ = -2147483648; // MININT
 
 /** p_mobj.h:150 `MF_NOCLIP = 0x1000`. */
 export const MF_NOCLIP = 0x1000;
+/** p_mobj.h:142 `MF_NOGRAVITY = 512` (set alongside MF_NOCLIP per M2-plan
+ * §M2-07; inert until z-physics lands — vanilla ties it to P_NoGravity only). */
+export const MF_NOGRAVITY = 512;
+
+/** p_user.c:161/164 `cmd->forwardmove*2048` — ticcmd move units → fixed
+ * thrust scale used by P_Thrust; the M2-07 noclip fly path reuses the exact
+ * constant for its friction-free per-tic integration. */
+export const MOVE_THRUST_SCALE = 2048;
 
 /** d_player.h:54-60 `playerstate_t` (PST_LIVE=0, PST_DEAD=1, PST_REBORN=2). */
 export const PST_LIVE = 0;
@@ -144,15 +153,20 @@ export function pSpawnPlayer(p: Player, thing: MapThing): void {
  * `mo->angle += (cmd->angleturn << 16)` (p_user.c P_MovePlayer — the `<<16`
  * is exact: angleturn is int16, BAM wraps mod 2^32).
  *
+ * M2-07 adds the noclip FLY path (M2-plan §M2-07): with CF_NOCLIP active,
+ * position integrates straight from the ticcmd every tic (no momentum, no
+ * friction, no collision) — see {@link pFlyNoclip}.
+ *
  * NOT done here (deferred, on purpose):
- *  - P_Thrust momentum from forwardmove/sidemove → M2-07 (this task keeps
- *    momX/momY at 0; only `cmd` is stored/consumed);
+ *  - noclip-OFF movement: vanilla P_Thrust + P_XYMovement/P_TryMove need
+ *    blockmap/collision (M4) and the friction physics (M5) — until then a
+ *    non-noclip player does NOT translate (documented placeholder);
  *  - P_CalcHeight / sector specials / weapon change / dead player think.
  */
 export function pPlayerThink(p: Player): void {
   // fixme: do this in the cheat code (p_user.c)
-  if (p.cheats & CF_NOCLIP) p.mo.flags |= MF_NOCLIP;
-  else p.mo.flags &= ~MF_NOCLIP;
+  if (p.cheats & CF_NOCLIP) p.mo.flags |= MF_NOCLIP | MF_NOGRAVITY;
+  else p.mo.flags &= ~(MF_NOCLIP | MF_NOGRAVITY);
 
   if (p.playerstate !== PST_LIVE) return; // P_DeathThink: later milestone
 
@@ -161,10 +175,53 @@ export function pPlayerThink(p: Player): void {
   else pMovePlayer(p);
 }
 
-/** p_user.c P_MovePlayer — angle part only (thrust is M2-07). */
+/**
+ * p_user.c P_MovePlayer — angle part (verbatim) + the M2-07 noclip fly
+ * branch. Vanilla integrates `mo->angle` BEFORE thrusting, so the fly step
+ * below uses the post-turn angle, matching p_user.c's ordering.
+ */
 function pMovePlayer(p: Player): void {
   const cmd = p.cmd;
   // vanilla: player->mo->angle += (cmd->angleturn<<16);  (angle_t unsigned)
   p.mo.angle = angAdd(p.mo.angle, (cmd.angleturn << 16) >>> 0);
-  // P_Thrust(mo->angle, cmd->forwardmove*2048) etc. → M2-07.
+
+  if (p.mo.flags & MF_NOCLIP) pFlyNoclip(p, cmd);
+  // noclip-OFF: P_Thrust + friction + P_TryMove (p_user.c/p_mobj.c/p_map.c)
+  // arrive with collisions (M4) and full physics (M5) — no motion yet.
+}
+
+/**
+ * M2-07 fly/noclip subset of the movement (M2-plan §M2-07): straight ticcmd
+ * integration with P_Thrust's exact constants but WITHOUT the momentum
+ * state (momX/momY stay untouched — no friction, no P_XYMovement, no
+ * P_CheckPosition, i.e. no blockmap dependency anywhere).
+ *
+ * Per tic:
+ *   x += FixedMul(forwardmove*2048, finecosine[angle>>19])
+ *      + FixedMul(  sidemove*2048, finecosine[(angle-ANG90)>>19])
+ *   y += (same with finesine)                               (p_user.c P_Thrust
+ *                                                            argument order)
+ * `>>19` = ANGLETOFINESHIFT on the *unsigned* angle (>>> in TS); the
+ * `angle-ANG90` strafe basis mirrors `P_Thrust (player, mo->angle-ANG90,
+ * sidemove*2048)` (p_user.c:164) including the u32 wrap. Position wraps as
+ * int32 like C fixed_t addition. z is untouched (ONFLOORZ until
+ * P_CalcHeight; noclip flies in the XY plane only in M2).
+ */
+export function pFlyNoclip(p: Player, cmd: Ticcmd): void {
+  const fineF = p.mo.angle >>> ANGLETOFINESHIFT; // unsigned shift: 0..8191
+  const fineS = ((p.mo.angle - ANG90) >>> 0) >>> ANGLETOFINESHIFT;
+  let dx = 0;
+  let dy = 0;
+  if (cmd.forwardmove) {
+    const move = cmd.forwardmove * MOVE_THRUST_SCALE;
+    dx += FixedMul(move, finecosine[fineF]!);
+    dy += FixedMul(move, finesine[fineF]!);
+  }
+  if (cmd.sidemove) {
+    const move = cmd.sidemove * MOVE_THRUST_SCALE;
+    dx += FixedMul(move, finecosine[fineS]!);
+    dy += FixedMul(move, finesine[fineS]!);
+  }
+  p.mo.x = (p.mo.x + dx) | 0;
+  p.mo.y = (p.mo.y + dy) | 0;
 }
