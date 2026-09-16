@@ -139,8 +139,8 @@ export interface BlockmapInfo {
 /* loadMap                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Little-endian i16. Kept as a named helper so the "no getUint16 on
- *  −1-capable fields" rule stays verifiable by grepping for getUint16. */
+/** Little-endian i16. Named helper so the "never read −1-capable fields
+ *  unsigned" rule stays verifiable by grepping the call sites. */
 function i16(view: DataView, at: number): number {
   return view.getInt16(at, true);
 }
