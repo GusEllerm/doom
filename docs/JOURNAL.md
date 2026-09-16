@@ -84,3 +84,8 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 - M2-05 merged: CSR blockmap decode + BSP walker; E1M1 ssectors@start pinned.
 - M2-07 merged: movement goldens pinned (walk 35tic @0° step 51199/19 — table-exact); turn = polling not events; D009 filed for M5.
 - PAUSE requested by user after M2-08 lands. Queued for resume: M2-09 (automap renderer + main.ts boot wiring, deps M2-05+M2-08), then M2-10 (M2 exit e2e). State is clean: all work merged to main, checks green.
+
+## 2026-09-16 — PAUSED (user request) after M2-08
+- Merged M2-08 (a7b595b): faithful am_map.c port — follow/pan, fixed-point MTOF/FTOM memo, 2%/tic zoom clamps, marks FIFO, viewport clip; E1M1 goldens ran. All checks green on main (454 unit tests + e2e).
+- Main state: M1 complete; M2-01..08 merged. No agents running.
+- RESUME QUEUE: M2-09 automap RENDERER + main.ts boot wiring (deps M2-05+M2-08 ✓ — ready to dispatch; include M2-07's follow-up: rAF tic loop + debugSim.attach + loadMap wiring) → M2-10 exit e2e (arrow moves in noclip on screen). Then M2 close + M3 planning wave.

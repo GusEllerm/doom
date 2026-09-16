@@ -43,6 +43,6 @@ Future tasks will be added as architects decompose milestones.
 | M2-05 | Blockmap runtime + BSP point loc | M2 | M2-04 | done | merged | green |
 | M2-06 | Sim skeleton + headless harness | M2 | M2-04 | done | merged | 361 tests green |
 | M2-07 | Noclip fly movement + debug wiring | M2 | M2-05,M2-06 | done | merged | 392 tests |
-| M2-08 | Automap state machine | M2 | M2-06 | dispatched (agent d62d873b) | — | — |
+| M2-08 | Automap state machine | M2 | M2-06 | done | merged a7b595b | 454 tests |
 | M2-09 | Automap renderer + arrow | M2 | M2-05,M2-08 | planned | — | — |
 | M2-10 | Golden automap frames + M2 e2e | M2 | M2-09 | planned | — | — |
