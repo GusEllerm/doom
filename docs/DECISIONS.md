@@ -30,3 +30,7 @@ Choice: fetch-freedoom downloads the zip, verifies its sha256, extracts freedoom
 ## D006 — T00 fallback: orchestrator builds scaffold directly
 Context: two T00 dispatches lost purely to harness infra failures (never started). Rule prefers delegation, but §10 says move on when blocked.
 Choice: third dispatch attempt now. If it fails again, orchestrator implements the scaffold itself on branch task/00-scaffold and notes it in JOURNAL.
+
+## D007 — git binary workaround for Xcode license gate
+Context: after a macOS update (Tahoe 26.6.2), /usr/bin/git aborts with "You have not agreed to the Xcode license agreements" because xcode-select points to Xcode.app whose license is unaccepted. brew is gated too.
+Choice: invoke git as /Library/Developer/CommandLineTools/usr/bin/git (works, v2.50.1) until the user runs `sudo xcodebuild -license accept` (recommended) or `sudo xcode-select --switch /Library/Developer/CommandLineTools`.

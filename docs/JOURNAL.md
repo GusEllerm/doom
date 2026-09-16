@@ -34,3 +34,8 @@ Append-only log of events, surprises and lessons.
 - Killed R09 (partial: 47-line outline + some research done), R10 (outline), R11 (outline), R12 (0 uses), T00 (0 uses). Not resumable (cleaned up).
 - Outlines committed (write-early rule paid off — skeletons + some sections survive).
 - Wave 3 re-dispatch: R09-R12 resume-from-outline, T00 third attempt. If T00 dies again (3rd), orchestrator builds scaffold directly (recorded as D006 fallback).
+
+## 2026-09-15 — T00 done (orchestrator-built after 3 infra deaths); Xcode git gate found
+- T00 completed directly per D006 fallback: deliverable A salvaged from the attempt-3 branch (3add364), B-E built and verified by orchestrator. main is GREEN: check, e2e (canvas non-blank, zero console errors), build, fetch-freedoom (real GitHub download + local-zip + cache-hit + tamper-rejection all proven). LICENSE GPL-2.0(+or-later), CREDITS placeholder, debug API stub, pinned release.json (freedoom1.wad sha256 7323bcc1...703d).
+- NEW infra issue: Xcode license gate broke /usr/bin/git (the "terminated"/license errors). Workaround D007: CLT git path. User should run sudo xcodebuild -license accept.
+- Lesson: an orchestrator-side `git add -A` swept a live researcher's mid-write file into a task branch — never bulk-add docs while agents are writing in the shared checkout; stage explicit paths only.
