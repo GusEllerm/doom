@@ -133,7 +133,7 @@ export interface DecodedPatch {
   columns: Uint8Array[];
 }
 
-/** 64×64 flat, column-major (4096 bytes). */
+/** 64×64 flat, row-major — bytes are verbatim 64 rows of 64 (R02 §6; corrected via M1-06: the earlier "column-major" note was wrong for flats — textures, not flats, are column-major in vanilla). */
 export interface DecodedFlat {
   name: string;
   /** 64*64 = 4096 palette indices. */
