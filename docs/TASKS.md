@@ -30,9 +30,9 @@ Future tasks will be added as architects decompose milestones.
 | A-FX1 | core/fixed.ts + BigInt-oracle tests | M2(w0) | M1-01(loose) | done | merged 0e77c58 | oracle-green |
 | M1-02 | WadFile parse/lookup | M1 | M1-01 | done | merged | green on main |
 | M1-03 | PLAYPAL/COLORMAP decoders | M1 | M1-01 | planned | agent a5389860 | — |
-| M1-04 | Patch decoder | M1 | M1-01 | planned | agent def8e6eb | — |
+| M1-04 | Patch decoder | M1 | M1-01 | done | merged 553e3b7 | green |
 | M1-05 | Fixture-WAD micro-builder | M1 | M1-01 | done | merged | green on main |
-| M1-06 | Flat + TEXTURE1/PNAMES decoders | M1 | M1-04,M1-05 | planned | — | — |
+| M1-06 | Flat + TEXTURE1/PNAMES decoders | M1 | M1-04,M1-05 | dispatched (agent e0563d45) | — | — |
 | M1-07 | Sprite definition loader | M1 | M1-02,M1-05 | done | merged 24a7d1e | goldens ran |
 | M1-08 | Debug viewer page | M1 | M1-02..07 | planned | — | — |
 | M1-09 | IWAD goldens + viewer e2e | M1 | M1-08 | planned | — | — |
