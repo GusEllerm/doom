@@ -40,6 +40,18 @@ async function pixelStats(page: Page, testId: string, nth = 0): Promise<{ colors
 }
 
 test.describe('WAD debug viewer', () => {
+  /** Console errors, excluding the browser's own log for an expected 404 fetch. */
+  function collectConsoleErrors(page: Page, { ignoreExpected404 = false } = {}): string[] {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() !== 'error') return;
+      if (ignoreExpected404 && /Failed to load resource.*404/.test(msg.text())) return;
+      errors.push(msg.text());
+    });
+    page.on('pageerror', (err) => errors.push(String(err)));
+    return errors;
+  }
+
   test('loads the IWAD, lists lumps, renders a flat and a sprite grid', async ({ page }) => {
     test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
 
@@ -96,16 +108,17 @@ test.describe('WAD debug viewer', () => {
   });
 
   test('404 IWAD falls back to the file picker without page errors', async ({ page }) => {
-    const pageErrors: string[] = [];
-    page.on('pageerror', (err) => pageErrors.push(String(err)));
+    // The 404 itself is expected; everything else must stay silent (M1-09).
+    const errors = collectConsoleErrors(page, { ignoreExpected404: true });
     await page.goto('/viewer.html?wad=/wads/definitely-not-here.wad');
     await page.waitForSelector('[data-test-id="wad-missing"]', { timeout: 10_000 });
     await expect(page.locator('[data-test-id="wad-file"]')).toBeVisible();
-    expect(pageErrors, 'no uncaught errors on the 404 path').toHaveLength(0);
+    expect(errors, `no console/page errors on the 404 path: ${errors.join('\n')}`).toHaveLength(0);
   });
 
   test('renders a patch and a TEXTURE1 texture via deep links', async ({ page }) => {
     test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
+    const consoleErrors = collectConsoleErrors(page); // zero-console-error gate (M1-09)
     await page.goto('/viewer.html?lump=AGB128_1');
     await page.waitForSelector('[data-test-id="wad-loaded"]', { timeout: 30_000 });
     const patch = await pixelStats(page, 'preview-canvas');
@@ -116,5 +129,21 @@ test.describe('WAD debug viewer', () => {
     await page.waitForSelector('[data-test-id="wad-loaded"]', { timeout: 30_000 });
     const tex = await pixelStats(page, 'texture-canvas');
     expect(tex.colors, 'BIGDOOR1 texture must render colors').toBeGreaterThan(1);
+
+    // Pixel-sample golden (M1-09): BIGDOOR1 is 128×96 and its composed
+    // center pixel (64,48), blitted through PLAYPAL palette 0, is exactly
+    // rgb(119,95,75) = palette-0 entry 138 (freedoom1.wad v0.13.0).
+    const sampled = await page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>('[data-test-id="texture-canvas"]');
+      if (!canvas) return null;
+      const ctx = canvas.getContext('2d')!;
+      return { size: [canvas.width, canvas.height] as [number, number],
+        center: Array.from(ctx.getImageData(canvas.width >> 1, canvas.height >> 1, 1, 1).data) };
+    });
+    expect(sampled, 'texture canvas present').not.toBeNull();
+    expect(sampled!.size).toEqual([128, 96]);
+    expect(sampled!.center).toEqual([119, 95, 75, 255]);
+
+    expect(consoleErrors, `console errors: ${consoleErrors.join('\n')}`).toHaveLength(0);
   });
 });
