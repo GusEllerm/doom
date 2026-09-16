@@ -51,3 +51,8 @@ Append-only log of events, surprises and lessons.
 - Plans landed: M1 (9 tasks, 4 waves), M2 (10 tasks + A-FX1), ROADMAP with L1-L5 exit criteria.
 - Dispatched: M1-01 contract (e764b9b0), A-INT1 boundaries (3f60201e), A-FX1 fixed core (8b7724cf) — all in worktrees, commit-early rule.
 - A-INT1 merged with surgery: harness had appended a junk commit registering node_modules (symlink) into git — cherry-picked only the real commit. Lesson: inspect pi-agent-* branches for harness auto-commits before merging.
+
+## 2026-09-16 — M1-03 merged; TWO load-bearing discoveries
+1. WAD lump-dir entries are [u32 filepos][u32 length][8-byte name] — position/length BEFORE name (verified empirically vs wads/freedoom1.wad; the name-first assumption was baked into a mini-parser). M1-02 (WadFile) must implement this order; contract tests must pin it.
+2. Freedoom data != vanilla lore: palette0 e255 = (167,107,107) not white; COLORMAP row0 maps 168→4 (not pure identity). All goldens must be pinned from freedoom1.wad bytes, never from memory. R02 note's "vanilla expectations" phrasing misled the test author.
+- Also: added @types/node devDep (test tooling needs fs/url types; tsconfig include += tests — surfaced one strict-null bug in eslint-rules test, fixed).
