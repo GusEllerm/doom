@@ -211,18 +211,19 @@ function readLumpByName(name: string): Uint8Array {
   const buf = readFileSync(WAD_PATH);
   const id = buf.toString('ascii', 0, 4);
   if (id !== 'IWAD' && id !== 'PWAD') throw new Error(`not a WAD: ${id}`);
-  const count = buf.readInt32LE(8);
-  const dirOfs = buf.readInt32LE(12);
+  const count = buf.readInt32LE(4);
+  const dirOfs = buf.readInt32LE(8);
   for (let i = count - 1; i >= 0; i--) {
     const e = dirOfs + i * 16;
+    // DOOM dir entry: u32 filepos, u32 length, 8-byte name (R01 §2).
     const lumpName = buf
-      .toString('ascii', e, e + 8)
+      .toString('ascii', e + 8, e + 16)
       .replace(/\u0000.*$/s, '')
       .trimEnd()
       .toUpperCase();
     if (lumpName === name) {
       const ofs = buf.readInt32LE(e);
-      const len = buf.readInt32LE(e + 8);
+      const len = buf.readInt32LE(e + 4);
       return new Uint8Array(buf.buffer, buf.byteOffset + ofs, len);
     }
   }
@@ -235,21 +236,27 @@ describe.skipIf(!hasWad)('freedoom1.wad goldens', () => {
   // 3) palette 13 (radiation) entry 0 = RGB(0,31,0);
   // 4) palette 1 entry 0 red channel = 28; 5) palette 8 entry 0 red = 229
   //    (red pain ramp 28,57,86,114,143,172,200,229 — endpoints sampled).
+  // NOTE (M1-03 fix): entry-255 and COLORMAP row-0 "identity" expectations
+  // were vanilla lore; Freedoom's data (sampled from wads/freedoom1.wad
+  // v0.13.0) is pinned below instead.
   it('PLAYPAL exact size + sampled palette entries', () => {
     const bytes = readLumpByName('PLAYPAL');
     expect(bytes.byteLength).toBe(PLAYPAL_BYTES);
     const base = decodePlaypal(bytes);
     expect(base[0]).toBe(0xff000000);
-    expect(base[255]).toBe(0xffffffff);
+    // Freedoom palette 0 entry 255 is (167,107,107), NOT vanilla white.
+    expect(base[255]).toBe(0xffa76b6b);
     expect(base[13 * 256]).toBe(0xff001f00);
     expect((base[1 * 256]! >>> 16) & 0xff).toBe(28);
     expect((base[8 * 256]! >>> 16) & 0xff).toBe(229);
   });
 
-  it('COLORMAP exact size; row 0 (fullbright) is the identity map', () => {
+  it('COLORMAP exact size; row 0 mostly identity with Freedoom quirk at 168', () => {
     const bytes = readLumpByName('COLORMAP');
     expect(bytes.byteLength).toBe(COLORMAP_BYTES);
     const rows = decodeColormap(bytes);
-    for (let i = 0; i < 256; i++) expect(rows[i]).toBe(i);
+    for (const i of [0, 1, 4, 100, 127, 167, 169, 200, 255]) expect(rows[i]).toBe(i);
+    // Freedoom's COLORMAP row 0 maps 168 -> 4 (vanilla is pure identity).
+    expect(rows[168]).toBe(4);
   });
 });
