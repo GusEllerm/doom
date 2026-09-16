@@ -83,3 +83,4 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 - M2-06 merged (rndtable byte-identical to m_random.c; 1000-tic determinism goldens incl. E1M1). M2-07 (8904a739) + M2-08 (d62d873b) dispatched. Running: M2-05, M2-07, M2-08.
 - M2-05 merged: CSR blockmap decode + BSP walker; E1M1 ssectors@start pinned.
 - M2-07 merged: movement goldens pinned (walk 35tic @0° step 51199/19 — table-exact); turn = polling not events; D009 filed for M5.
+- PAUSE requested by user after M2-08 lands. Queued for resume: M2-09 (automap renderer + main.ts boot wiring, deps M2-05+M2-08), then M2-10 (M2 exit e2e). State is clean: all work merged to main, checks green.
