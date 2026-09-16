@@ -824,7 +824,14 @@ export function mapSelfCheck(wadBytes: Uint8Array, mapName = 'FIXMAP'): MapCheck
   const wad = WadFile.parse(wadBytes.buffer as ArrayBuffer);
   const marker = wad.lumpNumByName(mapName);
   if (marker < 0) fail(`map marker '${mapName}' not present`);
-  const lump = (k: number): Uint8Array => wad.readLump(marker + k); // BY INDEX (R01 §15.1)
+  const lump = (k: number): Uint8Array => {
+    // BY INDEX (R01 §15.1); a marker with a truncated lump set is an error.
+    try {
+      return wad.readLump(marker + k);
+    } catch (e) {
+      fail(`map '${mapName}' lump ${MAP_LUMP_ORDER[k - 1]} unreadable: ${String(e)}`);
+    }
+  };
   const thingsV = requireSize(lump(1), THINGS_REC, 'THINGS');
   const linesV = requireSize(lump(2), LINEDEFS_REC, 'LINEDEFS');
   const sidesV = requireSize(lump(3), SIDEDEFS_REC, 'SIDEDEFS');
