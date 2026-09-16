@@ -34,3 +34,6 @@ Choice: third dispatch attempt now. If it fails again, orchestrator implements t
 ## D007 — git binary workaround for Xcode license gate
 Context: after a macOS update (Tahoe 26.6.2), /usr/bin/git aborts with "You have not agreed to the Xcode license agreements" because xcode-select points to Xcode.app whose license is unaccepted. brew is gated too.
 Choice: invoke git as /Library/Developer/CommandLineTools/usr/bin/git (works, v2.50.1) until the user runs `sudo xcodebuild -license accept` (recommended) or `sudo xcode-select --switch /Library/Developer/CommandLineTools`.
+
+## D008 — Architecture ADRs A-01..A-10 ACCEPTED
+Chosen: int32-as-number + limb-split FixedMul (BigInt oracle-tested, A-01); minimal DEHACKED fullbright parser in M8 (A-02); subtractive-lite GM synth, SMF-first, MUS behind flag (A-03); grid-splitter fixture maps, no general node builder (A-04); 8-voice SFX pool (A-05); eslint import-boundary enforcement (A-06); platform-side SFX randomness, sim-side M-stream for face only (A-07); plain accumulator (A-08); WASD+vanilla-compat defaults (A-09); IDB only via platform, raw-buffer sim tests (A-10). Details: docs/design/ARCHITECTURE.md §9.
