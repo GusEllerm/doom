@@ -10,6 +10,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
+import { WadFile } from './wadfile';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -206,28 +207,11 @@ describe('paletteToRgba', () => {
 const WAD_PATH = fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url));
 const hasWad = existsSync(WAD_PATH);
 
-/** Minimal last-match-wins lump reader (WadFile.parse is still M1-02). */
+/** Real container reader (WadFile landed in M1-02). */
+let wad: WadFile | undefined;
 function readLumpByName(name: string): Uint8Array {
-  const buf = readFileSync(WAD_PATH);
-  const id = buf.toString('ascii', 0, 4);
-  if (id !== 'IWAD' && id !== 'PWAD') throw new Error(`not a WAD: ${id}`);
-  const count = buf.readInt32LE(4);
-  const dirOfs = buf.readInt32LE(8);
-  for (let i = count - 1; i >= 0; i--) {
-    const e = dirOfs + i * 16;
-    // DOOM dir entry: u32 filepos, u32 length, 8-byte name (R01 §2).
-    const lumpName = buf
-      .toString('ascii', e + 8, e + 16)
-      .replace(/\u0000.*$/s, '')
-      .trimEnd()
-      .toUpperCase();
-    if (lumpName === name) {
-      const ofs = buf.readInt32LE(e);
-      const len = buf.readInt32LE(e + 4);
-      return new Uint8Array(buf.buffer, buf.byteOffset + ofs, len);
-    }
-  }
-  throw new Error(`lump ${name} not found`);
+  wad ??= WadFile.parse(readFileSync(WAD_PATH).buffer as ArrayBuffer);
+  return wad.readLumpByName(name);
 }
 
 describe.skipIf(!hasWad)('freedoom1.wad goldens', () => {
