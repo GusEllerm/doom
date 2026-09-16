@@ -41,8 +41,8 @@ Future tasks will be added as architects decompose milestones.
 | M2-03 | mapdata lump decoder | M2 | M1-02,M2-02 | done | merged 0bcadcf | 33 tests, E1M1 goldens |
 | M2-04 | Sim map setup (p_setup) | M2 | M2-03 | done | merged | 20 tests |
 | M2-05 | Blockmap runtime + BSP point loc | M2 | M2-04 | dispatched (agent d2b743b3) | — | — |
-| M2-06 | Sim skeleton + headless harness | M2 | M2-04 | dispatched (agent ef653f9a) | — | — |
-| M2-07 | Noclip fly movement + debug wiring | M2 | M2-05,M2-06 | planned | — | — |
-| M2-08 | Automap state machine | M2 | M2-06 | planned | — | — |
+| M2-06 | Sim skeleton + headless harness | M2 | M2-04 | done | merged | 361 tests green |
+| M2-07 | Noclip fly movement + debug wiring | M2 | M2-05,M2-06 | dispatched (agent 8904a739) | — | — |
+| M2-08 | Automap state machine | M2 | M2-06 | dispatched (agent d62d873b) | — | — |
 | M2-09 | Automap renderer + arrow | M2 | M2-05,M2-08 | planned | — | — |
 | M2-10 | Golden automap frames + M2 e2e | M2 | M2-09 | planned | — | — |

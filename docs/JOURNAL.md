@@ -80,3 +80,4 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 ## 2026-09-16 — M2-04 merged; wave 3 out
 - E1M1 structural goldens now pinned: 182 sectors; sector line-list SUM == numLines + backDiff (1822); sector-0 property vectors. Audit script false-positive learned: legitimate symlink DELETIONS flag as junk — interpret `git show --raw` direction.
 - Dispatched: M2-05 (blockmap+bsp point-loc, agent d2b743b3), M2-06 (sim skeleton + vanilla PRNG table + determinism harness, agent ef653f9a). Briefs mandate audit-branch.sh + no blind add -A.
+- M2-06 merged (rndtable byte-identical to m_random.c; 1000-tic determinism goldens incl. E1M1). M2-07 (8904a739) + M2-08 (d62d873b) dispatched. Running: M2-05, M2-07, M2-08.
