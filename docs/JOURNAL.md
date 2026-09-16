@@ -76,3 +76,7 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 - M1-09 merged (d57944a): integration goldens + round-trip + e2e hardening. 301/301 tests, 0 skips.
 - HAZARD FOUND: harness auto-commits capture untracked paths; `.gitignore` `wads/` (dir form) does NOT match a *symlink* named `wads` — M2-03's harness commit committed such a symlink (absolute path into main checkout), and merging it DESTROYED the real wads/ dir (git rm + symlink). Fixed: symlink removed, wad restored (sha 7323bcc… verified), ignore rule now includes bare `wads`. 
 - RULE ADDED to salvage/merge flow: junk-commit filter must flag ANY commit touching node_modules OR wads OR *.wad OR symlinks (mode 120000) — check `git show --raw` modes, not just paths.
+
+## 2026-09-16 — M2-04 merged; wave 3 out
+- E1M1 structural goldens now pinned: 182 sectors; sector line-list SUM == numLines + backDiff (1822); sector-0 property vectors. Audit script false-positive learned: legitimate symlink DELETIONS flag as junk — interpret `git show --raw` direction.
+- Dispatched: M2-05 (blockmap+bsp point-loc, agent d2b743b3), M2-06 (sim skeleton + vanilla PRNG table + determinism harness, agent ef653f9a). Briefs mandate audit-branch.sh + no blind add -A.
