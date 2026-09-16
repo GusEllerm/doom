@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
 import { WadFile } from '../wad/wadfile';
 import { loadMap } from '../wad/mapdata';
 import type { MapData } from '../wad/types';
-import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
+import { buildFixtureMapWad, type RectMapSpec, type RectRoomSpec, type DoorGapSpec } from '../../tests/fixtures/mapBuilder';
 import { buildMapFromData, type RuntimeMap } from './map';
 import {
   blockIndexOf,
@@ -120,7 +120,7 @@ function randomRectSpec(rnd: () => number): RectMapSpec {
   for (let gy = 0; gy < m; gy++)
     for (let gx = 0; gx < n; gx++) present.set(`${gx},${gy}`, rnd() < 0.75);
   const live = (gx: number, gy: number): boolean => present.get(`${gx},${gy}`)!;
-  const rooms: RectMapSpec['rooms'] = [];
+  const rooms: RectRoomSpec[] = [];
   for (let gy = 0; gy < m; gy++)
     for (let gx = 0; gx < n; gx++)
       if (live(gx, gy))
@@ -135,7 +135,7 @@ function randomRectSpec(rnd: () => number): RectMapSpec {
     rooms.push({ x: 0, y: 0, w: cw, h: cw });
     rooms.push({ x: cw, y: 0, w: cw, h: cw });
   }
-  const doors: RectMapSpec['doors'] = [];
+  const doors: DoorGapSpec[] = [];
   for (let gy = 0; gy < m; gy++)
     for (let gx = 0; gx + 1 < n; gx++)
       if (live(gx, gy) && live(gx + 1, gy) && rnd() < 0.5)
@@ -194,7 +194,7 @@ describe('buildBlockMap (FIXMAP)', () => {
           expect(bm.blockLines[start + n]).toBe(words[w]);
           n++;
         }
-        expect(bm.blockStart[by * bm.width + bx + 1] - start).toBe(n);
+        expect(bm.blockStart[by * bm.width + bx + 1]! - start).toBe(n);
       }
     }
   });
@@ -277,7 +277,7 @@ describe('buildBlockMap (FIXMAP)', () => {
       [bm.width, 5],
       [7, bm.height],
       [12345, -9999],
-    ]) {
+    ] as [number, number][]) {
       let hits = 0;
       expect(blockLinesIterator(bm, bx, by, () => (hits++, true))).toBe(true);
       expect(hits).toBe(0);
