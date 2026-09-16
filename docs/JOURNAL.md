@@ -50,3 +50,4 @@ Append-only log of events, surprises and lessons.
 ## 2026-09-15 — Phase 2 complete; M1 wave 0 dispatched
 - Plans landed: M1 (9 tasks, 4 waves), M2 (10 tasks + A-FX1), ROADMAP with L1-L5 exit criteria.
 - Dispatched: M1-01 contract (e764b9b0), A-INT1 boundaries (3f60201e), A-FX1 fixed core (8b7724cf) — all in worktrees, commit-early rule.
+- A-INT1 merged with surgery: harness had appended a junk commit registering node_modules (symlink) into git — cherry-picked only the real commit. Lesson: inspect pi-agent-* branches for harness auto-commits before merging.
