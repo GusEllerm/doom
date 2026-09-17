@@ -109,3 +109,6 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 - M3-04 quality highlights: R_RenderBSPNode iterative port with identical visit order; clipangle = xtoviewangle[0] NO shift (pinned); WalkCallbacks seam for M3-06; 1000-seed brute-cone superset sweep proves CheckBBox never drops visible segs.
 - M3-06 stopped mid-run by pause; salvage = stubs + drawsegs draft. Finisher cfedc832 dispatched (reviews draft vs r_segs.c, completes segs.ts + tests).
 - M3-06 finisher: infra death (inspection phase, zero new commits — salvage unchanged). STRATEGY: split task — M3-06a port-only (43b8c151, smoke test only) + M3-06b test matrix after. Smaller sessions = fewer infra casualties.
+
+## 2026-09-16 — M3-06a merged: walls render
+R_StoreWallRange + R_RenderSegLoop ported (segs.ts 454 lines, drawsegs draft audited/fixed). FIXMAP smoke: full walker+callbacks paints 64000px (all columns), 2 drawsegs, hom==0. Source truths banked: masked = midtexture presence; DBITS=5 in R_PointToDist; scalelightfixed≡fixedcolormap row; rdata −1 NO_TEXTURE sentinel (vanilla 0) handled. M3-06b (six-acceptance test matrix) dispatched with fix-findings protocol (no src edits by testers).
