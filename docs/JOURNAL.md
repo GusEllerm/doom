@@ -99,3 +99,4 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 - 🏁 M2 COMPLETE (M2-10 merged 410d974): 5-scene blessed frame goldens (3 FIXMAP + 2 E1M1), goldens:update tooling w/ required --reason + --check drift gate, keyboard e2e hardened (Tab byte-exact restore, W-move deltas, turn monotonicity). All gates green.
 - M3 plan accepted (8 tasks, 5 waves; D010 filed). Plan agent was read-only — orchestrator wrote file verbatim from transcript (worth remembering: pass write-enabled implementer for file-producing plans next time).
 - M3-01 merged (light tables BigInt-verified incl. pancake lightnum).
+- M3-01 merged (light tables BigInt-verified incl. pancake).
