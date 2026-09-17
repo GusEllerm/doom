@@ -100,3 +100,4 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 - M3 plan accepted (8 tasks, 5 waves; D010 filed). Plan agent was read-only — orchestrator wrote file verbatim from transcript (worth remembering: pass write-enabled implementer for file-producing plans next time).
 - M3-01 merged (light tables BigInt-verified incl. pancake lightnum).
 - M3-01 merged (light tables BigInt-verified incl. pancake).
+- M3-02 merged (seg angles straight from SEGS lump BAM — matches P_LoadSegs, no atan2). M3-05 dispatched (R_DrawColumn).
