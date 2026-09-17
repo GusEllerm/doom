@@ -103,3 +103,7 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 - M3-02 merged (seg angles straight from SEGS lump BAM — matches P_LoadSegs, no atan2). M3-05 dispatched (R_DrawColumn).
 - M3-03 merged (r_bsp.c:88-252 verbatim port, hom liveness via 33-span injection). M3-04 dispatched (walk+view; seam: WalkCallbacks for M3-06).
 - M3-05 merged (column blit).
+
+## 2026-09-16 — M3-04 merged + latent fixture bug fixed
+- bspSplit NODES bbox byte order was [x0,y0,x1,y1]; vanilla m_bbox.h/P_LoadNodes = [top,bottom,left,right] per child. mapdata decode was already correct — the FIXMAP ENCODER was wrong (decoded child bboxes garbage; invisible until R_CheckBBox consumed them). 4-line encoder fix + inverse-read test via justified out-of-ownership exception. Whole suite green.
+- M3-04 quality highlights: R_RenderBSPNode iterative port with identical visit order; clipangle = xtoviewangle[0] NO shift (pinned); WalkCallbacks seam for M3-06; 1000-seed brute-cone superset sweep proves CheckBBox never drops visible segs.

@@ -54,8 +54,8 @@ Future tasks will be added as architects decompose milestones.
 | M3-01 | Light tables (zlight/scalelight/colormaps) | M3 | — | done (merged c9b51c9, green) |
 | M3-02 | Render world load (segs SoA, textures, columns) | M3 | — | done (merged, green) |
 | M3-03 | solidsegs + HOM counters | M3 | — | done (merged, 17 tests) |
-| M3-04 | BSP walk + view setup | M3 | M3-01/02/03 | dispatched (agent 32318b2c) |
+| M3-04 | BSP walk + view setup | M3 | M3-01/02/03 | done (merged, 19 tests) |
 | M3-05 | Wall column blit (R_DrawColumn) | M3 | M3-01/02 | done (merged, 13 tests) |
-| M3-06 | StoreWallRange + RenderSegLoop + drawsegs | M3 | M3-02..05 | planned |
+| M3-06 | StoreWallRange + RenderSegLoop + drawsegs | M3 | M3-02..05 | dispatched (agent next) |
 | M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | planned |
 | M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | planned |
