@@ -152,7 +152,8 @@ export function drawColumn(
   let y = dc.yl;
   do {
     // *dest = dc_colormap[dc_source[(frac>>FRACBITS)&127]]  (r_draw.c:140)
-    indices[y * RENDER_WIDTH + x] = colormaps[cmap + (src[(frac >> FRACBITS) & 127] as number)];
+    indices[y * RENDER_WIDTH + x] =
+      colormaps[cmap + (src[(frac >> FRACBITS) & 127] as number)] as number;
     y++;
     frac = (frac + iscale) | 0;
   } while (count--);

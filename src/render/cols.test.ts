@@ -208,9 +208,11 @@ describe('drawColumn — zero-alloc smoke (100k calls)', () => {
     const indices = freshIndices();
     setupDc({ x: 42, yl: 0, yh: RENDER_HEIGHT - 1, iscale: 0x12345, texturemid: 3 * FRACUNIT, source: src, colormap: 5 * 256 });
 
-    const t0 = performance.now();
+    // Wall-clock via process.hrtime — test-only perf smoke (eslint bans
+    // performance/Date in src/**; process.hrtime is the vitest-side idiom).
+    const t0 = process.hrtime.bigint();
     for (let i = 0; i < 100_000; i++) drawColumn(indices, cm, 100);
-    const ms = performance.now() - t0;
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
 
     // Same dc singleton, same buffers in and out (no hidden reallocation).
     expect(dc.source).toBe(src);
