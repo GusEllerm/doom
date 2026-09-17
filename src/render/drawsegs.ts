@@ -41,6 +41,20 @@
 //     plan §3 deviation D), so {@link clearClipArrays} exposes exactly that
 //     per-frame reset for M3-07's renderFrame.
 //
+// M3-06a REVIEW VERDICT (segs.ts port consumed this draft; r_segs.c audit):
+//  - drawseg SoA fields ↔ r_defs.h drawseg_s: complete, no gaps. The
+//    drawsegAdd bsil/tsil pre-set (MININT/MAXINT) differs from vanilla's
+//    zeroed-static reuse, but every path that SETS a silhouette bit also
+//    sets its height (:466-524, :476-481), and heights are only consulted
+//    under that bit (M4 sprite pass) — unobservable, kept.
+//  - openings/lastopening/snapshotOpenings match the `lastopening - start`
+//    pointer arithmetic + memcpy(2*(rw_stopx-start)) widths exactly as used
+//    by storeWallRange; maskedtexturecol MAXSHORT-init stands in for
+//    vanilla's never-read garbage (header Deviations) — faithful.
+//  - clearClipArrays/clearDrawsegs per-frame reset verified end-to-end by
+//    segs.ts (occlusion + silhouettes + full-screen draw in the smoke).
+//  - No fixes required; draft integrated unchanged.
+//
 // Masked middle (plan §M3-06): allocation + per-column texturecolumn
 // recording live in segs.ts; the DRAW half is deferred:
 //   R_RenderMaskedSegRange / R_DrawMasked (r_segs.c:96-176, :741+) — M4
