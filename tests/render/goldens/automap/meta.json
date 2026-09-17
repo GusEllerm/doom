@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "pipeline": "FIXMAP/E1M1 -> gInitGame -> scripted Tab/tics/moves (amResponder+gTicker+amTicker, main.ts stepTic order) -> drawAutomap -> sha256(fb.indices)",
+  "scenes": {
+    "e1m1-follow-noclip-forward-35": {
+      "kind": "iwad",
+      "script": "freedoom1 E1M1: TAB open + 35 tics hold-forward with noclip",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "890dfdca54010ee06084c6ad073e58b8376f4b9628eb4c23062458187a3c99d9",
+      "png": "e1m1-follow-noclip-forward-35.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M2-10 baseline",
+      "updatedAt": "2026-09-17"
+    },
+    "e1m1-spawn-tab-20tics": {
+      "kind": "iwad",
+      "script": "freedoom1 E1M1: TAB open (tic 0) + 20 empty tics (spawn follow view)",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e40c4d961621892e0ab66b4379b6fb08336c993ed1968e68388e6a3521bc9ee8",
+      "png": "e1m1-spawn-tab-20tics.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M2-10 baseline",
+      "updatedAt": "2026-09-17"
+    },
+    "fix-follow-noclip-forward-35": {
+      "kind": "fixture",
+      "script": "TAB open + 35 tics hold-forward with noclip (follow recenter + arrow travel)",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "01d2feb30b8fa5ba758685ded3f454bf87d8299bc9f9556a795cdd2eacdfbe94",
+      "png": "fix-follow-noclip-forward-35.png",
+      "reason": "initial M2-10 baseline",
+      "updatedAt": "2026-09-17"
+    },
+    "fix-free-panzoom-31": {
+      "kind": "fixture",
+      "script": "TAB open t0; 'f' free mode t5; hold '=' t6..15 (zoom in); keydown RIGHT t20 (pan), keyup t30; 31 tics total",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "a31bf551e65567ba83939b55f3bd1414c4937185cd527afdf362f9554552479c",
+      "png": "fix-free-panzoom-31.png",
+      "reason": "initial M2-10 baseline",
+      "updatedAt": "2026-09-17"
+    },
+    "fix-tab-20tics": {
+      "kind": "fixture",
+      "script": "TAB open (tic 0) + 20 empty tics, follow mode, grid off",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "18283e014b0a19ea322e94fb4411af188c0e427471674c11f66ba60da51885ad",
+      "png": "fix-tab-20tics.png",
+      "reason": "initial M2-10 baseline",
+      "updatedAt": "2026-09-17"
+    }
+  }
+}
