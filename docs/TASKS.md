@@ -51,9 +51,9 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M3-01 | Light tables (zlight/scalelight/colormaps) | M3 | — | dispatched |
-| M3-02 | Render world load (segs SoA, textures, columns) | M3 | — | planned |
-| M3-03 | solidsegs + HOM counters | M3 | — | planned |
+| M3-01 | Light tables (zlight/scalelight/colormaps) | M3 | — | dispatched (agent efaac20e) |
+| M3-02 | Render world load (segs SoA, textures, columns) | M3 | — | dispatched (agent 284fb3fd) |
+| M3-03 | solidsegs + HOM counters | M3 | — | dispatched (agent 758dafce) |
 | M3-04 | BSP walk + view setup | M3 | M3-01/02/03 | planned |
 | M3-05 | Wall column blit (R_DrawColumn) | M3 | M3-01/02 | planned |
 | M3-06 | StoreWallRange + RenderSegLoop + drawsegs | M3 | M3-02..05 | planned |
