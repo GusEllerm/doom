@@ -1,12 +1,27 @@
 /**
- * e2e automap (M2-09): boot the game page, assert deterministic automap
- * pixels for the E1M1 spawn view, noclip+hold-W movement changes both the
- * sim position and the arrow-region pixels (follow mode), Tab toggles the
- * overlay, and the console stays clean.
+ * e2e automap (M2-09 skeleton, hardened for M2-10): real keyboard events
+ * with 35 Hz-aware timing, `__doom.state()` deltas as the sim-side ground
+ * truth, and zero console errors across every flow.
+ *
+ * Hardening deltas (M2-10 acceptance 3):
+ *  * TAB is asserted as an OPENS/CLOSES pair: closing paints the plain
+ *    black placeholder buffer (0 non-black px) and re-opening restores the
+ *    EXACT pre-Tab frame hash (AM_EndKey/AM_StartKey save+restore of scale
+ *    + location, am_map.c — an unmoved player must land byte-identical).
+ *  * hold-W uses the `state()` snapshot (not only sim internals) for the
+ *    position delta + hash delta.
+ *  * NEW: hold-ArrowRight samples raw BAM angles across the hold — the
+ *    unwrapped deltas must be strictly negative (vanilla turn-right
+ *    decrements angle_t; G_BuildTiccmd's 5-tic 320→640 turnheld ramp makes
+ *    each per-sample delta negative regardless of sampling phase).
+ *  * NEW: '0' (AM_GOBIGKEY) reveals the whole map (reds pixel count jumps)
+ *    and the second press round-trips the zoom scale (reds back within 10%
+ *    — NOT byte-exact: faithful AM_restoreScaleAndLoc follow-centers on the
+ *    raw mo->x, a documented vanilla quirk).
  *
  * Palette math is done in-page from the actual PLAYPAL bank 0: red-family
- * pixels are those whose RGB equals palette indices 176..191 (WALLCOLORS
- * + lightlev, am_map.c REDS/REDRANGE). The WAD is the pinned
+ * pixels are those whose RGB equals palette indices 176..191 (WALLCOLORS +
+ * lightlev, am_map.c REDS/REDRANGE). The WAD is the pinned
  * wads/freedoom1.wad; skipped (like the viewer spec) when absent.
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -15,6 +30,16 @@ import { expect, test, type Page } from '@playwright/test';
 async function wadMissing(page: Page): Promise<boolean> {
   const res = await page.request.get('/wads/freedoom1.wad');
   return !res.ok();
+}
+
+/** Console-error collector; returns the live list. */
+function trackConsole(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+  page.on('pageerror', (err) => errors.push(String(err)));
+  return errors;
 }
 
 async function frameHash(page: Page): Promise<string> {
@@ -106,80 +131,140 @@ async function arrowRegionHash(page: Page): Promise<string> {
   });
 }
 
+/** __doom.state() ready-branch player fields (null while not ready). */
+function statePlayer(page: Page): Promise<{ x: number; y: number; hash: number } | null> {
+  return page.evaluate(() => {
+    const s = window.__doom!.state();
+    return s.ready ? { x: s.player.x, y: s.player.y, hash: s.hash } : null;
+  });
+}
+
+/** Raw BAM angle of player 1 (u32 as number). */
+const playerAngleBam = (page: Page): Promise<number> =>
+  page.evaluate(() => window.__doom!.sim.getState()!.players[0]!.mo.angle >>> 0);
+
+async function boot(page: Page): Promise<void> {
+  await page.goto('/?test=1');
+  await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
+  // Let the follow-mode recenter tic + a few tics run so the view settles.
+  await page.waitForTimeout(250);
+}
+
 test.describe('automap boot + interaction', () => {
-  test('spawn view pixels, noclip movement, Tab toggle, clean console', async ({ page }) => {
+  test('spawn pixels, Tab off→black, Tab on→byte-exact restore, clean console', async ({ page }) => {
     test.setTimeout(60_000);
     test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
+    const consoleErrors = trackConsole(page);
 
-    const consoleErrors: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') consoleErrors.push(msg.text());
-    });
-    page.on('pageerror', (err) => consoleErrors.push(String(err)));
-
-    await page.goto('/?test=1');
-    await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
-    // Let the follow-mode recenter tic + a few tics run so the view settles.
-    await page.waitForTimeout(250);
+    await boot(page);
 
     // (1) deterministic spawn automap view: red walls + white arrow present
     const s1 = await pixelStats(page);
     expect(s1.nonBlack).toBeGreaterThan(1000);
     expect(s1.reds, `red-family pixel count out of range: ${s1.reds}`).toBeGreaterThan(900);
     expect(s1.reds).toBeLessThan(2500);
-    // WHITE (palette 209, the player-arrow color): the spawn-view arrow is
-    // small (entry zoom ≈ 0.11 px/unit ⇒ a handful of px), assert > 0.
     expect(s1.whites, 'player arrow (WHITE) must be visible').toBeGreaterThan(0);
 
-    // stability: the settled follow view must not flicker between frames
-    const h1 = await frameHash(page);
+    // (2) stability: the settled follow view must not flicker between frames
+    const settled = await frameHash(page);
     await page.waitForTimeout(120);
-    expect(await frameHash(page), 'settled automap view must be stable').toBe(h1);
+    expect(await frameHash(page), 'settled automap view must be stable').toBe(settled);
 
-    // (2) zoom in well past the whole-map entry scale (holds '=' ⇒ 2%/tic,
-    // am_map.c M_ZOOMIN — ~6 s ≈ 1.02^210 ≈ 60x), THEN noclip + hold W
-    // ~500 ms: at ≥1 px/unit the follow window provably tracks the player,
-    // so both the sim position AND the arrow-region pixels must change.
+    // (3) TAB closes: the map-off frame is the plain black placeholder buffer
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(150); // >5 tics
+    expect(await frameHash(page), 'Tab must change the frame').not.toBe(settled);
+    expect((await pixelStats(page)).nonBlack, 'map-off = black placeholder buffer').toBe(0);
+
+    // (4) TAB re-opens: AM_Start restores the saved scale+location — with an
+    // unmoved player the frame must come back BYTE-EXACT.
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(150);
+    expect(await frameHash(page), 'Tab re-open must restore the exact saved view').toBe(settled);
+
+    // (5) state() live + clean console
+    const st = await statePlayer(page);
+    expect(st, 'state() must be ready after boot').not.toBeNull();
+    expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
+  });
+
+  test('zoom, W move (state deltas), ArrowRight turn monotonic, 0 go-big, clean console', async ({ page }) => {
+    test.setTimeout(60_000);
+    test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
+    const consoleErrors = trackConsole(page);
+
+    await boot(page);
+
+    // (1) zoom in well past the entry scale (hold '=' ⇒ 2%/tic,
+    // M_ZOOMIN — ~6 s ≈ 1.02^210 ≈ 60x) so follow-mode tracking is provable
+    // at ≥1 px/unit.
     await page.keyboard.down('Equal');
     await page.waitForTimeout(6000);
     await page.keyboard.up('Equal');
     await page.waitForTimeout(150);
 
+    // (2) noclip + hold W: state() snapshot position AND arrow-region
+    // pixels must both move (follow window tracks the player).
     await page.evaluate(() => window.__doom!.sim.setNoclip(true));
     const before = await arrowRegionHash(page);
-    const posBefore = await page.evaluate(() => {
-      const st = window.__doom!.sim.getState()!;
-      return { x: st.players[0]!.mo.x, y: st.players[0]!.mo.y };
-    });
+    const posBefore = await statePlayer(page);
+    expect(posBefore).not.toBeNull();
     await page.keyboard.down('KeyW');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(500); // ≈17 tics at 35 Hz
     await page.keyboard.up('KeyW');
-    await page.waitForTimeout(100);
-    const posAfter = await page.evaluate(() => {
-      const st = window.__doom!.sim.getState()!;
-      return { x: st.players[0]!.mo.x, y: st.players[0]!.mo.y };
-    });
+    await page.waitForTimeout(120);
+    const posAfter = await statePlayer(page);
+    expect(posAfter).not.toBeNull();
     expect(
-      Math.abs(posAfter.x - posBefore.x) + Math.abs(posAfter.y - posBefore.y),
-      'holding W must move the player'
+      Math.abs(posAfter!.x - posBefore!.x) + Math.abs(posAfter!.y - posBefore!.y),
+      'holding W must move the player (state() delta)'
     ).toBeGreaterThan(65536);
+    expect(posAfter!.hash, 'state() hash must change with movement').not.toBe(posBefore!.hash);
     expect(await arrowRegionHash(page), 'arrow-region pixels must change').not.toBe(before);
 
-    // (3) Tab toggles the automap off (full frame goes plain) and back on
-    const mapOnHash = await frameHash(page);
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(120);
-    const offHash = await frameHash(page);
-    expect(offHash, 'Tab must change the frame').not.toBe(mapOnHash);
-    const offStats = await pixelStats(page);
-    expect(offStats.nonBlack, 'map-off frame is the plain M3 placeholder buffer').toBeLessThan(
-      s1.nonBlack / 4
-    );
-    await page.keyboard.press('Tab');
-    await page.waitForTimeout(120);
-    expect(await frameHash(page), 'Tab back on must repaint the automap').not.toBe(offHash);
+    // (3) hold ArrowRight ~15 tics: unwrapped BAM deltas strictly negative
+    // (turn-right decrements angle_t), frame repaints the rotated arrow.
+    const samples: number[] = [];
+    await page.keyboard.down('ArrowRight');
+    for (let i = 0; i < 5; i++) {
+      samples.push(await playerAngleBam(page));
+      await page.waitForTimeout(100);
+    }
+    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(100);
+    for (let i = 1; i < samples.length; i++) {
+      const delta = (samples[i]! - samples[i - 1]!) >>> 0; // u32 wrap-aware
+      const signed = delta >= 0x80000000 ? delta - 0x100000000 : delta;
+      expect(signed, `ArrowRight sample ${i}: angle must decrease (right turn)`).toBeLessThan(0);
+    }
 
-    // (4) zero console errors across the whole flow
+    // (4) '0' go-big reveals the whole map (red pixels jump). The second
+    // press restores the saved scale — but NOT byte-exact: faithful
+    // AM_restoreScaleAndLoc centers follow mode on the RAW mo->x while the
+    // settled follow view uses the FTOM(MTOF(x)) round-trip (deliberately
+    // not the identity — sim/amMap.ts header), so the restored view may sit
+    // a sub-pixel off. Assert the scale round-trip via the red-pixel count.
+    const preBig = await frameHash(page);
+    const redsBefore = (await pixelStats(page)).reds;
+    await page.keyboard.press('Digit0');
+    await page.waitForTimeout(150);
+    const big = await pixelStats(page);
+    const bigHash = await frameHash(page);
+    expect(bigHash).not.toBe(preBig);
+    expect(big.reds, `'0' must reveal the whole map (reds ${redsBefore} → ${big.reds})`).toBeGreaterThan(
+      redsBefore
+    );
+    await page.keyboard.press('Digit0');
+    await page.waitForTimeout(150);
+    const restored = await frameHash(page);
+    expect(restored, "second '0' must leave the whole-map view").not.toBe(bigHash);
+    const redsRestored = (await pixelStats(page)).reds;
+    expect(
+      Math.abs(redsRestored - redsBefore),
+      `restored zoom must match prior scale within 10% (reds ${redsBefore} → ${redsRestored})`
+    ).toBeLessThan(Math.max(16, Math.floor(redsBefore * 0.1)));
+
+    // (5) zero console errors across the whole flow
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
   });
 });
