@@ -46,3 +46,16 @@ Future tasks will be added as architects decompose milestones.
 | M2-08 | Automap state machine | M2 | M2-06 | done | merged a7b595b | 454 tests |
 | M2-09 | Automap renderer + arrow | M2 | M2-05,M2-08 | done | merged c5272e8 | 5/5 e2e |
 | M2-10 | Golden automap frames + M2 e2e | M2 | M2-09 | done | merged 410d974 | goldens+check green |
+
+## M3 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M3-01 | Light tables (zlight/scalelight/colormaps) | M3 | — | dispatched |
+| M3-02 | Render world load (segs SoA, textures, columns) | M3 | — | planned |
+| M3-03 | solidsegs + HOM counters | M3 | — | planned |
+| M3-04 | BSP walk + view setup | M3 | M3-01/02/03 | planned |
+| M3-05 | Wall column blit (R_DrawColumn) | M3 | M3-01/02 | planned |
+| M3-06 | StoreWallRange + RenderSegLoop + drawsegs | M3 | M3-02..05 | planned |
+| M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | planned |
+| M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | planned |

@@ -42,3 +42,6 @@ Chosen: int32-as-number + limb-split FixedMul (BigInt oracle-tested, A-01); mini
 - Context: M2-07 found GPL 1.10 has no "straight noclip" motion path — P_MovePlayer always thrusts/momentum; MF_NOCLIP only bypasses p_map line checks. Plan §M2-07 needs collisionless flight before physics exists.
 - Decision: M2 implements per-tic direct FixedMul integration of ticcmd moves (P_Thrust scale constants, friction/momentum untouched, MF_NOCLIP|MF_NOGRAVITY); flagged as deviation; M5 replaces with real P_Thrust/friction physics, keeping noclip = same motion + skipped collisions (vanilla semantics).
 - Also recorded: 1.10 has NO ev_turn — keyboard turn is per-tic gamekeydown[] polling in G_BuildTiccmd (input layer implements polling, not turn events).
+
+## D010 — Renderer never mutates sim state (from M3 plan G13)
+Vanilla r_segs.c sets ML_MAPPED on linedefs during rendering. Renderer keeps sim read-only; automap tracks mapped-state itself. Reaffirms sim/render boundary (A-06 zones).

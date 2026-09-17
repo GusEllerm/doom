@@ -97,3 +97,4 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 - M2-10 attempt-1: infra death at tool-use #4 (branch never created — zero-loss recovery). Attempt-2 (5f3a77bc) with hardened stub-first rule. Network flakiness wave noted.
 - M2-10 attempt-2: infra death AFTER stubs (salvage pi-agent-5f3a77bc = stubs only). Attempt-3 (79a4b0e1) builds on salvage, one-commit-per-deliverable + headless-only discipline.
 - 🏁 M2 COMPLETE (M2-10 merged 410d974): 5-scene blessed frame goldens (3 FIXMAP + 2 E1M1), goldens:update tooling w/ required --reason + --check drift gate, keyboard e2e hardened (Tab byte-exact restore, W-move deltas, turn monotonicity). All gates green.
+- M3 plan accepted (8 tasks, 5 waves; D010 filed). Plan agent was read-only — orchestrator wrote file verbatim from transcript (worth remembering: pass write-enabled implementer for file-producing plans next time).
