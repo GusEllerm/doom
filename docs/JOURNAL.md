@@ -112,3 +112,6 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 
 ## 2026-09-16 — M3-06a merged: walls render
 R_StoreWallRange + R_RenderSegLoop ported (segs.ts 454 lines, drawsegs draft audited/fixed). FIXMAP smoke: full walker+callbacks paints 64000px (all columns), 2 drawsegs, hom==0. Source truths banked: masked = midtexture presence; DBITS=5 in R_PointToDist; scalelightfixed≡fixedcolormap row; rdata −1 NO_TEXTURE sentinel (vanilla 0) handled. M3-06b (six-acceptance test matrix) dispatched with fix-findings protocol (no src edits by testers).
+
+## PAUSE #2 (user request) — state: M3 6a merged (walls render in smoke), M3-06b in flight
+Resume queue: merge M3-06b when reported → M3-07 (frame pipeline + boot, deps M3-06b) → M3-08 (viewpoint goldens + HOM gate + e2e ⇒ M3 closes). All prior work merged & green on main.
