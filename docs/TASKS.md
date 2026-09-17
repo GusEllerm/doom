@@ -56,6 +56,7 @@ Future tasks will be added as architects decompose milestones.
 | M3-03 | solidsegs + HOM counters | M3 | — | done (merged, 17 tests) |
 | M3-04 | BSP walk + view setup | M3 | M3-01/02/03 | done (merged, 19 tests) |
 | M3-05 | Wall column blit (R_DrawColumn) | M3 | M3-01/02 | done (merged, 13 tests) |
-| M3-06 | StoreWallRange + RenderSegLoop + drawsegs | M3 | M3-02..05 | dispatched (agent next) |
+| M3-06a | StoreWallRange/RenderSegLoop port (+drawsegs audit) | M3 | M3-02..05 | dispatched (agent 43b8c151) |
+| M3-06b | Seg renderer test matrix + integration goldens-smoke | M3 | M3-06a | planned |
 | M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | planned |
 | M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | planned |
