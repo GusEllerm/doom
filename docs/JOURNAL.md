@@ -102,3 +102,4 @@ E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + gr
 - M3-01 merged (light tables BigInt-verified incl. pancake).
 - M3-02 merged (seg angles straight from SEGS lump BAM — matches P_LoadSegs, no atan2). M3-05 dispatched (R_DrawColumn).
 - M3-03 merged (r_bsp.c:88-252 verbatim port, hom liveness via 33-span injection). M3-04 dispatched (walk+view; seam: WalkCallbacks for M3-06).
+- M3-05 merged (column blit).
