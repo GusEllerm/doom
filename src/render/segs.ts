@@ -1,67 +1,48 @@
 // render/segs.ts — R_StoreWallRange + R_RenderSegLoop (M3-plan §M3-06;
 // linuxdoom-1.10/r_segs.c v1.3) + the R_AddLine→R_StoreWallRange seam
-// callbacks over the M3-03 fragment stream.
+// callbacks over the M3-03 fragment stream. Zone: core + render only.
 //
-// Zone discipline (eslint doom/zones/render): imports core + render only.
+// Vanilla mapping: module globals (r_segs.c:46-92) → closure state of
+// createSegCallbacks (dc/drawsegs/clips stay module singletons).
+//   R_StoreWallRange (:378-743) → storeWallRange, fed by addSolid/addPass
+//     from the solidsegs fragment stream (DEVIATION 3: fragments replace the
+//     inline R_StoreWallRange calls of R_Clip{Solid,Pass}WallSegment — r_segs
+//     never reads solidsegs ⇒ deferred consumption equivalent; start>stop
+//     hom++/skip lives in solidsegs; fragment order = vanilla call order).
+//   R_RenderSegLoop (:187-317) → renderSegLoop, HEIGHTBITS 12 (:183).
+//   R_ScaleFromGlobalAngle (r_main.c:453-503) verbatim, detailshift 0, clamp
+//     [256, 64*FRACUNIT]; R_PointToDist (r_main.c:392-418) local, DBITS 5
+//     = FRACBITS−SLOPEBITS (research 03). texturetranslation identity.
+//   walllights = scalelight[lightnum] → lightRow via lights.wallLightNum
+//     (pancake ±1 truth); bucket = rw_scale>>LIGHTSCALESHIFT clamp 47
+//     (:271-276). fixedcolormap ≡ scalelightfixed[i] (R_SetupFrame fills it
+//     wholly with fixedcolormap, r_main.c:847-859) — representation only.
 //
-// Vanilla mapping (r_segs.c, line refs from the id release):
-//   module globals (r_segs.c:46-92)   → closure state of createSegCallbacks
-//     (per-walk instance; dc/drawsegs/clips stay module singletons).
-//   R_StoreWallRange (:378-743)       → {@link storeWallRange} (via addSolid/
-//     addPass fragments of DEVIATION 3, solidsegs.ts: fragments replace the
-//     inline R_StoreWallRange calls of R_ClipSolid/PassWallSegment — the
-//     r_segs.c side never reads solidsegs, so deferred consumption is
-//     equivalent; start>stop hom++/skip lives in solidsegs).
-//   R_RenderSegLoop (:187-317)        → {@link renderSegLoop}, HEIGHTBITS 12.
-//   R_ScaleFromGlobalAngle (r_main.c:453-503) → {@link scaleFromGlobalAngle};
-//     detailshift fixed 0; scale clamp [256, 64*FRACUNIT] verbatim.
-//   R_PointToDist (r_main.c:392-418)  → local pointToDist (DBITS 5 =
-//     FRACBITS-SLOPEBITS, docs/research/03 §R_PointToDist).
-//   texturetranslation identity (no TEXTURE1 translation in M3).
-//   walllights = scalelight[lightnum] → lightrow via lights.wallLightNum
-//     (pancake ±1 + clamp source truth); per-column bucket
-//     index = rw_scale>>LIGHTSCALESHIFT clamped MAXLIGHTSCALE-1 (:271-276).
-//     fixedcolormap: vanilla points walllights at scalelightfixed, which
-//     R_SetupFrame fills entirely with fixedcolormap (r_main.c:847-859) —
-//     reading scalelightfixed[i] ≡ fixedcolormap itself, so we use
-//     view.fixedcolormap*COLORMAP_STRIDE directly (representation only).
-//
-// DEVIATIONS (all documented, faithful-value):
-//  - G13: no ML_MAPPED write (sim-mutation ban, M3-plan §G13).
-//  - skyflatnum: RenderWorld carries no flat indices (flats are M4), so the
-//    "outdoor height-change hack" (r_segs.c:604-609) and the
-//    `ceilingpic != skyflatnum` guard (:660-665) evaluate as never-sky —
-//    markceiling simply drops when ceilingheight <= viewz.
-//  - visplane marking: M3 has no visplanes (plan §3 D), so the
-//    ceilingplane->top/bottom writes (:200-228) land in the flat scratch
-//    column arrays {@link markCeilingTop}…{@link markFloorBottom} instead;
-//    clip-array updates (ceilingclip/floorclip) are faithful. R_CheckPlane
-//    not ported (no-op for one map).
-//  - sidedef rowoffset: RenderWorld exposes only sideOffsetX (textureoffset);
-//    rw_offset uses it faithfully (r_segs.c:635) and the texturemid
-//    += rowoffset adds (:460, :546-547) reuse the same value — identical
-//    whenever a sidedef's two offsets agree (all fixtures); rdata seam gap,
-//    follow-up M3-06b/M4.
-//  - masked middle detection: 1.10 keys on midtexture PRESENCE
-//    (r_segs.c:640-646); we record whenever sideMidTex != NO_TEXTURE —
-//    same set (presence), drawMasked stays a no-op stub (M4 draws).
-//  - drawseg_t SoA + openings pool refs: see drawsegs.ts file header.
-//  - seg frontsector: vanilla reads it off the seg (P_GroupLines ⇒ = the
-//    subsector's sector for real segs); we use map.subsectors when the map
-//    arg is given, else sideSector[segSide] (equal for all real segs;
-//    minisegs only classify as solids through bsp.ts anyway).
+// DEVIATIONS (faithful-value unless noted):
+//  - G13: no ML_MAPPED write (sim-mutation ban).
+//  - skyflatnum: RenderWorld has no flats (M4) ⇒ the outdoor height-change
+//    hack (:604-609) never fires and the `!= skyflatnum` guard (:660-665)
+//    is dropped — markceiling falls whenever ceilingheight <= viewz.
+//  - visplane marking (:200-228) → flat scratch arrays markCeilingTop…
+//    markFloorBottom (plan §3-D; R_CheckPlane unported); the clip-array
+//    updates (ceilingclip/floorclip) are faithful.
+//  - rowoffset: only sideOffsetX (textureoffset) exists in rdata; the
+//    texturemid `+= rowoffset` (:460, :546-547) reuses it — equal whenever
+//    the two sidedef offsets agree (all shipped sidedefs in fixtures);
+//    rdata seam gap, follow-up M3-06b/M4.
+//  - masked middle = midtexture PRESENCE (:640-646), not transparency;
+//    record only — drawMasked stays a no-op stub (M4 draws).
+//  - drawseg SoA + openings refs: drawsegs.ts header (MAXSHORT-init record
+//    deviation lives there).
+//  - frontsector: sideSector[segSide] (P_GroupLines ⇒ = subsector's for
+//    real segs); the map arg switches to exact map.subsectors.sector.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { ANG180, ANG90, FRACBITS, FRACUNIT, MAXINT } from '../core/constants';
 import { angSub, FixedDiv, FixedMul, angAdd, angToFine } from '../core/fixed';
 import { finesine, finetangent, tantoangle } from '../core/tables';
-import {
-  clipPassWallSegment,
-  clipSolidWallSegment,
-  fragStart,
-  fragStop,
-} from './solidsegs';
+import { clipPassWallSegment, clipSolidWallSegment, fragStart, fragStop } from './solidsegs';
 import {
   initTextureMapping,
   pointToAngle,
@@ -71,7 +52,7 @@ import {
   type RenderMapView,
   type ViewState,
 } from './view';
-import { ML_TWOSIDED, NO_TEXTURE, type RenderWorld } from './rdata';
+import { NO_TEXTURE, type RenderWorld } from './rdata';
 import { computeIscale, dc, drawColumn } from './cols';
 import {
   COLORMAP_STRIDE,
@@ -84,39 +65,20 @@ import {
 import type { Framebuffer } from './framebuffer';
 import type { WalkCallbacks } from './bsp';
 import {
-  CLIP_NEGONE,
-  CLIP_NULL,
-  CLIP_SCREEN,
-  MAXSHORT,
-  SIL_BOTTOM,
-  SIL_BOTH,
-  SIL_TOP,
-  allocOpenings,
-  ceilingclip,
-  drawsegAdd,
-  floorclip,
-  getDrawsegs,
-  openingsSet,
+  CLIP_NEGONE, CLIP_NULL, CLIP_SCREEN, MAXSHORT, SIL_BOTTOM, SIL_BOTH, SIL_TOP,
+  allocOpenings, ceilingclip, drawsegAdd, floorclip, getDrawsegs, openingsSet,
   snapshotOpenings,
 } from './drawsegs';
-
-/* ------------------------------------------------------------------ */
-/* Constants (r_segs.c / r_defs.h)                                     */
-/* ------------------------------------------------------------------ */
 
 /** r_segs.c:183-184 (`#define HEIGHTBITS 12`, HEIGHTUNIT 1<<12). */
 const HEIGHTBITS = 12;
 const HEIGHTUNIT = 1 << HEIGHTBITS;
-
-/** r_defs.h lineDefBitEnum (map-format bits; ML_TWOSIDED shared w/ rdata). */
+/** r_defs.h lineDefBitEnum bits (rdata owns ML_TWOSIDED). */
 const ML_DONTPEGTOP = 0x0008;
 const ML_DONTPEGBOTTOM = 0x0010;
-export { ML_TWOSIDED };
-
 /** m_fixed.h DBITS = FRACBITS - SLOPEBITS = 5 (research doc 03). */
 const DBITS = 5;
-
-const CENTERYFRAC = CENTERY * FRACUNIT; // centeryfrac (r_main.c, viewheight/2)
+const CENTERYFRAC = CENTERY * FRACUNIT; // centeryfrac (viewheight/2)
 
 /** Default light tables when the caller has none: identity 34 rows. */
 let defaultTables: LightTables | undefined;
@@ -135,10 +97,6 @@ export const markCeilingTop = new Int32Array(320);
 export const markCeilingBottom = new Int32Array(320);
 export const markFloorTop = new Int32Array(320);
 export const markFloorBottom = new Int32Array(320);
-
-/* ------------------------------------------------------------------ */
-/* createSegCallbacks                                                  */
-/* ------------------------------------------------------------------ */
 
 /**
  * The M3-06 wall-pass callbacks: `addSolid`/`addPass` feed the M3-03
@@ -161,45 +119,22 @@ export function createSegCallbacks(
 
   /* r_segs.c module globals → closure state (file header). */
   let curSeg = -1;
-  let rwAngle1 = 0; // angle_t
-  let frontSec = -1;
+  let rwAngle1 = 0; // angle_t (r_bsp.c:283)
+  let frontSec = 0;
   let backSec = -1;
   let line = -1;
   let side = -1;
-  // segtextured/markfloor/markceiling/maskedtexture + toptexture etc.
-  let segTextured = false;
-  let markFloor = false;
-  let markCeiling = false;
-  let maskedTexture = false;
-  let midTexture = NO_TEXTURE;
-  let topTexture = NO_TEXTURE;
-  let bottomTexture = NO_TEXTURE;
-  let rwNormalAngle = 0;
-  let rwX = 0;
-  let rwStopX = 0;
-  let rwCenterAngle = 0;
-  let rwOffset = 0;
-  let rwDistance = 0;
-  let rwScale = 0;
-  let rwScaleStep = 0;
-  let rwMidTextureMid = 0;
-  let rwTopTextureMid = 0;
-  let rwBottomTextureMid = 0;
-  let worldtop = 0;
-  let worldbottom = 0;
-  let worldhigh = 0;
-  let worldlow = 0;
-  let pixHigh = 0;
-  let pixLow = 0;
-  let pixHighStep = 0;
-  let pixLowStep = 0;
-  let topFrac = 0;
-  let topStep = 0;
-  let bottomFrac = 0;
-  let bottomStep = 0;
+  let segTextured = false, markFloor = false, markCeiling = false, maskedTexture = false;
+  let midTexture = NO_TEXTURE, topTexture = NO_TEXTURE, bottomTexture = NO_TEXTURE;
+  let rwNormalAngle = 0, rwX = 0, rwStopX = 0, rwCenterAngle = 0;
+  let rwOffset = 0, rwDistance = 0, rwScale = 0, rwScaleStep = 0;
+  let rwMidTextureMid = 0, rwTopTextureMid = 0, rwBottomTextureMid = 0;
+  let worldtop = 0, worldbottom = 0, worldhigh = 0, worldlow = 0;
+  let pixHigh = 0, pixLow = 0, pixHighStep = 0, pixLowStep = 0;
+  let topFrac = 0, topStep = 0, bottomFrac = 0, bottomStep = 0;
   let lightRow = 0;
   let fixedCmap = -1; // ≥0 = dc.colormap offset when view.fixedcolormap set
-  let maskedBase = -1; // openings base for maskedtexturecol
+  let maskedBase = -1; // openings ref for maskedtexturecol
 
   // R_PointToDist (r_main.c:392-418); hyp of v1 from the eye.
   function pointToDist(x: number, y: number): number {
@@ -242,13 +177,9 @@ export function createSegCallbacks(
     // ds_p == &drawsegs[MAXDRAWSEGS] silent return (:385-387).
     const di = drawsegAdd(curSeg);
     if (di < 0) return;
-
-    const v1x = world.segV1x[curSeg]!;
-    const v1y = world.segV1y[curSeg]!;
-    const v2x = world.segV2x[curSeg]!;
-    const v2y = world.segV2y[curSeg]!;
+    const v1x = world.segV1x[curSeg]!, v1y = world.segV1y[curSeg]!;
+    const v2x = world.segV2x[curSeg]!, v2y = world.segV2y[curSeg]!;
     const flags = line >= 0 ? world.lineFlags[line]! : 0;
-
     // rw_distance for the scale calc (:401-411). C abs() on the u32 diff ≡
     // min(d, -d) unsigned; both > ANG90 clamp paths identical.
     rwNormalAngle = angAdd(world.segAngle[curSeg]!, ANG90);
@@ -258,32 +189,22 @@ export function createSegCallbacks(
     const distangle = angSub(ANG90, offsetAngle);
     const hyp = pointToDist(v1x, v1y);
     rwDistance = FixedMul(hyp, finesine[angToFine(distangle)]!);
-
-    ds.x1[di] = rwX = start;
-    ds.x2[di] = stop;
-    rwStopX = stop + 1;
-
-    ds.scale1[di] = rwScale = scaleFromGlobalAngle(
-      angAdd(view.viewangle, xtoviewangle[start]!)
-    );
+    ds.x1[di] = rwX = start; ds.x2[di] = stop; rwStopX = stop + 1;
+    ds.scale1[di] = rwScale = scaleFromGlobalAngle(angAdd(view.viewangle, xtoviewangle[start]!));
     if (stop > start) {
       ds.scale2[di] = scaleFromGlobalAngle(angAdd(view.viewangle, xtoviewangle[stop]!));
       rwScaleStep = (ds.scale2[di]! - rwScale) / (stop - start) | 0; // C trunc
       ds.scalestep[di] = rwScaleStep;
     } else {
       ds.scale2[di] = ds.scale1[di];
-      rwScaleStep = 0; // vanilla leaves rw_scalestep STALE here; 0 = the
-      // mathematically implied step of scale1==scale2 (deviation, unseen:
-      // every consumer derives scale2 from the step or vice versa)
+      // vanilla leaves rw_scalestep STALE; 0 is step of scale1==scale2
+      rwScaleStep = 0;
     }
-
     worldtop = world.sectorCeil[frontSec]! - view.viewz;
     worldbottom = world.sectorFloor[frontSec]! - view.viewz;
-
     midTexture = topTexture = bottomTexture = NO_TEXTURE;
     maskedTexture = false;
     maskedBase = -1;
-
     const rowOff = side >= 0 ? world.sideOffsetX[side]! : 0;
     if (backSec < 0) {
       // single sided line (:440-464)
@@ -305,47 +226,37 @@ export function createSegCallbacks(
       ds.sprtopclip[di] = CLIP_NULL;
       ds.sprbottomclip[di] = CLIP_NULL;
       if (world.sectorFloor[frontSec]! > world.sectorFloor[backSec]!) {
-        ds.silhouette[di] = SIL_BOTTOM;
-        ds.bsilheight[di] = world.sectorFloor[frontSec]!;
+        ds.silhouette[di] = SIL_BOTTOM; ds.bsilheight[di] = world.sectorFloor[frontSec]!;
       } else if (world.sectorFloor[backSec]! > view.viewz) {
-        ds.silhouette[di] = SIL_BOTTOM;
-        ds.bsilheight[di] = MAXINT;
+        ds.silhouette[di] = SIL_BOTTOM; ds.bsilheight[di] = MAXINT;
       }
       if (world.sectorCeil[frontSec]! < world.sectorCeil[backSec]!) {
-        ds.silhouette[di] |= SIL_TOP;
-        ds.tsilheight[di] = world.sectorCeil[frontSec]!;
+        ds.silhouette[di] |= SIL_TOP; ds.tsilheight[di] = world.sectorCeil[frontSec]!;
       } else if (world.sectorCeil[backSec]! < view.viewz) {
-        ds.silhouette[di] |= SIL_TOP;
-        ds.tsilheight[di] = -MAXINT - 1;
+        ds.silhouette[di] |= SIL_TOP; ds.tsilheight[di] = -MAXINT - 1;
       }
       if (world.sectorCeil[backSec]! <= world.sectorFloor[frontSec]!) {
         ds.sprbottomclip[di] = CLIP_NEGONE;
-        ds.bsilheight[di] = MAXINT;
-        ds.silhouette[di] |= SIL_BOTTOM;
+        ds.bsilheight[di] = MAXINT; ds.silhouette[di] |= SIL_BOTTOM;
       }
       if (world.sectorFloor[backSec]! >= world.sectorCeil[frontSec]!) {
         ds.sprtopclip[di] = CLIP_SCREEN;
-        ds.tsilheight[di] = -MAXINT - 1;
-        ds.silhouette[di] |= SIL_TOP;
+        ds.tsilheight[di] = -MAXINT - 1; ds.silhouette[di] |= SIL_TOP;
       }
-
       worldhigh = world.sectorCeil[backSec]! - view.viewz;
       worldlow = world.sectorFloor[backSec]! - view.viewz;
-
       // sky hack (r_segs.c:604-609): never-sky (header DEVIATION).
       markFloor =
         worldlow !== worldbottom ||
         world.sectorLight[backSec] !== world.sectorLight[frontSec]; // flat cmp: −1 stubs ⇒ equal
       markCeiling =
         worldhigh !== worldtop || world.sectorLight[backSec] !== world.sectorLight[frontSec];
-
       if (
         world.sectorCeil[backSec]! <= world.sectorFloor[frontSec]! ||
         world.sectorFloor[backSec]! >= world.sectorCeil[frontSec]!
       ) {
         markCeiling = markFloor = true; // closed door
       }
-
       if (worldhigh < worldtop) {
         topTexture = side >= 0 ? world.sideTopTex[side]! : NO_TEXTURE;
         rwTopTextureMid =
@@ -355,12 +266,10 @@ export function createSegCallbacks(
       }
       if (worldlow > worldbottom) {
         bottomTexture = side >= 0 ? world.sideBotTex[side]! : NO_TEXTURE;
-        rwBottomTextureMid =
-          flags & ML_DONTPEGBOTTOM ? worldtop : worldlow;
+        rwBottomTextureMid = flags & ML_DONTPEGBOTTOM ? worldtop : worldlow;
       }
       rwTopTextureMid += rowOff;
       rwBottomTextureMid += rowOff;
-
       // masked midtexture allocation (:640-646; presence, not transparency)
       if (side >= 0 && world.sideMidTex[side] !== NO_TEXTURE) {
         maskedTexture = true;
@@ -373,9 +282,7 @@ export function createSegCallbacks(
         }
       }
     }
-
-    segTextured =
-      midTexture >= 0 || topTexture >= 0 || bottomTexture >= 0 || maskedTexture;
+    segTextured = midTexture >= 0 || topTexture >= 0 || bottomTexture >= 0 || maskedTexture;
     if (segTextured) {
       // rw_offset tangent sign rule (:626-648).
       let oa = angSub(rwNormalAngle, rwAngle1);
@@ -387,35 +294,23 @@ export function createSegCallbacks(
         (rwOffset + (side >= 0 ? world.sideOffsetX[side]! : 0) +
           (curSeg >= 0 ? world.segOffset[curSeg]! : 0)) | 0; // C fixed_t wrap
       rwCenterAngle = (ANG90 + view.viewangle - rwNormalAngle) >>> 0;
-
       fixedCmap = view.fixedcolormap >= 0 ? view.fixedcolormap * COLORMAP_STRIDE : -1;
       if (fixedCmap < 0) {
-        lightRow = wallLightNum(
-          world.sectorLight[frontSec]!,
-          view.extralight,
-          v1x,
-          v1y,
-          v2x,
-          v2y
-        ).row;
+        lightRow = wallLightNum(world.sectorLight[frontSec]!, view.extralight, v1x, v1y, v2x, v2y).row;
       }
     }
-
     // Planes on the wrong side of the view plane are invisible (:666-677).
     if (world.sectorFloor[frontSec]! >= view.viewz) markFloor = false;
     // `&& ceilingpic != skyflatnum` (r_segs.c:660-665) — never-sky, so the
     // disable fires unconditionally (header DEVIATION).
     if (world.sectorCeil[frontSec]! <= view.viewz) markCeiling = false;
-
     // Incremental stepping values (:680-703); R_CheckPlane skipped (M3).
     worldtop >>= 4;
     worldbottom >>= 4;
-
     topStep = -FixedMul(rwScaleStep, worldtop);
     topFrac = (CENTERYFRAC >> 4) - FixedMul(worldtop, rwScale);
     bottomStep = -FixedMul(rwScaleStep, worldbottom);
     bottomFrac = (CENTERYFRAC >> 4) - FixedMul(worldbottom, rwScale);
-
     if (backSec >= 0) {
       worldhigh >>= 4;
       worldlow >>= 4;
@@ -428,31 +323,19 @@ export function createSegCallbacks(
         pixLowStep = -FixedMul(rwScaleStep, worldlow);
       }
     }
-
     renderSegLoop();
-
     // Save sprite clipping info (:716-739).
     const n = rwStopX - start;
-    if ((ds.silhouette[di]! & SIL_TOP) !== 0 || maskedTexture) {
-      if (ds.sprtopclip[di] === CLIP_NULL) {
-        const ref = snapshotOpenings(ceilingclip, start, n);
-        if (ref >= 0) ds.sprtopclip[di] = ref;
-      }
+    if (((ds.silhouette[di]! & SIL_TOP) !== 0 || maskedTexture) && ds.sprtopclip[di] === CLIP_NULL) {
+      const ref = snapshotOpenings(ceilingclip, start, n);
+      if (ref >= 0) ds.sprtopclip[di] = ref;
     }
-    if ((ds.silhouette[di]! & SIL_BOTTOM) !== 0 || maskedTexture) {
-      if (ds.sprbottomclip[di] === CLIP_NULL) {
-        const ref = snapshotOpenings(floorclip, start, n);
-        if (ref >= 0) ds.sprbottomclip[di] = ref;
-      }
+    if (((ds.silhouette[di]! & SIL_BOTTOM) !== 0 || maskedTexture) && ds.sprbottomclip[di] === CLIP_NULL) {
+      const ref = snapshotOpenings(floorclip, start, n);
+      if (ref >= 0) ds.sprbottomclip[di] = ref;
     }
-    if (maskedTexture && (ds.silhouette[di]! & SIL_TOP) === 0) {
-      ds.silhouette[di] |= SIL_TOP;
-      ds.tsilheight[di] = -MAXINT - 1;
-    }
-    if (maskedTexture && (ds.silhouette[di]! & SIL_BOTTOM) === 0) {
-      ds.silhouette[di] |= SIL_BOTTOM;
-      ds.bsilheight[di] = MAXINT;
-    }
+    if (maskedTexture && (ds.silhouette[di]! & SIL_TOP) === 0) { ds.silhouette[di] |= SIL_TOP; ds.tsilheight[di] = -MAXINT - 1; }
+    if (maskedTexture && (ds.silhouette[di]! & SIL_BOTTOM) === 0) { ds.silhouette[di] |= SIL_BOTTOM; ds.bsilheight[di] = MAXINT; }
     // ds_p++ is drawsegAdd's count++ (called first — see overflow note).
   }
 
@@ -462,7 +345,6 @@ export function createSegCallbacks(
       // mark floor / ceiling areas
       let yl = (topFrac + HEIGHTUNIT - 1) >> HEIGHTBITS;
       if (yl < ceilingclip[rwX]! + 1) yl = ceilingclip[rwX]! + 1;
-
       if (markCeiling) {
         const top = ceilingclip[rwX]! + 1;
         let bottom = yl - 1;
@@ -472,10 +354,8 @@ export function createSegCallbacks(
           markCeilingBottom[rwX] = bottom;
         }
       }
-
       let yh = bottomFrac >> HEIGHTBITS;
       if (yh >= floorclip[rwX]!) yh = floorclip[rwX]! - 1;
-
       if (markFloor) {
         let top = yh + 1;
         const bottom = floorclip[rwX]! - 1;
@@ -485,29 +365,23 @@ export function createSegCallbacks(
           markFloorBottom[rwX] = bottom;
         }
       }
-
       let texturecolumn = 0;
       if (segTextured) {
         const angle = (rwCenterAngle + xtoviewangle[rwX]!) >>> 19;
         texturecolumn = rwOffset - FixedMul(finetangent[angle]!, rwDistance);
         texturecolumn >>= FRACBITS;
-
         let index = rwScale >> LIGHTSCALESHIFT;
         if (index >= MAXLIGHTSCALE) index = MAXLIGHTSCALE - 1;
-        dc.colormap = fixedCmap >= 0 ? fixedCmap : tables.scalelight[lightRow * MAXLIGHTSCALE + index]!;
-        dc.x = rwX;
-        dc.iscale = computeIscale(rwScale);
+        dc.colormap =
+          fixedCmap >= 0 ? fixedCmap : tables.scalelight[lightRow * MAXLIGHTSCALE + index]!;
+        dc.x = rwX; dc.iscale = computeIscale(rwScale);
       }
-
       if (midTexture >= 0) {
         // single sided line
-        dc.yl = yl;
-        dc.yh = yh;
-        dc.texturemid = rwMidTextureMid;
+        dc.yl = yl; dc.yh = yh; dc.texturemid = rwMidTextureMid;
         dc.source = world.getWallColumn(midTexture, texturecolumn);
         drawColumn(indices, colormaps, CENTERY);
-        ceilingclip[rwX] = VIEWHEIGHT;
-        floorclip[rwX] = -1;
+        ceilingclip[rwX] = VIEWHEIGHT; floorclip[rwX] = -1;
       } else {
         // two sided line
         if (topTexture >= 0) {
@@ -515,42 +389,32 @@ export function createSegCallbacks(
           pixHigh += pixHighStep;
           if (mid >= floorclip[rwX]!) mid = floorclip[rwX]! - 1;
           if (mid >= yl) {
-            dc.yl = yl;
-            dc.yh = mid;
-            dc.texturemid = rwTopTextureMid;
+            dc.yl = yl; dc.yh = mid; dc.texturemid = rwTopTextureMid;
             dc.source = world.getWallColumn(topTexture, texturecolumn);
-            drawColumn(indices, colormaps, CENTERY);
-            ceilingclip[rwX] = mid;
+            drawColumn(indices, colormaps, CENTERY); ceilingclip[rwX] = mid;
           } else {
             ceilingclip[rwX] = yl - 1;
           }
         } else if (markCeiling) {
           ceilingclip[rwX] = yl - 1;
         }
-
         if (bottomTexture >= 0) {
           let mid = (pixLow + HEIGHTUNIT - 1) >> HEIGHTBITS;
           pixLow += pixLowStep;
           if (mid <= ceilingclip[rwX]!) mid = ceilingclip[rwX]! + 1;
           if (mid <= yh) {
-            dc.yl = mid;
-            dc.yh = yh;
-            dc.texturemid = rwBottomTextureMid;
+            dc.yl = mid; dc.yh = yh; dc.texturemid = rwBottomTextureMid;
             dc.source = world.getWallColumn(bottomTexture, texturecolumn);
-            drawColumn(indices, colormaps, CENTERY);
-            floorclip[rwX] = mid;
+            drawColumn(indices, colormaps, CENTERY); floorclip[rwX] = mid;
           } else {
             floorclip[rwX] = yh + 1;
           }
         } else if (markFloor) {
           floorclip[rwX] = yh + 1;
         }
-
-        if (maskedTexture && maskedBase >= 0) {
-          openingsSet(maskedBase + rwX, texturecolumn); // save texturecol
-        }
+        // save texturecol for backdrawing of the masked mid texture
+        if (maskedTexture && maskedBase >= 0) openingsSet(maskedBase + rwX, texturecolumn);
       }
-
       rwScale += rwScaleStep;
       topFrac += topStep;
       bottomFrac += bottomStep;
@@ -576,13 +440,10 @@ export function createSegCallbacks(
       rwAngle1 = pointToAngle(view, world.segV1x[seg]!, world.segV1y[seg]!); // r_bsp.c:283
       line = world.segLine[seg]!;
       side = world.segSide[seg]!;
-      if (map === undefined) {
-        frontSec = side >= 0 ? world.sideSector[side]! : frontSec;
-      }
+      if (map === undefined && side >= 0) frontSec = world.sideSector[side]!;
       backSec = -1;
       if (line >= 0) {
-        const other =
-          world.lineFront[line] === side ? world.lineBack[line]! : world.lineFront[line]!;
+        const other = world.lineFront[line] === side ? world.lineBack[line]! : world.lineFront[line]!;
         if (other >= 0) backSec = world.sideSector[other]!;
       }
     },
