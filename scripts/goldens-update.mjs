@@ -215,19 +215,19 @@ console.log(check ? 'goldens: no drift' : `goldens: updated (${names.filter((n) 
 /* minimal PNG writer/reader (RGB8, filter 0, node:zlib)                */
 /* ------------------------------------------------------------------ */
 
-const CRC_TABLE = (() => {
-  const t = new Int32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c;
-  }
-  return t;
-})();
-
+/** CRC32 with lazily built table (module bottom — main flow runs first). */
 function crc32(buf) {
+  const table = (crc32.t ??= (() => {
+    const t = new Int32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c;
+    }
+    return t;
+  })());
   let c = ~0;
-  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 255] ^ (c >>> 8);
+  for (let i = 0; i < buf.length; i++) c = table[(c ^ buf[i]) & 255] ^ (c >>> 8);
   return ~c >>> 0;
 }
 
