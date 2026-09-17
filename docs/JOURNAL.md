@@ -95,3 +95,4 @@ Debug viewer (merged from pi-agent-631a47ef) renders any flat/patch/sprite/textu
 ## 2026-09-16 — First pixels: M2-09 merged (c5272e8)
 E1M1 automap renders in the browser: 320x200 indexed fb + AM_drawFline port + green arrow; boot fetch→loadMap→35Hz accumulator loop; Tab toggles. e2e 5/5 green (two consecutive runs), 484 unit tests. M2-10 (frame goldens + goldens:update script + hardened keyboard e2e) dispatched to close M2.
 - M2-10 attempt-1: infra death at tool-use #4 (branch never created — zero-loss recovery). Attempt-2 (5f3a77bc) with hardened stub-first rule. Network flakiness wave noted.
+- M2-10 attempt-2: infra death AFTER stubs (salvage pi-agent-5f3a77bc = stubs only). Attempt-3 (79a4b0e1) builds on salvage, one-commit-per-deliverable + headless-only discipline.
