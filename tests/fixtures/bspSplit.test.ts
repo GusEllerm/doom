@@ -89,11 +89,13 @@ function decodeNodes(bytes: Uint8Array): RawNode[] {
     const o = i * NODE_SIZE;
     const bbox: [number, number, number, number][] = [];
     for (let c = 0; c < 2; c++) {
+      // disk order per child = [top, bottom, left, right] (m_bbox.h /
+      // p_setup.c); tuple order here stays [minx, miny, maxx, maxy].
       bbox.push([
-        view.getInt16(o + 8 + c * 8, true),
-        view.getInt16(o + 10 + c * 8, true),
-        view.getInt16(o + 12 + c * 8, true),
-        view.getInt16(o + 14 + c * 8, true)
+        view.getInt16(o + 12 + c * 8, true), // left
+        view.getInt16(o + 10 + c * 8, true), // bottom
+        view.getInt16(o + 14 + c * 8, true), // right
+        view.getInt16(o + 8 + c * 8, true) // top
       ]);
     }
     out.push({

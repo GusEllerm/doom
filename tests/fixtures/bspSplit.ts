@@ -9,7 +9,9 @@
  * Record layouts pinned by R01 (little-endian):
  *   SEGS  12 B: i16 v1, i16 v2, u16 angle(BAM), i16 linedef, i16 side, i16 offset
  *   SSECT  4 B: i16 numsegs, i16 firstseg           (segs contiguous per ssector)
- *   NODES 28 B: i16 x, y, dx, dy, i16 bbox[2][4], u16 children[2]
+ *   NODES  28 B: i16 x, y, dx, dy, i16 bbox[2][4] (per child: top, bottom,
+ *               left, right — m_bbox.h order, p_setup.c P_LoadNodes),
+ *               u16 children[2]
  *               child bit15 (0x8000 = NF_SUBSECTOR) set ⇒ index into SSECTORS.
  *   Child 0 is the FRONT/right side of the partition vector (x,y)→(x+dx,y+dy),
  *   child 1 the BACK/left side (R01 §10). Walker rule used by tests:
@@ -374,11 +376,16 @@ function encode(
       [0, f.bbox],
       [1, k.bbox]
     ] as const) {
+      // Vanilla NODES child bbox order = m_bbox.h enum order
+      // [BOXTOP, BOXBOTTOM, BOXLEFT, BOXRIGHT] (p_setup.c reads bbox[j][k]
+      // in that order; mapdata.ts decodes the same). FIX: was
+      // [x0,y0,x1,y1], which decoded as garbage child boxes for the BSP
+      // renderer (M3-04 R_CheckBBox).
       const o = 8 + c * 8;
-      v.setInt16(o + 0, box.x0, true);
-      v.setInt16(o + 2, box.y0, true);
-      v.setInt16(o + 4, box.x1, true);
-      v.setInt16(o + 6, box.y1, true);
+      v.setInt16(o + 0, box.y1, true); // top
+      v.setInt16(o + 2, box.y0, true); // bottom
+      v.setInt16(o + 4, box.x0, true); // left
+      v.setInt16(o + 6, box.x1, true); // right
     }
     v.setUint16(24, f.childRef, true);
     v.setUint16(26, k.childRef, true);
