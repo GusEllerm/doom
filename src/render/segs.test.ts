@@ -1,3 +1,8 @@
-// render/segs.test.ts — M3-06 stub (implemented in the next commit).
-import { it } from 'vitest';
-it('M3-06 segs stub', () => {});
+// M3-06b: seg-renderer test matrix (stub — to be replaced by full matrix).
+import { describe, it } from "vitest";
+
+describe("segs (M3-06b matrix)", () => {
+  it("stub: placeholder pending full matrix", () => {
+    // Real tests added per deliverable.
+  });
+});
