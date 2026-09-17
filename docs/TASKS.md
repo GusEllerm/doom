@@ -45,4 +45,4 @@ Future tasks will be added as architects decompose milestones.
 | M2-07 | Noclip fly movement + debug wiring | M2 | M2-05,M2-06 | done | merged | 392 tests |
 | M2-08 | Automap state machine | M2 | M2-06 | done | merged a7b595b | 454 tests |
 | M2-09 | Automap renderer + arrow | M2 | M2-05,M2-08 | done | merged c5272e8 | 5/5 e2e |
-| M2-10 | Golden automap frames + M2 e2e | M2 | M2-09 | dispatched (agent 72a4c73d) | — | — |
+| M2-10 | Golden automap frames + M2 e2e | M2 | M2-09 | done | merged 410d974 | goldens+check green |
