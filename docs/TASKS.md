@@ -66,11 +66,11 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M4-01 | Visplane engine (r_plane.c) | M4 | M3 stack | dispatched (agent 227cbcea) |
+| M4-01 | Visplane engine (r_plane.c) | M4 | M3 stack | done (merged, 48 tests) |
 | M4-02 | Flat/sky data wiring | M4 | — | done (merged, 24 tests) |
-| M4-03 | Static thing/sprite tables | M4 | — | dispatched (agent f2f44340) |
-| M4-04 | Plane marking + drawMasked | M4 | M4-01/02 | planned |
-| M4-05 | Static sprite pass (R_AddSprites/DrawVisSprite) | M4 | M4-03 | planned |
+| M4-03 | Static thing/sprite tables | M4 | — | done (merged, 25 tests) |
+| M4-04 | Plane marking + drawMasked | M4 | M4-01/02 | dispatched (agent 63241562) |
+| M4-05 | Static sprite pass (R_AddSprites/DrawVisSprite) | M4 | M4-03 | dispatched (agent b7a33f5c) |
 | M4-06 | Fixture extension (sky/fences/things/panning) | M4 | M4-01..03 | planned |
 | M4-07 | Full-frame pipeline integration | M4 | M4-04/05 | planned |
 | M4-08 | Goldens re-bless (≥24) + L5 | M4 | M4-07 | planned |
