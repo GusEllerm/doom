@@ -214,6 +214,15 @@ export interface RenderWorld {
   readonly sectorCeil: Int32Array;
   /** Raw 0…255 light level (wallLightNum from M3-01 consumes it). */
   readonly sectorLight: Int32Array;
+  /** floorpic/ceilingpic flatnums (M4-04; R_FindPlane args + the
+   * two-sided markfloor/markceiling flat comparisons in R_StoreWallRange,
+   * r_segs.c:537-558). Resolved DIRECTLY against the F_START list — a
+   * miss is −1 and is NOT recorded in missingFlats (vanilla: I_Error at
+   * P_SetupLevel map load, not a per-name runtime miss). −1 = unresolved
+   * (no flats shipped / unknown name): the pic comparisons then treat
+   * every sector as flat-equal, the pre-M4 behaviour. */
+  readonly sectorFloorPic: Int32Array;
+  readonly sectorCeilPic: Int32Array;
 
   /* ---- Textures ---- */
   /** Directory order = input Map iteration order = vanilla texturenum. */
@@ -500,6 +509,17 @@ export function loadRenderWorld(
   // lookup, not a sidedef miss — no missingTextures record.
   const skyTextureNum = texByName.get(DEFAULT_SKY_TEXTURE_NAME) ?? NO_TEXTURE;
 
+  // Sector flatnums (M4-04): direct flatByName lookups — same no-pollute
+  // rationale as skyflatnum above (see the RenderWorld field docs).
+  const sectorFloorPic = Int32Array.from(
+    md.sectors,
+    (s) => flatByName.get(s.floorFlat.toUpperCase()) ?? NO_FLAT
+  );
+  const sectorCeilPic = Int32Array.from(
+    md.sectors,
+    (s) => flatByName.get(s.ceilingFlat.toUpperCase()) ?? NO_FLAT
+  );
+
   /* ---------------- world object ----------------------------------- */
   const texWidth = Int32Array.from(texWidths);
   const texWidthMask = Int32Array.from(texWidths, (w) => w - 1);
@@ -547,6 +567,8 @@ export function loadRenderWorld(
     sectorFloor,
     sectorCeil,
     sectorLight,
+    sectorFloorPic,
+    sectorCeilPic,
     numTextures: textureNames.length,
     textureNames,
     texWidth,

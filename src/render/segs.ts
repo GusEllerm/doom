@@ -20,18 +20,26 @@
 //
 // DEVIATIONS (faithful-value unless noted):
 //  - G13: no ML_MAPPED write (sim-mutation ban).
-//  - skyflatnum: RenderWorld has no flats (M4) ⇒ the outdoor height-change
-//    hack (:604-609) never fires and the `!= skyflatnum` guard (:660-665)
-//    is dropped — markceiling falls whenever ceilingheight <= viewz.
-//  - visplane marking (:200-228) → flat scratch arrays markCeilingTop…
-//    markFloorBottom (plan §3-D; R_CheckPlane unported); the clip-array
-//    updates (ceilingclip/floorclip) are faithful.
+//  - sky (M4-04 wired): the outdoor height-change hack (:604-609
+//    `worldtop = worldhigh` when BOTH ceilings are F_SKY1) and the
+//    `!= skyflatnum` guard on the below-viewz markceiling disable
+//    (:660-665) are faithful; the sky tag lives in planes.isSkyPic —
+//    production must keep planes.setSkyflatnum(world.skyflatnum) wired
+//    (M4-07 pipeline), else isSkyPic never matches (−1 placeholder).
+//  - visplane marking (:200-228, M4-04): the ceilingplane/floorplane
+//    globals (planes.ts) are opened by R_Subsector (bsp.ts); here
+//    R_CheckPlane runs (:688-693, before the loop) and the marks write
+//    ceilingplane/floorplane->top/bottom[rw_x] via planes.markColumn.
+//    DEFENSIVE DEV: markflag true + NULL plane global (vanilla would
+//    write through a NULL pointer — unreachable via bsp.ts, whose
+//    R_Subsector predicate ≡ the :666-677 disable) ⇒ the write is
+//    skipped; same for a never-opened plane in map-less direct-call tests.
 //  - rowoffset: only sideOffsetX (textureoffset) exists in rdata; the
 //    texturemid `+= rowoffset` (:460, :546-547) reuses it — equal whenever
 //    the two sidedef offsets agree (all shipped sidedefs in fixtures);
 //    rdata seam gap, follow-up M3-06b/M4.
 //  - masked middle = midtexture PRESENCE (:640-646), not transparency;
-//    record only — drawMasked stays a no-op stub (M4 draws).
+//    record — masked.ts draws (M4-04).
 //  - drawseg SoA + openings refs: drawsegs.ts header (MAXSHORT-init record
 //    deviation lives there).
 //  - frontsector: sideSector[segSide] (P_GroupLines ⇒ = subsector's for
@@ -69,6 +77,10 @@ import {
   allocOpenings, ceilingclip, drawsegAdd, floorclip, getDrawsegs, openingsSet,
   snapshotOpenings,
 } from './drawsegs';
+import {
+  checkPlane, getCeilingplane, getFloorplane, isSkyPic, markColumn, setCeilingplane,
+  setFloorplane, type Visplane,
+} from './planes';
 
 /** r_segs.c:183-184 (`#define HEIGHTBITS 12`, HEIGHTUNIT 1<<12). */
 const HEIGHTBITS = 12;
@@ -91,12 +103,11 @@ function getDefaultTables(): LightTables {
   return defaultTables;
 }
 
-/* Visplane-marking scratch (header DEVIATION: replaces ceilingplane/
- * floorplane->top/bottom writes; M4 replaces with real visplanes). */
-export const markCeilingTop = new Int32Array(320);
-export const markCeilingBottom = new Int32Array(320);
-export const markFloorTop = new Int32Array(320);
-export const markFloorBottom = new Int32Array(320);
+/* Visplane targets of THIS seg (r_segs.c ceilingplane/floorplane globals
+ * read after the R_CheckPlane calls; null = nothing to mark — header
+ * DEFENSIVE DEV). Refreshed per storeWallRange. */
+let ceilingMarkPlane: Visplane | null = null;
+let floorMarkPlane: Visplane | null = null;
 
 /**
  * The M3-06 wall-pass callbacks: `addSolid`/`addPass` feed the M3-03
@@ -246,12 +257,22 @@ export function createSegCallbacks(
       }
       worldhigh = world.sectorCeil[backSec]! - view.viewz;
       worldlow = world.sectorFloor[backSec]! - view.viewz;
-      // sky hack (r_segs.c:604-609): never-sky (header DEVIATION).
+      // hack to allow height changes in outdoor areas (:602-607, M4-04):
+      // both ceilings F_SKY1 ⇒ worldtop = worldhigh.
+      if (
+        isSkyPic(world.sectorCeilPic[frontSec]!) &&
+        isSkyPic(world.sectorCeilPic[backSec]!)
+      ) {
+        worldtop = worldhigh;
+      }
       markFloor =
         worldlow !== worldbottom ||
-        world.sectorLight[backSec] !== world.sectorLight[frontSec]; // flat cmp: −1 stubs ⇒ equal
+        world.sectorFloorPic[backSec] !== world.sectorFloorPic[frontSec] ||
+        world.sectorLight[backSec] !== world.sectorLight[frontSec]; // pic cmp: −1 unresolved ⇒ equal (no-flats builds)
       markCeiling =
-        worldhigh !== worldtop || world.sectorLight[backSec] !== world.sectorLight[frontSec];
+        worldhigh !== worldtop ||
+        world.sectorCeilPic[backSec] !== world.sectorCeilPic[frontSec] ||
+        world.sectorLight[backSec] !== world.sectorLight[frontSec];
       if (
         world.sectorCeil[backSec]! <= world.sectorFloor[frontSec]! ||
         world.sectorFloor[backSec]! >= world.sectorCeil[frontSec]!
@@ -306,9 +327,11 @@ export function createSegCallbacks(
     }
     // Planes on the wrong side of the view plane are invisible (:666-677).
     if (world.sectorFloor[frontSec]! >= view.viewz) markFloor = false;
-    // `&& ceilingpic != skyflatnum` (r_segs.c:660-665) — never-sky, so the
-    // disable fires unconditionally (header DEVIATION).
-    if (world.sectorCeil[frontSec]! <= view.viewz) markCeiling = false;
+    // `&& ceilingpic != skyflatnum` guard (:672) — a sky ceiling keeps
+    // marking even below the viewz (M4-04; M3 dropped it, header).
+    if (world.sectorCeil[frontSec]! <= view.viewz && !isSkyPic(world.sectorCeilPic[frontSec]!)) {
+      markCeiling = false;
+    }
     // Incremental stepping values (:680-703); R_CheckPlane skipped (M3).
     worldtop >>= 4;
     worldbottom >>= 4;
@@ -328,6 +351,30 @@ export function createSegCallbacks(
         pixLowStep = -FixedMul(rwScaleStep, worldlow);
       }
     }
+    // R_CheckPlane over the seg span (:688-693) — `ceilingplane`/
+    // `floorplane` are the planes R_Subsector opened (planes.ts globals);
+    // a split-by-copy returns the fresh plane to mark going forward.
+    // NULL global + mark flag: vanilla NULL write — unreachable via bsp
+    // (header DEFENSIVE DEV) — skip the marks.
+    ceilingMarkPlane = null;
+    floorMarkPlane = null;
+    if (markCeiling) {
+      const pl = getCeilingplane();
+      if (pl !== null) {
+        const next = checkPlane(pl, rwX, rwStopX - 1);
+        setCeilingplane(next);
+        ceilingMarkPlane = next;
+      }
+    }
+    if (markFloor) {
+      const pl = getFloorplane();
+      if (pl !== null) {
+        const next = checkPlane(pl, rwX, rwStopX - 1);
+        setFloorplane(next);
+        floorMarkPlane = next;
+      }
+    }
+
     renderSegLoop();
     // Save sprite clipping info (:716-739). snapshotOpenings returns the
     // signed lastopening - start (:716-733) or null on allocation failure
@@ -357,8 +404,7 @@ export function createSegCallbacks(
         let bottom = yl - 1;
         if (bottom >= floorclip[rwX]!) bottom = floorclip[rwX]! - 1;
         if (top <= bottom) {
-          markCeilingTop[rwX] = top; // visplane scratch (header DEVIATION)
-          markCeilingBottom[rwX] = bottom;
+          if (ceilingMarkPlane !== null) markColumn(ceilingMarkPlane, rwX, top, bottom);
         }
       }
       let yh = bottomFrac >> HEIGHTBITS;
@@ -368,8 +414,7 @@ export function createSegCallbacks(
         const bottom = floorclip[rwX]! - 1;
         if (top <= ceilingclip[rwX]!) top = ceilingclip[rwX]! + 1;
         if (top <= bottom) {
-          markFloorTop[rwX] = top;
-          markFloorBottom[rwX] = bottom;
+          if (floorMarkPlane !== null) markColumn(floorMarkPlane, rwX, top, bottom);
         }
       }
       let texturecolumn = 0;
@@ -459,5 +504,5 @@ export function createSegCallbacks(
   };
 }
 
-/** drawMasked — named no-op re-export (M4 draws; lives in drawsegs.ts). */
-export { drawMasked } from './drawsegs';
+/** drawMasked — re-export (M4-04: the driver lives in masked.ts). */
+export { drawMasked } from './masked';

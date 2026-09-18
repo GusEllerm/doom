@@ -314,25 +314,13 @@ export function openingsOverflowCount(): number {
 }
 
 /* ------------------------------------------------------------------ */
-/* Masked pass — NAMED NO-OP STUBS (M4 draws, M3 records only)          */
+/* Masked pass — IMPLEMENTED IN masked.ts (M4-04)                       */
 /* ------------------------------------------------------------------ */
 
-/**
- * R_DrawMasked (r_segs.c:741+ loop over drawsegs with maskedtexturecol) —
- * no-op stub: M3-06 records maskedtexturecol + sprtop/sprbottom snapshots
- * faithfully, M4 fills this in WITHOUT pipeline changes (plan §M3-06).
- */
-export function drawMasked(): void {
-  // Intentionally empty — see docstring.
-}
-
-/**
- * R_RenderMaskedSegRange (r_segs.c:96-176) — no-op stub, same rationale.
- * Signature mirrors (ds, x1, x2); nothing reads the args while stubbed.
- */
-export function drawMaskedSegRange(ds: number, x1Arg: number, x2Arg: number): void {
-  // Intentionally empty — M4. Silence the unused-parameter rule while stub:
-  void ds;
-  void x1Arg;
-  void x2Arg;
-}
+// M3 shipped drawMasked/drawMaskedSegRange as named NO-OP stubs here.
+// M4-04 implemented them in masked.ts (the plan's owner of
+// R_RenderMaskedSegRange; the driver R_DrawMasked actually lives in
+// r_things.c:958, not r_segs.c as this header guessed — the reverse
+// drawseg sweep is faithful there). Consumers import from './masked'.
+// The openings pool primitives above (openingsAt/openingsSet/clipValue +
+// the drawseg SoA) are exactly what that module consumes.
