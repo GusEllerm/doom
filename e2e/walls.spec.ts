@@ -1,8 +1,8 @@
 /**
- * e2e walls pipeline (M3-07 skeleton — full golden viewpoint suite is
- * M3-08): the game page now boots into the 3D walls view (renderFrame per
- * ARCHITECTURE §4.1), `__doom.capture()` returns the REAL rendered index
- * buffer and `__doom.state().render.hom` is the live renderer counter.
+ * e2e walls pipeline (M3-07 skeleton + M3-08 completion): the game page
+ * now boots into the 3D walls view (renderFrame per ARCHITECTURE §4.1),
+ * `__doom.capture()` returns the REAL rendered index buffer and
+ * `__doom.state().render.hom` is the live renderer counter.
  *
  * Skeleton asserts (M3-plan §M3-07 acceptance 1–3 + 5):
  *  1. boot → dev-API warp to the spawn spot with a pinned z/angle ⇒ the
@@ -15,6 +15,16 @@
  *     walls frame (unmoved player, stateless pipeline);
  *  4. zero console errors across the flow.
  *
+ * M3-08 adds the GOLDEN-DRIVEN check: every committed iwad viewpoint of
+ * tests/render/viewpoints.ts is warped to through `__doom.warp` (same
+ * deg→BAM + z semantics the node suite uses), the live frame is hashed
+ * TWICE in-page (SHA-256 over the capture indices) and must (a) agree
+ * with itself — same pinned viewpoint ⇒ same bytes on EVERY later frame,
+ * the L3 determinism claim under a running browser loop — and (b) equal
+ * the golden `indexSha256` of tests/render/goldens/walls/meta.json
+ * (browser pipeline ≡ node pipeline), with `state().render.hom == 0`
+ * asserted per viewpoint via `__doom.state()`.
+ *
  * Palette-free pixel math: capture() exposes the raw 8-bit indices, so
  * automap colors are counted directly (WALLCOLORS family = 176..191,
  * WHITE = 209, am_map.c REDS/WHITE). The WAD is the pinned
@@ -22,6 +32,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { VIEWPOINTS } from '../tests/render/viewpoints';
+
+const META_PATH = fileURLToPath(new URL('../tests/render/goldens/walls/meta.json', import.meta.url));
 
 async function wadMissing(page: Page): Promise<boolean> {
   const res = await page.request.get('/wads/freedoom1.wad');
@@ -83,6 +99,16 @@ function renderHom(page: Page): Promise<number | null> {
   });
 }
 
+/** SHA-256 of the captured index buffer, computed IN-PAGE (crypto.subtle;
+ * 127.0.0.1 is a secure context) — same bytes, same hash as node. */
+function captureSha(page: Page): Promise<string> {
+  return page.evaluate(async () => {
+    const cap = window.__doom!.capture();
+    const digest = await crypto.subtle.digest('SHA-256', cap.indices.slice().buffer as ArrayBuffer);
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  });
+}
+
 async function boot(page: Page): Promise<void> {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
@@ -139,6 +165,42 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
     expect((await captureStats(page)).hash, 'close must restore byte-identical walls frame').toBe(wallsHash);
 
     // (4) Zero console errors (acceptance 5).
+    expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
+  });
+
+  test('golden viewpoints: in-page double-render sha == golden sha, hom == 0 (M3-08)', async ({ page }) => {
+    test.setTimeout(180_000);
+    test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
+    test.skip(!existsSync(META_PATH), 'walls goldens meta.json missing — run npm run goldens:update -- --set walls');
+    const consoleErrors = trackConsole(page);
+    const meta = JSON.parse(readFileSync(META_PATH, 'utf8')) as {
+      scenes: Record<string, { indexSha256: string }>;
+    };
+
+    await boot(page);
+    // Freeze the sim tics: the golden pins a STATIC viewpoint, and pausing
+    // proves the RENDER loop (which keeps running) alone reproduces bytes.
+    await page.evaluate(() => window.__doom!.pause(true));
+
+    for (const vp of VIEWPOINTS.filter((v) => v.kind === 'iwad')) {
+      await test.step(vp.name, async () => {
+        await page.evaluate(([x, y, z, deg]: [number, number, number | null, number]) => {
+          window.__doom!.warp(x, y, z ?? undefined, deg);
+        }, [(vp.x * 65536) | 0, (vp.y * 65536) | 0, vp.z === undefined ? null : (vp.z * 65536) | 0, vp.angleDeg] as [number, number, number | null, number]);
+        await page.waitForTimeout(120); // ≥ 7 render frames at 60 Hz
+
+        const sha1 = await captureSha(page);
+        const sha2 = await captureSha(page);
+        // (a) determinism under the live rAF loop: identical captures.
+        expect(sha2, `${vp.name}: later frame must match the earlier one`).toBe(sha1);
+        // (b) the browser pipeline reproduces the committed node golden.
+        expect(sha1, `${vp.name}: live frame sha must equal the golden sha`).toBe(
+          meta.scenes[vp.name]?.indexSha256
+        );
+        expect(await renderHom(page), `${vp.name}: state().render.hom must be live and 0`).toBe(0);
+      });
+    }
+
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
   });
 });
