@@ -435,15 +435,16 @@ describe("segs (M3-06b acceptance 6): masked texturecol recording", () => {
     expect(ds.silhouette[0]).toBe(3 /* SIL_BOTH */);
     expect(ds.tsilheight[0]).toBe(-2147483648);
     expect(ds.bsilheight[0]).toBe(2147483647);
-    // Pool advanced by all three snapshots, but the negative column-refs
-    // (base - start, vanilla pointer arithmetic) are DROPPED by the
-    // `ref >= 0` guards → refs stay CLIP_NULL: FIX-M3-06c, see skip test.
-    expect(ds.sprtopclip[0]).toBe(CLIP_NULL);
-    expect(ds.sprbottomclip[0]).toBe(CLIP_NULL);
+    // Pool advanced by all three snapshots; FIX-M3-06c keeps the signed
+    // column-refs (base - start, vanilla pointer arithmetic): the clip
+    // snapshots live at pool 21 and 42, start 150.
+    expect(ds.sprtopclip[0]).toBe(21 - 150);
+    expect(ds.sprbottomclip[0]).toBe(42 - 150);
 
     // maskedtexturecol: perpendicular d=160 wall ⇒ tc(x) = x - 97 fixed
     // (exact chain: tc(160) = 63, verified against the fixed-point replica;
-    // +1/column by symmetry). The ≠MAXSHORT write-back is FIX-M3-06c below.
+    // +1/column by symmetry). FIX-M3-06c write-back: 150..170 hold tc (see
+    // the FIX-M3-06c test).
     expect(maskedTexturecol(0, 149)).toBe(MAXSHORT); // outside the store range:
     // ref lands below pool slot 0 (undefined → MAXSHORT). At x=171 the shared
     // pool means the address hits the NEXT block (the ceilingclip snapshot,
@@ -550,9 +551,9 @@ describe("drawsegs (M3-06b) unit basics", () => {
     const src = new Int16Array(320);
     for (let x = 0; x < 320; x++) src[x] = x - 100;
     const ref = snapshotOpenings(src, 100, 30);
-    expect(ref).toBe(-100); // base(0) - start(100)
-    expect(clipValue(ref, 100, 200)).toBe(0);
-    expect(clipValue(ref, 129, 200)).toBe(29);
+    expect(ref).toBe(-100); // base(0) - start(100) — signed ref, FIX-M3-06c
+    expect(clipValue(ref!, 100, 200)).toBe(0);
+    expect(clipValue(ref!, 129, 200)).toBe(29);
     expect(openingsUsed()).toBe(30);
   });
 

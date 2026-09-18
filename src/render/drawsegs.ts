@@ -99,7 +99,14 @@ export const MAXSHORT = 0x7fff;
 export const CLIP_NULL = -1;
 export const CLIP_SCREEN = -2; // screenheightarray (all viewheight)
 export const CLIP_NEGONE = -3; // negonearray (all −1)
-// >= 0: absolute openings-pool base (ref[x] = openings[base + x]).
+//   >= 0 (or any value outside the sentinel set): SIGNED openings-pool ref
+//     (ref[x] = openings[refBase + x]; FIX-M3-06c — vanilla pointer math
+//     `lastopening - start` is legitimately NEGATIVE whenever the pool base
+//     sits below the start column; only allocation failure skips the store,
+//     sign never does. Edge collision kept: a true ref of exactly −1..−3 is
+//     read as the matching sentinel — astronomically rare (needs base within
+//     3 shorts below start) and unreachable on shipped maps; sentinel set
+//     unchanged per clipValue contract.)
 
 /* ------------------------------------------------------------------ */
 /* drawseg SoA (ARCHITECTURE §4.2)                                     */
@@ -119,10 +126,10 @@ export interface DrawsegSoA {
   /** fixed; MAXINT/MININT sentinels per r_segs.c:476-524. */
   readonly bsilheight: Int32Array;
   readonly tsilheight: Int32Array;
-  /** CLIP_* codes / openings bases (file header). */
+  /** signed openings ref (may be < 0; header), CLIP_NULL = none. */
   readonly sprtopclip: Int32Array;
   readonly sprbottomclip: Int32Array;
-  /** openings base for maskedtexturecol, CLIP_NULL = none. */
+  /** signed openings base for maskedtexturecol (may be < 0), CLIP_NULL = none. */
   readonly maskedcol: Int32Array;
 }
 
@@ -209,11 +216,12 @@ export function openingsSet(i: number, v: number): void {
   openings[i] = v;
 }
 
-/** memcpy(lastopening, src+start, 2*n) + advance; returns base (already-
- * advanced = base − start so [x] addresses correctly), −1 on overflow. */
-export function snapshotOpenings(src: Int16Array, start: number, n: number): number {
+/** memcpy(lastopening, src+start, 2*n) + advance; returns the SIGNED ref
+ * `base - start` (vanilla `lastopening - start` pointer difference — may be
+ * negative; FIX-M3-06c), or null on overflow (vanilla: silent corruption). */
+export function snapshotOpenings(src: Int16Array, start: number, n: number): number | null {
   const base = allocOpenings(n);
-  if (base < 0) return -1;
+  if (base < 0) return null;
   for (let i = 0; i < n; i++) openings[base + i] = src[start + i] ?? 0;
   return base - start;
 }
