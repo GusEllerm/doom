@@ -32,8 +32,8 @@ import type { LineDef, MapData, Seg, SectorDef, SideDef, TextureDef, Vertex } fr
 import { Framebuffer } from "./framebuffer";
 import { createSegCallbacks } from "./segs";
 import { loadRenderWorld, type RenderWorld } from "./rdata";
-import { clearDrawsegs, clearClipArrays, getDrawsegs } from "./drawsegs";
-import { clearClipSegs } from "./solidsegs";
+import { clearDrawsegs, clearClipArrays, drawsegAdd, drawsegCount, getDrawsegs } from "./drawsegs";
+import { clearClipSegs, getRenderCounters, resetRenderCounters } from "./solidsegs";
 import { createViewState, setupView, VIEWHEIGHT } from "./view";
 
 const WALL_TEX = "FIXWALL";
@@ -170,4 +170,157 @@ describe("segs (M3-06b acceptance 1): analytic screen spans", () => {
       }
     });
   }
+});
+
+/* ------------------------------------------------------------------ */
+/* Acceptance 4: one-sided occlusion (pixel probe through the ledger). */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Two-line world for occlusion: one-sided wall `seg0` at x=0 (same geometry
+ * as acceptance 1) plus a two-sided line `seg1` at x=-64 (y 64..192) whose
+ * back sector (floor `backFloor`, ceiling 128) leaves a lower opening; the
+ * bottomtexture rides the FRONT sidedef (r_segs.c:445 `sidedef[side]`).
+ * Sidedef indices: 0 = line0 front, 1 = line1 front (corridor, sector 0),
+ * 2 = line1 back (sector 1) — the salvage scratch used out-of-range
+ * front:2/back:3 here, which silently degenerates; corrected.
+ */
+function occlWorld(backFloor: number): RenderWorld {
+  const vertices: Vertex[] = [
+    { x: 0, y: 64 }, { x: 0, y: 192 }, { x: -64, y: 64 }, { x: -64, y: 192 },
+  ];
+  const flat = (floorLh: number): SectorDef =>
+    ({ floorLh, ceilingLh: 128, floorFlat: "F", ceilingFlat: "F", lightLevel: 192, special: 0, tag: 0 });
+  const sectors: SectorDef[] = [flat(0), flat(backFloor)];
+  const sideDefs: SideDef[] = [
+    { sector: 0, toptexture: "", midtexture: WALL_TEX, bottomtexture: "", offset: [0, 0], light: 0 },
+    { sector: 0, toptexture: "", midtexture: "", bottomtexture: WALL_TEX, offset: [0, 0], light: 0 },
+    { sector: 1, toptexture: "", midtexture: "", bottomtexture: "", offset: [0, 0], light: 0 },
+  ];
+  const lineDefs: LineDef[] = [
+    { v1: 0, v2: 1, front: 0, back: -1, flags: 0, special: 0, tag: 0 },
+    { v1: 2, v2: 3, front: 1, back: 2, flags: 4, special: 0, tag: 0 }, // ML_TWOSIDED
+  ];
+  const ANG90SEG = (0x40000000 >>> 16) & 0xffff;
+  const segs: Seg[] = [
+    { v1: 0, v2: 1, angle: ANG90SEG, line: 0, side: 0, offset: 0 },
+    { v1: 2, v2: 3, angle: ANG90SEG, line: 1, side: 0, offset: 0 },
+  ];
+  const md: MapData = {
+    name: "SEGOCCL", things: new Uint8Array(0), lineDefs, sideDefs, vertices, segs,
+    ssectors: [], nodes: [], sectors, reject: new Uint8Array(0), blockmap: new Uint8Array(0),
+  };
+  return loadRenderWorld(md, new Map([[WALL_TEX, mkTex(64, 128)]]));
+}
+
+function snapshotRegion(fb: Framebuffer, x1: number, x2: number): number[] {
+  const out: number[] = [];
+  for (let x = x1; x <= x2; x++) for (let y = 0; y < VIEWHEIGHT; y++) out.push(fb.indices[y * 320 + x]!);
+  return out;
+}
+
+function changedCount(fb: Framebuffer, x1: number, x2: number, snap: number[]): number {
+  let n = 0;
+  let k = 0;
+  for (let x = x1; x <= x2; x++) for (let y = 0; y < VIEWHEIGHT; y++) if (fb.indices[y * 320 + x] !== snap[k++]) n++;
+  return n;
+}
+
+function paintedCount(fb: Framebuffer, x: number): number {
+  let n = 0;
+  for (let y = 0; y < VIEWHEIGHT; y++) if (fb.indices[y * 320 + x] !== 0) n++;
+  return n;
+}
+
+describe("segs (M3-06b acceptance 4): one-sided occlusion pixel probe", () => {
+  const fresh = () => {
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, occlWorld(16), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+    return { fb, cb };
+  };
+
+  it("pass seg behind a one-sided wall splits around it; covered pixels untouched", () => {
+    const { fb, cb } = fresh();
+    cb.onSegReached?.(0, 140, 180);
+    cb.addSolid(140, 180); // terminal one-sided wall, full-height ledger block
+    const snap = snapshotRegion(fb, 140, 180);
+
+    cb.onSegReached?.(1, 100, 220);
+    cb.addPass(100, 220); // two-sided lower band, wider than the wall
+
+    const ds = getDrawsegs();
+    expect(drawsegCount()).toBe(3); // wall + 2 fragments (R_AddLine clip split)
+    expect([ds.x1[1], ds.x2[1]]).toEqual([100, 139]);
+    expect([ds.x1[2], ds.x2[2]]).toEqual([181, 220]);
+    expect(changedCount(fb, 140, 180, snap)).toBe(0); // pixel probe: zero behind wall
+    expect(paintedCount(fb, 120)).toBeGreaterThan(0); // fragments outside DO draw
+    expect(paintedCount(fb, 200)).toBeGreaterThan(0);
+    expect(spanAt(fb, 140)).toEqual([13, 141]); // wall pixels intact (acceptance 1 d=160)
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+  });
+
+  it("fully occluded pass seg stores nothing and changes no pixels", () => {
+    const { fb, cb } = fresh();
+    cb.onSegReached?.(0, 100, 220);
+    cb.addSolid(100, 220); // wall covers the whole pass range
+    const snap = snapshotRegion(fb, 140, 180);
+
+    cb.onSegReached?.(1, 140, 180);
+    cb.addPass(140, 180);
+
+    expect(drawsegCount()).toBe(1); // R_AddLine clipsegs ate the seg entirely
+    expect(changedCount(fb, 140, 180, snap)).toBe(0);
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Acceptance 5: drawsegs overflow — the 257th store is counted, not   */
+/* stored (vanilla I_Error at r_segs.c:385-387 -> counter + silent     */
+/* return here).                                                        */
+/* ------------------------------------------------------------------ */
+
+describe("segs (M3-06b acceptance 5): drawseg overflow (257th)", () => {
+  it("257th drawseg request increments the overflow counter and draws nothing", () => {
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, oneSidedWorld(128), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+
+    for (let i = 0; i < 256; i++) expect(drawsegAdd(0)).toBe(i); // MAXDRAWSEGS full
+    cb.onSegReached?.(0, 160, 160); // the 257th store
+    cb.addSolid(160, 160);
+
+    expect(drawsegCount()).toBe(256); // overflow seg NOT stored
+    expect(getRenderCounters().drawsegOverflow).toBe(1);
+    expect(paintedCount(fb, 160)).toBe(0); // bailed before the pixel loop
+  });
+
+  it("control: same store with headroom draws and does not overflow", () => {
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, oneSidedWorld(128), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+
+    cb.onSegReached?.(0, 160, 160);
+    cb.addSolid(160, 160);
+
+    expect(drawsegCount()).toBe(1);
+    expect(getRenderCounters().drawsegOverflow).toBe(0);
+    expect(spanAt(fb, 160)).toEqual([13, 141]);
+  });
 });
