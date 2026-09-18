@@ -1,3 +1,8 @@
-// render/drawsegs.test.ts — M3-06 stub (implemented in the next commit).
-import { it } from 'vitest';
-it('M3-06 drawsegs stub', () => {});
+// M3-06b: drawseg unit tests (stub — to be replaced).
+import { describe, it } from "vitest";
+
+describe("drawsegs (M3-06b)", () => {
+  it("stub: placeholder pending full matrix", () => {
+    // Real tests added per deliverable.
+  });
+});
