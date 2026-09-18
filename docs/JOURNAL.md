@@ -139,3 +139,8 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - ENV ANOMALY: remote 'origin' → https://github.com/GusEllerm/doom.git now exists (was absent at Phase 0/D002; main is 118 ahead, never pushed by me). NOT pushing anything without explicit instruction; flag to user at next checkpoint. D002 env facts partially stale.
 - M4-06 merged (M4FIXTURES maps + buildM4FixturesWad). M4-07 integration dispatched — last functional task before the M4-08 re-bless/L5.
 - D011: pushing main to origin authorized; pushed (note: origin already had pause#1 commit — user pushed earlier themselves).
+
+## 2026-09-16 — M4-07 merged; M4-08 re-bless dispatched
+- Verified vanilla R_DrawMasked semantics in r_things.c (sprites back-to-front with inline occluding-masked draws :892 + final flush :980; idempotence via maskedtexturecol reset) — our two-call drawSprites→drawMasked reproduces it. 
+- main currently has 20 INTENTIONALLY stale M3 wall-golden failures (frames legitimately gained planes/masked/sprites; determinism+counters green). M4-08 re-bless fixes with reason history. First main-RED window in project history — bounded and planned.
+- Pushes to origin/main now standard (D011).
