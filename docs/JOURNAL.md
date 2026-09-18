@@ -126,3 +126,6 @@ Six-acceptance matrix green (analytic spans e.g. d=160 → span[13,141], scale 1
 - M3-08 merged: 20 blessed viewpoints (12 FIXMAP + 8 E1M1), double-render byte-equality, hom==0 & drawsegOverflow==0 everywhere, goldens:update --set walls --check green, e2e 8 specs green, 600+ unit tests.
 - L5 review (orchestrator viewed PNGs): FIX frames textbook walls-only perspective (filled wedges, centered horizon, black planes as documented). E1M1 spawn-east/atrium structurally plausible (edge-on slivers, raised-ledge occlusion reads). FINDINGS→M4: (a) atrium green checker — suspect masked-mid columns (recorded-not-drawn this milestone) and/or GREEN-family textures in Freedoom's E1M1 — re-verify in M4 when drawMasked lands; (b) tall distant bands above horizon look odd without ceilings — expected per walls-only deviation, revisit after visplanes.
 - Queue: M4 plan (planes/sky/masked/things), then waves.
+
+## 2026-09-16 — M4 plan accepted (8 tasks, 5 waves)
+Pinned truths (re-verified from source by planner): 1.10 visplanes marked from seg store paths (NO polysegs in the draw path — polyseg-free), sky = visplane with skyflatnum + angle-keyed columns (textured sky via SKY1 lump as wall-texture columns at horizon), F_SKY1 lump never drawn (tag only), MAXVISPLANES 128. Worktree ../doom-M4-plan removed after merge. Wave 1: planes engine, flat/sky data, static thing tables.
