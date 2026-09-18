@@ -314,6 +314,13 @@ export function drawMaskedSegRange(ds: number, x1: number, x2: number): void {
  * far→near — nearer middles draw over farther ones), then psprites (M7).
  * Consumes the maskedtexturecol entries (each drawn column resets to
  * MAXSHORT), so a second call in the same frame draws nothing.
+ *
+ * `maskedcol !== CLIP_NULL` is vanilla's `if (ds->maskedtexturecol)`
+ * pointer test. FIX-M4-09: the CLIP_* sentinel codes now live outside the
+ * range a openings ref can take (drawsegs.ts), so a legitimate negative
+ * ref — the first masked drawseg of a frame stores `0 - rw_x` — is drawn
+ * instead of reading as NULL (that aliasing made this FINAL FLUSH a
+ * silent no-op for whole viewpoints where no sprite interleaved).
  */
 export function drawMasked(): void {
   if (ctx === null) return; // header DEV: pre-M4-07 no-op semantics
