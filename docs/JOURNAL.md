@@ -138,3 +138,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - Cross-task rename breakage found at merge (vissprites imported M3 no-op from drawsegs; M4-04 had relocated the driver to masked.ts). One-line import fix; suite green. LESSON: parallel tasks touching same subsystem should rebase onto each other's merges BEFORE finishing, or name dispatch cross-references explicitly.
 - ENV ANOMALY: remote 'origin' → https://github.com/GusEllerm/doom.git now exists (was absent at Phase 0/D002; main is 118 ahead, never pushed by me). NOT pushing anything without explicit instruction; flag to user at next checkpoint. D002 env facts partially stale.
 - M4-06 merged (M4FIXTURES maps + buildM4FixturesWad). M4-07 integration dispatched — last functional task before the M4-08 re-bless/L5.
+- D011: pushing main to origin authorized; pushed (note: origin already had pause#1 commit — user pushed earlier themselves).

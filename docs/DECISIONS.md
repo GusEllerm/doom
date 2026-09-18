@@ -45,3 +45,6 @@ Chosen: int32-as-number + limb-split FixedMul (BigInt oracle-tested, A-01); mini
 
 ## D010 — Renderer never mutates sim state (from M3 plan G13)
 Vanilla r_segs.c sets ML_MAPPED on linedefs during rendering. Renderer keeps sim read-only; automap tracks mapped-state itself. Reaffirms sim/render boundary (A-06 zones).
+
+## D011 — Origin remote active; orchestrator authorized to push main
+GitHub origin (GusEllerm/doom) present; user authorized pushes. main pushed & tracking (50f6c01). Task/salvage branches stay local unless asked. D002's "no remote" fact superseded.
