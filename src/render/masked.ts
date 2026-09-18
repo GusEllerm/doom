@@ -236,8 +236,9 @@ export function renderMaskedSegRange(ds: number, x1: number, x2: number): void {
 
   const colRef = d.maskedcol[ds]!; // signed openings base (may be < 0)
   const rwScaleStep = d.scalestep[ds]!;
-  // spryscale = ds->scale1 + (x1 − ds->x1)·scalestep (plain fixed×int).
-  let scale = (d.scale1[ds]! + ((x1 - d.x1[ds]!) * rwScaleStep)) | 0;
+  // spryscale = ds->scale1 + (x1 − ds->x1)·scalestep (plain fixed×int) —
+  // the MODULE GLOBAL R_DrawMaskedColumn reads (r_segs.c:139).
+  spryscale = (d.scale1[ds]! + ((x1 - d.x1[ds]!) * rwScaleStep)) | 0;
   mfloorclip = d.sprbottomclip[ds]!;
   mceilingclip = d.sprtopclip[ds]!;
 
@@ -277,15 +278,15 @@ export function renderMaskedSegRange(ds: number, x1: number, x2: number): void {
     const tc = openingsAt(colRef + x);
     if (tc !== MAXSHORT) {
       if (fixedCmap < 0) {
-        let index = scale >> LIGHTSCALESHIFT;
+        let index = spryscale >> LIGHTSCALESHIFT;
         if (index >= MAXLIGHTSCALE) index = MAXLIGHTSCALE - 1;
         dc.colormap = tables.scalelight[lightRow * MAXLIGHTSCALE + index]!;
       }
 
-      sprtopscreen = CENTERYFRAC - FixedMul(texturemid, scale);
+      sprtopscreen = CENTERYFRAC - FixedMul(texturemid, spryscale);
       // dc_iscale = 0xffffffffu / (unsigned)spryscale (:177) — the C
       // UNSIGNED division on the bit pattern (cols.ts G12 policy).
-      dc.iscale = computeIscale(scale >>> 0);
+      dc.iscale = computeIscale(spryscale >>> 0);
 
       // draw the texture: vanilla `R_GetColumn(texnum, col) − 3` walk —
       // raster-run equivalent, header DEV.
@@ -293,7 +294,7 @@ export function renderMaskedSegRange(ds: number, x1: number, x2: number): void {
       drawMaskedColumn(world.getWallColumn(texnum, tc));
       openingsSet(colRef + x, MAXSHORT); // reset (:185)
     }
-    scale = (scale + rwScaleStep) | 0;
+    spryscale = (spryscale + rwScaleStep) | 0;
   }
 }
 

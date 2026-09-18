@@ -400,7 +400,14 @@ export function createSegCallbacks(
       let yl = (topFrac + HEIGHTUNIT - 1) >> HEIGHTBITS;
       if (yl < ceilingclip[rwX]! + 1) yl = ceilingclip[rwX]! + 1;
       if (markCeiling) {
-        const top = ceilingclip[rwX]! + 1;
+        let top = ceilingclip[rwX]! + 1;
+        // DEV (faithful-value): vanilla can store a NEGATIVE top here
+        // (untextured band ⇒ ceilingclip = yl−1 < 0, r_segs.c:266) and
+        // R_MakeSpans then indexes spanstart out of bounds — undefined
+        // behavior we cannot port. Clamping to row 0 is the screen-clipped
+        // value (rows < 0 never draw a pixel); the Uint8 mark store would
+        // otherwise wrap mod 256 into a bogus mark.
+        if (top < 0) top = 0;
         let bottom = yl - 1;
         if (bottom >= floorclip[rwX]!) bottom = floorclip[rwX]! - 1;
         if (top <= bottom) {
