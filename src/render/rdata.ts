@@ -35,8 +35,32 @@
 //     unmatched name becomes −1 and is recorded in `missingTextures`
 //     (committed, warning-tolerant list) — deviation D-a, deterministic and
 //     visible.
-//   R_InitFlats / R_FlatNumForName (r_data.c:545-600) — flatNum() = −1 stub;
-//     flats are M4 (visplanes), same −1 sentinel convention.
+//   R_InitFlats / R_FlatNumForName (r_data.c:579-594, 669-686) — flatNum()
+//     reads the raw F_START/F_END directory range (numflats = F_END−F_START−1
+//     directory entries, INCLUDING any zero-size ones) with the identity
+//     translation flattranslation[i] = i. Vanilla's lookup is
+//     W_CheckNumForName(name) − firstflat: a REVERSE scan of the whole
+//     WAD directory; for conforming wads (all flat names live inside the
+//     F_ markers) that equals "last match inside the range", which is what
+//     we do (deviation D-c: names duplicated OUTSIDE the range would give
+//     vanilla an out-of-range index; we stay in-range and −1 instead).
+//     Unknown name: vanilla I_Error (r_data.c:683) — here −1 + a record in
+//     `missingFlats` (committed warn list, same pattern as missingTextures).
+//   Sky wiring (g_game.c G_DoLoadLevel:454-467, r_sky.h:32/35, r_plane.c
+//   R_DrawPlanes:395-417) — skyflatnum = R_FlatNumForName("F_SKY1"): a
+//     TAG-ONLY index; the F_SKY1 lump is never drawn (r_plane.c:396 tests
+//     `picnum == skyflatnum` and draws the sky TEXTURE instead), so a
+//     non-4096-byte F_SKY1 dummy (id's WADs carry 128/1024-byte ones;
+//     freedoom1's is 4096) must never break loading — getFlatPixels
+//     tolerates it with the zero sentinel. skyTextureNum = texture index
+//     of "SKY1"; episode-variant SKY2/SKY3 selection (g_game.c:457-467) is
+//     M9 game-flow territory — deviation D-d, default SKY1.
+//     getSkyColumn(angle1024) is the r_plane.c:413-415 pair
+//     `angle = (…) >> ANGLETOSKYSHIFT(22); R_GetColumn(skytexture, angle)`:
+//     the caller supplies the 0…1023 angle bucket, we apply vanilla's
+//     `col &= texturewidthmask`. TRUTH PINNED (freedoom1.wad): SKY1 is
+//     256 wide (id's DOOM.WAD SKY1 is 1024) — mask = 255, still a power
+//     of two, so the AND wrap is vanilla-identical and never OOB.
 //   R_GetColumn (r_data.c:381-399) — getWallColumn(): `col &= widthmask`
 //     wrap returning the composed column (patch stitch already done in
 //     M1-06's compose; the single-patch raw-patch fast path with its 128-tall
@@ -61,6 +85,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { FRACUNIT } from '../core/constants';
+import { decodeFlat, FLAT_BYTES } from '../wad/flat';
+import type { WadFile } from '../wad/wadfile';
 import type { MapData, TextureDef } from '../wad/types';
 
 /* ------------------------------------------------------------------ */
@@ -76,6 +102,54 @@ export const ML_TWOSIDED = 0x0004;
 /** Row height of the defensive sentinel column (vanilla textures are
  * 128-tall composites; r_data.c masks texture rows with &127). */
 export const WALLCOLUMN_SENTINEL_HEIGHT = 128;
+
+/* ---- M4-02 flat/sky wiring (r_data.c R_InitFlats + g_game.c sky init) ---- */
+
+/** SKYFLATNAME (r_sky.h:32): the dummy flat naming the sky (g_game.c:454). */
+export const SKY_FLAT_NAME = 'F_SKY1';
+
+/** Default sky texture name (g_game.c episode<3 branch; episode variants
+ * SKY2/SKY3 selection deferred to M9 game flow — documented deviation). */
+export const DEFAULT_SKY_TEXTURE_NAME = 'SKY1';
+
+/** F_START/F_END marker lump names (r_data.c:585-586). */
+export const FLAT_START_MARKER = 'F_START';
+export const FLAT_END_MARKER = 'F_END';
+
+/** −1 sentinel for "no flat" (vanilla I_Errs instead — see D-a/D-c). */
+export const NO_FLAT = -1;
+
+/* ------------------------------------------------------------------ */
+/* FlatSource — raw F_START/F_END lump view                            */
+/* ------------------------------------------------------------------ */
+
+/** One raw flat lump: directory name + bytes, position in the array =
+ * vanilla flatnum (lumpnum − firstflat, identity flattranslation). */
+export interface FlatSource {
+  readonly name: string;
+  readonly bytes: Uint8Array;
+}
+
+/**
+ * Collect the F_START/F_END lumps in RAW directory order (R_InitFlats,
+ * r_data.c:585-586: firstflat = F_START+1, lastflat = F_END−1 — every
+ * directory entry between the markers counts, zero-size ones included, so
+ * array position == vanilla flatnum even on wads with stray empty lumps;
+ * `WadFile.lumpRange` deliberately skips those and would shift indices).
+ * Missing or inverted markers ⇒ empty list (flatNum degrades to −1 for
+ * everything — the pre-M4 placeholder behaviour). Last duplicate wins,
+ * mirroring vanilla's reverse directory scan (W_CheckNumForName).
+ */
+export function flatsFromWad(wad: WadFile): readonly FlatSource[] {
+  const first = wad.lumpNumByName(FLAT_START_MARKER) + 1;
+  const last = wad.lumpNumByName(FLAT_END_MARKER) - 1;
+  if (first <= 0 || last < first) return [];
+  const out: FlatSource[] = [];
+  for (let num = first; num <= last; num += 1) {
+    out.push({ name: wad.lumpName(num), bytes: wad.readLump(num) });
+  }
+  return out;
+}
 
 /* ------------------------------------------------------------------ */
 /* RenderWorld — the renderer's numeric view of one map               */
@@ -160,13 +234,46 @@ export interface RenderWorld {
    * texture Map — de-duplicated, first-reference order (committed list). */
   readonly missingTextures: readonly string[];
 
+  /** vanilla numflats (r_data.c:587): raw F_START/F_END directory count. */
+  readonly numFlats: number;
+  /** Uppercase flat names in vanilla flatnum order (identity
+   * flattranslation; raw F_START/F_END directory positions). */
+  readonly flatNames: readonly string[];
+  /** Uppercase flat names requested via {@link RenderWorld.flatNum} but
+   * absent from the flat list — de-duplicated, first-reference order
+   * (vanilla I_Errs here; we return −1 and record — deviation D-a pattern). */
+  readonly missingFlats: readonly string[];
+  /** skyflatnum (g_game.c:454 R_FlatNumForName(SKYFLATNAME)): TAG-ONLY —
+   * the lump is never drawn (r_plane.c:396 sky guard); −1 if F_SKY1 is
+   * absent (vanilla would I_Error). Not counted as a missingFlat. */
+  readonly skyflatnum: number;
+  /** skytexture (g_game.c:457-467): index of {@link
+   * DEFAULT_SKY_TEXTURE_NAME} in the texture table; −1 when the texture
+   * is absent (sentinel column draws). SKY2/SKY3 episode selection: M9. */
+  readonly skyTextureNum: number;
+
   /** R_GetColumn analogue: composed column view at `col & widthmask`.
    * Never out of bounds for ANY col/width; an invalid tex index (e.g.
    * NO_TEXTURE) yields a shared all-zero 128-tall sentinel column. */
   getWallColumn(tex: number, col: number): Uint8Array;
 
-  /** R_FlatNumForName placeholder — flats land in M4 (visplanes). */
-  flatNum(name?: string): number;
+  /** R_FlatNumForName (r_data.c:672): flatnum for a flat name, −1 + a
+   * {@link RenderWorld.missingFlats} record when unresolvable (vanilla:
+   * I_Error). Case-insensitive; last duplicate in the F_ range wins. */
+  flatNum(name: string): number;
+
+  /** Cached flat pixels (row-major 4096 B, decodeFlat contract — raw
+   * passthrough copy) for a flatnum; out-of-range ⇒ zero sentinel. A
+   * lump that is not a valid 4096-byte flat (the F_SKY1 dummy in id
+   * WADs) tolerates decode failure with the zero sentinel: the sky
+   * guard means it is never drawn (r_plane.c:225/396). */
+  getFlatPixels(num: number): Uint8Array;
+
+  /** r_plane.c:413-415 sky sample: `R_GetColumn(skytexture, angle1024)`
+   * with the vanilla `col &= texturewidthmask` wrap — angle1024 is the
+   * `(viewangle + xtoviewangle[x]) >> ANGLETOSKYSHIFT(22)` bucket, any int (negative included)
+   * and never out of bounds. See SKY1-width truth in the file header. */
+  getSkyColumn(angle1024: number): Uint8Array;
 }
 
 /* ------------------------------------------------------------------ */
@@ -176,6 +283,9 @@ export interface RenderWorld {
 /** Zero-filled defensive column (NO_TEXTURE samples; see D-a note). */
 const SENTINEL_COLUMN = new Uint8Array(WALLCOLUMN_SENTINEL_HEIGHT);
 
+/** Zero-filled defensive flat (undrawable/absent flats; see sky note). */
+const SENTINEL_FLAT = new Uint8Array(FLAT_BYTES);
+
 function toFixedUnits(units: number): number {
   // Raw int16 map units (R01 §4) never near 2^15, so the |0 keeps the
   // exact two's-complement fixed value.
@@ -184,12 +294,15 @@ function toFixedUnits(units: number): number {
 
 /**
  * Build the renderer's numeric tables from decoded map data + composed
- * textures. Pure read of both inputs (no mutation), deterministic, and
- * independent of anything in sim/**.
+ * textures + (optionally) the F_START/F_END flat lumps ({@link
+ * {@link flatsFromWad}). Pure read of all inputs (no mutation),
+ * deterministic, and independent of anything in sim/**. Omitting `flats`
+ * keeps the pre-M4 behaviour: every flatNum is −1.
  */
 export function loadRenderWorld(
   md: MapData,
   textures: ReadonlyMap<string, TextureDef>,
+  flats: readonly FlatSource[] = [],
 ): RenderWorld {
   /* ---------------- textures (vanilla texturenum = directory order) -- */
   const textureNames: string[] = [];
@@ -337,6 +450,56 @@ export function loadRenderWorld(
     segOffset[i] = toFixedUnits(sg.offset);
   }
 
+  /* ---------------- flats (r_data.c R_InitFlats; identity translation) - */
+  // numflats = raw directory entries between the markers (R_InitFlats
+  // counts positions, not decodable payloads); flattranslation[i] = i.
+  const numFlats = flats.length;
+  const flatNames: string[] = [];
+  const flatByName = new Map<string, number>();
+  for (let i = 0; i < numFlats; i += 1) {
+    const key = flats[i]!.name.toUpperCase();
+    flatNames.push(key);
+    flatByName.set(key, i); // last wins = vanilla reverse dir scan
+  }
+  const missingFlats: string[] = [];
+  const missingFlatSet = new Set<string>();
+  const flatCache: (Uint8Array | undefined)[] = new Array<Uint8Array | undefined>(numFlats);
+
+  function flatNum(name: string): number {
+    const key = name.toUpperCase();
+    const idx = flatByName.get(key);
+    if (idx !== undefined) return idx;
+    if (!missingFlatSet.has(key)) {
+      missingFlatSet.add(key);
+      missingFlats.push(key);
+    }
+    return NO_FLAT;
+  }
+
+  function getFlatPixels(num: number): Uint8Array {
+    if (!(num >= 0 && num < numFlats)) return SENTINEL_FLAT;
+    let px = flatCache[num];
+    if (px === undefined) {
+      try {
+        px = decodeFlat(flats[num]!.bytes, flatNames[num]!).pixels;
+      } catch {
+        // Non-4096 dummy (e.g. an id-style F_SKY1): tag-only, never drawn
+        // — sky guard r_plane.c:396 — so tolerate with the zero sentinel.
+        px = SENTINEL_FLAT;
+      }
+      flatCache[num] = px;
+    }
+    return px;
+  }
+
+  // skyflatnum: g_game.c:454 — a direct lookup, deliberately NOT routed
+  // through flatNum(): its absence is a load-time fatal in vanilla
+  // (I_Error), not a per-sector miss, so it must not pollute missingFlats.
+  const skyflatnum = flatByName.get(SKY_FLAT_NAME) ?? NO_FLAT;
+  // skytexture: g_game.c:457-467 (episode<3 ⇒ "SKY1"); likewise a system
+  // lookup, not a sidedef miss — no missingTextures record.
+  const skyTextureNum = texByName.get(DEFAULT_SKY_TEXTURE_NAME) ?? NO_TEXTURE;
+
   /* ---------------- world object ----------------------------------- */
   const texWidth = Int32Array.from(texWidths);
   const texWidthMask = Int32Array.from(texWidths, (w) => w - 1);
@@ -392,9 +555,19 @@ export function loadRenderWorld(
     texMasked: Uint8Array.from(texMaskedFlags),
     texColumns,
     missingTextures: missing,
+    numFlats,
+    flatNames,
+    missingFlats,
+    skyflatnum,
+    skyTextureNum,
     getWallColumn,
-    flatNum(): number {
-      return NO_TEXTURE; // M4: R_InitFlats / R_FlatNumForName analogue
-    }
+    flatNum,
+    getFlatPixels,
+    getSkyColumn(angle1024: number): Uint8Array {
+      // R_GetColumn(skytexture, angle) — the widthmask AND wrap inside
+      // getWallColumn handles any int32 bucket (freedoom1 SKY1 width is
+      // 256, id's 1024; both powers of two — file header truth note).
+      return getWallColumn(skyTextureNum, angle1024);
+    },
   };
 }
