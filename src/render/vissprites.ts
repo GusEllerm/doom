@@ -105,13 +105,13 @@ import { decodePatch } from '../wad/patch';
 import {
   CLIP_NULL,
   clipValue,
-  drawMaskedSegRange as stubMaskedSegRange,
   drawsegCount,
   getDrawsegs,
   SIL_BOTTOM,
   SIL_NONE,
   SIL_TOP,
 } from './drawsegs';
+import { renderMaskedSegRange as stubMaskedSegRange } from './masked';
 import type { Framebuffer } from './framebuffer';
 import { RENDER_WIDTH } from './framebuffer';
 import {
