@@ -130,3 +130,4 @@ Six-acceptance matrix green (analytic spans e.g. d=160 → span[13,141], scale 1
 ## 2026-09-16 — M4 plan accepted (8 tasks, 5 waves)
 Pinned truths (re-verified from source by planner): 1.10 visplanes marked from seg store paths (NO polysegs in the draw path — polyseg-free), sky = visplane with skyflatnum + angle-keyed columns (textured sky via SKY1 lump as wall-texture columns at horizon), F_SKY1 lump never drawn (tag only), MAXVISPLANES 128. Worktree ../doom-M4-plan removed after merge. Wave 1: planes engine, flat/sky data, static thing tables.
 - M4-02 merged. Data truths: F_START count 246; SKY1 width 256 (power-of-2 mask OK); E1M1 missing flats EMPTY (report preview was truncated/misleading — verified committed goldens directly before believing, rule working).
+- M4-01 merged (visplanes + yslope/distscale + subsector seam, MapPlane BigInt goldens). M4-04 dispatched early (deps satisfied: 01+02 merged; 03 still running).
