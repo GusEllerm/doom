@@ -10,6 +10,11 @@
  * wiring (M2-plan lists main.ts under M2-07 but this branch's ownership
  * excludes it — see DEVIATIONS); until then headless/tests attach states
  * directly.
+ * M3-07: the render half arrives WITHOUT breaking that discipline —
+ * {@link attachRenderDebug} takes a STRUCTURAL source (live fb.indices + a
+ * counters getter) that main.ts wires from render/solidsegs; capture()
+ * copies the real framebuffer and state().render.hom is live (no more −1
+ * stub once attached; −1 remains the pre-boot value).
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { runHeadless } from './sim/game';
@@ -38,6 +43,25 @@ let attached: GameState | null = null;
 /** Sticky e2e input override (null = per-call/empty input). */
 let inputOverride: GameInput | null = null;
 let paused = false;
+
+/**
+ * M3-07 render seam: structural (no render import from this file — see
+ * header). `indices` is the LIVE framebuffer index store (read per capture;
+ * main.ts passes `fb.indices`, never a copy); `counters` returns the live
+ * render health counters (getRenderCounters wired in main.ts).
+ */
+export interface RenderDebugSource {
+  readonly indices: Uint8Array;
+  counters(): { hom: number };
+}
+
+let renderSource: RenderDebugSource | null = null;
+
+/** Wire (or detach with null) the render source; called by main.ts once the
+ * framebuffer exists. */
+export function attachRenderDebug(src: RenderDebugSource | null): void {
+  renderSource = src;
+}
 
 function requireState(): GameState {
   if (!attached) throw new Error('no simulation attached (loadMap/main boot pending)');
@@ -90,7 +114,8 @@ function liveSnapshot(state: GameState): DebugStateLive {
     },
     sectors: { count: state.map.sectors.count },
     thinkers: { count: 0 },
-    render: { hom: -1 },
+    // M3-07: live renderer counter (−1 only pre-boot / pre-attach).
+    render: { hom: renderSource === null ? -1 : renderSource.counters().hom },
     hash: hashState(state)
   };
 }
@@ -179,10 +204,16 @@ export const debugApi: DoomDebugApi = {
     return liveSnapshot(attached);
   },
   capture(): CaptureResult {
+    // M3-07: real framebuffer copy (live fb.indices via the render seam);
+    // pre-boot (no source yet) keeps the documented all-zeros contract.
+    const src = renderSource === null ? null : renderSource.indices;
     return {
       width: RENDER_WIDTH,
       height: RENDER_HEIGHT,
-      indices: new Uint8Array(RENDER_WIDTH * RENDER_HEIGHT),
+      indices:
+        src !== null && src.length === RENDER_WIDTH * RENDER_HEIGHT
+          ? new Uint8Array(src)
+          : new Uint8Array(RENDER_WIDTH * RENDER_HEIGHT),
     };
   },
 };
