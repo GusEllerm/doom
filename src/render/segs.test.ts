@@ -266,7 +266,13 @@ describe("segs (M3-06b acceptance 4): one-sided occlusion pixel probe", () => {
     expect(paintedCount(fb, 120)).toBeGreaterThan(0); // fragments outside DO draw
     expect(paintedCount(fb, 200)).toBeGreaterThan(0);
     expect(spanAt(fb, 140)).toEqual([13, 141]); // wall pixels intact (acceptance 1 d=160)
-    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+    expect(getRenderCounters()).toEqual({
+      hom: 0,
+      drawsegOverflow: 0,
+      solidsegDrops: 0,
+      visplaneOverflow: 0,
+      openingOverflow: 0,
+    });
   });
 
   it("fully occluded pass seg stores nothing and changes no pixels", () => {
@@ -280,7 +286,7 @@ describe("segs (M3-06b acceptance 4): one-sided occlusion pixel probe", () => {
 
     expect(drawsegCount()).toBe(1); // R_AddLine clipsegs ate the seg entirely
     expect(changedCount(fb, 140, 180, snap)).toBe(0);
-    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0, visplaneOverflow: 0, openingOverflow: 0 });
   });
 });
 
@@ -457,7 +463,7 @@ describe("segs (M3-06b acceptance 6): masked texturecol recording", () => {
     expect(Array.from(floorclip.slice(140, 181))).toEqual(floorBefore);
     // 21 maskedtexturecol + 21 ceilingclip + 21 floorclip snapshot shorts
     expect(openingsUsed()).toBe(63);
-    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0, visplaneOverflow: 0, openingOverflow: 0 });
   });
 
   it("FIX-M3-06c: masked record keeps negative-base openings refs", () => {
@@ -495,7 +501,7 @@ describe("segs (M3-06b acceptance 6): masked texturecol recording", () => {
     expect(clipValue(ds.sprbottomclip[0]!, 160, VIEWHEIGHT)).toBe(VIEWHEIGHT);
     expect(maskedTexturecol(0, 149)).toBe(MAXSHORT); // below pool slot 0
     expect(openingsUsed()).toBe(63);
-    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0, visplaneOverflow: 0, openingOverflow: 0 });
   });
 
   it("FIX-M3-06c vector: positive-base refs (water mark past start) unchanged", () => {

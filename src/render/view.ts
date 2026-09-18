@@ -12,7 +12,9 @@
 //     ⇒ scaledviewwidth=SCREENWIDTH, viewheight=SCREENHEIGHT; detailshift=0
 //     ⇒ viewwidth=320, viewheight=200, centery=viewheight/2=100,
 //     centerx=160, centerxfrac=160<<16, projection=centerxfrac. Fixed here;
-//     no screen-size menu in M3 (viewscale = 1, plan §M3-04).
+//     no screen-size menu in M3 (viewscale = 1, plan §M3-04). M4-01 extends
+//     the same init with the plane tables yslope[200]/distscale[320] and
+//     the psprite scales (r_main.c:718-740, §M4-01).
 //   R_InitTextureMapping (r_main.c:544-603) — ported verbatim; see
 //     {@link initTextureMapping} for the focallength / viewangletox /
 //     xtoviewangle / clipangle math. clipangle source truth: 1.10 assigns
@@ -327,6 +329,22 @@ export interface TextureMapping {
   /** xtoviewangle[0] — NO extra shift in 1.10 (source truth, header note). */
   readonly clipangle: number;
   readonly focallength: number;
+  /** R_ExecuteSetViewSize "planes" loop (r_main.c:729-734, M4-01): per-row
+   * slope `yslope[i] = FixedDiv(centerxfrac, |((i-viewheight/2)<<16)
+   * + FRACUNIT/2|)` (detailshift = 0 ⇒ viewwidth<<detailshift = 320).
+   * Consumed by planes.ts R_MapPlane. */
+  readonly yslope: Int32Array;
+  /** R_ExecuteSetViewSize (r_main.c:736-740, M4-01): per-column diagonal
+   * correction `distscale[i] = FixedDiv(FRACUNIT, |finecosine[
+   * xtoviewangle[i]>>ANGLETOFINESHIFT]|)`. xtoviewangle entries are exact
+   * multiples of 2^19, so the >>>19 index (0..8191) stays inside the
+   * 8192-long finecosine view of the 10240-entry finesine table. */
+  readonly distscale: Int32Array;
+  /** pspritescale = FRACUNIT*viewwidth/SCREENWIDTH = FRACUNIT (detail 0). */
+  readonly pspritescale: number;
+  /** pspriteiscale = FRACUNIT*SCREENWIDTH/viewwidth = FRACUNIT (detail 0);
+   * sky `dc_iscale = pspriteiscale>>detailshift` (r_plane.c R_DrawPlanes). */
+  readonly pspriteiscale: number;
 }
 
 const FINEHALF = FINEANGLES / 2; // 4096
@@ -373,11 +391,35 @@ export function initTextureMapping(): TextureMapping {
     else if (viewangletox[i] === VIEWWIDTH + 1) viewangletox[i] = VIEWWIDTH;
   }
 
+  /* ---- R_ExecuteSetViewSize plane/psprite tables (r_main.c:718-740,
+   * M4-01; setblocks=11 + detailshift=0 constants at file top) ---- */
+  const yslope = new Int32Array(VIEWHEIGHT);
+  for (let i = 0; i < VIEWHEIGHT; i += 1) {
+    // dy = ((i-viewheight/2)<<FRACBITS)+FRACUNIT/2; dy = abs(dy);
+    // yslope[i] = FixedDiv((viewwidth<<detailshift)/2*FRACUNIT, dy)
+    //           = FixedDiv(CENTERXFRAC, dy) at the fixed 320-wide view.
+    let dy = (((i - VIEWHEIGHT / 2) << FRACBITS) + FRACUNIT / 2) | 0;
+    if (dy < 0) dy = -dy; // C abs — |dy| « 2^31, no MININT wrap
+    yslope[i] = FixedDiv(CENTERXFRAC, dy);
+  }
+
+  const distscale = new Int32Array(VIEWWIDTH);
+  for (let i = 0; i < VIEWWIDTH; i += 1) {
+    const cosadj = Math.abs(finecosine[xtoviewangle[i]! >>> ANGLETOFINESHIFT]!);
+    distscale[i] = FixedDiv(FRACUNIT, cosadj);
+  }
+
   mapping = {
     viewangletox,
     xtoviewangle,
     clipangle: xtoviewangle[0]! >>> 0, // source truth: no <<16 (header)
     focallength,
+    yslope,
+    distscale,
+    // psprite scales (r_main.c:718-719): viewwidth == SCREENWIDTH at the
+    // fixed full-res view ⇒ both exactly FRACUNIT.
+    pspritescale: (FRACUNIT * VIEWWIDTH) / VIEWWIDTH,
+    pspriteiscale: (FRACUNIT * VIEWWIDTH) / VIEWWIDTH,
   };
   return mapping;
 }

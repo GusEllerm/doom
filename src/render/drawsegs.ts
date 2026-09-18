@@ -74,7 +74,7 @@
 
 import { MAXINT } from '../core/constants';
 import { RENDER_WIDTH } from './framebuffer';
-import { noteDrawsegOverflow } from './solidsegs';
+import { noteDrawsegOverflow, noteOpeningOverflow } from './solidsegs';
 
 /* ------------------------------------------------------------------ */
 /* Constants (r_defs.h / r_plane.c / r_segs.c)                         */
@@ -200,6 +200,7 @@ export function clearClipArrays(viewheight: number): void {
 export function allocOpenings(n: number): number {
   if (lastopening + n > MAXOPENINGS) {
     openingsOverflows++;
+    noteOpeningOverflow(); // M4-01: same event via the getRenderCounters API
     return -1;
   }
   const base = lastopening;

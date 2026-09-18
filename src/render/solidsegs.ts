@@ -84,14 +84,27 @@ let end = 0;
 const frags = new Int32Array(2 * (MAXSEGS + 2));
 let nfrags = 0;
 
-const counters = { hom: 0, drawsegOverflow: 0, solidsegDrops: 0 };
+const counters = {
+  hom: 0,
+  drawsegOverflow: 0,
+  solidsegDrops: 0,
+  visplaneOverflow: 0,
+  openingOverflow: 0,
+};
 
 /** Public snapshot of the render health counters (debug.ts / goldens read
- * this via getRenderCounters; returns a copy). */
+ * this via getRenderCounters; returns a copy). visplaneOverflow/opening-
+ * Overflow added M4-01 (same live-counter API, plan §M4-01). */
 export interface RenderCounters {
   hom: number;
   drawsegOverflow: number;
   solidsegDrops: number;
+  /** MAXVISPLANES 128 hit (vanilla `I_Error("R_FindPlane: no more
+   * visplanes")` — port: counter + typed throw, planes.ts). */
+  visplaneOverflow: number;
+  /** openings pool exhaustion (vanilla silent static corruption, MAXOPENINGS
+   * SCREENWIDTH*64) — incremented by drawsegs.ts allocOpenings. */
+  openingOverflow: number;
 }
 
 // --- storage helpers (struct assignment = 3-slot copy) ---------------------
@@ -331,6 +344,8 @@ export function resetRenderCounters(): void {
   counters.hom = 0;
   counters.drawsegOverflow = 0;
   counters.solidsegDrops = 0;
+  counters.visplaneOverflow = 0;
+  counters.openingOverflow = 0;
 }
 
 /**
@@ -340,6 +355,19 @@ export function resetRenderCounters(): void {
  */
 export function noteDrawsegOverflow(): void {
   counters.drawsegOverflow++;
+}
+
+/** MAXVISPLANES 128 (vanilla I_Error, r_plane.c R_FindPlane) — planes.ts
+ * bumps this live counter and throws a typed error (M4-01 deviation). */
+export function noteVisplaneOverflow(): void {
+  counters.visplaneOverflow++;
+}
+
+/** Openings-pool exhaustion (drawsegs.ts allocOpenings; vanilla: silent
+ * corruption of the static `openings` array) — M4-01 route into the same
+ * counters API; drawsegs.openingsOverflowCount stays as the legacy alias. */
+export function noteOpeningOverflow(): void {
+  counters.openingOverflow++;
 }
 
 /**

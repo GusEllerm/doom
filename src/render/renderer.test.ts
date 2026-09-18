@@ -126,7 +126,13 @@ describe('renderFrame (M3-07): FIXMAP walls pipeline', () => {
     expect(Array.from(first)).toEqual(Array.from(second));
 
     // Hom-free: both the return value and the live counter are clean.
-    expect(counters1).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+    expect(counters1).toEqual({
+      hom: 0,
+      drawsegOverflow: 0,
+      solidsegDrops: 0,
+      visplaneOverflow: 0,
+      openingOverflow: 0,
+    });
     expect(counters2.hom).toBe(0);
     expect(getRenderCounters().hom).toBe(0);
 

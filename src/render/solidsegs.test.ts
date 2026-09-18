@@ -441,7 +441,13 @@ describe('counters — separation + store-range guards', () => {
   it('noteDrawsegOverflow counts MAXDRAWSEGS separately from hom (r_segs.c:385-387)', () => {
     noteDrawsegOverflow();
     noteDrawsegOverflow();
-    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 2, solidsegDrops: 0 });
+    expect(getRenderCounters()).toEqual({
+      hom: 0,
+      drawsegOverflow: 2,
+      solidsegDrops: 0,
+      visplaneOverflow: 0,
+      openingOverflow: 0,
+    });
   });
 
   it('noteBadStoreRange flags start > stop with hom++ (r_segs.c:389-392 deviation)', () => {
@@ -452,12 +458,12 @@ describe('counters — separation + store-range guards', () => {
     expect(getRenderCounters().hom).toBe(1); // ok ranges do not increment
   });
 
-  it('resetRenderCounters zeroes all three', () => {
+  it('resetRenderCounters zeroes all five (M4-01 adds visplane/opening)', () => {
     noteDrawsegOverflow();
     solid(0, 319); // full screen -> no overflow path
     expect(solid(5, 6)).toEqual([]);
     resetRenderCounters();
-    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0, visplaneOverflow: 0, openingOverflow: 0 });
   });
 
   it('getRenderCounters returns a detached snapshot', () => {
