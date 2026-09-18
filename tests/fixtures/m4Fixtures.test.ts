@@ -114,7 +114,7 @@ describe('M4-06 FLATFIX flats + committed shas', () => {
         );
       }
     }
-    const corner = (row: number, col: number): number => edge[row * 64 + col];
+    const corner = (row: number, col: number): number => edge[row * 64 + col]!;
     expect([corner(0, 0), corner(0, 63), corner(63, 63), corner(63, 0)]).toEqual([1, 2, 3, 4]);
     expect(corner(31, 31)).toBe(64); // fill
   });
