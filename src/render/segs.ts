@@ -134,7 +134,8 @@ export function createSegCallbacks(
   let topFrac = 0, topStep = 0, bottomFrac = 0, bottomStep = 0;
   let lightRow = 0;
   let fixedCmap = -1; // ≥0 = dc.colormap offset when view.fixedcolormap set
-  let maskedBase = -1; // openings ref for maskedtexturecol
+  let maskedBase = 0; // openings ref (signed base−rwX, vanilla pointer math; may be < 0)
+  let maskedRecord = false; // maskedtexturecol allocated (FIX-M3-06c: refs are signed)
 
   // R_PointToDist (r_main.c:392-418); hyp of v1 from the eye.
   function pointToDist(x: number, y: number): number {
@@ -204,7 +205,7 @@ export function createSegCallbacks(
     worldbottom = world.sectorFloor[frontSec]! - view.viewz;
     midTexture = topTexture = bottomTexture = NO_TEXTURE;
     maskedTexture = false;
-    maskedBase = -1;
+    maskedRecord = false;
     const rowOff = side >= 0 ? world.sideOffsetX[side]! : 0;
     if (backSec < 0) {
       // single sided line (:440-464)
@@ -275,8 +276,12 @@ export function createSegCallbacks(
         maskedTexture = true;
         const n = rwStopX - rwX;
         const base = allocOpenings(n);
+        // FIX-M3-06c: maskedtexturecol = lastopening - rw_x (:611) is a
+        // SIGNED pointer difference — the base is routinely BELOW rw_x.
+        // Only allocation failure (our overflow deviation) skips recording.
         if (base >= 0) {
           maskedBase = base - rwX;
+          maskedRecord = true;
           ds.maskedcol[di] = maskedBase;
           for (let x = start; x <= stop; x++) openingsSet(base + x - start, MAXSHORT);
         }
@@ -324,15 +329,17 @@ export function createSegCallbacks(
       }
     }
     renderSegLoop();
-    // Save sprite clipping info (:716-739).
+    // Save sprite clipping info (:716-739). snapshotOpenings returns the
+    // signed lastopening - start (:716-733) or null on allocation failure
+    // (our overflow deviation) — a NEGATIVE ref is vanilla-normal (:611).
     const n = rwStopX - start;
     if (((ds.silhouette[di]! & SIL_TOP) !== 0 || maskedTexture) && ds.sprtopclip[di] === CLIP_NULL) {
       const ref = snapshotOpenings(ceilingclip, start, n);
-      if (ref >= 0) ds.sprtopclip[di] = ref;
+      if (ref !== null) ds.sprtopclip[di] = ref;
     }
     if (((ds.silhouette[di]! & SIL_BOTTOM) !== 0 || maskedTexture) && ds.sprbottomclip[di] === CLIP_NULL) {
       const ref = snapshotOpenings(floorclip, start, n);
-      if (ref >= 0) ds.sprbottomclip[di] = ref;
+      if (ref !== null) ds.sprbottomclip[di] = ref;
     }
     if (maskedTexture && (ds.silhouette[di]! & SIL_TOP) === 0) { ds.silhouette[di] |= SIL_TOP; ds.tsilheight[di] = -MAXINT - 1; }
     if (maskedTexture && (ds.silhouette[di]! & SIL_BOTTOM) === 0) { ds.silhouette[di] |= SIL_BOTTOM; ds.bsilheight[di] = MAXINT; }
@@ -413,7 +420,9 @@ export function createSegCallbacks(
           floorclip[rwX] = yh + 1;
         }
         // save texturecol for backdrawing of the masked mid texture
-        if (maskedTexture && maskedBase >= 0) openingsSet(maskedBase + rwX, texturecolumn);
+        // (maskedtexturecol[rw_x] = texturecolumn, r_segs.c:356 — signed ref,
+        // FIX-M3-06c: gated on successful allocation, not on ref sign)
+        if (maskedTexture && maskedRecord) openingsSet(maskedBase + rwX, texturecolumn);
       }
       rwScale += rwScaleStep;
       topFrac += topStep;
