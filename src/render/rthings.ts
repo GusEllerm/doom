@@ -50,9 +50,14 @@
  *  * Thing z: `z = ONFLOORZ` resolves in `P_TeleportMove` to the
  *    containing subsector's `floorheight` (plan §0.8; p_mobj.c:776-781
  *    `x = mthing->x << FRACBITS` / `z = ONFLOORZ`); we take it directly
- *    via the merged BSP point locator `subsectorAt` (src/sim/bsp.ts =
- *    `R_PointInSubsector`, r_bsp.c) → `subsectors.sector[s]` →
- *    `sectors.floorHeight[s]` (fixed).
+ *    via {@link bspSubsectorAt} → `subsectors.sector[s]` →
+ *    `sectors.floorLh << FRACBITS` (the merged BSP point locator
+ *    `subsectorAt` of src/sim/bsp.ts cannot be imported here — the
+ *    A-INT1 zone rule (eslint doom/zones/render, ARCHITECTURE §1.3)
+ *    forbids render → sim; {@link bspSubsectorAt} therefore reuses
+ *    `pointOnSideXY` from render/bsp.ts, the GAP G11 bit-identical port
+ *    of that same `R_PointOnSide` ("same placement, cited twin"), so the
+ *    semantics are the merged sim/bsp point-loc verbatim.
  *  * Per-sector linked list: vanilla `R_AddSprites(sec)` walks
  *    `sec->thinglist` via `snext` (r_things.c:690-715); mobj-less, we
  *    prebuild the same singly-linked structure once per map
@@ -79,9 +84,10 @@
  */
 
 import type { SpriteCensus } from '../wad/sprites';
-import type { RuntimeMap } from '../sim/map';
-import { subsectorAt } from '../sim/bsp';
-import { mapThingAt } from '../sim/map';
+import type { MapData } from '../wad/types';
+import { thingAt, thingCount } from '../wad/mapdata';
+import { NF_SUBSECTOR, type RenderMapView } from './view';
+import { pointOnSideXY } from './bsp';
 import { ANG45 } from '../core/constants';
 
 /* ------------------------------------------------------------------ */
@@ -324,6 +330,34 @@ export function thingTypeIndex(type: number): number {
 }
 
 /* ------------------------------------------------------------------ */
+/* BSP point location (render-zone twin of sim/bsp.ts subsectorAt)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `R_PointInSubsector(x, y)` (r_main.c:800-824) over the render BSP view:
+ * root = last node, descend `children[side]` (raw u16 refs, NF_SUBSECTOR
+ * bit marks subsector leaves) via the G11 twin {@link pointOnSideXY} —
+ * bit-identical to the merged sim/bsp.ts port, which the zone rule keeps
+ * unimportable here. Zero nodes ⇒ the one-subsector map (vanilla reads
+ * nodes[-1]; same answer on every real map, minus the UB). Zero-alloc.
+ */
+export function bspSubsectorAt(view: RenderMapView, x: number, y: number): number {
+  const nodes = view.nodes;
+  if (nodes.count === 0) return 0;
+  let i = nodes.count - 1;
+  let side = pointOnSideXY(x, y, nodes, i);
+  for (let guard = nodes.count; ; guard--) {
+    const ref = (side === 0 ? nodes.child0[i] : nodes.child1[i])!;
+    if ((ref & NF_SUBSECTOR) !== 0) return ref & ~NF_SUBSECTOR;
+    if (guard < 0) {
+      throw new Error(`rthings: BSP walk cycle at node ${i} after ${nodes.count} steps`);
+    }
+    i = ref;
+    side = pointOnSideXY(x, y, nodes, i);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Static thing list (per-map, built once)                              */
 /* ------------------------------------------------------------------ */
 
@@ -352,9 +386,9 @@ export interface StaticThings {
   readonly thing: Int32Array;
   /** Next static in the same sector (sector list), −1 = end. */
   readonly next: Int32Array;
-  /** sector → first static, length `sectors.count`, −1 = empty sector. */
+  /** sector → first static, length `sectors.length`, −1 = empty sector. */
   readonly sectorHead: Int32Array;
-  /** P_SpawnMapThing classification counts (sum === map.numThings). */
+  /** P_SpawnMapThing classification counts (sum === thingCount(md)). */
   readonly skipped: Readonly<{
     playerStart: number;
     dmStart: number;
@@ -385,7 +419,8 @@ export interface BuildStaticThingsOptions {
  * player starts, solo bit, skill bit, then the doomednum table.
  */
 export function buildStaticThings(
-  map: RuntimeMap,
+  md: MapData,
+  view: RenderMapView,
   sprites: InstalledSprites,
   options: BuildStaticThingsOptions = {},
 ): StaticThings {
@@ -396,7 +431,7 @@ export function buildStaticThings(
   const gameskill = skill - 1;
   const skillBit = gameskill === 0 ? 1 : gameskill === 4 ? 4 : 1 << (gameskill - 1);
 
-  const num = map.numThings;
+  const num = thingCount(md);
   const xs = new Int32Array(num);
   const ys = new Int32Array(num);
   const angles = new Uint32Array(num);
@@ -405,7 +440,7 @@ export function buildStaticThings(
   const floorZs = new Int32Array(num);
   const thingIdx = new Int32Array(num);
   const next = new Int32Array(num);
-  const sectorHead = new Int32Array(map.sectors.count).fill(-1);
+  const sectorHead = new Int32Array(md.sectors.length).fill(-1);
 
   const unknownSeen = new Set<number>();
   const unknown: number[] = [];
@@ -423,7 +458,7 @@ export function buildStaticThings(
 
   let count = 0;
   for (let i = 0; i < num; i++) {
-    const t = mapThingAt(map, i);
+    const t = thingAt(md, i);
 
     if (t.type === 11) {
       skipped.dmStart += 1; // deathmatchstart, never spawned (p_mobj.c:717-726)
@@ -473,8 +508,8 @@ export function buildStaticThings(
 
     const fx = (t.x << 16) | 0;
     const fy = (t.y << 16) | 0;
-    const ss = subsectorAt(map, fx, fy);
-    const sector = map.subsectors.sector[ss]!;
+    const ss = bspSubsectorAt(view, fx, fy);
+    const sector = view.subsectors.sector[ss]!;
 
     const k = count++;
     xs[k] = fx;
@@ -482,7 +517,7 @@ export function buildStaticThings(
     angles[k] = thingAngleDegrees(t.angle);
     spriteNums[k] = sprite;
     frames[k] = THING_FRAMES[row]!;
-    floorZs[k] = map.sectors.floorHeight[sector]!;
+    floorZs[k] = (md.sectors[sector]!.floorLh << 16) | 0;
     thingIdx[k] = i;
     next[k] = sectorHead[sector]!; // prepend; draw order fixed by R_SortVisSprites
     sectorHead[sector] = k;

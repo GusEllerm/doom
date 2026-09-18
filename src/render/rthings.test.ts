@@ -27,15 +27,16 @@ import { describe, expect, it } from 'vitest';
 
 import { WadFile } from '../wad/wadfile';
 import { buildSpriteDefs } from '../wad/sprites';
-import { loadMap } from '../wad/mapdata';
-import { buildMapFromData, mapThingAt } from '../sim/map';
-import { sectorAtPoint } from '../sim/bsp';
+import { loadMap, thingAt, thingCount } from '../wad/mapdata';
+import type { MapData } from '../wad/types';
 import { WadBuilder } from '../../tests/fixtures/wadWriter';
 import { patch2x2 } from '../../tests/fixtures/smallWads';
 import { buildMapLumps, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
 
+import { buildRenderMapView } from './view';
 import {
   buildStaticThings,
+  bspSubsectorAt,
   frameFlip,
   frameLump,
   frameRotates,
@@ -193,7 +194,7 @@ describe('installSprites — census round-trip (fixture S_START)', () => {
   it('full round-trip: every census frame tuple equals the installed slice', () => {
     for (let s = 0; s < census.sprites.length; s++) {
       const def = census.sprites[s]!;
-      expect(t.frameStart[s + 1] - t.frameStart[s]!).toBe(def.frames.length);
+      expect(t.frameStart[s + 1]! - t.frameStart[s]!).toBe(def.frames.length);
       for (let f = 0; f < def.frames.length; f++) {
         const gf = lookupFrame(t, s, f)!;
         expect(frameRotates(t, gf), `${def.name4} frame ${f} rotate`).toBe(
@@ -287,6 +288,27 @@ function fixtureWadWithThings(spec: RectMapSpec, spriteNames: readonly string[])
   return WadFile.parse(wad.build().buffer as ArrayBuffer);
 }
 
+/**
+ * Independent P_GroupLines subsector→sector (test-side): first seg's front
+ * sidedef's sector; miniseg-started subsectors carry the previous one
+ * forward (p_setup.c, same rule render/view.ts buildRenderMapView applies).
+ * Used to cross-check `view.subsectors.sector` itself.
+ */
+function groupLinesSectors(md: MapData): Int32Array {
+  const out = new Int32Array(md.ssectors.length);
+  let prev = 0;
+  for (let ss = 0; ss < md.ssectors.length; ss++) {
+    const seg = md.segs[md.ssectors[ss]!.firstseg]!;
+    if (seg.line >= 0) {
+      const line = md.lineDefs[seg.line]!;
+      const side = seg.side === 0 ? line.front : line.back;
+      prev = md.sideDefs[side]!.sector;
+    }
+    out[ss] = prev;
+  }
+  return out;
+}
+
 describe('buildStaticThings — fixture map', () => {
   const spec: RectMapSpec = {
     rooms: [
@@ -308,12 +330,13 @@ describe('buildStaticThings — fixture map', () => {
     ],
   };
   const wad = fixtureWadWithThings(spec, ['BAR1A0', 'ARM1A0', 'BON2A0']);
-  const map = buildMapFromData(loadMap(wad, 'FIXMAP'));
+  const md = loadMap(wad, 'FIXMAP');
+  const view = buildRenderMapView(md);
   const tables = installSprites(buildSpriteDefs(wad));
-  const st = buildStaticThings(map, tables);
+  const st = buildStaticThings(md, view, tables);
 
   it('classifies every thing, in P_SpawnMapThing order', () => {
-    expect(map.numThings).toBe(11);
+    expect(thingCount(md)).toBe(11);
     expect(st.count).toBe(3);
     expect(st.skipped).toEqual({
       playerStart: 1,
@@ -348,7 +371,7 @@ describe('buildStaticThings — fixture map', () => {
   it('sector linked lists visit each static exactly once (R_AddSprites walk)', () => {
     const seen = new Set<number>();
     let walked = 0;
-    for (let s = 0; s < map.sectors.count; s++) {
+    for (let s = 0; s < md.sectors.length; s++) {
       for (let k = st.sectorHead[s]!; k !== -1; k = st.next[k]!) {
         expect(seen.has(k)).toBe(false);
         seen.add(k);
@@ -360,7 +383,7 @@ describe('buildStaticThings — fixture map', () => {
 
   it('missing sprite lumps are counted + warned, never crash', () => {
     const noArm = installSprites(buildSpriteDefs(fixtureWadWithThings(spec, ['BAR1A0', 'BON2A0'])));
-    const st2 = buildStaticThings(map, noArm);
+    const st2 = buildStaticThings(md, view, noArm);
     expect(st2.count).toBe(2);
     expect(st2.skipped.missingSprite).toBe(1);
     expect(st2.warnings.some((w) => w.includes('ARM1'))).toBe(true);
@@ -411,8 +434,10 @@ describe.skipIf(!hasWad)('freedoom1 E1M1 static thing list', () => {
   const wad = WadFile.parse(readFileSync(WAD_PATH!).buffer as ArrayBuffer);
   const census = buildSpriteDefs(wad);
   const tables = installSprites(census);
-  const map = buildMapFromData(loadMap(wad, 'E1M1'));
-  const st = buildStaticThings(map, tables);
+  const md = loadMap(wad, 'E1M1');
+  const view = buildRenderMapView(md);
+  const st = buildStaticThings(md, view, tables);
+  const gl = groupLinesSectors(md);
 
   it('census + install are clean on a real IWAD', () => {
     expect(census.warnings).toEqual([]);
@@ -421,7 +446,7 @@ describe.skipIf(!hasWad)('freedoom1 E1M1 static thing list', () => {
   });
 
   it('counts: 292 things classify with zero monsters and an EMPTY unknown list', () => {
-    expect(map.numThings).toBe(292);
+    expect(thingCount(md)).toBe(292);
     expect(st.count).toBe(179);
     expect(st.skipped).toEqual({
       playerStart: 4,
@@ -447,12 +472,12 @@ describe.skipIf(!hasWad)('freedoom1 E1M1 static thing list', () => {
       st.skipped.marker +
       st.skipped.unknown +
       st.skipped.missingSprite;
-    expect(sum).toBe(map.numThings);
+    expect(sum).toBe(thingCount(md));
   });
 
   it('zero monsters in the draw list (plan §4: monsters arrive with M8)', () => {
     for (let i = 0; i < st.count; i++) {
-      const type = mapThingAt(map, st.thing[i]!).type;
+      const type = thingAt(md, st.thing[i]!).type;
       expect(THING_KINDS[thingTypeIndex(type)!], `thing type ${type}`).toBe(KIND_STATIC);
     }
     expect(st.skipped.monster).toBe(29);
@@ -469,22 +494,25 @@ describe.skipIf(!hasWad)('freedoom1 E1M1 static thing list', () => {
     };
     for (let n = 0; n < 1000; n++) {
       const i = rnd() % st.count;
-      const sector = sectorAtPoint(map, st.x[i]!, st.y[i]!);
+      const ss = bspSubsectorAt(view, st.x[i]!, st.y[i]!);
+      expect(gl[ss]!, `view P_GroupLines wiring, thing ${st.thing[i]}`).toBe(
+        view.subsectors.sector[ss],
+      );
       expect(st.floorZ[i], `thing ${st.thing[i]} (type id ${
-        mapThingAt(map, st.thing[i]!).type
-      })`).toBe(map.sectors.floorHeight[sector]);
+        thingAt(md, st.thing[i]!).type
+      })`).toBe(md.sectors[gl[ss]!]!.floorLh << 16);
     }
   });
 
   it('angles match the ANG45*(deg/45) quantization of the raw THINGS field', () => {
     for (let i = 0; i < st.count; i++) {
-      expect(st.angle[i]).toBe(thingAngleDegrees(mapThingAt(map, st.thing[i]!).angle));
+      expect(st.angle[i]).toBe(thingAngleDegrees(thingAt(md, st.thing[i]!).angle));
     }
   });
 
   it('sector lists cover the list exactly once', () => {
     let walked = 0;
-    for (let s = 0; s < map.sectors.count; s++) {
+    for (let s = 0; s < md.sectors.length; s++) {
       let k = st.sectorHead[s]!;
       let guard = st.count;
       while (k !== -1) {
@@ -547,15 +575,15 @@ describe('zero-alloc steady state (per-frame lookup paths)', () => {
       })),
     };
     const wad = fixtureWadWithThings(spec, ['BAR1A0']);
-    const map = buildMapFromData(loadMap(wad, 'FIXMAP'));
-    const st = buildStaticThings(map, installSprites(buildSpriteDefs(wad)));
+    const md = loadMap(wad, 'FIXMAP');
+    const st = buildStaticThings(md, buildRenderMapView(md), installSprites(buildSpriteDefs(wad)));
     const nextBuf = st.next.buffer;
     const headBuf = st.sectorHead.buffer;
 
     let sink = 0;
     const t0 = process.hrtime.bigint();
     for (let frame = 0; frame < 20_000; frame++) {
-      for (let s = 0; s < map.sectors.count; s++) {
+      for (let s = 0; s < st.sectorHead.length; s++) {
         for (let k = st.sectorHead[s]!; k !== -1; k = st.next[k]!) sink += k + st.spriteNum[k]!;
       }
     }
