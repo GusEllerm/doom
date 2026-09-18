@@ -12,8 +12,10 @@
  *  2. state().render.hom === 0 (live counter, not the old −1 stub);
  *  3. Tab still toggles the automap — now drawn OVER the 3D pass
  *     (§4.1.9): the frame changes (pixel diff: automap wall-red family +
- *     WHITE arrow pixels present), and closing restores the BYTE-IDENTICAL
- *     3D frame (unmoved player, stateless pipeline);
+ *     WHITE arrow pixels present), and closing restores the 3D frame
+ *     EXACTLY wherever the 3D pass paints (M4-07 dropped the background
+ *     clear, so never-painted void pixels may keep overlay residue —
+ *     vanilla semantics, see the test comment);
  *  4. zero console errors across the flow.
  *
  * M4-07 keeps this spec STRUCTURAL: the milestone re-bless of the golden
@@ -111,6 +113,41 @@ function captureSha(page: Page): Promise<string> {
   });
 }
 
+/** Keep a copy of the current capture in a page global (the diff below runs
+ * in-page, so 64000 bytes never cross the wire). */
+function stashFrame(page: Page, key: string): Promise<number> {
+  return page.evaluate((k: string) => {
+    const store = window as unknown as Record<string, Uint8Array>;
+    store[k] = window.__doom!.capture().indices.slice();
+    return store[k]!.length;
+  }, key);
+}
+
+/** Compare the live capture against a stashed one, in-page. */
+function diffAgainstStashed(page: Page, key: string): Promise<{
+  differing: number;
+  overPainted: number;
+  samples: string[];
+}> {
+  return page.evaluate((k: string) => {
+    const store = window as unknown as Record<string, Uint8Array>;
+    const before = store[k]!;
+    const now = window.__doom!.capture().indices;
+    let differing = 0;
+    let overPainted = 0;
+    const samples: string[] = [];
+    for (let i = 0; i < now.length; i++) {
+      if (now[i] === before[i]) continue;
+      differing++;
+      if (before[i] !== 0) {
+        overPainted++;
+        if (samples.length < 6) samples.push(`r${Math.floor(i / 320)}c${i % 320}:${before[i]}->${now[i]}`);
+      }
+    }
+    return { differing, overPainted, samples };
+  }, key);
+}
+
 async function boot(page: Page): Promise<void> {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
@@ -158,22 +195,45 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
       drawsegOverflow: 0,
     });
 
+    // M4-07 raises the painted share of a frame enormously (planes): the
+    // M3 walls-only spawn frame had ~1.1k non-black pixels, the integrated
+    // frame paints the room around the player.
+    expect(cap1.nonBlack, 'the integrated frame must paint the view').toBeGreaterThan(20_000);
+
     // (3) Tab opens the automap OVER the 3D pass: pixel diff vs the 3D
     // frame, automap line-red + WHITE arrow pixels present (the drawer
     // clears the buffer with BACKGROUND first — vanilla AM_Drawer).
-    const wallsHash = cap1.hash;
+    //
+    // M4-07 note (behaviour rename, plan §1.2): renderFrame no longer
+    // clears the background, so the round trip is no longer BYTE-EXACT —
+    // vanilla clears nothing either, and wherever the 3D pass leaves the
+    // genuine void (never-painted pixels) the overlay's own background
+    // residue may linger. What MUST hold (and is checked): everywhere the
+    // 3D pass paints, the pre-Tab pixel is restored exactly; only pixels
+    // that were void (black) before Tab may differ, and the reopened frame
+    // is deterministic again.
+    const preTab = await stashFrame(page, '__wallsPreTab');
+    void preTab;
     await page.keyboard.press('Tab');
     await page.waitForTimeout(150);
     const amCap = await captureStats(page);
-    expect(amCap.hash, 'Tab must change the frame').not.toBe(wallsHash);
+    expect(amCap.hash, 'Tab must change the frame').not.toBe(cap1.hash);
     expect(amCap.reds, 'automap wall lines must be present when open').toBeGreaterThan(100);
     expect(amCap.whites, 'player arrow (WHITE) must be present when open').toBeGreaterThan(0);
 
-    // Tab closes: the SAME pinned viewpoint must come back BYTE-IDENTICAL
-    // (player unmoved; renderer stateless across frames).
+    // Tab closes: the 3D pass repaints every pixel it owns.
     await page.keyboard.press('Tab');
     await page.waitForTimeout(150);
-    expect((await captureStats(page)).hash, 'close must restore byte-identical walls frame').toBe(wallsHash);
+    const restore = await diffAgainstStashed(page, '__wallsPreTab');
+    expect(
+      restore.overPainted,
+      `closing the automap must restore every pixel the 3D pass paints (first: ${restore.samples.join(', ')})`
+    ).toBe(0);
+    // `differing` > 0 is expected and is exactly the set of pixels the 3D
+    // pass never touches (see the void-pixel finding in the M4-07 report).
+    expect(restore.differing, 'overlay residue must stay confined to void pixels').toBeLessThan(64_000);    const restored1 = await captureStats(page);
+    const restored2 = await captureStats(page);
+    expect(restored2.hash, 'the reopened 3D frame must be deterministic again').toBe(restored1.hash);
 
     // (4) Zero console errors (acceptance 5).
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);

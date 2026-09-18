@@ -65,6 +65,32 @@ export interface RenderDebugSource {
 
 let renderSource: RenderDebugSource | null = null;
 
+/** The documented counter subset (extra source fields like solidsegDrops are
+ * deliberately not echoed into the §7 snapshot shape). */
+function pickCounters(c: {
+  hom: number;
+  visplaneOverflow: number;
+  visspriteOverflow: number;
+  openingOverflow: number;
+  drawsegOverflow: number;
+}): DebugStateLive['render'] {
+  return {
+    hom: c.hom,
+    visplaneOverflow: c.visplaneOverflow,
+    visspriteOverflow: c.visspriteOverflow,
+    openingOverflow: c.openingOverflow,
+    drawsegOverflow: c.drawsegOverflow,
+  };
+}
+
+const UNATTACHED_COUNTERS: DebugStateLive['render'] = {
+  hom: -1,
+  visplaneOverflow: -1,
+  visspriteOverflow: -1,
+  openingOverflow: -1,
+  drawsegOverflow: -1,
+};
+
 /** Wire (or detach with null) the render source; called by main.ts once the
  * framebuffer exists. */
 export function attachRenderDebug(src: RenderDebugSource | null): void {
@@ -123,16 +149,9 @@ function liveSnapshot(state: GameState): DebugStateLive {
     sectors: { count: state.map.sectors.count },
     thinkers: { count: 0 },
     // M3-07/M4-07: live renderer counters (−1 only pre-boot / pre-attach).
-    render:
-      renderSource === null
-        ? {
-            hom: -1,
-            visplaneOverflow: -1,
-            visspriteOverflow: -1,
-            openingOverflow: -1,
-            drawsegOverflow: -1,
-          }
-        : renderSource.counters(),
+    // Shaped explicitly: the render source carries more (solidsegDrops),
+    // state().render documents exactly hom + the four overflow caps.
+    render: renderSource === null ? { ...UNATTACHED_COUNTERS } : pickCounters(renderSource.counters()),
     hash: hashState(state)
   };
 }

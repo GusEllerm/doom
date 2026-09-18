@@ -216,7 +216,7 @@ interface Scene {
   readonly at: { x: number; y: number; z?: number; deg: number };
 }
 
-let cached: Record<string, Bundle | undefined> = {};
+const cached: Record<string, Bundle | undefined> = {};
 
 function m4Bundle(scene: M4Scene): Bundle {
   return (cached[M4_MAP_NAMES[scene]] ??= bundleFrom(buildM4SceneWad(scene), M4_MAP_NAMES[scene]));
