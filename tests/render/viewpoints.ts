@@ -1,11 +1,43 @@
 /**
- * tests/render/viewpoints.ts — M3-08 shared viewpoint scene table
- * (docs/design/M3-plan.md §M3-08): the ≥20 golden viewpoints consumed by
- * tests/render/walls.test.ts (and the iwad half by e2e/walls.spec.ts).
+ * tests/render/viewpoints.ts — golden viewpoint scene table
+ * (M3-plan §M3-08 + M4-plan §M4-08: the ≥26 full-frame scenes consumed by
+ * tests/render/walls.test.ts and — the iwad half — e2e/walls.spec.ts).
  *
- * Two scene families:
- *  - 12 FIXMAP scenes on the WALLFIX fixture (4 rooms × 3 viewpoints), and
- *  - 8 freedoom1 E1M1 scenes (skipIf no wad in the vitest suite).
+ * Three scene families (M4-08):
+ *  - 12 WALLFIX scenes on the M3 WALLFIX fixture (4 rooms × 3 viewpoints),
+ *  - 7 M4FIX scenes on the M4-06 fixture maps — MASKFIX (masked fence),
+ *    SKYFIX (F_SKY1 room), THINGSFIX (octant/flip sprites), PANFIX
+ *    (panned sidedefs) — all wad-free,
+ *  - 12 freedoom1 E1M1 scenes (skipIf no wad in the vitest suite).
+ *
+ * M4-08 additions (≥6 new, plan §M4-08 "New scenes"), all analytically
+ * derived from THINGS/LINEDEFS/SIDEDEFS/SECTORS (no screenshots):
+ *  - fixmask-fence/back: MASKFIX_SPEC two-room map joined by a MASKFIX0
+ *    masked fence (solid shoulders + column-parity holes) — holes show the
+ *    FAR wall, viewed from both sides.
+ *  - fixsky-room/seam: SKYFIX_SPEC sky room (light 32 ⇒ fullbright
+ *    evidence: dimmed tables cannot darken sky) + a view where the sky
+ *    plane meets the far wall top (the plan §6 horizon-seam risk).
+ *  - fixthings-flip: THINGSFIX_SPEC octant ring viewed off-centre: 6
+ *    BAR1 statics in view — the near one slot 0 (A1), two slot 4 (A5),
+ *    and FOUR flipped lumps: slots 2/3/5 (A3A7/A4A6 XY-mirror halves —
+ *    rot = (ang − thingangle + 9·(ANG45/2)) >> 29 per thing, pinned by
+ *    the rthings tests; the ring's centre view is all-slot-4 symmetric,
+ *    which is WHY this off-centre viewpoint exists).
+ *  - fixpan-panned/rowskip: PANFIX_SPEC panned sidedefs — textureoffset
+ *    40 shifts FIXWALL0 columns (renderer-consumed axis) and a
+ *    rowoffset-only sidedef pins the renderer-blind axis (m4Fixtures
+ *    header). Closes the M3 "panned sidedef not expressible" gap note.
+ *  - e1m1-court-sky/court-things: E1M1 spawn courtyard = sector 29
+ *    (f0/c128, ceiling F_SKY1, L128) ringed by TRE2 things at
+ *    (−576…−640, 192…304); SW from inside it fills the top band with sky
+ *    (removed-SKY1 diff ≈ 37.6k px), W from spawn puts 5 TRE2 + BON1/
+ *    STIM/corpse statics at columns ≈96/133/160/171/204 (probe-recorded).
+ *  - e1m1-yard-fenced/busy-mix: sky yards sec 23 (f40/c536 L224, centre
+ *    (2224,1323)) + sec 39 (f−80/c536 L240, centre (2200,917)) — MC17/
+ *    MC18/ASHWALL masked shells whose projected spans overlap ≥10 static
+ *    sprite columns (TRE/SMIT/BAR1/COLU), i.e. sprites + masked middles
+ *    in one frame; all counters 0 at both.
  *
  * ----------------------------------------------------------------------
  * WALLFIX fixture design (plan §M3-08 "a WALLFIX RectMapSpec"):
@@ -71,11 +103,18 @@
  * degrees (the debug-warp convention: floor(deg/360 · 2^32), NOT the
  * THINGS ANG45 quantization). z omitted ⇒ ONFLOORZ (floor-0 ground). */
 export interface Viewpoint {
-  readonly name: string;
-  readonly kind: 'fixture' | 'iwad';
+  name: string;
+  kind: 'fixture' | 'iwad';
+  /** Which in-memory WAD the kind:'fixture' scenes boot from (M4-08):
+   * 'wallfix' (the M3 WALLFIX_SPEC — the DEFAULT, every pre-M4 scene)
+   * or one of the M4-06 fixture maps (m4Fixtures.buildM4SceneWad; the
+   * things map additionally carries the synthesized S_START roster that
+   * walls.test.ts ships — the combined fixture WAD has no sprite lumps).
+   * Ignored by kind:'iwad' scenes. */
+  readonly fixtureMap?: 'wallfix' | 'm4-mask' | 'm4-sky' | 'm4-things' | 'm4-pan';
   /** Human-readable setup script, mirrored into meta.json for review. */
   readonly script: string;
-  readonly map: 'WALLFIX' | 'E1M1';
+  readonly map: 'WALLFIX' | 'M4MASK' | 'M4SKY' | 'M4THNG' | 'M4PAN' | 'E1M1';
   readonly x: number;
   readonly y: number;
   readonly angleDeg: number;
@@ -137,6 +176,28 @@ const fixScenes: readonly Viewpoint[] = [
   { name: 'fix-d-n', kind: 'fixture', map: 'WALLFIX', x: PD.x, y: PD.y, angleDeg: 90, script: `${PD.room}: N at horizontal VOID wall (brightest)` }
 ];
 
+const m4FixScenes: readonly Viewpoint[] = [
+  // MASKFIX: the shared x=256 line carries MASKFIX0 on both sidedefs —
+  // solid shoulders cols 0-15/48-63, parity holes on odd texture columns
+  // (m4Fixtures header). Both views see the FAR room wall through holes.
+  { name: 'fixmask-fence', kind: 'fixture', fixtureMap: 'm4-mask', map: 'M4MASK', x: 128, y: 128, angleDeg: 0, script: 'M4MASK room A: E at the MASKFIX0 masked fence — parity holes must show the FAR wall (B side), opaque columns never black' },
+  { name: 'fixmask-back', kind: 'fixture', fixtureMap: 'm4-mask', map: 'M4MASK', x: 384, y: 128, angleDeg: 180, script: 'M4MASK room B: W at the same fence from the other side — symmetric masked-range path, far wall A through the holes' },
+  // SKYFIX: room A ceiling F_SKY1 at light 32 — with the synth dimming
+  // tables every NON-sky byte scales down, sky bytes must not (planes.ts
+  // sky branch pins colormaps[0], "Sky is allways full bright").
+  { name: 'fixsky-room', kind: 'fixture', fixtureMap: 'm4-sky', map: 'M4SKY', x: 256, y: 256, angleDeg: 90, script: 'M4SKY light-32 sky room: N — F_SKY1 band fullbright under the DIMMING colormap rows (sky light-immunity evidence)' },
+  { name: 'fixsky-seam', kind: 'fixture', fixtureMap: 'm4-sky', map: 'M4SKY', x: 64, y: 256, angleDeg: 0, script: 'M4SKY: E along the room — the sky plane meets the far wall TOP at the worldhigh seam (plan §6 horizon-seam stress: skytexturemid 1:1 tie)' },
+  // THINGSFIX ring seen OFF-centre (the centre view is rot-symmetric
+  // slot-4 ⇒ no flips): six BAR1 in the FOV — slots 0/2/3/4/5 with the
+  // XY-mirror flips flagged in the script (per-thing rot math above).
+  { name: 'fixthings-flip', kind: 'fixture', fixtureMap: 'm4-things', map: 'M4THNG', x: 64, y: 256, angleDeg: 0, script: 'M4THNG: E from the west edge — near BAR1 dead ahead (slot 0 A1), ring BAR1s at slots 2/3/5 FLIPPED + slot 4, pair BAR1 slot 5 flipped: octants + XY mirrors in one frame' },
+  // PANFIX: room A sidedefs carry textureoffset 40 (+rowoffset 8 bytes),
+  // room C sidedefs rowoffset 24 ONLY (renderer-blind ⇒ looks unpanned —
+  // pinned truth, m4Fixtures header).
+  { name: 'fixpan-panned', kind: 'fixture', fixtureMap: 'm4-pan', map: 'M4PAN', x: 128, y: 128, angleDeg: 90, script: 'M4PAN room A (L0): N at the textureoffset-40 sidedef — FIXWALL0 columns shifted 40 px-texels vs the unpanned fix-a-n; rowoffset 8 IGNORED (pinned)' },
+  { name: 'fixpan-rowskip', kind: 'fixture', fixtureMap: 'm4-pan', map: 'M4PAN', x: 128, y: 384, angleDeg: 0, script: 'M4PAN room C (L255): E at the rowoffset-24-only sidedef — renders UNpanned (rdata consumes textureoffset only); the SIDEDEFS bytes round-trip is mapBuilder.test.ts territory' }
+];
+
 const e1m1Scenes: readonly Viewpoint[] = [
   { name: 'e1m1-spawn-east', kind: 'iwad', map: 'E1M1', x: -416, y: 256, angleDeg: 0, script: 'thing type 1 spawn, E down the tech corridor (M3-07 pinned vista)' },
   { name: 'e1m1-corner-dm14', kind: 'iwad', map: 'E1M1', x: 2008, y: 480, angleDeg: 135, script: 'deathmatch start (2008,480) in sector 124 (f24/c384 L220), SW corner of the tall room' },
@@ -145,10 +206,15 @@ const e1m1Scenes: readonly Viewpoint[] = [
   { name: 'e1m1-doorway-midtex', kind: 'iwad', map: 'E1M1', x: 1216, y: 1540, angleDeg: 270, script: 'sector 27 ledge S at linedef 80 METAL5 masked doorway (midtex frame)' },
   { name: 'e1m1-vista-corridor', kind: 'iwad', map: 'E1M1', x: 960, y: -192, angleDeg: 0, script: 'sector 57 south corridor, E along the >4000-unit straight run (far scalelight diminishing)' },
   { name: 'e1m1-corridor-open', kind: 'iwad', map: 'E1M1', x: 1050, y: -30, angleDeg: 180, script: 'sector 149 both-open tech corridor, W back along the two-sided flank openings' },
-  { name: 'e1m1-busy-yard', kind: 'iwad', map: 'E1M1', x: 2400, y: 1152, angleDeg: 180, script: 'sector 181 (f48/c536) W into the ruin-yard span soup (solidsegs stress; hom/dso stay 0 — no re-pick needed)' }
+  { name: 'e1m1-busy-yard', kind: 'iwad', map: 'E1M1', x: 2400, y: 1152, angleDeg: 180, script: 'sector 181 (f48/c536) W into the ruin-yard span soup (solidsegs stress; hom/dso stay 0 — no re-pick needed)' },
+  // M4-08 additions (analytic derivations in this file header).
+  { name: 'e1m1-court-sky', kind: 'iwad', map: 'E1M1', x: -608, y: 240, angleDeg: 225, script: 'spawn courtyard sec 29 (F_SKY1 f0/c128 L128) from INSIDE, SW — sky fills the band above the ring walls (removed-SKY1 diff ≈ 37.6k px); no sprites in the centre cone' },
+  { name: 'e1m1-court-things', kind: 'iwad', map: 'E1M1', x: -416, y: 256, angleDeg: 180, script: 'thing type 1 spawn, W at the courtyard — TRE2 grove (5 sprite columns ≈96/133/160/171/204) + BON1/STIM/corpse statics + sky sliver above the courtyard wall' },
+  { name: 'e1m1-yard-fenced', kind: 'iwad', map: 'E1M1', x: 2224, y: 1323, angleDeg: 90, script: 'sky yard sec 23 (f40/c536 L224) centre, N through the MC18/MC17/ASHWALL fence lines — masked spans overlap 10 static sprite columns (TRE/SMIT/BON1)' },
+  { name: 'e1m1-busy-mix', kind: 'iwad', map: 'E1M1', x: 2200, y: 917, angleDeg: 225, script: 'sky yard sec 39 (f-80/c536 L240) centre, SW — masked shells + BAR1/COLU/TRE statics + sky sliver in one busy frame (all counters 0)' }
 ];
 
-export const VIEWPOINTS: readonly Viewpoint[] = [...fixScenes, ...e1m1Scenes];
+export const VIEWPOINTS: readonly Viewpoint[] = [...fixScenes, ...m4FixScenes, ...e1m1Scenes];
 
 /* ------------------------------------------------------------------ */
 /* Deterministic fixture texture + light sources (no wad needed)        */
