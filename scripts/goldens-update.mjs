@@ -12,6 +12,15 @@
  *       asserts themselves. Fresh PNGs land in test-results/goldens/automap
  *       for review; committed goldens are never rewritten in check mode.
  *
+ * M3-08 additive `--set walls|automap` (default automap — M2 invocations
+ * unchanged): `--set walls` swaps the pipeline to tests/render/walls.test.ts
+ * and the goldens/review trees to tests/render/goldens/walls and
+ * test-results/goldens/walls. PNG colorization: dumps may embed a
+ * `paletteRgb` (768 ints — walls.test.ts ships PLAYPAL palette 0 for iwad
+ * scenes, a gray ramp for fixtures); without one the automap color-family
+ * mapping below applies. The tEXt sha + pixel-compare provenance machinery
+ * is shared unchanged.
+ *
  * PNGs are minimal indexed-color-converted RGB files (own writer below:
  * signature + IHDR + tEXt(doom-index-sha256) + IDAT (node:zlib deflate) +
  * IEND, filter byte 0 per row). The tEXt chunk pins the index-buffer sha, so
@@ -42,10 +51,20 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync, inflateSync } from 'node:zlib';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const GOLDENS = join(ROOT, 'tests', 'render', 'goldens', 'automap');
-const META = join(GOLDENS, 'meta.json');
-const REVIEW = join(ROOT, 'test-results', 'goldens', 'automap');
-const TEST_FILE = join('tests', 'render', 'automap.test.ts');
+
+/** M3-08: per-set wiring — `--set` picks the pipeline + goldens tree. */
+const SETS = {
+  automap: {
+    testFile: join('tests', 'render', 'automap.test.ts'),
+    pipeline:
+      'FIXMAP/E1M1 -> gInitGame -> scripted Tab/tics/moves (amResponder+gTicker+amTicker, main.ts stepTic order) -> drawAutomap -> sha256(fb.indices)'
+  },
+  walls: {
+    testFile: join('tests', 'render', 'walls.test.ts'),
+    pipeline:
+      'WALLFIX/E1M1 -> gInitGame -> warp (viewpoints.ts) -> renderFrame x2 (byte-equal) -> sha256(fb.indices), hom/drawsegOverflow asserted 0'
+  }
+};
 
 /* ------------------------------------------------------------------ */
 /* args                                                                */
@@ -54,17 +73,27 @@ const TEST_FILE = join('tests', 'render', 'automap.test.ts');
 const argv = process.argv.slice(2);
 let check = false;
 let reason = null;
+let setName = 'automap';
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--check') check = true;
   else if (a === '--reason') reason = argv[++i] ?? '';
   else if (a.startsWith('--reason=')) reason = a.slice('--reason='.length);
-  else die(`unknown argument: ${a} (usage: --reason "text" | --check)`);
+  else if (a === '--set') setName = argv[++i] ?? '';
+  else if (a.startsWith('--set=')) setName = a.slice('--set='.length);
+  else die(`unknown argument: ${a} (usage: [--set walls|automap] --reason "text" | --check)`);
 }
+if (!Object.hasOwn(SETS, setName)) die(`unknown --set ${JSON.stringify(setName)} (have: ${Object.keys(SETS).join(', ')})`);
 if (check && reason !== null) die('--check takes no --reason');
 if (!check && (reason === null || reason.trim() === '')) {
   die('REGENERATION requires a reason: --reason "why the goldens change" (meta.json records it)');
 }
+
+const SET = SETS[setName];
+const GOLDENS = join(ROOT, 'tests', 'render', 'goldens', setName);
+const META = join(GOLDENS, 'meta.json');
+const REVIEW = join(ROOT, 'test-results', 'goldens', setName);
+const TEST_FILE = SET.testFile;
 if (check && !existsSync(META)) die(`no committed goldens to check against: ${META}`);
 
 function die(msg) {
@@ -118,14 +147,15 @@ const meta = existsSync(META)
   : {
       schema: 1,
       generator: 'scripts/goldens-update.mjs',
-      pipeline:
-        'FIXMAP/E1M1 -> gInitGame -> scripted Tab/tics/moves (amResponder+gTicker+amTicker, main.ts stepTic order) -> drawAutomap -> sha256(fb.indices)',
+      set: setName,
+      pipeline: SET.pipeline,
       scenes: {}
     };
 
 let failed = false;
 const today = new Date().toISOString().slice(0, 10);
 const names = [...new Set([...Object.keys(dumps), ...Object.keys(meta.scenes ?? {})])].sort();
+if (!check) mkdirp(GOLDENS); // a brand-new --set tree has no goldens dir yet
 
 for (const name of names) {
   const dump = dumps[name];
@@ -152,7 +182,7 @@ for (const name of names) {
       failed = true;
       continue;
     }
-    const fresh = pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256);
+    const fresh = pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256, dump.paletteRgb);
     const committed = readFileSync(pngPath);
     if (!committed.equals(fresh)) {
       // bytes may legitimately differ across zlib builds — prove pixel +
@@ -178,6 +208,8 @@ for (const name of names) {
   meta.scenes[name] = {
     kind: dump.kind,
     script: dump.script,
+    ...(dump.viewpoint ? { viewpoint: dump.viewpoint } : {}),
+    ...(dump.hom !== undefined ? { hom: dump.hom } : {}),
     width: dump.width,
     height: dump.height,
     indexSha256: dump.indexSha256,
@@ -187,7 +219,7 @@ for (const name of names) {
     updatedAt: today,
     history: [...(prev?.history ?? []), { reason, at: today, indexSha256: dump.indexSha256 }]
   };
-  writeFileSync(join(GOLDENS, pngName), pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256));
+  writeFileSync(join(GOLDENS, pngName), pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256, dump.paletteRgb));
   console.log(`bless  ${name} → ${pngName}`);
 }
 
@@ -201,7 +233,7 @@ mkdirp(REVIEW);
 for (const name of names) {
   const dump = dumps[name];
   if (!dump) continue;
-  const png = pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256);
+  const png = pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256, dump.paletteRgb);
   writeFileSync(join(REVIEW, `${name}.png`), png);
 }
 console.log(`review ${REVIEW}`);
@@ -251,13 +283,19 @@ function indexRgb(i) {
   return Array(3).fill(i); // gray ramp fallback
 }
 
-function pngFromIndexed(width, height, indices, sha) {
+function pngFromIndexed(width, height, indices, sha, paletteRgb) {
+  // M3-08: a dump-provided palette (768 RGB ints) wins; else the automap
+  // color-family mapping below.
+  const rgbOf =
+    paletteRgb === undefined
+      ? indexRgb
+      : (i) => [paletteRgb[i * 3], paletteRgb[i * 3 + 1], paletteRgb[i * 3 + 2]];
   const raw = Buffer.alloc(height * (1 + width * 3));
   let p = 0;
   for (let y = 0; y < height; y++) {
     raw[p++] = 0; // filter: None
     for (let x = 0; x < width; x++) {
-      const [r, g, b] = indexRgb(indices[y * width + x]);
+      const [r, g, b] = rgbOf(indices[y * width + x]);
       raw[p++] = r;
       raw[p++] = g;
       raw[p++] = b;
