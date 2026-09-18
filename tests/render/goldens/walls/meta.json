@@ -21,7 +21,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -33,12 +33,17 @@
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
           "at": "2026-09-18",
           "indexSha256": "3e18cce73c77c37fe0492d21de49fdda060ae75eabb3621fc9a91dae798b8689"
+        },
+        {
+          "reason": "M4-09 masked flush live",
+          "at": "2026-09-18",
+          "indexSha256": "3e18cce73c77c37fe0492d21de49fdda060ae75eabb3621fc9a91dae798b8689"
         }
       ]
     },
     "e1m1-busy-yard": {
       "kind": "iwad",
-      "script": "sector 181 (f48/c536) W into the ruin-yard span soup (solidsegs stress; hom/dso stay 0 \u2014 no re-pick needed)",
+      "script": "sector 181 (f48/c536) W into the ruin-yard span soup (solidsegs stress; hom/dso stay 0 — no re-pick needed)",
       "viewpoint": {
         "x": 2400,
         "y": 1152,
@@ -53,7 +58,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -63,6 +68,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "3d5b3f838fa39c2e12953847102ecac6cf8e4a801aae66216b2fa0462008f135"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "3d5b3f838fa39c2e12953847102ecac6cf8e4a801aae66216b2fa0462008f135"
         }
@@ -85,7 +95,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -95,6 +105,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "3b21812df2cf4eabc929732ed7e80740cab65e46e3e1b63bacd241b663f445e2"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "3b21812df2cf4eabc929732ed7e80740cab65e46e3e1b63bacd241b663f445e2"
         }
@@ -117,7 +132,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -127,6 +142,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "76ffac876227412d2f42952a11aca0bb3c5526d1bb9b10c6596116773b4f5322"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "76ffac876227412d2f42952a11aca0bb3c5526d1bb9b10c6596116773b4f5322"
         }
@@ -149,7 +169,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -159,6 +179,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "2ba7fdf16e9b4a748f526ec36bbab3149bb8c96f93ec8dcf9f3b346ac5d090da"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "2ba7fdf16e9b4a748f526ec36bbab3149bb8c96f93ec8dcf9f3b346ac5d090da"
         }
@@ -181,7 +206,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -191,6 +216,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "46ed1a767ef7b031d2e00ba706ced88afb21cc5ca7a5a63240a0ca25421b75bb"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "46ed1a767ef7b031d2e00ba706ced88afb21cc5ca7a5a63240a0ca25421b75bb"
         }
@@ -213,7 +243,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -223,6 +253,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "8b93ff15c08aa326b313741c354919bd9f1cab66c82b8736603d4aff22cb775d"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "8b93ff15c08aa326b313741c354919bd9f1cab66c82b8736603d4aff22cb775d"
         }
@@ -245,7 +280,7 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -255,6 +290,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "851fd0fc93a99e33bfec2c6680044e2339854b51a9c1acc29d4e246d3fa07648"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "851fd0fc93a99e33bfec2c6680044e2339854b51a9c1acc29d4e246d3fa07648"
         }
@@ -273,7 +313,7 @@
       "height": 200,
       "indexSha256": "57fbb61646a693f1c6c08af5e22f044f0b05efb3b564d83726a4267e27997543",
       "png": "fix-a-n.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -283,6 +323,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "57fbb61646a693f1c6c08af5e22f044f0b05efb3b564d83726a4267e27997543"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "57fbb61646a693f1c6c08af5e22f044f0b05efb3b564d83726a4267e27997543"
         }
@@ -301,7 +346,7 @@
       "height": 200,
       "indexSha256": "4c9215e32dde8d49296b122c8eb309b25f1bf0f2616faddeb6de0e92084fac16",
       "png": "fix-a-ne.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -311,6 +356,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "4c9215e32dde8d49296b122c8eb309b25f1bf0f2616faddeb6de0e92084fac16"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "4c9215e32dde8d49296b122c8eb309b25f1bf0f2616faddeb6de0e92084fac16"
         }
@@ -329,7 +379,7 @@
       "height": 200,
       "indexSha256": "7cfbc66eebda3d8b3627f7b48661b33e88e5b408d57481d2e02b3370f7bbae45",
       "png": "fix-a-w.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -339,6 +389,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "7cfbc66eebda3d8b3627f7b48661b33e88e5b408d57481d2e02b3370f7bbae45"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "7cfbc66eebda3d8b3627f7b48661b33e88e5b408d57481d2e02b3370f7bbae45"
         }
@@ -357,7 +412,7 @@
       "height": 200,
       "indexSha256": "eb9f6a00d2dd6613149a78c28dd5ee63cedcca45f7e22e3678071310fd50f305",
       "png": "fix-b-n.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -367,6 +422,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "eb9f6a00d2dd6613149a78c28dd5ee63cedcca45f7e22e3678071310fd50f305"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "eb9f6a00d2dd6613149a78c28dd5ee63cedcca45f7e22e3678071310fd50f305"
         }
@@ -385,7 +445,7 @@
       "height": 200,
       "indexSha256": "69671467312ad8a549302fd587246af739221517a84f884dddd2ed3a3f585158",
       "png": "fix-b-s.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -395,6 +455,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "69671467312ad8a549302fd587246af739221517a84f884dddd2ed3a3f585158"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "69671467312ad8a549302fd587246af739221517a84f884dddd2ed3a3f585158"
         }
@@ -413,7 +478,7 @@
       "height": 200,
       "indexSha256": "16725e95bde315a1a534513b8d423deb6db1285e7a1b3c580b0278ae468d5899",
       "png": "fix-b-w.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -423,6 +488,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "16725e95bde315a1a534513b8d423deb6db1285e7a1b3c580b0278ae468d5899"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "16725e95bde315a1a534513b8d423deb6db1285e7a1b3c580b0278ae468d5899"
         }
@@ -441,7 +511,7 @@
       "height": 200,
       "indexSha256": "48cc790676e0a72cb1e78035cecad97c734fcd62e7890c6ee2146e940283485a",
       "png": "fix-c-e.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -451,6 +521,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "48cc790676e0a72cb1e78035cecad97c734fcd62e7890c6ee2146e940283485a"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "48cc790676e0a72cb1e78035cecad97c734fcd62e7890c6ee2146e940283485a"
         }
@@ -469,7 +544,7 @@
       "height": 200,
       "indexSha256": "a71f1ec6aa74a51cbd199fc089f93a3c415716bd25018fa493aabfda7fff5937",
       "png": "fix-c-n.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -479,6 +554,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "a71f1ec6aa74a51cbd199fc089f93a3c415716bd25018fa493aabfda7fff5937"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "a71f1ec6aa74a51cbd199fc089f93a3c415716bd25018fa493aabfda7fff5937"
         }
@@ -497,7 +577,7 @@
       "height": 200,
       "indexSha256": "f420c2fc07a7b366459ac062c635b9a1f22f2e1502b0aa5abeb2c3abe81653d4",
       "png": "fix-c-ne.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -507,6 +587,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "f420c2fc07a7b366459ac062c635b9a1f22f2e1502b0aa5abeb2c3abe81653d4"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "f420c2fc07a7b366459ac062c635b9a1f22f2e1502b0aa5abeb2c3abe81653d4"
         }
@@ -525,7 +610,7 @@
       "height": 200,
       "indexSha256": "3b2824dc65d30ac8531d92e1051952e9af9875287c368c80e1cffdf855808374",
       "png": "fix-d-e.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -535,6 +620,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "3b2824dc65d30ac8531d92e1051952e9af9875287c368c80e1cffdf855808374"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "3b2824dc65d30ac8531d92e1051952e9af9875287c368c80e1cffdf855808374"
         }
@@ -553,7 +643,7 @@
       "height": 200,
       "indexSha256": "6b8ff94d7a1a10e24c883e59a3e8b9e6d3cf6318eb5b1427e64f759ed2507438",
       "png": "fix-d-n.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -563,6 +653,11 @@
         },
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "6b8ff94d7a1a10e24c883e59a3e8b9e6d3cf6318eb5b1427e64f759ed2507438"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "6b8ff94d7a1a10e24c883e59a3e8b9e6d3cf6318eb5b1427e64f759ed2507438"
         }
@@ -581,7 +676,7 @@
       "height": 200,
       "indexSha256": "8cafb26848bd98e8b5fcffcf9fca50cdc3bd3f88ae08784f4bc2e1078fb10982",
       "png": "fix-d-w.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
@@ -593,12 +688,17 @@
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
           "at": "2026-09-18",
           "indexSha256": "8cafb26848bd98e8b5fcffcf9fca50cdc3bd3f88ae08784f4bc2e1078fb10982"
+        },
+        {
+          "reason": "M4-09 masked flush live",
+          "at": "2026-09-18",
+          "indexSha256": "8cafb26848bd98e8b5fcffcf9fca50cdc3bd3f88ae08784f4bc2e1078fb10982"
         }
       ]
     },
     "e1m1-busy-mix": {
       "kind": "iwad",
-      "script": "sky yard sec 39 (f-80/c536 L240) centre, SW \u2014 masked shells + BAR1/COLU/TRE statics + sky sliver in one busy frame (all counters 0)",
+      "script": "sky yard sec 39 (f-80/c536 L240) centre, SW — masked shells + BAR1/COLU/TRE statics + sky sliver in one busy frame (all counters 0)",
       "viewpoint": {
         "x": 2200,
         "y": 917,
@@ -613,11 +713,16 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "bc76044fc7878ea30d54b7d366d987d822164765701baa7fe2682f6f0018bd3b"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "bc76044fc7878ea30d54b7d366d987d822164765701baa7fe2682f6f0018bd3b"
         }
@@ -625,7 +730,7 @@
     },
     "e1m1-court-sky": {
       "kind": "iwad",
-      "script": "spawn courtyard sec 29 (F_SKY1 f0/c128 L128) from INSIDE, SW \u2014 sky fills the band above the ring walls (removed-SKY1 diff \u2248 37.6k px); no sprites in the centre cone",
+      "script": "spawn courtyard sec 29 (F_SKY1 f0/c128 L128) from INSIDE, SW — sky fills the band above the ring walls (removed-SKY1 diff ≈ 37.6k px); no sprites in the centre cone",
       "viewpoint": {
         "x": -608,
         "y": 240,
@@ -640,11 +745,16 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "4bb56d4282bec5a3612f6d4b57e56b925c52886fa928090708007b12cad33c2d"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "4bb56d4282bec5a3612f6d4b57e56b925c52886fa928090708007b12cad33c2d"
         }
@@ -652,7 +762,7 @@
     },
     "e1m1-court-things": {
       "kind": "iwad",
-      "script": "thing type 1 spawn, W at the courtyard \u2014 TRE2 grove (5 sprite columns \u224896/133/160/171/204) + BON1/STIM/corpse statics + sky sliver above the courtyard wall",
+      "script": "thing type 1 spawn, W at the courtyard — TRE2 grove (5 sprite columns ≈96/133/160/171/204) + BON1/STIM/corpse statics + sky sliver above the courtyard wall",
       "viewpoint": {
         "x": -416,
         "y": 256,
@@ -667,11 +777,16 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "c5c6b64887a8c9ee30941c6547fa94d8346fa685b556300c033042255c6479aa"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "c5c6b64887a8c9ee30941c6547fa94d8346fa685b556300c033042255c6479aa"
         }
@@ -679,7 +794,7 @@
     },
     "e1m1-yard-fenced": {
       "kind": "iwad",
-      "script": "sky yard sec 23 (f40/c536 L224) centre, N through the MC18/MC17/ASHWALL fence lines \u2014 masked spans overlap 10 static sprite columns (TRE/SMIT/BON1)",
+      "script": "sky yard sec 23 (f40/c536 L224) centre, N through the MC18/MC17/ASHWALL fence lines — masked spans overlap 10 static sprite columns (TRE/SMIT/BON1)",
       "viewpoint": {
         "x": 2224,
         "y": 1323,
@@ -694,11 +809,16 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "58b164c5b6912e568f6495e55d39dd1276ea687120f247aa70e545972e060141"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "58b164c5b6912e568f6495e55d39dd1276ea687120f247aa70e545972e060141"
         }
@@ -706,7 +826,7 @@
     },
     "fixmask-back": {
       "kind": "fixture",
-      "script": "M4MASK room B: W at the same fence from the other side \u2014 symmetric masked-range path, far wall A through the holes",
+      "script": "M4MASK room B: W at the same fence from the other side — symmetric masked-range path, far wall A through the holes",
       "viewpoint": {
         "x": 384,
         "y": 128,
@@ -715,21 +835,26 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "5a828fd1e56f27618ce72f37cdf01397eaf50cd9e22fabf419dec68f0a89d083",
+      "indexSha256": "6260dfcfeb9a17b12aa5d28e84c8eedb13159de29039a056bf27b277b6f6377d",
       "png": "fixmask-back.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
           "at": "2026-09-18",
           "indexSha256": "5a828fd1e56f27618ce72f37cdf01397eaf50cd9e22fabf419dec68f0a89d083"
+        },
+        {
+          "reason": "M4-09 masked flush live",
+          "at": "2026-09-18",
+          "indexSha256": "6260dfcfeb9a17b12aa5d28e84c8eedb13159de29039a056bf27b277b6f6377d"
         }
       ]
     },
     "fixmask-fence": {
       "kind": "fixture",
-      "script": "M4MASK room A: E at the MASKFIX0 masked fence \u2014 parity holes must show the FAR wall (B side), opaque columns never black",
+      "script": "M4MASK room A: E at the MASKFIX0 masked fence — parity holes must show the FAR wall (B side), opaque columns never black",
       "viewpoint": {
         "x": 128,
         "y": 128,
@@ -740,11 +865,16 @@
       "height": 200,
       "indexSha256": "66e6c263465f6597f3f30b07723a42729feb21aef205e8ada123409e4cef8773",
       "png": "fixmask-fence.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "66e6c263465f6597f3f30b07723a42729feb21aef205e8ada123409e4cef8773"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "66e6c263465f6597f3f30b07723a42729feb21aef205e8ada123409e4cef8773"
         }
@@ -752,7 +882,7 @@
     },
     "fixpan-panned": {
       "kind": "fixture",
-      "script": "M4PAN room A (L0): N at the textureoffset-40 sidedef \u2014 FIXWALL0 columns shifted 40 px-texels vs the unpanned fix-a-n; rowoffset 8 IGNORED (pinned)",
+      "script": "M4PAN room A (L0): N at the textureoffset-40 sidedef — FIXWALL0 columns shifted 40 px-texels vs the unpanned fix-a-n; rowoffset 8 IGNORED (pinned)",
       "viewpoint": {
         "x": 128,
         "y": 128,
@@ -763,11 +893,16 @@
       "height": 200,
       "indexSha256": "11d9a1044a7168c13fcadfa507198060430564c650d9c49ffc1a97bc98cbff95",
       "png": "fixpan-panned.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "11d9a1044a7168c13fcadfa507198060430564c650d9c49ffc1a97bc98cbff95"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "11d9a1044a7168c13fcadfa507198060430564c650d9c49ffc1a97bc98cbff95"
         }
@@ -775,7 +910,7 @@
     },
     "fixpan-rowskip": {
       "kind": "fixture",
-      "script": "M4PAN room C (L255): E at the rowoffset-24-only sidedef \u2014 renders UNpanned (rdata consumes textureoffset only); the SIDEDEFS bytes round-trip is mapBuilder.test.ts territory",
+      "script": "M4PAN room C (L255): E at the rowoffset-24-only sidedef — renders UNpanned (rdata consumes textureoffset only); the SIDEDEFS bytes round-trip is mapBuilder.test.ts territory",
       "viewpoint": {
         "x": 128,
         "y": 384,
@@ -786,11 +921,16 @@
       "height": 200,
       "indexSha256": "377134f42dbb7fb6dc0a423e447684ca23376d1bf82aab6cbc891b5af5ea56ad",
       "png": "fixpan-rowskip.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "377134f42dbb7fb6dc0a423e447684ca23376d1bf82aab6cbc891b5af5ea56ad"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "377134f42dbb7fb6dc0a423e447684ca23376d1bf82aab6cbc891b5af5ea56ad"
         }
@@ -798,7 +938,7 @@
     },
     "fixsky-room": {
       "kind": "fixture",
-      "script": "M4SKY light-32 sky room: N \u2014 F_SKY1 band fullbright under the DIMMING colormap rows (sky light-immunity evidence)",
+      "script": "M4SKY light-32 sky room: N — F_SKY1 band fullbright under the DIMMING colormap rows (sky light-immunity evidence)",
       "viewpoint": {
         "x": 256,
         "y": 256,
@@ -809,11 +949,16 @@
       "height": 200,
       "indexSha256": "bd90cd556401c5c35fc425ed63ff42b42dc9d54646d08463d3f53fccf25ae2c2",
       "png": "fixsky-room.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "bd90cd556401c5c35fc425ed63ff42b42dc9d54646d08463d3f53fccf25ae2c2"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "bd90cd556401c5c35fc425ed63ff42b42dc9d54646d08463d3f53fccf25ae2c2"
         }
@@ -821,7 +966,7 @@
     },
     "fixsky-seam": {
       "kind": "fixture",
-      "script": "M4SKY: E along the room \u2014 the sky plane meets the far wall TOP at the worldhigh seam (plan \u00a76 horizon-seam stress: skytexturemid 1:1 tie)",
+      "script": "M4SKY: E along the room — the sky plane meets the far wall TOP at the worldhigh seam (plan §6 horizon-seam stress: skytexturemid 1:1 tie)",
       "viewpoint": {
         "x": 64,
         "y": 256,
@@ -832,11 +977,16 @@
       "height": 200,
       "indexSha256": "de1f13d62449225cb163e41892f166ae36095dbe8f8e4cd0ba667926e9503b1d",
       "png": "fixsky-seam.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "de1f13d62449225cb163e41892f166ae36095dbe8f8e4cd0ba667926e9503b1d"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "de1f13d62449225cb163e41892f166ae36095dbe8f8e4cd0ba667926e9503b1d"
         }
@@ -844,7 +994,7 @@
     },
     "fixthings-flip": {
       "kind": "fixture",
-      "script": "M4THNG: E from the west edge \u2014 near BAR1 dead ahead (slot 0 A1), ring BAR1s at slots 2/3/5 FLIPPED + slot 4, pair BAR1 slot 5 flipped: octants + XY mirrors in one frame",
+      "script": "M4THNG: E from the west edge — near BAR1 dead ahead (slot 0 A1), ring BAR1s at slots 2/3/5 FLIPPED + slot 4, pair BAR1 slot 5 flipped: octants + XY mirrors in one frame",
       "viewpoint": {
         "x": 64,
         "y": 256,
@@ -855,11 +1005,16 @@
       "height": 200,
       "indexSha256": "3db193e4425f64668f2c7912ced0cf7c4915c0e3a0fb84260371af7104eee255",
       "png": "fixthings-flip.png",
-      "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+      "reason": "M4-09 masked flush live",
       "updatedAt": "2026-09-18",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
+          "at": "2026-09-18",
+          "indexSha256": "3db193e4425f64668f2c7912ced0cf7c4915c0e3a0fb84260371af7104eee255"
+        },
+        {
+          "reason": "M4-09 masked flush live",
           "at": "2026-09-18",
           "indexSha256": "3db193e4425f64668f2c7912ced0cf7c4915c0e3a0fb84260371af7104eee255"
         }
