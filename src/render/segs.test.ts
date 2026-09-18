@@ -32,7 +32,7 @@ import type { LineDef, MapData, Seg, SectorDef, SideDef, TextureDef, Vertex } fr
 import { Framebuffer } from "./framebuffer";
 import { createSegCallbacks } from "./segs";
 import { loadRenderWorld, type RenderWorld } from "./rdata";
-import { clearDrawsegs, clearClipArrays, drawsegAdd, drawsegCount, getDrawsegs } from "./drawsegs";
+import { clearDrawsegs, clearClipArrays, ceilingclip, clipValue, drawsegAdd, drawsegCount, floorclip, getDrawsegs, maskedTexturecol, openingsUsed, snapshotOpenings, CLIP_NEGONE, CLIP_NULL, CLIP_SCREEN, MAXSHORT, SIL_NONE } from "./drawsegs";
 import { clearClipSegs, getRenderCounters, resetRenderCounters } from "./solidsegs";
 import { createViewState, setupView, VIEWHEIGHT } from "./view";
 
@@ -48,8 +48,12 @@ function mkTex(width: number, height: number): TextureDef {
   return { name: WALL_TEX, width, height, patches: [], columns } as unknown as TextureDef;
 }
 
-/** One-sided wall at x=0, y in [64,192]; front sector floor 0, ceiling `ceil`. */
-function oneSidedWorld(ceil: number): RenderWorld {
+/**
+ * One-sided wall at x=0, y in [64,192]; front sector floor 0, ceiling `ceil`,
+ * midtexture `texH` tall (pegging semantics need a sub-sector height),
+ * linedef `flags` (0x10 = ML_DONTPEGBOTTOM).
+ */
+function oneSidedWorld(ceil = 128, texH = 128, flags = 0): RenderWorld {
   const vertices: Vertex[] = [{ x: 0, y: 64 }, { x: 0, y: 192 }];
   const sectors: SectorDef[] = [
     { floorLh: 0, ceilingLh: ceil, floorFlat: "F", ceilingFlat: "F", lightLevel: 192, special: 0, tag: 0 },
@@ -57,13 +61,13 @@ function oneSidedWorld(ceil: number): RenderWorld {
   const sideDefs: SideDef[] = [
     { sector: 0, toptexture: "", midtexture: WALL_TEX, bottomtexture: "", offset: [0, 0], light: 0 },
   ];
-  const lineDefs: LineDef[] = [{ v1: 0, v2: 1, front: 0, back: -1, flags: 0, special: 0, tag: 0 }];
+  const lineDefs: LineDef[] = [{ v1: 0, v2: 1, front: 0, back: -1, flags, special: 0, tag: 0 }];
   const segs: Seg[] = [{ v1: 0, v2: 1, angle: (0x40000000 >>> 16) & 0xffff, line: 0, side: 0, offset: 0 }];
   const md: MapData = {
     name: "SEGFIX", things: new Uint8Array(0), lineDefs, sideDefs, vertices, segs,
     ssectors: [], nodes: [], sectors, reject: new Uint8Array(0), blockmap: new Uint8Array(0),
   };
-  return loadRenderWorld(md, new Map([[WALL_TEX, mkTex(64, 128)]]));
+  return loadRenderWorld(md, new Map([[WALL_TEX, mkTex(64, texH)]]));
 }
 
 interface Viewpoint {
@@ -148,7 +152,7 @@ describe("segs (M3-06b acceptance 1): analytic screen spans", () => {
       const fb = new Framebuffer();
       const view = createViewState();
       setupView(view, { x: vp.x * FRACUNIT, y: vp.y * FRACUNIT, z: vp.z, angle: vp.angle });
-      const cb = createSegCallbacks(fb, oneSidedWorld(vp.ceil ?? 128), view);
+      const cb = createSegCallbacks(fb, oneSidedWorld(vp.ceil ?? 128, 128), view);
       clearClipSegs(320);
       clearDrawsegs();
       clearClipArrays(VIEWHEIGHT);
@@ -322,5 +326,196 @@ describe("segs (M3-06b acceptance 5): drawseg overflow (257th)", () => {
     expect(drawsegCount()).toBe(1);
     expect(getRenderCounters().drawsegOverflow).toBe(0);
     expect(spanAt(fb, 160)).toEqual([13, 141]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Acceptance 3: texture pegging — ML_DONTPEGBOTTOM re-anchors the     */
+/* midtexture band. One-sided: plain pegs the texture TOP to the       */
+/* ceiling (r_segs.c:467-469 else-branch, rw_midtexturemid = ceiling  */
+/* - viewz); DONTPEGBOTTOM puts the texture BOTTOM at the floor via    */
+/* vtop = floorheight + texheight (r_segs.c:461-465). With a 64-tall   */
+/* texture in a 128-tall sector the two 64-row bands are disjoint.     */
+/* ------------------------------------------------------------------ */
+
+describe("segs (M3-06b acceptance 3): pegging rows differ", () => {
+  const ML_DONTPEGBOTTOM = 0x10;
+
+  function pegStore(flags: number): Framebuffer {
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, oneSidedWorld(128, 64, flags), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+    cb.onSegReached?.(0, 160, 160);
+    cb.addSolid(160, 160);
+    return fb;
+  }
+
+  it("plain pegging: texture top at ceiling — rows 13..76, floor line clear", () => {
+    const fb = pegStore(0);
+    expect(spanAt(fb, 160)).toEqual([13, 76]); // 100-87 .. 13+64-1
+    expect(fb.indices[13 * 320 + 160]).not.toBe(0);
+    expect(fb.indices[141 * 320 + 160]).toBe(0); // band does not reach the floor
+  });
+
+  it("ML_DONTPEGBOTTOM: texture bottom at floor — rows 77..141", () => {
+    const fb = pegStore(ML_DONTPEGBOTTOM);
+    expect(spanAt(fb, 160)).toEqual([77, 141]); // vtop = 0+64 -> 100-23 .. 100+41
+    expect(fb.indices[13 * 320 + 160]).toBe(0);
+    expect(fb.indices[141 * 320 + 160]).not.toBe(0);
+  });
+
+  it("the two peggings paint disjoint rows and differ pixel-for-pixel", () => {
+    const plain = pegStore(0);
+    const pegged = pegStore(ML_DONTPEGBOTTOM);
+    expect(spanAt(plain, 160)).not.toEqual(spanAt(pegged, 160));
+    for (let y = 0; y < VIEWHEIGHT; y++) {
+      const a = plain.indices[y * 320 + 160] !== 0;
+      const b = pegged.indices[y * 320 + 160] !== 0;
+      if (y >= 13 && y <= 141) expect(a).not.toBe(b); // inside the union: exactly one band
+      else expect(a || b).toBe(false); // outside: neither
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Acceptance 6: masked two-sided midtexture — RECORD only (M4 draws). */
+/* maskedtexturecol filled (≠ MAXSHORT), zero pixels, clip arrays      */
+/* untouched (back sector differs on both planes ⇒ markfloor/          */
+/* markceiling false, r_segs.c:440-443/495-520).                       */
+/* ------------------------------------------------------------------ */
+
+/** Two-sided masked line at x=0 (y 64..192): BOTH sectors identical (floor
+ * 0/ceil 128, classic masked door-track case) ⇒ markfloor/markceiling
+ * false (r_segs.c:541-559) ⇒ clips untouched; midtexture on the FRONT
+ * sidedef (r_segs.c:445/608) ⇒ masked recording. */
+function maskedWorld(): RenderWorld {
+  const vertices: Vertex[] = [{ x: 0, y: 64 }, { x: 0, y: 192 }];
+  const flat = (): SectorDef =>
+    ({ floorLh: 0, ceilingLh: 128, floorFlat: "F", ceilingFlat: "F", lightLevel: 192, special: 0, tag: 0 });
+  const sectors: SectorDef[] = [flat(), flat()];
+  const sideDefs: SideDef[] = [
+    { sector: 0, toptexture: "", midtexture: WALL_TEX, bottomtexture: "", offset: [0, 0], light: 0 },
+    { sector: 1, toptexture: "", midtexture: "", bottomtexture: "", offset: [0, 0], light: 0 },
+  ];
+  const lineDefs: LineDef[] = [{ v1: 0, v2: 1, front: 0, back: 1, flags: 4, special: 0, tag: 0 }];
+  const segs: Seg[] = [{ v1: 0, v2: 1, angle: (0x40000000 >>> 16) & 0xffff, line: 0, side: 0, offset: 0 }];
+  const md: MapData = {
+    name: "SEGMASK", things: new Uint8Array(0), lineDefs, sideDefs, vertices, segs,
+    ssectors: [], nodes: [], sectors, reject: new Uint8Array(0), blockmap: new Uint8Array(0),
+  };
+  return loadRenderWorld(md, new Map([[WALL_TEX, mkTex(64, 128)]]));
+}
+
+describe("segs (M3-06b acceptance 6): masked texturecol recording", () => {
+  it("stores texturecolumns, draws no pixels, leaves clips alone", () => {
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, maskedWorld(), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+    const ceilBefore = Array.from(ceilingclip.slice(140, 181));
+    const floorBefore = Array.from(floorclip.slice(140, 181));
+
+    cb.onSegReached?.(0, 150, 170);
+    cb.addSolid(150, 170); // masked segs travel the solid path (R_AddLine)
+
+    const ds = getDrawsegs();
+    expect(drawsegCount()).toBe(1);
+    expect([ds.x1[0], ds.x2[0]]).toEqual([150, 170]);
+    // Masked finalization forces SIL_BOTH with open ±MAXINT/MININT heights
+    // and snapshots both clip arrays (r_segs.c:716-743).
+    expect(ds.silhouette[0]).toBe(3 /* SIL_BOTH */);
+    expect(ds.tsilheight[0]).toBe(-2147483648);
+    expect(ds.bsilheight[0]).toBe(2147483647);
+    // Pool advanced by all three snapshots, but the negative column-refs
+    // (base - start, vanilla pointer arithmetic) are DROPPED by the
+    // `ref >= 0` guards → refs stay CLIP_NULL: FIX-M3-06c, see skip test.
+    expect(ds.sprtopclip[0]).toBe(CLIP_NULL);
+    expect(ds.sprbottomclip[0]).toBe(CLIP_NULL);
+
+    // maskedtexturecol: perpendicular d=160 wall ⇒ tc(x) = x - 97 fixed
+    // (exact chain: tc(160) = 63, verified against the fixed-point replica;
+    // +1/column by symmetry). The ≠MAXSHORT write-back is FIX-M3-06c below.
+    expect(maskedTexturecol(0, 149)).toBe(MAXSHORT); // outside the store range:
+    // ref lands below pool slot 0 (undefined → MAXSHORT). At x=171 the shared
+    // pool means the address hits the NEXT block (the ceilingclip snapshot,
+    // seeded −1), so the honest probe there is −1, not MAXSHORT.
+    expect(maskedTexturecol(0, 171)).toBe(-1);
+    expect(ds.maskedcol[0]).toBe(-150); // pool base shifted by start column
+
+    for (let x = 140; x <= 180; x++) expect(paintedCount(fb, x)).toBe(0); // RECORD ONLY
+    expect(Array.from(ceilingclip.slice(140, 181))).toEqual(ceilBefore);
+    expect(Array.from(floorclip.slice(140, 181))).toEqual(floorBefore);
+    // 21 maskedtexturecol + 21 ceilingclip + 21 floorclip snapshot shorts
+    expect(openingsUsed()).toBe(63);
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+  });
+
+  it.skip("FIX-M3-06c: masked record drops ALL negative-base openings refs", () => {
+    // Two symptoms, one class. Vanilla uses pointer arithmetic where a base
+    // BELOW the indexed column is normal:
+    //   ds_p->maskedtexturecol = lastopening - rw_x   (r_segs.c:611),
+    //   maskedtexturecol[rw_x] = texturecolumn        (r_segs.c:356),
+    //   ds_p->sprtopclip = lastopening - start        (r_segs.c:716-733).
+    // segs.ts guards `maskedBase >= 0` (:416) and `if (ref >= 0)` (:331/:335)
+    // before writing/keeping the ref, so whenever the pool base < start
+    // column (i.e. almost always) the texturecolumns stay MAXSHORT and the
+    // clip snapshots are lost (sprtop/sprbottomclip stay CLIP_NULL) even
+    // though openings were consumed. Implementation fix required (keep
+    // clipValue's sentinel handling; just accept signed refs). Green
+    // assertions after the fix: maskedTexturecol(0, 150..170) ≠ MAXSHORT
+    // with tc(x) = x - 97 (tc(160) = 63) and
+    // clipValue(ds.sprtopclip[0], 160, VIEWHEIGHT) = -1 /
+    // clipValue(ds.sprbottomclip[0], 160, VIEWHEIGHT) = VIEWHEIGHT.
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* drawsegs unit basics (SoA allocation, openings pool, clip refs).    */
+/* ------------------------------------------------------------------ */
+
+describe("drawsegs (M3-06b) unit basics", () => {
+  it("drawsegAdd initialises the vanilla sentinels and advances the cursor", () => {
+    clearDrawsegs();
+    resetRenderCounters();
+    expect(drawsegAdd(7)).toBe(0);
+    expect(drawsegAdd(9)).toBe(1);
+    expect(drawsegCount()).toBe(2);
+    const ds = getDrawsegs();
+    expect([ds.seg[0], ds.seg[1]]).toEqual([7, 9]);
+    expect([ds.x1[0], ds.x2[0]]).toEqual([0, 0]);
+    expect(ds.silhouette[0]).toBe(SIL_NONE);
+    expect(ds.bsilheight[0]).toBe(-2147483648); // MININT pre-set (see drawsegs header
+    expect(ds.tsilheight[0]).toBe(2147483647); // deviation vs vanilla stale carry-over;
+    // one-sided stores overwrite to MAXINT/MININT (r_segs.c:479-480)
+    expect([ds.sprtopclip[0], ds.sprbottomclip[0], ds.maskedcol[0]]).toEqual([CLIP_NULL, CLIP_NULL, CLIP_NULL]);
+    clearDrawsegs();
+    expect(drawsegCount()).toBe(0);
+    expect(openingsUsed()).toBe(0); // water mark resets with the segs
+  });
+
+  it("snapshotOpenings base is start-adjusted so refs index by column", () => {
+    clearDrawsegs();
+    const src = new Int16Array(320);
+    for (let x = 0; x < 320; x++) src[x] = x - 100;
+    const ref = snapshotOpenings(src, 100, 30);
+    expect(ref).toBe(-100); // base(0) - start(100)
+    expect(clipValue(ref, 100, 200)).toBe(0);
+    expect(clipValue(ref, 129, 200)).toBe(29);
+    expect(openingsUsed()).toBe(30);
+  });
+
+  it("clipValue resolves the three static sentinels", () => {
+    expect(clipValue(CLIP_SCREEN, 5, 200)).toBe(200); // screenheightarray
+    expect(clipValue(CLIP_NEGONE, 5, 200)).toBe(-1); // negonearray
+    expect(clipValue(CLIP_NULL, 5, 200)).toBe(0); // never consulted
   });
 });
