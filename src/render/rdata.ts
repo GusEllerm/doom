@@ -77,6 +77,15 @@ export const ML_TWOSIDED = 0x0004;
  * 128-tall composites; r_data.c masks texture rows with &127). */
 export const WALLCOLUMN_SENTINEL_HEIGHT = 128;
 
+/* ---- M4-02 flat/sky wiring (STUB — full implementation below) ---- */
+
+/** SKYFLATNAME (r_sky.h:32): the dummy flat naming the sky (g_game.c:454). */
+export const SKY_FLAT_NAME = 'F_SKY1';
+
+/** Default sky texture name (g_game.c episode<3 branch; episode variants
+ * SKY2/SKY3 selection deferred to M9 game flow — documented deviation). */
+export const DEFAULT_SKY_TEXTURE_NAME = 'SKY1';
+
 /* ------------------------------------------------------------------ */
 /* RenderWorld — the renderer's numeric view of one map               */
 /* ------------------------------------------------------------------ */
