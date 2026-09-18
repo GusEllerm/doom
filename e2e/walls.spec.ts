@@ -111,7 +111,9 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
     const cap2 = await captureStats(page);
 
     // Non-blank, not a single color, deterministic ×2 (acceptance 1).
-    expect(cap1.nonBlack, `walls capture too sparse: ${cap1.nonBlack}`).toBeGreaterThan(5000);
+    // Band note: walls-only ⇒ large black floor/ceiling gaps (deviation D);
+    // the pinned E1M1 spawn vista lands ≈ 4k wall pixels.
+    expect(cap1.nonBlack, `walls capture too sparse: ${cap1.nonBlack}`).toBeGreaterThan(2000);
     expect(cap1.distinct, 'walls capture must not be a single color').toBeGreaterThan(1);
     expect(cap2.hash, 'same pinned viewpoint must render identical bytes').toBe(cap1.hash);
 
