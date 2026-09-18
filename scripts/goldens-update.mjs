@@ -61,8 +61,16 @@ const SETS = {
   },
   walls: {
     testFile: join('tests', 'render', 'walls.test.ts'),
+    // M4-08 (plan §M4-08 deviation recorded): the set name stays `walls`
+    // although the scenes are FULL frames since the M4 re-bless, and the
+    // walls.test.ts scene table now boots THREE map sources — WALLFIX
+    // (M3), the M4-06 fixture maps (buildM4SceneWad: MASKFIX/SKYFIX/
+    // THINGSFIX/PANFIX, wad-free) and freedoom1 E1M1 (skipIf no wad).
+    // Consumption is scene-table driven: the dumps ARE the set, so no
+    // per-set fixture source flag is needed here (the automap set is
+    // untouched).
     pipeline:
-      'WALLFIX/E1M1 -> gInitGame -> warp (viewpoints.ts) -> renderFrame x2 (byte-equal) -> sha256(fb.indices), hom/drawsegOverflow asserted 0'
+      'WALLFIX / M4FIX(mask,sky,things,pan) / E1M1 -> gInitGame -> warp (viewpoints.ts) -> renderFrame x2 full frame (planes+masked+statics; byte-equal) -> sha256(fb.indices), hom + visplane/vissprite/opening/drawseg overflow asserted 0'
   }
 };
 
