@@ -67,7 +67,7 @@ Future tasks will be added as architects decompose milestones.
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
 | M4-01 | Visplane engine (r_plane.c) | M4 | M3 stack | dispatched (agent 227cbcea) |
-| M4-02 | Flat/sky data wiring | M4 | — | dispatched (agent f4f2ec8e) |
+| M4-02 | Flat/sky data wiring | M4 | — | done (merged, 24 tests) |
 | M4-03 | Static thing/sprite tables | M4 | — | dispatched (agent f2f44340) |
 | M4-04 | Plane marking + drawMasked | M4 | M4-01/02 | planned |
 | M4-05 | Static sprite pass (R_AddSprites/DrawVisSprite) | M4 | M4-03 | planned |
