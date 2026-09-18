@@ -26,6 +26,10 @@
 //     negonearray (all −1) — get the sentinel codes CLIP_SCREEN/CLIP_NEGONE
 //     (DEVIATION, representation only: vanilla stores real pointers; value
 //     semantics identical). NULL = CLIP_NULL.
+//     FIX-M4-09: the sentinel codes live OUTSIDE the reachable ref range
+//     (see the constants) — as −1/−2/−3 they collided with legitimate
+//     negative refs and R_DrawMasked's final flush skipped masked drawsegs
+//     whose maskedtexturecol pointer difference happened to be −1.
 //   screenheightarray/negonearray: defined next to the openings pool; vanilla
 //     fills screenheightarray[i]=viewheight in R_ExecuteSetViewSize
 //     (r_main.c:727); negonearray is −1-filled at init (never in the frame
@@ -95,18 +99,29 @@ export const MAXOPENINGS = RENDER_WIDTH * 64;
 /** C MAXSHORT (r_segs.c maskedtexturecol sentinel; RANGECHECK.h/limits). */
 export const MAXSHORT = 0x7fff;
 
-/** Sprite-clip ref representation (see file header). */
-export const CLIP_NULL = -1;
-export const CLIP_SCREEN = -2; // screenheightarray (all viewheight)
-export const CLIP_NEGONE = -3; // negonearray (all −1)
-//   >= 0 (or any value outside the sentinel set): SIGNED openings-pool ref
-//     (ref[x] = openings[refBase + x]; FIX-M3-06c — vanilla pointer math
-//     `lastopening - start` is legitimately NEGATIVE whenever the pool base
-//     sits below the start column; only allocation failure skips the store,
-//     sign never does. Edge collision kept: a true ref of exactly −1..−3 is
-//     read as the matching sentinel — astronomically rare (needs base within
-//     3 shorts below start) and unreachable on shipped maps; sentinel set
-//     unchanged per clipValue contract.)
+/** Sprite-clip ref representation (see file header).
+ *
+ * FIX-M4-09 — the codes are placed BELOW every reachable ref, because they
+ * must never alias one. A ref is vanilla's pointer difference
+ * `lastopening - start` with 0 ≤ lastopening < MAXOPENINGS and
+ * 0 ≤ start < SCREENWIDTH, i.e. ref ∈ [-(SCREENWIDTH-1), MAXOPENINGS) =
+ * [-319, 20479]. The historical -1/-2/-3 codes sat INSIDE that range, so a
+ * legitimate ref could read as a sentinel: the FIRST masked drawseg of a
+ * frame allocates its maskedtexturecol at lastopening 0 with start ≥ 1 ⇒
+ * ref === -1 === CLIP_NULL, and both masked-flush call sites
+ * (`if (ds->maskedtexturecol)` in R_DrawMasked's sweep and in
+ * R_ClipVisSprite) skipped it — the middle was never drawn and its
+ * columns never consumed. Vanilla's test is a POINTER-vs-NULL test, which
+ * no pointer difference can satisfy. Codes below -319 are unrepresentable
+ * as refs, so the aliasing is structurally impossible now. */
+export const CLIP_NULL = -1024; // vanilla NULL
+export const CLIP_SCREEN = -1025; // screenheightarray (all viewheight)
+export const CLIP_NEGONE = -1026; // negonearray (all −1)
+//   any other value: SIGNED openings-pool ref (ref[x] = openings[refBase + x];
+//     FIX-M3-06c — vanilla pointer math `lastopening - start` is legitimately
+//     NEGATIVE whenever the pool base sits below the start column; only
+//     allocation failure skips the store, sign never does. FIX-M4-09 removed
+//     the residual -1..-3 aliasing risk documented above.)
 
 /* ------------------------------------------------------------------ */
 /* drawseg SoA (ARCHITECTURE §4.2)                                     */
