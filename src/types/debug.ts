@@ -23,8 +23,10 @@ export interface DebugStatePending {
  * fixed coords/health/hash) and the not-yet-existing subsystems pinned to
  * documented defaults (gap G9): armor 0, ammo [] (no weapon inventory
  * pre-M7), weapons 0 (bitmask), powerups {}, onGroundSector -1, thinkers 0
- * (no thinker arena pre-M5), render.hom -1 (no renderer pre-M3).
- * `noclip` is the M2 addition mirroring CF_NOCLIP.
+ * (no thinker arena pre-M5). `noclip` is the M2 addition mirroring
+ * CF_NOCLIP. M3-07: `render.hom` is the LIVE renderer counter
+ * (getRenderCounters().hom of the last renderFrame; −1 only while no
+ * framebuffer has been attached — pre-boot).
  */
 export interface DebugStateLive {
   ready: true;
@@ -61,7 +63,9 @@ export type DebugStateSnapshot = DebugStatePending | DebugStateLive;
 export interface CaptureResult {
   width: number;
   height: number;
-  /** 8-bit palette indices (320*200) once the renderer exists; zeros until then. */
+  /** 8-bit palette indices (320*200) — the REAL rendered framebuffer copy
+   * once the platform boot attached the render source (M3-07); all zeros
+   * only before boot. */
   indices: Uint8Array;
 }
 

@@ -4,10 +4,12 @@
  * truth, and zero console errors across every flow.
  *
  * Hardening deltas (M2-10 acceptance 3):
- *  * TAB is asserted as an OPENS/CLOSES pair: closing paints the plain
- *    black placeholder buffer (0 non-black px) and re-opening restores the
- *    EXACT pre-Tab frame hash (AM_EndKey/AM_StartKey save+restore of scale
- *    + location, am_map.c — an unmoved player must land byte-identical).
+ *  * TAB is asserted as an OPENS/CLOSES pair: closing now reveals the 3D
+ *    walls frame (M3-07 boot switch; the M2 black-placeholder expectation
+ *    lived here while the automap booted ON by default) and re-opening
+ *    restores the EXACT pre-Tab frame hash (AM_EndKey/AM_StartKey save+
+ *    restore of scale + location, am_map.c — an unmoved player must land
+ *    byte-identical).
  *  * hold-W uses the `state()` snapshot (not only sim internals) for the
  *    position delta + hash delta.
  *  * NEW: hold-ArrowRight samples raw BAM angles across the hold — the
@@ -148,10 +150,14 @@ async function boot(page: Page): Promise<void> {
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
   // Let the follow-mode recenter tic + a few tics run so the view settles.
   await page.waitForTimeout(250);
+  // M3-07 boot switch: the page boots into the 3D walls view (the M2
+  // automap-by-default amStart call is gone) — TAB opens the automap.
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(150); // > 4 tics: the open event is drained
 }
 
 test.describe('automap boot + interaction', () => {
-  test('spawn pixels, Tab off→black, Tab on→byte-exact restore, clean console', async ({ page }) => {
+  test('spawn pixels, Tab off→3D walls, Tab on→byte-exact restore, clean console', async ({ page }) => {
     test.setTimeout(60_000);
     test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
     const consoleErrors = trackConsole(page);
@@ -170,11 +176,13 @@ test.describe('automap boot + interaction', () => {
     await page.waitForTimeout(120);
     expect(await frameHash(page), 'settled automap view must be stable').toBe(settled);
 
-    // (3) TAB closes: the map-off frame is the plain black placeholder buffer
+    // (3) TAB closes: the map-off frame is the 3D walls view (M3-07 boot
+    // switch — the black placeholder buffer is gone; byte-exact
+    // walls↔automap round-trips live in e2e/walls.spec.ts).
     await page.keyboard.press('Tab');
     await page.waitForTimeout(150); // >5 tics
     expect(await frameHash(page), 'Tab must change the frame').not.toBe(settled);
-    expect((await pixelStats(page)).nonBlack, 'map-off = black placeholder buffer').toBe(0);
+    expect((await pixelStats(page)).nonBlack, 'map-off = 3D walls frame').toBeGreaterThan(1000);
 
     // (4) TAB re-opens: AM_Start restores the saved scale+location — with an
     // unmoved player the frame must come back BYTE-EXACT.
