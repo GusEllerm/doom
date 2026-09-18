@@ -72,7 +72,6 @@ import { ANG180, ANG90, ANGLETOFINESHIFT, FRACBITS } from '../core/constants';
 import { FixedMul } from '../core/fixed';
 import { NO_TEXTURE, type RenderWorld } from './rdata';
 import {
-  NO_FLAT,
   clearPlanes,
   findPlane,
   isSkyPic,
@@ -225,18 +224,20 @@ export function createBspWalker(map: RenderMapView, world: RenderWorld): BspWalk
     /* R_Subsector plane opens (r_bsp.c:522-544, plan §0.4 predicates):
      *   markfloor   = floorheight < viewz
      *   markceiling = ceilingheight > viewz || ceilingpic == skyflatnum
-     * DEVIATION (seam): RenderWorld carries no flat indices yet (flatNum
-     * is the M4-02 stub ⇒ picnum = NO_FLAT −1); the sky clause is inert
-     * until M4-04 wires ceilingpic — guarded by skyflatnum >= 0 so the
-     * −1 placeholder never collapses into the sky plane. */
+     * M4-04 wired the sector flatnums (world.sectorFloorPic/sectorCeilPic,
+     * rdata) — findPlane now receives the vanilla floorpic/ceilingpic
+     * (F_SKY1 collapses inside findPlane) and the sky clause matches
+     * vanilla exactly. With no flats loaded every pic is NO_FLAT −1: the
+     * pre-M4 seam behaviour, isSkyPic(−1) never matches. */
     const floor = world.sectorFloor[front]!;
     const ceil = world.sectorCeil[front]!;
     const light = world.sectorLight[front]!;
-    setFloorplane(floor < view.viewz ? findPlane(floor, NO_FLAT, light) : null);
-    // isSkyPic(NO_FLAT) is the inert sky clause (M4-04 replaces NO_FLAT
-    // with the sector's ceiling flat index — the clause then matches
-    // vanilla's `|| ceilingpic == skyflatnum` exactly).
-    setCeilingplane(ceil > view.viewz || isSkyPic(NO_FLAT) ? findPlane(ceil, NO_FLAT, light) : null);
+    const floorPic = world.sectorFloorPic[front]!;
+    const ceilPic = world.sectorCeilPic[front]!;
+    setFloorplane(floor < view.viewz ? findPlane(floor, floorPic, light) : null);
+    setCeilingplane(
+      ceil > view.viewz || isSkyPic(ceilPic) ? findPlane(ceil, ceilPic, light) : null
+    );
 
     cb.onSubsector?.(ss);
     cb.addSectorSprites?.(front); // SLOT — no-op until M4-05 (see seam doc)

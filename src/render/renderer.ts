@@ -17,7 +17,8 @@
 //   4. BSP wall pass    — walker.walk = R_RenderBSPNode from bspRoot with
 //      the M3-06 seg callbacks (storeWallRange → renderSegLoop →
 //      drawColumn).
-//   5. drawMasked()     — named no-op stub (M3-06 recording only; M4 draws).
+//   5. drawMasked()     — masked middles (M4-04 driver in masked.ts; the
+//      draw is live once masked.configureMaskedPass is wired — M4-07).
 //   6. automap overlay  — §4.1.9: when automap state is active the automap
 //      drawer draws INTO THE SAME index buffer after the 3D pass (vanilla
 //      AM_Drawer's AM_clearFB covers the view — same semantics here).
@@ -38,7 +39,8 @@
 
 import { drawAutomap, type AutomapGeom, type AutomapMap, type AutomapPlayer } from './automap';
 import { createBspWalker, type BspWalker, type WalkCallbacks } from './bsp';
-import { clearClipArrays, clearDrawsegs, drawMasked } from './drawsegs';
+import { clearClipArrays, clearDrawsegs } from './drawsegs';
+import { drawMasked } from './masked';
 import type { Framebuffer } from './framebuffer';
 import type { LightTables } from './lights';
 import type { RenderWorld } from './rdata';
