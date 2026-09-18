@@ -132,3 +132,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - M4-02 merged. Data truths: F_START count 246; SKY1 width 256 (power-of-2 mask OK); E1M1 missing flats EMPTY (report preview was truncated/misleading — verified committed goldens directly before believing, rule working).
 - M4-01 merged (visplanes + yslope/distscale + subsector seam, MapPlane BigInt goldens). M4-04 dispatched early (deps satisfied: 01+02 merged; 03 still running).
 - M4-03 merged; M4-05 dispatched (parallel with M4-04; disjoint ownership: 05=bsprites+bsp wiring, 04=segs marking).
+- M4-04 merged: floors/ceilings mark visplanes from store paths; masked middles DRAW (reverse drawseg sweep). M4-06 fixtures dispatched parallel.
