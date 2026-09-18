@@ -19,7 +19,7 @@ import {
 } from './drawsegs';
 import { computeIscale, dc } from './cols';
 import {
-  buildRenderMapView, createViewState, pointToAngle, setupView, CENTERY, VIEWHEIGHT,
+  createViewState, pointToAngle, setupView, VIEWHEIGHT,
   type ViewState,
 } from './view';
 import { initTextureMapping } from './view';
@@ -105,7 +105,7 @@ function run(o: RunOpts): { fb: Framebuffer; min: number; max: number } {
   clearDrawsegs();
   clearClipArrays(VIEWHEIGHT);
   resetRenderCounters();
-  cb.onSegReached?.(o.seg ?? 0);
+  cb.onSegReached?.(o.seg ?? 0, o.a, o.b);
   if (o.pass) cb.addPass(o.a, o.b);
   else cb.addSolid(o.a, o.b);
   let min = 999, max = -1;
@@ -158,7 +158,7 @@ function chainDump(label: string, viewx: number, viewy: number, viewangle: numbe
   const rwCenterAngle = (ANG90 + viewangle - rwNormalAngle) >>> 0;
   log(`${label}: rwAngle1=${(rwAngle1 >>> 0) / 2 ** 16}deg normal=${rwNormalAngle / 2 ** 16}deg oa=${(angSub(rwNormalAngle, rwAngle1) >>> 0) / 2 ** 16} offsetAng=${offsetAngle / 2 ** 16} hyp=${hyp} rwDistance=${rwDistance} (= ${rwDistance / FRACUNIT})`);
   log(`  visangle fine=${angToFine(angSub(visangle, viewangle))} anglea=${angToFine(anglea)} sinea=${sinea} angleb=${angToFine(angleb)} sineb=${sinea === 0 ? 0 : sineb} num=${num} den=${den} scale=${scale} (${(scale / FRACUNIT).toFixed(6)})`);
-  log(`  rwOffset(tangent part)=${rwOffset} (${rwOffset / FRACUNIT}) centerAngle fine=${angToFine(rwCenterAngle)} xtoview[160]=${xtoviewangle[160]} xtoview fine@140=${angToFine(angSub(xtoviewangle[140], 0)) >>> 0}`);
+  log(`  rwOffset(tangent part)=${rwOffset} (${rwOffset / FRACUNIT}) centerAngle fine=${angToFine(rwCenterAngle)} xtoview[160]=${xtoviewangle[160]} xtoview fine@140=${angToFine(angSub(xtoviewangle[140]!, 0)) >>> 0}`);
   // texturecolumn at col
   const angle = (rwCenterAngle + xtoviewangle[col]!) >>> 19;
   log(`  col@${col}: finetangent[${angle}]=${finetangent[angle]} tc=${((rwOffset - FixedMul(finetangent[angle]!, rwDistance)) >> 16)}`);
@@ -167,7 +167,7 @@ function chainDump(label: string, viewx: number, viewy: number, viewangle: numbe
 
 it('derive', () => {
   const { xtoviewangle } = initTextureMapping();
-  log(`xtoviewangle[160]=${xtoviewangle[160]} [96]fine=${angToFine(xtoviewangle[96] >>> 0)} [140]fine=${angToFine(xtoviewangle[140] >>> 0)} [180]fine=${angToFine(xtoviewangle[180] >>> 0)}`);
+  log(`xtoviewangle[160]=${xtoviewangle[160]} [96]fine=${angToFine(xtoviewangle[96]! >>> 0)} [140]fine=${angToFine(xtoviewangle[140]! >>> 0)} [180]fine=${angToFine(xtoviewangle[180]! >>> 0)}`);
   log(`finesine[2048]=${finesine[2048]} finesine[1024]=${finesine[1024]} finesine[2560]=${finesine[2560]}`);
 
   // ---- VP-A1: perpendicular d=160, col 160
@@ -228,7 +228,7 @@ it('derive', () => {
     // exact tc per column via chain replica
     const tcs: number[] = [];
     for (let x = 140; x <= 180; x++) {
-      const { rwDistance, rwOffset } = { ...chainOf(160 * FRACUNIT, 128 * FRACUNIT, ANG180, 0, 64 * FRACUNIT, x) };
+      const { rwDistance, rwOffset } = { ...chainOf(160 * FRACUNIT, 128 * FRACUNIT, ANG180, 0, 64 * FRACUNIT) };
       const angle = (ANG90 + xtoviewangle[x]!) >>> 19;
       tcs.push((rwOffset - FixedMul(finetangent[angle]!, rwDistance)) >> 16);
     }
@@ -260,27 +260,27 @@ it('derive', () => {
   // ---- occlusion: one-sided full cover + pass seg
   {
     const w = buildWorld({ h: 128, back: { floor: 16, ceil: 128, light: 192, bottom: 'FIXWALL' } });
-    const fb0 = run({ x: 160, y: 128, angle: ANG180, world: w, a: 140, b: 180 }).fb;
+    run({ x: 160, y: 128, angle: ANG180, world: w, a: 140, b: 180 });
     // second store pass: new fb, but SAME solidsegs ledger state — replicate by running both in one go:
     const fb = new Framebuffer();
     const view = createViewState();
     setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
     const cb = createSegCallbacks(fb, w, view);
     clearClipSegs(320); clearDrawsegs(); clearClipArrays(VIEWHEIGHT); resetRenderCounters();
-    cb.onSegReached?.(0); cb.addSolid(140, 180);
+    cb.onSegReached?.(0, 140, 180); cb.addSolid(140, 180);
     const snap: number[] = [];
-    for (let x = 140; x <= 180; x++) for (let y = 0; y < 200; y++) snap.push(fb.indices[y * 320 + x]);
-    cb.onSegReached?.(1); cb.addPass(100, 220);
+    for (let x = 140; x <= 180; x++) for (let y = 0; y < 200; y++) snap.push(fb.indices[y * 320 + x]!);
+    cb.onSegReached?.(1, 100, 220); cb.addPass(100, 220);
     const ds = getDrawsegs();
     let changed = 0;
     let k = 0;
     for (let x = 140; x <= 180; x++) for (let y = 0; y < 200; y++) if (fb.indices[y * 320 + x] !== snap[k++]) changed++;
-    log(`OCC drawsegs=${drawsegCount()} ds1=[${ds.x1[1]},${ds.x2[1]}] ds2=[${ds.x2[2] !== undefined ? `${ds.x1[2]},${ds.x2[2]}` : '-'}] changedInCovered=${changed} counters=${JSON.stringify(getRenderCounters())}`);
+    log(`OCC drawsegs=${drawsegCount()} ds1=[${ds.x1[1]},${ds.x2[1]}] ds2=[${ds.x2[2] !== undefined ? `${ds.x1[2]!},${ds.x2[2]}` : '-'}] changedInCovered=${changed} counters=${JSON.stringify(getRenderCounters())}`);
     log(`  painted 120=${spanAt(fb, 120)} 140=${spanAt(fb, 140)} 181=${spanAt(fb, 181)} 219=${spanAt(fb, 219)}`);
     // fully-occluded pass seg
     clearClipSegs(320); clearDrawsegs(); clearClipArrays(VIEWHEIGHT); resetRenderCounters();
-    cb.onSegReached?.(0); cb.addSolid(100, 220);
-    cb.onSegReached?.(1); cb.addPass(140, 180);
+    cb.onSegReached?.(0, 100, 220); cb.addSolid(100, 220);
+    cb.onSegReached?.(1, 140, 180); cb.addPass(140, 180);
     log(`  full-occ drawsegs=${drawsegCount()} counters=${JSON.stringify(getRenderCounters())}`);
   }
   // ---- silhouette matrix (two-sided variants)
@@ -306,7 +306,7 @@ it('derive', () => {
     const cb = createSegCallbacks(fb, w, view);
     clearClipSegs(320); clearDrawsegs(); clearClipArrays(VIEWHEIGHT); resetRenderCounters();
     for (let i = 0; i < 256; i++) drawsegAdd(0);
-    cb.onSegReached?.(0); cb.addSolid(160, 160);
+    cb.onSegReached?.(0, 160, 160); cb.addSolid(160, 160);
     log(`OVF count=${drawsegCount()} counters=${JSON.stringify(getRenderCounters())} painted=${spanAt(fb, 160)}`);
   }
   // snapshotOpenings addressing
@@ -323,8 +323,7 @@ it('derive', () => {
 });
 
 // chain replica for tc sweeps (view fixed perpendicular d=160)
-function chainOf(viewx: number, viewy: number, viewangle: number, v1x: number, v1y: number, col: number) {
-  const { xtoviewangle } = initTextureMapping();
+function chainOf(viewx: number, viewy: number, viewangle: number, v1x: number, v1y: number) {
   const view = { viewx, viewy, viewz: 41 * FRACUNIT, viewangle, viewsin: 0, viewcos: 0, extralight: 0, fixedcolormap: -1 } as ViewState;
   const rwAngle1 = pointToAngle(view, v1x, v1y);
   const rwNormalAngle = angAdd(ANG90, ANG90);
