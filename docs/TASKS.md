@@ -61,3 +61,16 @@ Future tasks will be added as architects decompose milestones.
 | M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | done (merged, 7 e2e green) |
 | M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | done (merged, 20 goldens, all gates green) |
 | M3-06c | FIX: negative-base openings refs (segs.ts) | M3 | M3-06b | done (merged 2dfa365; 588/588, 0 skips) |
+
+## M4 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M4-01 | Visplane engine (r_plane.c) | M4 | M3 stack | dispatched (agent 227cbcea) |
+| M4-02 | Flat/sky data wiring | M4 | — | dispatched (agent f4f2ec8e) |
+| M4-03 | Static thing/sprite tables | M4 | — | dispatched (agent f2f44340) |
+| M4-04 | Plane marking + drawMasked | M4 | M4-01/02 | planned |
+| M4-05 | Static sprite pass (R_AddSprites/DrawVisSprite) | M4 | M4-03 | planned |
+| M4-06 | Fixture extension (sky/fences/things/panning) | M4 | M4-01..03 | planned |
+| M4-07 | Full-frame pipeline integration | M4 | M4-04/05 | planned |
+| M4-08 | Goldens re-bless (≥24) + L5 | M4 | M4-07 | planned |
