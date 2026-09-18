@@ -1,0 +1,500 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "set": "walls",
+  "pipeline": "WALLFIX/E1M1 -> gInitGame -> warp (viewpoints.ts) -> renderFrame x2 (byte-equal) -> sha256(fb.indices), hom/drawsegOverflow asserted 0",
+  "scenes": {
+    "e1m1-atrium": {
+      "kind": "iwad",
+      "script": "atrium hall sector 173 (f -168/c536 L224), W across the 704-tall volume",
+      "viewpoint": {
+        "x": 1472,
+        "y": 1088,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "258559c958d1096cd23529b686821f9f98418bca279953221fd31cbff65beb63",
+      "png": "e1m1-atrium.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "258559c958d1096cd23529b686821f9f98418bca279953221fd31cbff65beb63"
+        }
+      ]
+    },
+    "e1m1-busy-yard": {
+      "kind": "iwad",
+      "script": "sector 181 (f48/c536) W into the ruin-yard span soup (solidsegs stress; hom/dso stay 0 — no re-pick needed)",
+      "viewpoint": {
+        "x": 2400,
+        "y": 1152,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "12cb78300f9f6b16be653dcb6231277c42fa69fdff742d60427862e9aa966a3e",
+      "png": "e1m1-busy-yard.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "12cb78300f9f6b16be653dcb6231277c42fa69fdff742d60427862e9aa966a3e"
+        }
+      ]
+    },
+    "e1m1-corner-dm14": {
+      "kind": "iwad",
+      "script": "deathmatch start (2008,480) in sector 124 (f24/c384 L220), SW corner of the tall room",
+      "viewpoint": {
+        "x": 2008,
+        "y": 480,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e09f47f46bc6ae35e05b8dad4c804d2a3464f842a6227d7675718b76f0368915",
+      "png": "e1m1-corner-dm14.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "e09f47f46bc6ae35e05b8dad4c804d2a3464f842a6227d7675718b76f0368915"
+        }
+      ]
+    },
+    "e1m1-corner-ruin": {
+      "kind": "iwad",
+      "script": "sector 5 (f192/c336) ruin ledge, SW at the corner box",
+      "viewpoint": {
+        "x": 2500,
+        "y": 1700,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "ff57ede2deae31a560f3d3c3ae38f53db961d3fbc2d015ffc563434ef62008a1",
+      "png": "e1m1-corner-ruin.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "ff57ede2deae31a560f3d3c3ae38f53db961d3fbc2d015ffc563434ef62008a1"
+        }
+      ]
+    },
+    "e1m1-corridor-open": {
+      "kind": "iwad",
+      "script": "sector 149 both-open tech corridor, W back along the two-sided flank openings",
+      "viewpoint": {
+        "x": 1050,
+        "y": -30,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "3e2365d39d6a5371e6a74fe4d484649f7248bb4ab3f3c8c46ee0bdd1efbba738",
+      "png": "e1m1-corridor-open.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "3e2365d39d6a5371e6a74fe4d484649f7248bb4ab3f3c8c46ee0bdd1efbba738"
+        }
+      ]
+    },
+    "e1m1-doorway-midtex": {
+      "kind": "iwad",
+      "script": "sector 27 ledge S at linedef 80 METAL5 masked doorway (midtex frame)",
+      "viewpoint": {
+        "x": 1216,
+        "y": 1540,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "acbbabe74b146e4cc97c2d4c87ca0d1a90bdf0578ce0f85cdd86b42eae9f3336",
+      "png": "e1m1-doorway-midtex.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "acbbabe74b146e4cc97c2d4c87ca0d1a90bdf0578ce0f85cdd86b42eae9f3336"
+        }
+      ]
+    },
+    "e1m1-spawn-east": {
+      "kind": "iwad",
+      "script": "thing type 1 spawn, E down the tech corridor (M3-07 pinned vista)",
+      "viewpoint": {
+        "x": -416,
+        "y": 256,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "1a3742990ff3ee5562ab221bd52b38da3b8aa2edadd6b432079378a27f43e26a",
+      "png": "e1m1-spawn-east.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "1a3742990ff3ee5562ab221bd52b38da3b8aa2edadd6b432079378a27f43e26a"
+        }
+      ]
+    },
+    "e1m1-vista-corridor": {
+      "kind": "iwad",
+      "script": "sector 57 south corridor, E along the >4000-unit straight run (far scalelight diminishing)",
+      "viewpoint": {
+        "x": 960,
+        "y": -192,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "0f5b94e807129a9f54fb5bbd0a3a6f0b974ebfd1a32b0e522d275a6c594a839f",
+      "png": "e1m1-vista-corridor.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "0f5b94e807129a9f54fb5bbd0a3a6f0b974ebfd1a32b0e522d275a6c594a839f"
+        }
+      ]
+    },
+    "fix-a-n": {
+      "kind": "fixture",
+      "script": "A(light 0): N THROUGH the A|C light-only edge to the far C-VOID wall (pass-through occlusion + far bucket)",
+      "viewpoint": {
+        "x": 160,
+        "y": 160,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "92e60bd12a6bf7f1a1997e9c5880721b2735991a5223784be916ea21a9a44566",
+      "png": "fix-a-n.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "92e60bd12a6bf7f1a1997e9c5880721b2735991a5223784be916ea21a9a44566"
+        }
+      ]
+    },
+    "fix-a-ne": {
+      "kind": "fixture",
+      "script": "A(light 0): oblique NE at the A|B floor-change divider corner",
+      "viewpoint": {
+        "x": 160,
+        "y": 160,
+        "angleDeg": 45
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "f152e8479b0d545bfe50e86f40fcd0f3c21a7a3a7f2652bb754e8de39e9b8bc7",
+      "png": "fix-a-ne.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "f152e8479b0d545bfe50e86f40fcd0f3c21a7a3a7f2652bb754e8de39e9b8bc7"
+        }
+      ]
+    },
+    "fix-a-w": {
+      "kind": "fixture",
+      "script": "A(light 0): W at vertical VOID wall (pancake +1, darkest room)",
+      "viewpoint": {
+        "x": 160,
+        "y": 160,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "4d09890628dce75f1cadaf4d9cdf736566148b280055e532914b5969b79b807f",
+      "png": "fix-a-w.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "4d09890628dce75f1cadaf4d9cdf736566148b280055e532914b5969b79b807f"
+        }
+      ]
+    },
+    "fix-b-n": {
+      "kind": "fixture",
+      "script": "B(light 96,f24): N THROUGH the B|D light-only edge to the far D-VOID wall",
+      "viewpoint": {
+        "x": 480,
+        "y": 160,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5488f89ec1939908fccb1f33f11339cf9e8a403bd675bb13e39efd76373962a2",
+      "png": "fix-b-n.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "5488f89ec1939908fccb1f33f11339cf9e8a403bd675bb13e39efd76373962a2"
+        }
+      ]
+    },
+    "fix-b-s": {
+      "kind": "fixture",
+      "script": "B(light 96,f24): S at horizontal VOID wall (pancake -1)",
+      "viewpoint": {
+        "x": 480,
+        "y": 160,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5c1d9e8121a36a5c8d6db79e08a000ce87883ca80c16d3148d4455a1aa8b9ac1",
+      "png": "fix-b-s.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "5c1d9e8121a36a5c8d6db79e08a000ce87883ca80c16d3148d4455a1aa8b9ac1"
+        }
+      ]
+    },
+    "fix-b-w": {
+      "kind": "fixture",
+      "script": "B(light 96,f24): W across the floor-change divider (step down into A)",
+      "viewpoint": {
+        "x": 480,
+        "y": 160,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "ce51376fa0e550123f87f2661ec91956f99794d15d3c9c09c89013adb0bacb62",
+      "png": "fix-b-w.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "ce51376fa0e550123f87f2661ec91956f99794d15d3c9c09c89013adb0bacb62"
+        }
+      ]
+    },
+    "fix-c-e": {
+      "kind": "fixture",
+      "script": "C(light 192): E at the DOORFIX0 door gap (midtex, both-open)",
+      "viewpoint": {
+        "x": 160,
+        "y": 480,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "fc9a615a0c042e7582b579794e5acfcf7e4d270cd86d36560d6a2a54733282a1",
+      "png": "fix-c-e.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "fc9a615a0c042e7582b579794e5acfcf7e4d270cd86d36560d6a2a54733282a1"
+        }
+      ]
+    },
+    "fix-c-n": {
+      "kind": "fixture",
+      "script": "C(light 192): N at horizontal VOID wall",
+      "viewpoint": {
+        "x": 160,
+        "y": 480,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b026391a14482f393a315ef7dba6f4b83688766029cc48d3d6d59582cf02b578",
+      "png": "fix-c-n.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "b026391a14482f393a315ef7dba6f4b83688766029cc48d3d6d59582cf02b578"
+        }
+      ]
+    },
+    "fix-c-ne": {
+      "kind": "fixture",
+      "script": "C(light 192): oblique NE at the door corner (midtex + VOID frame)",
+      "viewpoint": {
+        "x": 160,
+        "y": 480,
+        "angleDeg": 45
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "0ffa58f25f5540be5d9ff9887ae953403e73c249bbd67c22b632431139bed6a5",
+      "png": "fix-c-ne.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "0ffa58f25f5540be5d9ff9887ae953403e73c249bbd67c22b632431139bed6a5"
+        }
+      ]
+    },
+    "fix-d-e": {
+      "kind": "fixture",
+      "script": "D(light 255,f24): E at vertical VOID wall (pancake +1, brightest bucket)",
+      "viewpoint": {
+        "x": 480,
+        "y": 480,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "fed018a5fe814aab0692c713e0f1fe9df44249064f3672f8f055040d2335d68c",
+      "png": "fix-d-e.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "fed018a5fe814aab0692c713e0f1fe9df44249064f3672f8f055040d2335d68c"
+        }
+      ]
+    },
+    "fix-d-n": {
+      "kind": "fixture",
+      "script": "D(light 255,f24): N at horizontal VOID wall (brightest)",
+      "viewpoint": {
+        "x": 480,
+        "y": 480,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "9c6e5253594845a18941642660df6062f642cafc07a44372ca9aad7a0e576069",
+      "png": "fix-d-n.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "9c6e5253594845a18941642660df6062f642cafc07a44372ca9aad7a0e576069"
+        }
+      ]
+    },
+    "fix-d-w": {
+      "kind": "fixture",
+      "script": "D(light 255,f24): W at the door gap + floor step from D side",
+      "viewpoint": {
+        "x": 480,
+        "y": 480,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "fa384b3604288a5a1a78f00897c7df8b4f07b6fafc2b72af865369b9a7b0c8f2",
+      "png": "fix-d-w.png",
+      "reason": "initial M3-08 baseline",
+      "updatedAt": "2026-09-18",
+      "history": [
+        {
+          "reason": "initial M3-08 baseline",
+          "at": "2026-09-18",
+          "indexSha256": "fa384b3604288a5a1a78f00897c7df8b4f07b6fafc2b72af865369b9a7b0c8f2"
+        }
+      ]
+    }
+  }
+}
