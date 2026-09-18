@@ -333,7 +333,7 @@ describe('R_MakeSpans (acceptance 2)', () => {
     // ⇒ rows 120..130 (t2 = 120 binds before b1+1 = 111).
     makeSpans(10, 100, 110, 120, 130, (y, x1, x2) => emit.push([y, x1, x2]));
     expect(emit.length).toBe(11); // rows 100..110 (t1 <= b1 inclusive)
-    for (let y = 100; y <= 110; y += 1) expect(emit[y - 100][0]).toBe(y);
+    for (let y = 100; y <= 110; y += 1) expect(emit[y - 100]![0]).toBe(y);
     expect(emit.every(([, , x2]) => x2 === 9)).toBe(true); // x−1
     expect(planesDebugState().spanstart.slice(120, 131).every((v) => v === 10)).toBe(true);
     expect(planesDebugState().spanstart.slice(111, 120).every((v) => v === 0)).toBe(true);
