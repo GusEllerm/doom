@@ -118,9 +118,9 @@ describe('renderFrame (M3-07): FIXMAP walls pipeline', () => {
     const deps = { fb: fix.fb, world: fix.world, map: fix.view, player };
 
     const counters1 = renderFrame(deps);
-    const first = fbCopy(fix);
+    const first = fbCopy(fix.fb);
     const counters2 = renderFrame(deps);
-    const second = fbCopy(fix);
+    const second = fbCopy(fix.fb);
 
     // Determinism (acceptance 5 / L3): identical bytes across renders.
     expect(Array.from(first)).toEqual(Array.from(second));
