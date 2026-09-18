@@ -459,22 +459,65 @@ describe("segs (M3-06b acceptance 6): masked texturecol recording", () => {
     expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
   });
 
-  it.skip("FIX-M3-06c: masked record drops ALL negative-base openings refs", () => {
+  it("FIX-M3-06c: masked record keeps negative-base openings refs", () => {
     // Two symptoms, one class. Vanilla uses pointer arithmetic where a base
     // BELOW the indexed column is normal:
     //   ds_p->maskedtexturecol = lastopening - rw_x   (r_segs.c:611),
     //   maskedtexturecol[rw_x] = texturecolumn        (r_segs.c:356),
     //   ds_p->sprtopclip = lastopening - start        (r_segs.c:716-733).
-    // segs.ts guards `maskedBase >= 0` (:416) and `if (ref >= 0)` (:331/:335)
-    // before writing/keeping the ref, so whenever the pool base < start
-    // column (i.e. almost always) the texturecolumns stay MAXSHORT and the
-    // clip snapshots are lost (sprtop/sprbottomclip stay CLIP_NULL) even
-    // though openings were consumed. Implementation fix required (keep
-    // clipValue's sentinel handling; just accept signed refs). Green
-    // assertions after the fix: maskedTexturecol(0, 150..170) ≠ MAXSHORT
-    // with tc(x) = x - 97 (tc(160) = 63) and
-    // clipValue(ds.sprtopclip[0], 160, VIEWHEIGHT) = -1 /
-    // clipValue(ds.sprbottomclip[0], 160, VIEWHEIGHT) = VIEWHEIGHT.
+    // segs.ts guarded `maskedBase >= 0` and `if (ref >= 0)` before
+    // writing/keeping the ref, so whenever the pool base < start column
+    // (i.e. almost always) the texturecolumns stayed MAXSHORT and the clip
+    // snapshots were lost even though openings were consumed. Refs are
+    // signed pool offsets (base - start); only allocation FAILURE skips.
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, maskedWorld(), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+    cb.onSegReached?.(0, 150, 170);
+    cb.addSolid(150, 170);
+    const ds = getDrawsegs();
+    // Pool layout after the record: [0..20] maskedtexturecol,
+    // [21..41] ceilingclip snapshot, [42..62] floorclip snapshot; every ref
+    // is the vanilla signed `base - start` (maskedcol -150, clips -129/-108).
+    expect(ds.maskedcol[0]).toBe(-150);
+    for (let x = 150; x <= 170; x++) {
+      expect(maskedTexturecol(0, x)).toBe(x - 97); // tc(160) = 63, ≠ MAXSHORT
+    }
+    expect(ds.sprtopclip[0]).not.toBe(CLIP_NULL);
+    expect(ds.sprbottomclip[0]).not.toBe(CLIP_NULL);
+    expect(clipValue(ds.sprtopclip[0]!, 160, VIEWHEIGHT)).toBe(-1);
+    expect(clipValue(ds.sprbottomclip[0]!, 160, VIEWHEIGHT)).toBe(VIEWHEIGHT);
+    expect(maskedTexturecol(0, 149)).toBe(MAXSHORT); // below pool slot 0
+    expect(openingsUsed()).toBe(63);
+    expect(getRenderCounters()).toEqual({ hom: 0, drawsegOverflow: 0, solidsegDrops: 0 });
+  });
+
+  it("FIX-M3-06c vector: positive-base refs (water mark past start) unchanged", () => {
+    // Push the pool water mark ABOVE the start column first — base-start is
+    // then >= 0 and the pre-fix `>= 0` guards happened to work. Same green
+    // values either way: the fix must not regress the positive case.
+    const fb = new Framebuffer();
+    const view = createViewState();
+    setupView(view, { x: 160 * FRACUNIT, y: 128 * FRACUNIT, angle: ANG180 });
+    const cb = createSegCallbacks(fb, maskedWorld(), view);
+    clearClipSegs(320);
+    clearDrawsegs();
+    clearClipArrays(VIEWHEIGHT);
+    resetRenderCounters();
+    snapshotOpenings(new Int16Array(320).fill(-5), 0, 200); // base >= start
+    cb.onSegReached?.(0, 150, 170);
+    cb.addSolid(150, 170);
+    const ds = getDrawsegs();
+    expect(ds.maskedcol[0]).toBe(50); // 200 - 150
+    for (let x = 150; x <= 170; x++) expect(maskedTexturecol(0, x)).toBe(x - 97);
+    expect(clipValue(ds.sprtopclip[0]!, 160, VIEWHEIGHT)).toBe(-1);
+    expect(clipValue(ds.sprbottomclip[0]!, 160, VIEWHEIGHT)).toBe(VIEWHEIGHT);
+    expect(openingsUsed()).toBe(263); // 200 filler + 3 x 21
   });
 });
 
