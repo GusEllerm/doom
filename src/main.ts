@@ -1,13 +1,17 @@
 /**
- * Platform entry point (M2-09): boots the real game — fetch
- * /wads/freedoom1.wad → WadFile.parse → loadMap('E1M1') → buildMapFromData
- * → gInitGame, attaches the sim to __doom.sim (additive debug wiring), and
- * runs the rAF loop: A-08 accumulator stepping G_Ticker at 35 Hz (max 4
- * catch-up tics), then present. Until the 3D view lands the AUTOMAP is ON
- * by default (this is the M2 deliverable — first pixels; drop the amStart
- * call when the walls renderer takes the frame); Tab (KEY_MAPENTER,
- * KEY_TAB=9, am_map.c AM_STARTKEY/AM_ENDKEY) toggles it via the amMap
- * responder exactly like vanilla.
+ * Platform entry point (M2-09 boot, M3-07 frame pipeline switch): boots the
+ * real game — fetch /wads/freedoom1.wad → WadFile.parse → loadMap('E1M1') →
+ * buildMapFromData → gInitGame, attaches the sim to __doom.sim (additive
+ * debug wiring), builds the render world ONCE (loadRenderWorld /
+ * buildRenderMapView / light tables — the M3-07 "load once" cache; the
+ * renderer caches the walker/callbacks per map), and runs the rAF loop:
+ * A-08 accumulator stepping G_Ticker at 35 Hz (max 4 catch-up tics), then
+ * renderFrame — the §4.1 walls pipeline. The 3D view is now the DEFAULT
+ * frame (M2's automap-by-default boot is dropped); the automap stays
+ * exactly vanilla: Tab (KEY_MAPENTER, KEY_TAB=9, am_map.c
+ * AM_STARTKEY/AM_ENDKEY) toggles the amMap STATE through the responder and
+ * renderFrame draws the automap OVER the 3D pass when that state is active
+ * (ARCHITECTURE §4.1.9).
  *
  * WAD 404 falls back to the viewer's file-picker pattern (src/viewer):
  * status text + <input type="file">, no console-error noise on that path.
@@ -22,7 +26,6 @@ import { createKeyboardInput } from './input/keyboard';
 import {
   amCreateState,
   amResponder,
-  amStart,
   amTicker,
   keydown,
   keyup,
@@ -31,12 +34,17 @@ import {
 import { gInitGame, gTicker, TICS_PER_SECOND } from './sim/game';
 import { buildMapFromData } from './sim/map';
 import type { GameState } from './sim/state';
-import { debugApi, debugSim, installDebugApi } from './debug';
+import { attachRenderDebug, debugApi, debugSim, installDebugApi } from './debug';
 import { blitToCanvas, buildLut, Framebuffer } from './render/framebuffer';
-import { drawAutomap } from './render/automap';
+import { renderFrame, type FrameDeps } from './render/renderer';
+import { loadRenderWorld, type RenderWorld } from './render/rdata';
+import { buildRenderMapView, type RenderMapView } from './render/view';
+import { initLightTables, type LightTables } from './render/lights';
+import { getRenderCounters } from './render/solidsegs';
 import { fetchWad, WadLoadError } from './platform/wadload';
 import { loadMap } from './wad/mapdata';
-import { decodePlaypal } from './wad/palettes';
+import { decodeColormap, decodePlaypal } from './wad/palettes';
+import { texturesFromWad } from './wad/texture';
 import { WadFile } from './wad/wadfile';
 
 /* ------------------------------------------------------------------ */
@@ -80,6 +88,11 @@ interface Boot {
   readonly state: GameState;
   readonly am: ReturnType<typeof amCreateState>;
   readonly lut: Uint32Array;
+  /** Render world + BSP view + light tables: built ONCE here (M3-07 "load
+   * render world once"), reused by every frame's deps bundle. */
+  readonly world: RenderWorld;
+  readonly mapView: RenderMapView;
+  readonly tables: LightTables;
 }
 
 let boot: Boot | null = null;
@@ -119,11 +132,18 @@ function stepTic(): void {
 function render(): void {
   if (boot === null) return;
   const { state, am } = boot;
-  if (!am.automapactive) {
-    fb.clear(0); // 3D view pending (M3): map closed ⇒ plain buffer
-  } else {
-    drawAutomap(fb, am, state.map, state.players[0]!);
-  }
+  // §4.1 frame pipeline (renderer.ts): 3D walls always run; the automap
+  // overlays afterwards ONLY when its state is active (Tab toggles the
+  // state through amResponder in stepTic — the drawing path is stateless).
+  const deps: FrameDeps = {
+    fb,
+    world: boot.world,
+    map: boot.mapView,
+    player: state.players[0]!,
+    tables: boot.tables,
+    automap: { state: am, map: state.map, player: state.players[0]! },
+  };
+  renderFrame(deps);
   blitToCanvas(ctx, fb, boot.lut);
 }
 
@@ -163,16 +183,24 @@ const keyboard = createKeyboardInput({
 
 function afterLoad(buf: ArrayBuffer, src: string): void {
   const wad = WadFile.parse(buf);
-  const map = buildMapFromData(loadMap(wad, 'E1M1'));
+  const md = loadMap(wad, 'E1M1');
+  const map = buildMapFromData(md);
   const state = gInitGame(map);
   const lut = buildLut(decodePlaypal(wad.readLumpByName('PLAYPAL')), 0);
 
+  // Render world built ONCE (M3-07): SoA tables + BSP view + wad light
+  // tables (R_InitColormaps half: COLORMAP lump → scalelight rows).
+  const world = loadRenderWorld(md, texturesFromWad(wad));
+  const mapView = buildRenderMapView(md);
+  const tables = initLightTables(decodeColormap(wad.readLumpByName('COLORMAP')));
+
   const am = amCreateState();
-  // Automap ON by default until the 3D renderer takes the frame (M2 gate).
-  amStart(am, { map, player: state.players[0]! });
+  // M3-07: automap starts OFF — the 3D walls view owns the frame; Tab
+  // toggles the amMap state (renderFrame overlays when active).
 
   debugSim.attach(state); // __doom.sim drives the same live state
-  boot = { state, am, lut };
+  attachRenderDebug({ indices: fb.indices, counters: getRenderCounters });
+  boot = { state, am, lut, world, mapView, tables };
   status.hidden = true;
   picker.hidden = true;
   console.info(`doom-ts: booted ${map.name} from ${src}`);
