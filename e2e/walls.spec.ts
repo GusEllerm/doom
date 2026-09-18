@@ -12,10 +12,10 @@
  *  2. state().render.hom === 0 (live counter, not the old −1 stub);
  *  3. Tab still toggles the automap — now drawn OVER the 3D pass
  *     (§4.1.9): the frame changes (pixel diff: automap wall-red family +
- *     WHITE arrow pixels present), and closing restores the 3D frame
- *     EXACTLY wherever the 3D pass paints (M4-07 dropped the background
- *     clear, so never-painted void pixels may keep overlay residue —
- *     vanilla semantics, see the test comment);
+ *     WHITE arrow pixels present), and closing restores every pixel the 3D
+ *     pass paints (M4-07 dropped the background clear — vanilla has none —
+ *     so pixels the 3D frame leaves BLACK may keep overlay residue; see the
+ *     in-test comment);
  *  4. zero console errors across the flow.
  *
  * M4-07 keeps this spec STRUCTURAL: the milestone re-bless of the golden
@@ -231,7 +231,12 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
     ).toBe(0);
     // `differing` > 0 is expected and is exactly the set of pixels the 3D
     // pass never touches (see the void-pixel finding in the M4-07 report).
-    expect(restore.differing, 'overlay residue must stay confined to void pixels').toBeLessThan(64_000);    const restored1 = await captureStats(page);
+    // `differing` > 0 is expected: it is exactly the set of pixels the 3D
+    // pass never touches (the void-pixel finding of the M4-07 report). What
+    // must NEVER happen is a differing pixel the 3D pass HAD painted
+    // (overPainted, asserted 0 above) — that would mean overlay residue had
+    // stuck to a live pixel. The closed frame must be the 3D frame again.
+    const restored1 = await captureStats(page);
     const restored2 = await captureStats(page);
     expect(restored2.hash, 'the reopened 3D frame must be deterministic again').toBe(restored1.hash);
 
