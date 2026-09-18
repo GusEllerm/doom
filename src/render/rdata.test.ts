@@ -222,9 +222,9 @@ describe('loadRenderWorld FIXMAP round-trip', () => {
     expect(sha(again)).toBe(sha(world));
   });
 
-  it('flatNum is the M4 placeholder: always −1', () => {
-    expect(world.flatNum()).toBe(-1);
+  it('flatNum without a flat table degrades to −1 for every name', () => {
     expect(world.flatNum('FLOOR4_8')).toBe(-1);
+    expect(world.flatNum('F_SKY1')).toBe(-1);
   });
 });
 
