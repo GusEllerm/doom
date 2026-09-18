@@ -14,8 +14,15 @@
  *    exact on power-of-two widths, invalid tex ⇒ zero sentinel column.
  *  * sha256 of composed FIXWALL0 column 0 (real decodeTextures pipeline on
  *    buildPatchFromColumns patches + synthTexture1 directory).
+ *  * flats + sky (M4-02 §M4-02): F_START-scan flatNum with identity
+ *    translation, census F_SKY1 ⇒ skyflatnum ≠ −1, 1024-byte sky-flat
+ *    tolerance (never decoded — tag only), SKY1 texture resolution and
+ *    getSkyColumn ±wrap via the power-of-two widthmask; flatsFromWad raw
+ *    directory positions (zero-size lumps INCLUDED = vanilla numflats).
  *  * skipIf(!hasWad): freedoom1 E1M1 loads every seg; missing-texture list
- *    equals the committed list below (golden).
+ *    equals the committed list below (golden); flat/sky goldens — F_START
+ *    count, F_SKY1 hash + flatnum, SKY1 width TRUTH (256, not id's 1024)
+ *    + column 0 sha256; unknown-flat list empty on E1M1.
  *
  * Inputs are plain structural literals where a full fixture WAD would be
  * overkill — the same M2-09 read-view pattern; loadRenderWorld never
@@ -29,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { FRACUNIT } from '../core/constants';
+import { decodeFlat, FLAT_BYTES } from '../wad/flat';
 import { loadMap } from '../wad/mapdata';
 import { buildPatchFromColumns } from '../wad/patch';
 import type { LineDef, MapData, Seg, SectorDef, SideDef, TextureDef, Vertex } from '../wad/types';
@@ -36,9 +44,9 @@ import { WadFile } from '../wad/wadfile';
 import { texturesFromWad } from '../wad/texture';
 
 import { buildFixtureMapWad } from '../../tests/fixtures/mapBuilder';
-import { synthPnames, synthTexture1 } from '../../tests/fixtures/smallWads';
+import { synthFlat, synthPnames, synthTexture1 } from '../../tests/fixtures/smallWads';
 import { WadBuilder } from '../../tests/fixtures/wadWriter';
-import { loadRenderWorld, ML_TWOSIDED, NO_TEXTURE, type RenderWorld } from './rdata';
+import { loadRenderWorld, flatsFromWad, ML_TWOSIDED, NO_TEXTURE, type FlatSource, type RenderWorld } from './rdata';
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
@@ -448,5 +456,167 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 render-world load', () => {
     let masked = 0;
     for (let i = 0; i < world.numSides; i += 1) masked += world.sideMasked[i]!;
     expect(masked).toBeGreaterThan(0); // E1M1 has two-sided fence middles
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 6. flats + sky wiring (M4-02: R_InitFlats + sky texture)            */
+/* ------------------------------------------------------------------ */
+
+describe('flat/sky data wiring (M4-02)', () => {
+  const SKY_W = 256; // synthetic sky width; freedoom1 truth below, id's is 1024
+  const A = synthFlat(0xa11a);
+  const B = synthFlat(0xb0b0);
+  const SKYDUMMY = new Uint8Array(1024); // id-style F_SKY1: NOT 4096 bytes
+
+  const mkFlats = (): FlatSource[] => [
+    { name: 'FLATA', bytes: A },
+    { name: 'flatb', bytes: B }, // lowercase dir name: lookup is case-insens
+    { name: 'F_SKY1', bytes: SKYDUMMY },
+  ];
+  const textures = new Map<string, TextureDef>([
+    ['SOLID0', mkTexture('SOLID0', 64, 128, () => 3)],
+    ['SKY1', mkTexture('SKY1', SKY_W, 128, (c, r) => ((c * 7 + r) % 255) + 1)],
+  ]);
+  const mkEmptyMap = (): MapData =>
+    mkMap({
+      vertices: [mkVertex(0, 0), mkVertex(1, 0)],
+      sectors: [mkSector(0, 1)],
+      lineDefs: [],
+      sideDefs: [],
+      segs: [],
+    });
+  const world = loadRenderWorld(mkEmptyMap(), textures, mkFlats());
+
+  /* -- acceptance 1: census — F_SKY1 present ⇒ skyflatnum ≠ −1 ------- */
+  it('census: identity translation, F_SKY1 index = skyflatnum ≠ −1', () => {
+    expect(world.numFlats).toBe(3);
+    expect(world.flatNames).toEqual(['FLATA', 'FLATB', 'F_SKY1']);
+    expect(world.flatNum('FLATA')).toBe(0);
+    expect(world.flatNum('FLATB')).toBe(1); // dir-case-insensitive
+    expect(world.flatNum('f_sky1')).toBe(2);
+    expect(world.skyflatnum).toBe(2); // tag-only index (g_game.c:454)
+    expect(world.skyflatnum).not.toBe(-1);
+    expect(world.missingFlats).toEqual([]); // sky lookups are not sector misses
+  });
+
+  it('duplicate flat names: LAST directory match wins (vanilla reverse scan)', () => {
+    const dup = loadRenderWorld(mkEmptyMap(), textures, [
+      { name: 'DUP', bytes: A },
+      { name: 'OTHER', bytes: B },
+      { name: 'DUP', bytes: B },
+    ]);
+    expect(dup.flatNum('DUP')).toBe(2);
+  });
+
+  /* -- acceptance 4: unknown name ⇒ −1 + warn list, recorded once ---- */
+  it('unknown names: −1 + de-duplicated missingFlats warn list', () => {
+    expect(world.flatNum('NOPE1')).toBe(-1);
+    expect(world.flatNum('NOPE1')).toBe(-1);
+    expect(world.flatNum('nope2')).toBe(-1);
+    expect(world.missingFlats).toEqual(['NOPE1', 'NOPE2']);
+  });
+
+  it('getFlatPixels: raw decode passthrough; bad size / OOB ⇒ zero sentinel', () => {
+    expect(world.getFlatPixels(0)).toEqual(A);
+    expect(world.getFlatPixels(1)).toEqual(B);
+    expect(world.getFlatPixels(0)).toBe(world.getFlatPixels(0)); // cached
+    // F_SKY1 dummy tolerated WITHOUT throwing (never drawn: sky guard):
+    expect(world.getFlatPixels(world.skyflatnum)).toEqual(new Uint8Array(FLAT_BYTES));
+    expect(world.getFlatPixels(-1)).toEqual(new Uint8Array(FLAT_BYTES));
+    expect(world.getFlatPixels(9999)).toEqual(new Uint8Array(FLAT_BYTES));
+    // sanity: a real 4096 flat does decode through wad/flat unchanged
+    expect(decodeFlat(A, 'FLATA').pixels).toEqual(A);
+  });
+
+  /* -- sky texture + acceptance 3: wrap for ±out-of-range angles ----- */
+  it('skyTextureNum = SKY1 directory index; getSkyColumn wraps ±via widthmask', () => {
+    expect(world.skyTextureNum).toBe(1);
+    for (const k of [0, 1, 255, 256, 1023, 1024, 1025, 4096, 917504, 2 ** 30]) {
+      expect(world.getSkyColumn(k)).toBe(world.getWallColumn(world.skyTextureNum, k & (SKY_W - 1)));
+    }
+    expect(world.getSkyColumn(-1)).toBe(world.getSkyColumn(SKY_W - 1));
+    expect(world.getSkyColumn(-257)).toBe(world.getSkyColumn(255));
+    expect(world.getSkyColumn(1024 + 3)).toBe(world.getSkyColumn(3));
+    expect(world.getSkyColumn(256)).toBe(world.getSkyColumn(0));
+    expect(world.getSkyColumn(-(2 ** 31))).toBe(world.getSkyColumn(0)); // int32 MIN
+  });
+
+  it('no SKY1 texture: skyTextureNum −1, getSkyColumn → zero column', () => {
+    const w = loadRenderWorld(mkEmptyMap(), new Map([['SOLID0', mkTexture('SOLID0', 64, 128, () => 3)]]), mkFlats());
+    expect(w.skyTextureNum).toBe(-1);
+    expect(w.getSkyColumn(5)).toEqual(new Uint8Array(128));
+  });
+
+  /* -- flatsFromWad: raw F_START/F_END directory positions ----------- */
+  it('flatsFromWad: raw dir order incl. zero-size lumps (vanilla numflats); markers absent ⇒ []', () => {
+    const bytes = arrayBuf(
+      new WadBuilder()
+        .addLump('GIMMICK', new Uint8Array(8))
+        .addLumpMarker('F_START')
+        .addLump('FLATA', A)
+        .addLump('EMPTY0', new Uint8Array(0)) // vanilla counts it as a flat
+        .addLump('F_SKY1', SKYDUMMY)
+        .addLumpMarker('F_END')
+        .build(),
+    );
+    const wad = WadFile.parse(bytes);
+    const flats = flatsFromWad(wad);
+    expect(flats.length).toBe(3); // raw count lastflat-firstflat+1 = 3
+    expect(wad.lumpRange('F_START', 'F_END').length).toBe(2); // lumpRange skips EMPTY0
+    const w = loadRenderWorld(mkEmptyMap(), textures, flats);
+    expect(w.flatNames).toEqual(['FLATA', 'EMPTY0', 'F_SKY1']);
+    expect(w.skyflatnum).toBe(2); // lumpnum − firstflat, zero-size lump counted
+    expect(w.flatNum('FLATA')).toBe(0);
+    expect(flatsFromWad(WadFile.parse(arrayBuf(new WadBuilder().addLump('X', new Uint8Array(4)).build())))).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 7. freedoom1 flat/sky goldens (skipIf no wad)                       */
+/* ------------------------------------------------------------------ */
+
+describe.skipIf(!hasWad)('freedoom1.wad flat/sky goldens (M4-02)', () => {
+  const wad = hasWad ? WadFile.parse(readFileSync(WAD_PATH!).buffer as ArrayBuffer) : null;
+  const world = wad ? loadRenderWorld(loadMap(wad, 'E1M1'), texturesFromWad(wad), flatsFromWad(wad)) : null;
+
+  it('F_START census: vanilla numflats 246, skyflatnum 120, F_SKY1 hash', () => {
+    expect(wad!.lumpRange('F_START', 'F_END').length).toBe(240); // zero-size skips
+    expect(world!.numFlats).toBe(246); // vanilla raw count (F_END−F_START−1)
+    expect(world!.skyflatnum).toBe(120);
+    expect(world!.skyflatnum).not.toBe(-1); // census acceptance
+    expect(world!.flatNum('F_SKY1')).toBe(120);
+    // Recorded 2026-09 from wads/freedoom1.wad (v0.13.0): the F_SKY1 lump
+    // IS 4096 bytes in freedoom (id WADs carry smaller dummies).
+    expect(createHash('sha256').update(wad!.readLump(wad!.lumpNumByName('F_SKY1'))).digest('hex')).toBe(
+      '46427ffa69b1764b3ca0c6bef51a09865dd503e457a06f41cb3eb27305de8d7f',
+    );
+  });
+
+  it('SKY1 texture TRUTH: width 256 (NOT 1024 as plan assumed), col0 sha golden', () => {
+    const sky = world!.skyTextureNum;
+    expect(sky).toBeGreaterThanOrEqual(0);
+    expect(world!.textureNames[sky]!).toBe('SKY1');
+    // TRUTH PINNED 2026-09: freedoom1.wad SKY1 is 256 px wide (id DOOM's
+    // is 1024). Still power-of-two ⇒ the vanilla & (width−1) wrap is exact.
+    expect(world!.texWidth[sky]).toBe(256);
+    expect(world!.texWidthMask[sky]).toBe(255);
+    expect(createHash('sha256').update(world!.getSkyColumn(0)).digest('hex')).toBe(
+      'b6d3488800ad99319737859696c37c45f69577a6f08f6c1eb6efcc41effff979',
+    );
+    // wrap vectors on the real texture (buckets are angle>>22 ⇒ 0…1023):
+    expect(world!.getSkyColumn(256)).toBe(world!.getSkyColumn(0));
+    expect(world!.getSkyColumn(-1)).toBe(world!.getSkyColumn(255));
+    expect(world!.getSkyColumn(1024 + 3)).toBe(world!.getSkyColumn(3));
+    expect(world!.getSkyColumn(1023)).toBe(world!.getWallColumn(sky, 255));
+  });
+
+  it('E1M1 flat census: every sector flat resolves; missingFlats EMPTY', () => {
+    const md = loadMap(wad!, 'E1M1');
+    for (const s of md.sectors) {
+      expect(world!.flatNum(s.floorFlat)).not.toBe(-1);
+      expect(world!.flatNum(s.ceilingFlat)).not.toBe(-1);
+    }
+    expect(world!.missingFlats).toEqual([]); // committed: empty on E1M1
   });
 });
