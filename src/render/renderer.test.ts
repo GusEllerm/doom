@@ -5,9 +5,10 @@
  *     buildRenderMapView → renderFrame ×2 ⇒ BYTE-IDENTICAL index buffers
  *     (determinism, M3-plan L3) and hom == 0 / drawsegOverflow == 0.
  *  2. Pixel bands: the closed fixture room paints a healthy wall band
- *     (well above a mere sliver, strictly below "everything" — floors and
- *     ceilings stay black, deviation D) with a multi-color histogram
- *     (texture + light variation, not a flat fill).
+ *     (well above a mere sliver, strictly below "everything" — this
+ *     fixture installs NO flats, so the M4 plane pass paints its zero flat
+ *     over the gaps) with a multi-color histogram (texture + light
+ *     variation, not a flat fill).
  *  3. Automap-over-3D composition (§4.1.9): with the automap state active
  *     the drawer's pixels land in the buffer (WALLCOLORS-family wall reds
  *     + the WHITE player arrow); with it inactive they never appear.
@@ -126,12 +127,18 @@ describe('renderFrame (M3-07): FIXMAP walls pipeline', () => {
     expect(Array.from(first)).toEqual(Array.from(second));
 
     // Hom-free: both the return value and the live counter are clean.
+    // M4-07: the frame returns the FULL counter set (hom + the four vanilla
+    // caps, one of which — visspriteOverflow — comes from the sprite pass).
+    // This fixture passes NO flats to loadRenderWorld, so every visplane is
+    // the −1 pic → the zero flat ⇒ the pre-M4 black gaps are unchanged here
+    // (the M4 plane/masked/sprite coverage is tests/render/pipeline.test.ts).
     expect(counters1).toEqual({
       hom: 0,
       drawsegOverflow: 0,
       solidsegDrops: 0,
       visplaneOverflow: 0,
       openingOverflow: 0,
+      visspriteOverflow: 0,
     });
     expect(counters2.hom).toBe(0);
     expect(getRenderCounters().hom).toBe(0);
@@ -141,7 +148,8 @@ describe('renderFrame (M3-07): FIXMAP walls pipeline', () => {
     // column — mapBuilder fixture semantics), so the walls pass paints the
     // overwhelming majority of the frame; require > 50 % non-black AND a
     // rich multi-value histogram (texture + light variation, not a flat
-    // fill). True floor/ceiling FLATS stay black (deviation D — M4).
+    // fill). With no flats installed the M4 plane pass paints the zero flat
+    // over the gaps — still black here (see the counters note above).
     const hist = histogram(fix.fb);
     const black = hist.get(0) ?? 0;
     const nonBlack = fix.fb.indices.length - black;

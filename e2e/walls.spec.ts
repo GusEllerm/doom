@@ -1,8 +1,9 @@
 /**
- * e2e walls pipeline (M3-07 skeleton + M3-08 completion): the game page
- * now boots into the 3D walls view (renderFrame per ARCHITECTURE §4.1),
+ * e2e walls pipeline (M3-07 skeleton, M3-08 walk, M4-07 full frame): the
+ * game page boots into the 3D view (renderFrame per ARCHITECTURE §4.1 —
+ * now the COMPLETE frame: planes + masked middles + sprites),
  * `__doom.capture()` returns the REAL rendered index buffer and
- * `__doom.state().render.hom` is the live renderer counter.
+ * `__doom.state().render` carries the live renderer counters.
  *
  * Skeleton asserts (M3-plan §M3-07 acceptance 1–3 + 5):
  *  1. boot → dev-API warp to the spawn spot with a pinned z/angle ⇒ the
@@ -12,18 +13,17 @@
  *  3. Tab still toggles the automap — now drawn OVER the 3D pass
  *     (§4.1.9): the frame changes (pixel diff: automap wall-red family +
  *     WHITE arrow pixels present), and closing restores the BYTE-IDENTICAL
- *     walls frame (unmoved player, stateless pipeline);
+ *     3D frame (unmoved player, stateless pipeline);
  *  4. zero console errors across the flow.
  *
- * M3-08 adds the GOLDEN-DRIVEN check: every committed iwad viewpoint of
- * tests/render/viewpoints.ts is warped to through `__doom.warp` (same
- * deg→BAM + z semantics the node suite uses), the live frame is hashed
- * TWICE in-page (SHA-256 over the capture indices) and must (a) agree
- * with itself — same pinned viewpoint ⇒ same bytes on EVERY later frame,
- * the L3 determinism claim under a running browser loop — and (b) equal
- * the golden `indexSha256` of tests/render/goldens/walls/meta.json
- * (browser pipeline ≡ node pipeline), with `state().render.hom == 0`
- * asserted per viewpoint via `__doom.state()`.
+ * M4-07 keeps this spec STRUCTURAL: the milestone re-bless of the golden
+ * frames (the 20 M3 scenes + ≥4 new ones) is M4-08's job, and the full-frame
+ * pipeline legitimately changes every frame — visplanes replace the black
+ * clear and masked middles now draw. So the viewpoint walk below asserts
+ * (a) the live frame reproduces its own bytes on a later frame (the L3
+ * claim under a running browser loop), (b) every scene is non-blank and
+ * multi-colour, and (c) all five render counters of
+ * `state().render` are live and 0. NO stale golden sha is compared here.
  *
  * Palette-free pixel math: capture() exposes the raw 8-bit indices, so
  * automap colors are counted directly (WALLCOLORS family = 176..191,
@@ -32,12 +32,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
-import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 import { VIEWPOINTS } from '../tests/render/viewpoints';
-
-const META_PATH = fileURLToPath(new URL('../tests/render/goldens/walls/meta.json', import.meta.url));
 
 async function wadMissing(page: Page): Promise<boolean> {
   const res = await page.request.get('/wads/freedoom1.wad');
@@ -91,11 +87,17 @@ function captureStats(page: Page): Promise<CaptureStats> {
   });
 }
 
-/** Live state().render.hom (null while state() is not ready). */
-function renderHom(page: Page): Promise<number | null> {
+/** Live state().render (all five counters; null while state() is not ready). */
+function renderCounters(page: Page): Promise<{
+  hom: number;
+  visplaneOverflow: number;
+  visspriteOverflow: number;
+  openingOverflow: number;
+  drawsegOverflow: number;
+} | null> {
   return page.evaluate(() => {
     const s = window.__doom!.state();
-    return s.ready ? s.render.hom : null;
+    return s.ready ? s.render : null;
   });
 }
 
@@ -137,17 +139,26 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
     const cap2 = await captureStats(page);
 
     // Non-blank, not a single color, deterministic ×2 (acceptance 1).
-    // Band note: walls-only ⇒ large black floor/ceiling gaps (deviation D);
-    // the pinned E1M1 spawn vista lands ≈ 4k wall pixels.
+    // M4-07 band note: the frame is now FULL (visplanes fill the floor and
+    // ceiling, masked middles and static sprites draw), so the spawn vista
+    // is far denser than the ≈ 4k wall pixels the walls-only M3 frame had.
     expect(cap1.nonBlack, `walls capture too sparse: ${cap1.nonBlack}`).toBeGreaterThan(2000);
     expect(cap1.distinct, 'walls capture must not be a single color').toBeGreaterThan(1);
     expect(cap2.hash, 'same pinned viewpoint must render identical bytes').toBe(cap1.hash);
 
-    // (2) Live hom counter (acceptance 2): 0, not the old −1 stub.
-    const hom = await renderHom(page);
-    expect(hom, 'state().render.hom must be live after boot').toBe(0);
+    // (2) Live render counters (acceptance 2): all five 0, not the old −1
+    // stubs (M4-07 extended state().render with the overflow caps).
+    const counters = await renderCounters(page);
+    expect(counters, 'state().render must be live after boot').not.toBeNull();
+    expect(counters, 'every render counter must be 0 at the spawn viewpoint').toEqual({
+      hom: 0,
+      visplaneOverflow: 0,
+      visspriteOverflow: 0,
+      openingOverflow: 0,
+      drawsegOverflow: 0,
+    });
 
-    // (3) Tab opens the automap OVER the 3D pass: pixel diff vs the walls
+    // (3) Tab opens the automap OVER the 3D pass: pixel diff vs the 3D
     // frame, automap line-red + WHITE arrow pixels present (the drawer
     // clears the buffer with BACKGROUND first — vanilla AM_Drawer).
     const wallsHash = cap1.hash;
@@ -168,14 +179,10 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
   });
 
-  test('golden viewpoints: in-page double-render sha == golden sha, hom == 0 (M3-08)', async ({ page }) => {
+  test('golden viewpoints: in-page double-render sha + structural frame checks (M4-07)', async ({ page }) => {
     test.setTimeout(180_000);
     test.skip(await wadMissing(page), 'wads/freedoom1.wad missing — run `npm run fetch-freedoom` first');
-    test.skip(!existsSync(META_PATH), 'walls goldens meta.json missing — run npm run goldens:update -- --set walls');
     const consoleErrors = trackConsole(page);
-    const meta = JSON.parse(readFileSync(META_PATH, 'utf8')) as {
-      scenes: Record<string, { indexSha256: string }>;
-    };
 
     await boot(page);
     // Freeze the sim tics: the golden pins a STATIC viewpoint, and pausing
@@ -189,15 +196,20 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
         }, [(vp.x * 65536) | 0, (vp.y * 65536) | 0, vp.z === undefined ? null : (vp.z * 65536) | 0, vp.angleDeg] as [number, number, number | null, number]);
         await page.waitForTimeout(120); // ≥ 7 render frames at 60 Hz
 
+        const cap1 = await captureStats(page);
         const sha1 = await captureSha(page);
         const sha2 = await captureSha(page);
         // (a) determinism under the live rAF loop: identical captures.
         expect(sha2, `${vp.name}: later frame must match the earlier one`).toBe(sha1);
-        // (b) the browser pipeline reproduces the committed node golden.
-        expect(sha1, `${vp.name}: live frame sha must equal the golden sha`).toBe(
-          meta.scenes[vp.name]?.indexSha256
-        );
-        expect(await renderHom(page), `${vp.name}: state().render.hom must be live and 0`).toBe(0);
+        // (b) a real frame, not a void/flat fill. NB: no golden-sha compare —
+        //     the M4 baseline is blessed by M4-08, and pixel bands moved.
+        expect(cap1.nonBlack, `${vp.name}: void frame: ${cap1.nonBlack}`).toBeGreaterThan(2000);
+        expect(cap1.distinct, `${vp.name}: frame must not be a single color`).toBeGreaterThan(1);
+        // (c) live counters, all clean (plan §1.3 overflow gates).
+        expect(
+          await renderCounters(page),
+          `${vp.name}: state().render counters must be live and 0`
+        ).toEqual({ hom: 0, visplaneOverflow: 0, visspriteOverflow: 0, openingOverflow: 0, drawsegOverflow: 0 });
       });
     }
 

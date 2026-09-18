@@ -48,11 +48,19 @@ let paused = false;
  * M3-07 render seam: structural (no render import from this file — see
  * header). `indices` is the LIVE framebuffer index store (read per capture;
  * main.ts passes `fb.indices`, never a copy); `counters` returns the live
- * render health counters (getRenderCounters wired in main.ts).
+ * render health counters (M4-07: renderer.ts getFrameCounters wired in
+ * main.ts — hom plus the four vanilla-cap overflow counters, all −1 while
+ * detached).
  */
 export interface RenderDebugSource {
   readonly indices: Uint8Array;
-  counters(): { hom: number };
+  counters(): {
+    hom: number;
+    visplaneOverflow: number;
+    visspriteOverflow: number;
+    openingOverflow: number;
+    drawsegOverflow: number;
+  };
 }
 
 let renderSource: RenderDebugSource | null = null;
@@ -114,8 +122,17 @@ function liveSnapshot(state: GameState): DebugStateLive {
     },
     sectors: { count: state.map.sectors.count },
     thinkers: { count: 0 },
-    // M3-07: live renderer counter (−1 only pre-boot / pre-attach).
-    render: { hom: renderSource === null ? -1 : renderSource.counters().hom },
+    // M3-07/M4-07: live renderer counters (−1 only pre-boot / pre-attach).
+    render:
+      renderSource === null
+        ? {
+            hom: -1,
+            visplaneOverflow: -1,
+            visspriteOverflow: -1,
+            openingOverflow: -1,
+            drawsegOverflow: -1,
+          }
+        : renderSource.counters(),
     hash: hashState(state)
   };
 }

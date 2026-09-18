@@ -53,7 +53,18 @@ export interface DebugStateLive {
   };
   sectors: { count: number };
   thinkers: { count: number };
-  render: { hom: number };
+  /** M3-07/M4-07: the LIVE renderer health counters of the last renderFrame
+   * (all −1 only while no framebuffer has been attached — pre-boot).
+   * `hom` is the solidsegs/store failure count; the four overflow counters
+   * are the vanilla fatal-cap cases the port turns into counted events
+   * (M4-plan §4): MAXDRAWSEGS, MAXVISPLANES, MAXVISSPRITES, MAXOPENINGS. */
+  render: {
+    hom: number;
+    visplaneOverflow: number;
+    visspriteOverflow: number;
+    openingOverflow: number;
+    drawsegOverflow: number;
+  };
   /** §3.4 hashState() */
   hash: number;
 }
