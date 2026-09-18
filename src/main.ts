@@ -16,6 +16,12 @@
  * WAD 404 falls back to the viewer's file-picker pattern (src/viewer):
  * status text + <input type="file">, no console-error noise on that path.
  *
+ * M4-07 (full-frame pipeline): the boot additionally installs the F_START
+ * flats (flatsFromWad → loadRenderWorld: flatnums + sky indices) and the
+ * once-per-map static thing/sprite tables (renderer.ts buildMapSprites),
+ * and the debug seam now exposes ALL render counters. The frame order lives
+ * in src/render/renderer.ts (pinned to r_main.c R_RenderPlayerView).
+ *
  * Zone note: src/ root sits outside the import zones — this file is the
  * sim↔render bridge: it hands render's structural read-view interfaces the
  * real sim/amMap + sim/map + sim/player objects. They satisfy the shapes by
@@ -36,11 +42,10 @@ import { buildMapFromData } from './sim/map';
 import type { GameState } from './sim/state';
 import { attachRenderDebug, debugApi, debugSim, installDebugApi } from './debug';
 import { blitToCanvas, buildLut, Framebuffer } from './render/framebuffer';
-import { renderFrame, type FrameDeps } from './render/renderer';
-import { loadRenderWorld, type RenderWorld } from './render/rdata';
+import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
+import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
 import { buildRenderMapView, type RenderMapView } from './render/view';
 import { initLightTables, type LightTables } from './render/lights';
-import { getRenderCounters } from './render/solidsegs';
 import { fetchWad, WadLoadError } from './platform/wadload';
 import { loadMap } from './wad/mapdata';
 import { decodeColormap, decodePlaypal } from './wad/palettes';
@@ -93,6 +98,9 @@ interface Boot {
   readonly world: RenderWorld;
   readonly mapView: RenderMapView;
   readonly tables: LightTables;
+  /** M4-07: the once-per-map static thing/sprite tables (rthings census +
+   * decoded patches); the frame's sprite pass caches off these. */
+  readonly sprites: SpriteTables;
 }
 
 let boot: Boot | null = null;
@@ -141,6 +149,7 @@ function render(): void {
     map: boot.mapView,
     player: state.players[0]!,
     tables: boot.tables,
+    sprites: boot.sprites,
     automap: { state: am, map: state.map, player: state.players[0]! },
   };
   renderFrame(deps);
@@ -189,18 +198,24 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   const lut = buildLut(decodePlaypal(wad.readLumpByName('PLAYPAL')), 0);
 
   // Render world built ONCE (M3-07): SoA tables + BSP view + wad light
-  // tables (R_InitColormaps half: COLORMAP lump → scalelight rows).
-  const world = loadRenderWorld(md, texturesFromWad(wad));
+  // tables (R_InitColormaps half: COLORMAP lump → scalelight rows). M4-07
+  // adds the two data halves the full frame needs: the F_START/F_END flats
+  // (R_InitFlats — planes/sky never touch names) and the once-per-map sprite
+  // tables (census → lump decode → the mobj-less static thing list).
+  const world = loadRenderWorld(md, texturesFromWad(wad), flatsFromWad(wad));
   const mapView = buildRenderMapView(md);
   const tables = initLightTables(decodeColormap(wad.readLumpByName('COLORMAP')));
+  const sprites = buildMapSprites({ md, map: mapView, wad });
 
   const am = amCreateState();
   // M3-07: automap starts OFF — the 3D walls view owns the frame; Tab
   // toggles the amMap state (renderFrame overlays when active).
 
   debugSim.attach(state); // __doom.sim drives the same live state
-  attachRenderDebug({ indices: fb.indices, counters: getRenderCounters });
-  boot = { state, am, lut, world, mapView, tables };
+  // M4-07: the full counter set (hom + the four overflow counters) feeds
+  // state().render (renderer.ts getFrameCounters seam).
+  attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
+  boot = { state, am, lut, world, mapView, tables, sprites };
   status.hidden = true;
   picker.hidden = true;
   console.info(`doom-ts: booted ${map.name} from ${src}`);
