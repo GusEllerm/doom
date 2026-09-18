@@ -57,6 +57,7 @@ Future tasks will be added as architects decompose milestones.
 | M3-04 | BSP walk + view setup | M3 | M3-01/02/03 | done (merged, 19 tests) |
 | M3-05 | Wall column blit (R_DrawColumn) | M3 | M3-01/02 | done (merged, 13 tests) |
 | M3-06a | StoreWallRange/RenderSegLoop port (+drawsegs audit) | M3 | M3-02..05 | done (merged) |
-| M3-06b | Seg renderer test matrix + integration goldens-smoke | M3 | M3-06a | finisher dispatched (agent 7accf79e) on salvage |
-| M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | planned |
+| M3-06b | Seg renderer test matrix + integration goldens-smoke | M3 | M3-06a | done (merged, 17 pass/1 skip→FIX-M3-06c) |
+| M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | dispatched (agent 5b4d2bdf) |
 | M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | planned |
+| M3-06c | FIX: negative-base openings refs (segs.ts) | M3 | M3-06b | dispatched (agent d5c94ea5) |

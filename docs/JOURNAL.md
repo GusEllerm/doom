@@ -116,3 +116,6 @@ R_StoreWallRange + R_RenderSegLoop ported (segs.ts 454 lines, drawsegs draft aud
 ## PAUSE #2 (user request) — state: M3 6a merged (walls render in smoke), M3-06b in flight
 Resume queue: merge M3-06b when reported → M3-07 (frame pipeline + boot, deps M3-06b) → M3-08 (viewpoint goldens + HOM gate + e2e ⇒ M3 closes). All prior work merged & green on main.
 - Resumed (pause #2). M3-06b stopped mid-derivation; salvage has stubs + 348-line scratch derivation test. Finisher 7accf79e mining it into the real matrix.
+
+## 2026-09-16 — M3-06b merged (test matrix) — found FIX-M3-06c
+Six-acceptance matrix green (analytic spans e.g. d=160 → span[13,141], scale 131072 near-wall, off-axis 46358 → [39,129]; occlusion fragments; 257th drawseg → counter; masked recording w/ SIL_BOTH). One real bug found by tests: negative-base openings refs filtered by >=0 guards vs vanilla pointer math (maskedtexturecol/sprtopclip snapshots lost when pool base < start). Fix task 06c + M3-07 pipeline dispatched in parallel (segs.ts ownership split keeps them disjoint). Salvage-derived lesson: scratch derivations with out-of-range sidedef indices produced NaN garbage — numbers re-verified fresh before believing.
