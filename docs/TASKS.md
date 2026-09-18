@@ -71,6 +71,6 @@ Future tasks will be added as architects decompose milestones.
 | M4-03 | Static thing/sprite tables | M4 | — | done (merged, 25 tests) |
 | M4-04 | Plane marking + drawMasked | M4 | M4-01/02 | done (merged) |
 | M4-05 | Static sprite pass (R_AddSprites/DrawVisSprite) | M4 | M4-03 | done (merged f47160f + fixup) |
-| M4-06 | Fixture extension (sky/fences/things/panning) | M4 | M4-01..03 | dispatched (agent 709010ad) |
-| M4-07 | Full-frame pipeline integration | M4 | M4-04/05 | planned |
+| M4-06 | Fixture extension (sky/fences/things/panning) | M4 | M4-01..03 | done (merged) |
+| M4-07 | Full-frame pipeline integration | M4 | M4-04/05 | dispatched (agent c1bbc833) |
 | M4-08 | Goldens re-bless (≥24) + L5 | M4 | M4-07 | planned |
