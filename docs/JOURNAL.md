@@ -133,3 +133,7 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - M4-01 merged (visplanes + yslope/distscale + subsector seam, MapPlane BigInt goldens). M4-04 dispatched early (deps satisfied: 01+02 merged; 03 still running).
 - M4-03 merged; M4-05 dispatched (parallel with M4-04; disjoint ownership: 05=bsprites+bsp wiring, 04=segs marking).
 - M4-04 merged: floors/ceilings mark visplanes from store paths; masked middles DRAW (reverse drawseg sweep). M4-06 fixtures dispatched parallel.
+
+## 2026-09-16 — M4-05 merged (+ env anomaly)
+- Cross-task rename breakage found at merge (vissprites imported M3 no-op from drawsegs; M4-04 had relocated the driver to masked.ts). One-line import fix; suite green. LESSON: parallel tasks touching same subsystem should rebase onto each other's merges BEFORE finishing, or name dispatch cross-references explicitly.
+- ENV ANOMALY: remote 'origin' → https://github.com/GusEllerm/doom.git now exists (was absent at Phase 0/D002; main is 118 ahead, never pushed by me). NOT pushing anything without explicit instruction; flag to user at next checkpoint. D002 env facts partially stale.
