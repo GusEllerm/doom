@@ -59,7 +59,14 @@ import { WadFile } from '../wad/wadfile';
 import { texturesFromWad } from '../wad/texture';
 import type { LineDef, MapData, Node, Seg, SectorDef, SideDef, TextureDef, Vertex } from '../wad/types';
 
-import { createBspWalker, pointOnSideXY, solidsegsWalkCallbacks, type WalkCallbacks } from './bsp';
+import {
+  createBspWalker,
+  getValidcount,
+  pointOnSideXY,
+  solidsegsWalkCallbacks,
+  type WalkCallbacks,
+} from './bsp';
+import { planeAt, planeCount, planeHeight, resetPlanesForTests } from './planes';
 import { clearClipSegs, getRenderCounters, solidsegsLength } from './solidsegs';
 import { loadRenderWorld, NO_TEXTURE, type RenderWorld } from './rdata';
 import {
@@ -906,3 +913,80 @@ function fixedMulRef(a: number, b: number): number {
   const b1 = b >> 16;
   return (((a1 * b1) << 16) + (a1 * b0 + a0 * b1) + ((a0 * b0) >>> 16)) | 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* 8. M4-01 seam: R_Subsector plane opens + validcount + sprites SLOT  */
+/* ------------------------------------------------------------------ */
+
+describe('M4-01 plane-open seam (r_bsp.c:522-549)', () => {
+  const fix = fixtureFromSpec(SWEEP_SPEC);
+  const walker = createBspWalker(fix.view, fix.world);
+
+  it('walk opens floor/ceiling planes per §0.4 predicates; heights ⊆ sector heights', () => {
+    resetPlanesForTests();
+    const view = createViewState();
+    setupXY(view, 128, 128, 0); // inside room A, eye above floor 0
+    clearClipSegs();
+    walker.walk(view, solidsegsWalkCallbacks());
+
+    expect(planeCount()).toBeGreaterThan(0);
+    const heights = new Set<number>();
+    for (let s = 0; s < fix.world.numSectors; s += 1) {
+      heights.add(fix.world.sectorFloor[s]!);
+      heights.add(fix.world.sectorCeil[s]!);
+    }
+    for (let p = 0; p < planeCount(); p += 1) {
+      expect(heights.has(planeHeight(planeAt(p)))).toBe(true);
+    }
+  });
+
+  it('viewpoint below every floor (viewz < 0 floor marks fail) ⇒ no floor planes', () => {
+    resetPlanesForTests();
+    const view = createViewState();
+    setupXY(view, 128, 128, 0, -1000); // viewz = (−1000+41)·FRACUNIT « floors
+    clearClipSegs();
+    walker.walk(view, solidsegsWalkCallbacks());
+    for (let p = 0; p < planeCount(); p += 1) {
+      // Only ceiling heights (112/128·FRACUNIT) may open — floor(0/16) never:
+      const h = planeHeight(planeAt(p));
+      expect(h).toBeGreaterThan(0);
+    }
+  });
+
+  it('validcount increments exactly once per walk (R_RenderPlayerView parity)', () => {
+    const view = createViewState();
+    setupXY(view, 128, 128, 45);
+    const v0 = getValidcount();
+    walker.walk(view, solidsegsWalkCallbacks());
+    expect(getValidcount() - v0).toBe(1);
+    walker.walk(view, solidsegsWalkCallbacks());
+    expect(getValidcount() - v0).toBe(2);
+  });
+
+  it('addSectorSprites SLOT fires once per visited subsector, after plane opens', () => {
+    resetPlanesForTests();
+    const view = createViewState();
+    setupXY(view, 128, 128, 90);
+    let subs = 0;
+    let sprites = 0;
+    let lastPlaneCount = -1;
+    let planeCountAtFirstSprite = -1;
+    walker.walk(view, {
+      addSolid: () => {},
+      addPass: () => {},
+      onSubsector: () => {
+        subs += 1;
+      },
+      addSectorSprites: () => {
+        sprites += 1;
+        if (planeCountAtFirstSprite < 0) planeCountAtFirstSprite = planeCount();
+        lastPlaneCount = planeCount();
+      },
+    });
+    expect(subs).toBeGreaterThan(0);
+    expect(sprites).toBe(subs); // per-subsector call site, no dedupe (M4-05 owns that)
+    // vanilla order: plane opens BEFORE R_AddSprites ⇒ planes exist at slot time
+    expect(planeCountAtFirstSprite).toBeGreaterThan(0);
+    expect(lastPlaneCount).toBeGreaterThanOrEqual(planeCountAtFirstSprite);
+  });
+});

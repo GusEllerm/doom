@@ -44,9 +44,11 @@
 //     masked-vs-solid decision is R_StoreWallRange's (r_segs.c, M3-06):
 //     a one-sided seg with a middle texture still goes through clipsolid
 //     here ("masked-solid path").
-//   R_Subsector (r_bsp.c:505-551) — WALL LOOP ONLY in M3: no R_FindPlane
-//     floors/ceilings, no R_AddSprites (plan §M3-04; M4/M5). frontsector =
-//     the subsector's sector, set before the seg loop like vanilla.
+//   R_Subsector (r_bsp.c:505-551) — M3 wall loop + M4-01 plane OPENING
+//     (floorplane/ceilingplane via R_FindPlane under the §0.4 predicates,
+//     per-frame validcount++, and the addSectorSprites callback SLOT —
+//     vanilla R_AddSprites lives in M4-05). frontsector = the subsector's
+//     sector, set before the plane opens, like vanilla.
 //
 // Design seam (M3-06): the walk never calls storeWallRange itself — every
 // visible span leaves through the {@link WalkCallbacks} pair. Production
@@ -69,6 +71,14 @@
 import { ANG180, ANG90, ANGLETOFINESHIFT, FRACBITS } from '../core/constants';
 import { FixedMul } from '../core/fixed';
 import { NO_TEXTURE, type RenderWorld } from './rdata';
+import {
+  NO_FLAT,
+  clearPlanes,
+  findPlane,
+  isSkyPic,
+  setCeilingplane,
+  setFloorplane,
+} from './planes';
 import {
   clipPassWallSegment,
   clipSolidWallSegment,
@@ -109,6 +119,10 @@ export interface WalkCallbacks {
   onFarEnter?(node: number, farSide: number): void;
   onNodeExit?(node: number): void;
   onSubsector?(subsector: number): void;
+  /** R_AddSprites(frontsector) call site (r_bsp.c:546, between the plane
+   * opens and the seg loop). SLOT — M4-01 wires nothing (vanilla R_Add-
+   * Sprites lives in M4-05; validcount below is its dedupe key). */
+  addSectorSprites?(sector: number): void;
   onSegReached?(seg: number, x1: number, x2: number): void;
   /** R_CheckBBox verdict probe (tests' pruning triage; zero cost if unset). */
   onBBox?(node: number, side: number, visible: boolean): void;
@@ -125,6 +139,19 @@ export function solidsegsWalkCallbacks(): WalkCallbacks {
       clipPassWallSegment(first, last);
     },
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* validcount (r_main.c:55/862) — per-frame sector dedupe key           */
+/* ------------------------------------------------------------------ */
+
+let validcount = 1; // r_main.c:55 initial value
+
+/** Current frame stamp — M4-05's R_AddSprites compares sector.validcount
+ * against this (r_things.c:622). Incremented once per {@link walk} like
+ * R_RenderPlayerView's `validcount++` before R_RenderBSPNode. */
+export function getValidcount(): number {
+  return validcount;
 }
 
 /* ------------------------------------------------------------------ */
@@ -191,10 +218,29 @@ export function createBspWalker(map: RenderMapView, world: RenderWorld): BspWalk
     else pushItem(ENTER, ref);
   }
 
-  /** R_Subsector — wall loop only (file header). */
+  /** R_Subsector — plane opens (M4-01) + wall loop. */
   function renderSubsector(ss: number, view: ViewState, cb: WalkCallbacks): void {
-    walker.frontSector = map.subsectors.sector[ss]!;
+    const front = (walker.frontSector = map.subsectors.sector[ss]!);
+
+    /* R_Subsector plane opens (r_bsp.c:522-544, plan §0.4 predicates):
+     *   markfloor   = floorheight < viewz
+     *   markceiling = ceilingheight > viewz || ceilingpic == skyflatnum
+     * DEVIATION (seam): RenderWorld carries no flat indices yet (flatNum
+     * is the M4-02 stub ⇒ picnum = NO_FLAT −1); the sky clause is inert
+     * until M4-04 wires ceilingpic — guarded by skyflatnum >= 0 so the
+     * −1 placeholder never collapses into the sky plane. */
+    const floor = world.sectorFloor[front]!;
+    const ceil = world.sectorCeil[front]!;
+    const light = world.sectorLight[front]!;
+    setFloorplane(floor < view.viewz ? findPlane(floor, NO_FLAT, light) : null);
+    // isSkyPic(NO_FLAT) is the inert sky clause (M4-04 replaces NO_FLAT
+    // with the sector's ceiling flat index — the clause then matches
+    // vanilla's `|| ceilingpic == skyflatnum` exactly).
+    setCeilingplane(ceil > view.viewz || isSkyPic(NO_FLAT) ? findPlane(ceil, NO_FLAT, light) : null);
+
     cb.onSubsector?.(ss);
+    cb.addSectorSprites?.(front); // SLOT — no-op until M4-05 (see seam doc)
+
     const start = map.subsectors.segStart[ss]!;
     const count = map.subsectors.segCount[ss]!;
     for (let i = 0; i < count; i += 1) addLine(start + i, view, cb);
@@ -359,6 +405,13 @@ export function createBspWalker(map: RenderMapView, world: RenderWorld): BspWalk
       return stackVal;
     },
     walk(view: ViewState, cb: WalkCallbacks, root: number = bspRoot(map)): void {
+      /* validcount++ + R_ClearPlanes, vanilla call sites in R_Render-
+       * PlayerView (r_main.c:846-862, before R_RenderBSPNode). clear-
+       * Planes is idempotent — M4-07's renderFrame pipeline may call it
+       * again without effect. */
+      validcount += 1;
+      clearPlanes(view);
+
       /* ---- R_RenderBSPNode, iterative (see ENTER/FAR/EXIT note) ---- */
       sp = 0;
       pushItem(ENTER, root);
