@@ -58,6 +58,8 @@ interface CaptureStats {
   nonBlack: number;
   /** nonzero palette values occupying ≥ 50 pixels (single-color test). */
   distinct: number;
+  /** non-black pixels of the TOP 20 rows (M4-08: sky/outdoor band). */
+  topBand: number;
   /** automap wall-red family (WALLCOLORS..+15 = 176..191). */
   reds: number;
   /** automap WHITE (209, player arrow). */
@@ -72,20 +74,22 @@ function captureStats(page: Page): Promise<CaptureStats> {
     let nonBlack = 0;
     let reds = 0;
     let whites = 0;
+    let topBand = 0;
     const counts = new Map<number, number>();
     for (let i = 0; i < cap.indices.length; i++) {
       const v = cap.indices[i]!;
       h = Math.imul(h ^ v, 16777619);
       if (v !== 0) {
         nonBlack++;
-        counts.set(v, (counts.get(v) ?? 0) + 1);
+        if (i < 320 * 20) topBand++;
       }
+      counts.set(v, (counts.get(v) ?? 0) + 1);
       if (v >= 176 && v < 192) reds++;
       if (v === 209) whites++;
     }
     let distinct = 0;
     for (const [v, n] of counts) if (v !== 0 && n >= 50) distinct++;
-    return { hash: (h >>> 0).toString(16), nonBlack, distinct, reds, whites };
+    return { hash: (h >>> 0).toString(16), nonBlack, distinct, topBand, reds, whites };
   });
 }
 
@@ -270,6 +274,13 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
         //     the M4 baseline is blessed by M4-08, and pixel bands moved.
         expect(cap1.nonBlack, `${vp.name}: void frame: ${cap1.nonBlack}`).toBeGreaterThan(2000);
         expect(cap1.distinct, `${vp.name}: frame must not be a single color`).toBeGreaterThan(1);
+        // (b2) M4-08 pixel band: the outdoor courtyard viewpoint stands IN a
+        // F_SKY1 sector — the top 20 rows must be sky-drawn, not the M3
+        // black band (derivation: viewpoints.ts, e1m1-court-sky; a
+        // removed-SKY1 render diff shows ~37.6k sky pixels here).
+        if (vp.name === 'e1m1-court-sky') {
+          expect(cap1.topBand, `${vp.name}: sky band must paint the top rows (got ${cap1.topBand}/6400)`).toBeGreaterThan(3000);
+        }
         // (c) live counters, all clean (plan §1.3 overflow gates).
         expect(
           await renderCounters(page),
