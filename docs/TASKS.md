@@ -59,5 +59,5 @@ Future tasks will be added as architects decompose milestones.
 | M3-06a | StoreWallRange/RenderSegLoop port (+drawsegs audit) | M3 | M3-02..05 | done (merged) |
 | M3-06b | Seg renderer test matrix + integration goldens-smoke | M3 | M3-06a | done (merged, 17 pass/1 skip→FIX-M3-06c) |
 | M3-07 | Frame pipeline + boot + viewpoint debug API | M3 | M3-06 | done (merged, 7 e2e green) |
-| M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | dispatched (agent 76e93f83) |
+| M3-08 | Viewpoint goldens (20+) + HOM + L5 | M3 | M3-07 | done (merged, 20 goldens, all gates green) |
 | M3-06c | FIX: negative-base openings refs (segs.ts) | M3 | M3-06b | done (merged 2dfa365; 588/588, 0 skips) |
