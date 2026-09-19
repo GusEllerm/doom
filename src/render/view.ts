@@ -245,11 +245,17 @@ export interface ViewState {
 
 /** Per-frame view config: player position fixed, angle u32 BAM. `z` is the
  * thing/eye-origin height fixed (default 0) — viewz = z + 41<<16 placeholder
- * (file header deviation). */
+ * (file header deviation). M5-08 read-through: an explicit `viewz` (the
+ * sim-side P_CalcHeight output, p_user.c — z + viewheight + bob, ceiling
+ * clamped) overrides the placeholder when the physics has produced one;
+ * callers pass it only once live so pre-tic frames keep the exact
+ * z + 41<<16 bytes (frame-0 goldens unmoved). */
 export interface ViewConfig {
   readonly x: number;
   readonly y: number;
   readonly z?: number;
+  /** M5-08: fixed eye height (player->viewz); undefined ⇒ placeholder. */
+  readonly viewz?: number;
   readonly angle: number;
   readonly extralight?: number;
   readonly fixedcolormap?: number;
@@ -273,7 +279,10 @@ export function createViewState(): ViewState {
 export function setupView(v: ViewState, cfg: ViewConfig): void {
   v.viewx = cfg.x | 0;
   v.viewy = cfg.y | 0;
-  v.viewz = ((cfg.z ?? 0) | 0) + VIEWHEIGHT_FIXED; // placeholder, see header
+  v.viewz =
+    cfg.viewz !== undefined
+      ? cfg.viewz | 0 // M5-08: live P_CalcHeight read-through
+      : (((cfg.z ?? 0) | 0) + VIEWHEIGHT_FIXED) | 0; // placeholder, see header
   v.viewangle = cfg.angle >>> 0;
   v.viewsin = finesine[angToFine(v.viewangle)]!;
   v.viewcos = finecosine[angToFine(v.viewangle)]!;
