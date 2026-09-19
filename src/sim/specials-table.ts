@@ -186,9 +186,9 @@ export interface LineSpecialEntry {
   readonly name: string;
 }
 
-/** Feet (P_PlayerInSpecialSector) metadata — DATA only in M6-03; the feet
- * dispatch section lands with M6-12 (damage cadence `!(leveltime&0x1f)`,
- * ironfeet gate, randBypass = `|| (P_Random()<5)`, finale = E1M8 11). */
+/** Feet (P_PlayerInSpecialSector) metadata — dispatch LIVE since M6-12
+ * (pspec.ts feet section; damage cadence `!(leveltime&0x1f)`, ironfeet
+ * gate, randBypass = `|| (P_Random()<5)`, finale = E1M8 sector 11). */
 export interface FeetSpec {
   readonly damage?: number;
   readonly randBypass?: boolean;
@@ -427,9 +427,9 @@ function buildSectorTable(): (SectorSpecialEntry | null)[] {
     // pass (M6-12) counts the find and zeroes it.
     { id: 9, name: 'SECRET SECTOR', spawn: { action: 'secretCount' }, feet: { secret: true } },
     { id: 10, name: 'DOOR CLOSE IN 30', spawn: { action: 'doorCloseIn30' }, clearTo: 0 },
-    // E1M8 finale: REGISTERED as data only — behaviour (godmode clear,
-    // 20 dmg/32 tics, exit at hp≤10) is M6-12 scope.
-    { id: 11, name: 'EXIT SUPER DAMAGE (E1M8 finale — M6-12)', feet: { damage: 20, finale: true } },
+    // E1M8 finale: godmode clear, 20 dmg/32 tics, exit at hp≤10 (M6-12
+    // feet dispatch; p_spec.c:1054-1063).
+    { id: 11, name: 'EXIT SUPER DAMAGE (E1M8 finale)', feet: { damage: 20, finale: true } },
     { id: 12, name: 'SYNC STROBE SLOW', spawn: { action: 'strobe', arg: SLOWDARK }, clearTo: 0 },
     { id: 13, name: 'SYNC STROBE FAST', spawn: { action: 'strobe', arg: FASTDARK }, clearTo: 0 },
     { id: 14, name: 'DOOR RAISE IN 5 MINUTES', spawn: { action: 'doorRaiseIn5Mins' }, clearTo: 0 },

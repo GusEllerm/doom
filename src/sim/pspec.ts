@@ -37,7 +37,7 @@
 
 import { FRACUNIT } from '../core/constants';
 
-import { exitSlot, sfxSlot } from './hooks';
+import { sfxSlot } from './hooks';
 import { updateSpecialsCounts } from './ptick';
 import { MF_MISSILE } from './thinglinks';
 import { ML_SECRET } from './pspec-helpers';
@@ -52,9 +52,13 @@ import {
 } from './plights';
 import { evTeleport } from './ptelept';
 import { pChangeSwitchTexture, evDoLockedDoor } from './pswitch';
+import { damageSlot } from './hooks';
+import { pRandom } from './prng';
+import { gExitLevel, gSecretExitLevel } from './pexit';
+import { CF_GODMODE } from './player';
 
 import {
-  LINE_SPECIALS, MAX_LINE_SPECIAL, SECTOR_SPECIALS,
+  LINE_SPECIALS, MAX_LINE_SPECIAL, MAX_SECTOR_SPECIAL, SECTOR_SPECIALS,
   strobeSyncFlag
 } from './specials-table';
 import type { ActionId, ActionSpec, SpawnActionId, TriggerSpec } from './specials-table';
@@ -171,6 +175,13 @@ export function bindSpecialsWorld(s: SpecWorld | null): void {
   boundWorld = s;
 }
 
+/** Read handle for the bound level (puser.ts's feet call site — the live
+ * sector SoA the vanilla call-site gate reads is per-state, unreachable
+ * from the PMapWorld-only P_PlayerThink signature otherwise). */
+export function boundSpecialsWorld(): SpecWorld | null {
+  return boundWorld;
+}
+
 /* ------------------------------------------------------------------ */
 /* Action binding: registry action ids → family entry points            */
 /* ------------------------------------------------------------------ */
@@ -198,11 +209,11 @@ const FNS: Record<ActionId, ActFn> = Object.freeze({
   verticalDoor: (s, line, _side, mover) => evVerticalDoor(s, line, mover),
   lockedDoor: (s, line, _side, mover, arg) => evDoLockedDoor(s, line, arg, mover),
   exit: (s, _line, _side, _m, arg) => {
-    // G_ExitLevel/G_SecretExitLevel proxy (D013(e)): exitSlot latches
-    // exitRequest; secret exits also set the `specialexit` global proxy.
-    const kind = arg === 1 ? 'secret' as const : 'normal' as const;
-    if (kind === 'secret') s.specialexit = true;
-    exitSlot(s, kind);
+    // G_ExitLevel/G_SecretExitLevel proxies (D013(e)/D013(g), pexit.ts):
+    // exitSlot latches exitRequest; G_ExitLevel CLEARS specialexit
+    // (g_game.c:1004), G_SecretExitLevel sets it (g_game.c:1015).
+    if (arg === 1) gSecretExitLevel(s);
+    else gExitLevel(s);
     return true;
   }
 });
@@ -511,4 +522,123 @@ function sfxButton(s: SpecWorld, sector: number): void {
   const x = sector >= 0 ? s.map.sectors.soundOrgX[sector]! : 0;
   const y = sector >= 0 ? s.map.sectors.soundOrgY[sector]! : 0;
   sfxSlot(s.hooks, SFX_SWTCHN, x, y, 0, s.leveltime);
+}
+
+/* ------------------------------------------------------------------ */
+/* P_PlayerInSpecialSector — p_spec.c:1005-1069 (M6-12 feet section)     */
+/* ------------------------------------------------------------------ */
+
+/** d_player.h:121-130 powertype_t pw_ironfeet (envirosuit) — the powers[]
+ * slot the damage gate reads. The powers ARRAY itself is M7's (items);
+ * the feet section only READS slot 2 when the player carries one (see
+ * {@link FeetPlayer.powers}). */
+export const PW_IRONFEET = 2;
+
+/** The player_t slice the feet dispatch touches (structural — Player
+ * satisfies it; `linkSlot` is the ThingLinks-slot damage-thing namespace
+ * pmap.ts's crusher cadence already uses, hooks.ts header). */
+export interface FeetPlayer {
+  mo: { x: number; y: number; z: number; linkSlot?: number };
+  health: number;
+  cheats: number;
+  /** d_player.h `powers[numpowers]`. OPTIONAL here on purpose: player_t's
+   * powers array is M7-owned surface (item pickups) — M6-plan wave table
+   * keeps player.ts out of this task's files; tests (and M7's field) set
+   * it structurally. Absent ⇒ no power. NOT hashed until M7 (deviation
+   * note: vanilla powers live in the hashed player_t). */
+  powers?: readonly number[];
+}
+
+/** Vanilla `I_Error("P_PlayerInSpecialSector: unknown special %i")`
+ * (p_spec.c:1066-1067) as a typed throw (M6-plan §M6-12 acceptance); the
+ * census-excluded specials 6/15 have NO case in the vanilla switch and
+ * reach here the first tic a player stands grounded in them. */
+export class UnknownSectorSpecialError extends Error {
+  constructor(readonly special: number) {
+    super(`P_PlayerInSpecialSector: unknown special ${special}`);
+    this.name = 'UnknownSectorSpecialError';
+  }
+}
+
+/** Feet-dispatch instruments (not sim state — never hashed). */
+export const feetCounts = {
+  /** vanilla call-site hits (p_user.c:274-275 `if (sector->special)`). */
+  calls: 0,
+  /** dispatch attempted with no bound/foreign-map specials world. */
+  unbound: 0,
+  /** the I_Error path (typed throw), counted before throwing. */
+  unknownSpecial: 0
+};
+
+export function resetFeetCounts(): void {
+  feetCounts.calls = 0;
+  feetCounts.unbound = 0;
+  feetCounts.unknownSpecial = 0;
+}
+
+/**
+ * `P_PlayerInSpecialSector(player)` — p_spec.c:1009-1069, called every
+ * tic from the puser.ts call site (p_user.c:274-275) while the live
+ * sector special is nonzero. Vanilla structure kept line-for-line:
+ *  • grounded gate `mo->z != sector->floorheight` → return
+ *    ("Falling, not all the way down yet?", p_spec.c:1013-1015);
+ *  • case 5 HELLSLIME 10 dmg / case 7 NUKAGE 5 dmg /
+ *    case 16+4 SUPER HELLSLIME・STROBE HURT 20 dmg — all gated
+ *    `(!powers[pw_ironfeet] || (P_Random()<5)) && !(leveltime&0x1f)`
+ *    (the P_Random draw happens on EVERY grounded tic with ironfeet,
+ *    never without — C's short-circuit, p_spec.c:1023-1043);
+ *  • case 9 SECRET: secretcount++ (the single-player `player->
+ *    secretcount` proxy lives on state.secretcount, M6-01) and the
+ *    sector special zeroes (p_spec.c:1047-1050); no message in 1.10
+ *    (R05 §5 — intermission screen only);
+ *  • case 11 EXIT SUPER DAMAGE (E1M8 finale): godmode bit CLEARED
+ *    unconditionally (:1056), 20 dmg/32 tics, `health <= 10` →
+ *    G_ExitLevel (:1061-1062). Health never drops while the damage
+ *    slot is a no-op (M7) — hp-clamp fixtures drive the exit;
+ *  • default: typed throw + counter (the I_Error above).
+ *
+ * `sector` is the mover's current sector (the caller's sectorAtPoint —
+ * vanilla's `player->mo->subsector->sector`, same value; passed to keep
+ * one BSP walk per tic, deviation noted).
+ */
+export function pPlayerInSpecialSector(
+  s: SpecWorld, p: FeetPlayer, sector: number
+): void {
+  feetCounts.calls++;
+
+  // Falling, not all the way down yet? (p_spec.c:1013)
+  if (p.mo.z !== s.sectors.floorZ[sector]) return;
+
+  const special = s.sectors.special[sector]!;
+  const e = special <= MAX_SECTOR_SPECIAL ? SECTOR_SPECIALS[special] : null;
+  const f = e?.feet;
+  if (!f) {
+    feetCounts.unknownSpecial++;
+    throw new UnknownSectorSpecialError(special); // p_spec.c:1066
+  }
+
+  if (f.secret) {
+    s.secretcount++; // player->secretcount++ (p_spec.c:1050)
+    s.sectors.special[sector] = 0; // sector->special = 0
+    return;
+  }
+
+  if (f.finale) {
+    // p_spec.c:1054-1063 — no ironfeet/cadence-or gate: godmode is
+    // stripped, damage lands on the plain 32-tic cadence.
+    p.cheats &= ~CF_GODMODE;
+    if ((s.leveltime & 0x1f) === 0) {
+      damageSlot(s.hooks, p.mo.linkSlot ?? -1, f.damage ?? 20, null, s.leveltime);
+    }
+    if (p.health <= 10) gExitLevel(s); // :1061-1062
+    return;
+  }
+
+  const ironfeet = (p.powers?.[PW_IRONFEET] ?? 0) !== 0;
+  // `||` short-circuit: randBypass draws ONLY when ironfeet is active.
+  if (!ironfeet || (f.randBypass === true && pRandom(s.rng) < 5)) {
+    if ((s.leveltime & 0x1f) === 0) {
+      damageSlot(s.hooks, p.mo.linkSlot ?? -1, f.damage ?? 0, null, s.leveltime);
+    }
+  }
 }

@@ -28,8 +28,10 @@
 // the pXYMovement/pZMovement loop right after pPlayerThink (M5-05).
 //
 // Out of scope on this path (counted or documented, per M5-plan §0.10):
-// P_DeathThink (needs R_PointToAngle2/psprites), P_PlayerInSpecialSector
-// (M6), weapon change / P_UseLines / P_MovePsprites / powerups (M7).
+// P_DeathThink (needs R_PointToAngle2/psprites); P_PlayerInSpecialSector
+// was the M5 gap — LIVE since M6-12 (call site below, body in pspec.ts
+// mirroring p_spec.c:1009). Weapon change / P_UseLines / P_MovePsprites /
+// powerups: M7.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -40,6 +42,7 @@ import { finecosine, finesine } from '../core/tables';
 import { sectorAtPoint } from './bsp';
 import type { PMapWorld } from './pmap';
 import './pslide'; // M5-06: loads pslide's self-registration of pmoveHooks.slideMove
+import { boundSpecialsWorld, feetCounts, pPlayerInSpecialSector } from './pspec';
 import {
   CF_NOMOMENTUM,
   CF_NOCLIP,
@@ -70,8 +73,10 @@ export const puserGlobals = { onground: false };
 export const puserHookCounts = {
   /** p_user.c:165-168 P_SetMobjState(mo, S_PLAY_RUN1) while moving. */
   setMobjStateRun: 0,
-  /** p_user.c:281 P_PlayerInSpecialSector (dispatch M6; sector special
-   * READ is live here — the counter is the only gap). */
+  /** p_user.c:274-275 P_PlayerInSpecialSector — LIVE since M6-12: fires
+   * exactly when the vanilla call-site gate fires (live sector special
+   * nonzero); unbound unit worlds count the static read (gap recorded in
+   * pspec.feetCounts.unbound). */
   playerInSpecialSector: 0,
   /** p_user.c:266 P_DeathThink (M7+). */
   deathThink: 0
@@ -247,10 +252,22 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
 
   pCalcHeight(p, leveltime);
 
-  // if (player->mo->subsector->sector->special) P_PlayerInSpecialSector()
-  // — the sector READ is live (deterministic), the dispatch is M6.
-  if (world.map.sectors.special[sectorAtPoint(world.map, p.mo.x, p.mo.y)]!) {
+  // if (player->mo->subsector->sector->special)
+  //     P_PlayerInSpecialSector (player);          — p_user.c:274-275.
+  // M6-12: the gate reads the LIVE sector special (vanilla's sector->special
+  // IS the live field — a found secret zeroes itself and stops firing);
+  // the body mirrors p_spec.c:1009 in pspec.ts. Unit PMapWorlds with no
+  // bound GameState keep the static-special count (feetCounts.unbound).
+  const feetSector = sectorAtPoint(world.map, p.mo.x, p.mo.y);
+  const specials = boundSpecialsWorld();
+  if (specials && specials.map === world.map) {
+    if (specials.sectors.special[feetSector]!) {
+      puserHookCounts.playerInSpecialSector++;
+      pPlayerInSpecialSector(specials, p, feetSector);
+    }
+  } else if (world.map.sectors.special[feetSector]!) {
     puserHookCounts.playerInSpecialSector++;
+    feetCounts.unbound++;
   }
 
   // BT_CHANGE weapon select, BT_USE P_UseLines, P_MovePsprites, powerup
