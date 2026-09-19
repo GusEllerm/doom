@@ -274,9 +274,13 @@ export function loadMap(wad: WadFile, name: string): MapData {
     }
     sideDefs.push({
       sector,
+      // vanilla mapsidedef_t (doomdata.h): top@4, BOTTOM@12, MID@20 (R01 §6).
+      // M4-10 FIX: this decode had mid/bottom swapped (mid←12, bot←20), so
+      // every real-wad midtexture read as absent → untextured black wall
+      // columns + masked lines lost their mask tag (m4Fixtures COMPAT shim).
       toptexture: nameOf(sideLump.bytes, o + 4),
-      midtexture: nameOf(sideLump.bytes, o + 12),
-      bottomtexture: nameOf(sideLump.bytes, o + 20),
+      bottomtexture: nameOf(sideLump.bytes, o + 12),
+      midtexture: nameOf(sideLump.bytes, o + 20),
       offset: [i16(sideLump.view, o), i16(sideLump.view, o + 2)],
       light: 0,
     });

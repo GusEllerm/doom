@@ -395,15 +395,12 @@ const TABLE: readonly Case[] = [
     expect: 0,
   },
   {
-    // NOTE (pre-existing fixture gap, reported as a follow-up): mapBuilder's
-    // encodeLines writes sidedef mid/bottom texture names at SWAPPED
-    // offsets (+20/+12; vanilla is mid@12, bottom@20), so a fixture door's
-    // DOORFIX0 decodes as bottomtexture and every twin-room line — door
-    // included — legitimately hits the vanilla reject (midtexture empty,
-    // heights+light identical). The midtexture-defeats-noDraw rule is
-    // pinned on the hand-built literal map below, where the test controls
-    // the fields directly.
-    name: 'twin rooms + door line: all segs noDraw (special ignored; decoded midtexture empty)',
+    // M4-10 decode fix: vanilla slots are bottom@12 / mid@20 (doomdata.h),
+    // so the fixture door's DOORFIX0 now decodes as a real midtexture —
+    // the door seg is masked (midtexture defeats the vanilla noDraw
+    // reject ⇒ clippass), while the plain twin-room walls stay noDraw
+    // (heights+light identical, no texture).
+    name: 'twin rooms + door line: door seg clippass (mid defeats noDraw)',
     spec: {
       rooms: [
         { x: 0, y: 0, w: 256, h: 256 },
@@ -411,8 +408,8 @@ const TABLE: readonly Case[] = [
       ],
       doors: [{ x1: 256, y1: 96, x2: 256, y2: 160 }],
     },
-    target: (md, li) => pairOf(md, li) === '1|2',
-    expect: 0,
+    target: (md, li) => pairOf(md, li) === '1|2' && md.lineDefs[li]!.special !== 0,
+    expect: 2,
   },
   {
     name: 'identical heights, light differs → clippass',

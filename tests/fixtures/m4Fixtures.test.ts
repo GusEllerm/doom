@@ -146,14 +146,14 @@ describe('M4-06 MASKFIX masked texture', () => {
       for (const p of col) expect(p, `col ${c}`).toBe(solid ? 200 : 0);
     });
   });
-  it('fence map: sidedefs carry MASKFIX0 in mid AND bottom slots (mapdata-swap shim); rdata marks them masked', () => {
+  it('fence map: sidedefs carry MASKFIX0 in the vanilla MID slot; rdata marks them masked', () => {
     const md = loadMap(wadOf(buildM4SceneWad('masked')), M4_MAP_NAMES.masked);
     const fenced = md.sideDefs.filter((s) => s.midtexture === TEX_MASKED);
     expect(fenced.length).toBeGreaterThan(0);
-    // FINDING pin: mapdata.ts reads "midtexture" from byte 12 (vanilla
-    // bottomtexture, doomdata.h). The fixture dual-writes both slots, so
-    // this round-trip holds for the current decoder AND a fixed one.
-    for (const s of fenced) expect(s.bottomtexture).toBe(TEX_MASKED);
+    // M4-10: mapdata.ts decodes the vanilla slots (bottom@12, mid@20,
+    // doomdata.h). The fixture writes the masked name once, in MID — the
+    // old byte-12 dual-write shim is gone with the swap fix.
+    for (const s of fenced) expect(s.bottomtexture).toBe('');
     const world = loadRenderWorld(md, texturesFromWad(wad), flatsFromWad(wad));
     expect(Array.from(world.sideMasked)).toContain(1);
     expect(world.missingTextures).toEqual([]);
