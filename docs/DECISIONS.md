@@ -48,3 +48,7 @@ Vanilla r_segs.c sets ML_MAPPED on linedefs during rendering. Renderer keeps sim
 
 ## D011 — Origin remote active; orchestrator authorized to push main
 GitHub origin (GusEllerm/doom) present; user authorized pushes. main pushed & tracking (50f6c01). Task/salvage branches stay local unless asked. D002's "no remote" fact superseded.
+
+## D012 — Noclip = real physics with checks skipped (supersedes D009 fly math)
+- M5-06 source truth: 1.10 has NO special noclip motion branch — noclip sets MF_NOCLIP; movement is the SAME thrust/friction/momentum pipeline, with P_TryMove's internal checks skipped. The M2 fly-stub math (D009) never existed in vanilla and is now deleted (kept as documented history in movement.test.ts).
+- Residual deviation kept: we also set MF_NOGRAVITY with noclip (vanilla noclip player falls — we chose floating noclip for a viewer tool; revisit if any golden disagrees).
