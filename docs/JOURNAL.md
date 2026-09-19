@@ -177,3 +177,7 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 ## 2026-09-17 — PAUSE #3 (user) — M6 6/13 merged, all gates green
 Merged+pushed through M6-06 (plats: player-walk-off = vanilla quirk kept; CRUSHING plat raises ceiling before move — p_doors.c:400 truth; S1 plat lines clear special@6 verbatim; 54 specials live of 156). Tree clean, no agents running.
 RESUME QUEUE (plan waves): M6-07/08/10/12 parallel → M6-11 → M6-13 (corpus, E1M1 key-route, renderer live-sector/light wiring GAP included). Then M7 (weapons plan merged) → M8 plan → ...
+
+## 2026-09-17 — ⏸ PAUSE #3 (user) — M6 at 6/13, all gates green
+Merged through M6-06 (plats — incl. conflict resolution: plats+lights both edited pspec.test.ts helpers; both live-family blocks kept, green). 1139 unit tests, 14 e2e, goldens clean; 54/156 specials live. Tree clean, no agents running.
+RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-13 (corpus + E1M1 key-route + renderer live-sector/light wiring GAP). Then M7 (plan merged) → M8 plan → M9-M12.
