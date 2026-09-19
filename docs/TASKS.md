@@ -104,7 +104,7 @@ Future tasks will be added as architects decompose milestones.
 | M6-08 | Ceilings incl crushers (13 ids) | M6 | M6-03/04 | done (merged t2, 19 tests) |
 | M6-09 | Lights + sector light specials | M6 | M6-03 | done (merged; headless goldens re-blessed w/ reason) |
 | M6-10 | Teleporters (4 ids) | M6 | M6-03 | done (merged, 32 tests) |
-| M6-11 | Switches/locked doors/cards | M6 | M6-05/09 | planned |
+| M6-11 | Switches/locked doors/cards | M6 | M6-05/09 | dispatched (agent eaf7be00) |
 | M6-12 | Sector specials at feet + exits | M6 | M6-03/04 | planned |
 | M6-13 | Fixture corpus + E1M1 route e2e + L5 | M6 | all | planned |
 
