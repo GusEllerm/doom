@@ -123,7 +123,7 @@ const LOWER_SPEC: RectMapSpec = {
   rooms: [
     { x: 0, y: 0, w: 256, h: 256, floorHeight: 64, tag: 45 },
     { x: 256, y: 0, w: 256, h: 256 },
-    { x: 0, y: 256, w: 256, h: 128, floorHeight: 24 }
+    { x: 0, y: 256, w: 256, h: 128 }
   ],
   triggers: [{ x1: 256, y1: 96, x2: 256, y2: 160, special: 45, tag: 45 }],
   things: [{ x: 64, y: 128, angle: 0, type: 1 }]
@@ -153,8 +153,8 @@ const LOWEST_GRID: RectMapSpec = {
     r[4]!.tag = 23;
     return r;
   })(),
-  triggers: [{ x1: 128, y1: -32, x2: 128, y2: 32, special: 23, tag: 23 }],
-  things: [{ x: 192, y: 0, angle: 0, type: 1 }]
+  triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 23, tag: 23 }],
+  things: [{ x: 192, y: 64, angle: 0, type: 1 }]
 };
 
 // raiseFloor / raiseFloorCrush (enclosed, ceilings everywhere 96):
@@ -168,8 +168,8 @@ function raiseGrid(centerCeil: number, tag: number, special: number): RectMapSpe
   rooms[4]!.tag = tag;
   return {
     rooms,
-    triggers: [{ x1: 128, y1: -32, x2: 128, y2: 32, special, tag }],
-    things: [{ x: 192, y: 0, angle: 0, type: 1 }]
+    triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special, tag }],
+    things: [{ x: 192, y: 64, angle: 0, type: 1 }]
   };
 }
 
@@ -177,7 +177,7 @@ function raiseGrid(centerCeil: number, tag: number, special: number): RectMapSpe
 // = 32 at speed 4 (8 move tics, detect at 9).
 const TURBO_SPEC: RectMapSpec = {
   rooms: [
-    { x: 0, y: 0, w: 256, h: 256, tag: 70 },
+    { x: 0, y: 0, w: 256, h: 256, floorHeight: 64, tag: 70 },
     { x: 256, y: 0, w: 256, h: 256, floorHeight: 24 }
   ],
   triggers: [{ x1: 256, y1: 96, x2: 256, y2: 160, special: 70, tag: 70 }],
@@ -193,8 +193,8 @@ const NEAREST_GRID: RectMapSpec = {
     r[4]!.tag = 18;
     return r;
   })(),
-  triggers: [{ x1: 128, y1: -32, x2: 128, y2: 32, special: 18, tag: 18 }],
-  things: [{ x: 192, y: 0, angle: 0, type: 1 }]
+  triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 18, tag: 18 }],
+  things: [{ x: 192, y: 64, angle: 0, type: 1 }]
 };
 
 // lowerAndChange (EXCAVATE): enclosed center floor 24; the −dest (0)
@@ -203,15 +203,17 @@ const NEAREST_GRID: RectMapSpec = {
 const EXCAVATE_GRID: RectMapSpec = {
   rooms: (() => {
     const r = grid3x3([[24, 0, 24], [0, 24, 24], [24, 24, 24]]);
-    r[0]!.special = 5;
-    r[0]!.floorFlat = 'FIXFLAT1';
-    r[3]!.special = 0;
-    r[3]!.floorFlat = 'FIXFLAT0';
+    // WEST candidate (r3): floor 0, special 5 damage, FIXFLAT1. The
+    // SOUTH candidate (r1, row j=0): floor 0, special 0, default FIXFLAT0.
+    // The two differ in BOTH channels so the CSR-order pickup is visible.
+    r[3]!.special = 5;
+    r[3]!.floorFlat = 'FIXFLAT1';
+    r[1]!.floorFlat = 'FIXFLAT0';
     r[4]!.tag = 37;
     return r;
   })(),
-  triggers: [{ x1: 128, y1: -32, x2: 128, y2: 32, special: 37, tag: 37 }],
-  things: [{ x: 192, y: 0, angle: 0, type: 1 }]
+  triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 37, tag: 37 }],
+  things: [{ x: 192, y: 64, angle: 0, type: 1 }]
 };
 
 // Stairs: 8-room row, ALL floors 0, ALL flat FIXFLAT1 (void flat is
@@ -245,22 +247,33 @@ const STAIR_BUSY: RectMapSpec = {
 // Donut: 6×6 grid (no ring room touches the void), center (2,2) floor 24
 // tag 9, ring (Manhattan-1) floor 0, everything else floor 16 = dest.
 function donutSpec(ringFlat: string, ringSpecial: number): RectMapSpec {
+  // PUSH ORDER PIN: the east ring cell (3,2) FIRST, then the center
+  // (2,2), then the rest. mapBuilder orients every shared edge with
+  // front = the EARLIER room, so this makes the ring cell FRONT all its
+  // edges — EV_DoDonut's verbatim `backsector != s1` scan then lands on
+  // an OUTER floor-16 cell as s3 instead of tripping the orientation
+  // quirk (a back-facing edge would hand back s2 itself as "s3").
+  const order: [number, number][] = [[3, 2], [2, 2]];
+  for (let j = 0; j < 6; j++) for (let i = 0; i < 6; i++) {
+    if ((i === 3 && j === 2) || (i === 2 && j === 2)) continue;
+    order.push([i, j]);
+  }
   const rooms: RectRoomSpec[] = [];
-  for (let j = 0; j < 6; j++) {
-    for (let i = 0; i < 6; i++) {
-      const man = Math.abs(i - 2) + Math.abs(j - 2);
-      const room: RectRoomSpec = {
-        x: (i - 2) * 128, y: (j - 2) * 128, w: 128, h: 128,
-        floorHeight: man === 0 ? 24 : man === 1 ? 0 : 16
-      };
-      if (man === 0) room.tag = 9;
-      if (man === 1) { room.floorFlat = ringFlat; room.special = ringSpecial; }
-      rooms.push(room);
-    }
+  for (const [i, j] of order) {
+    const man = Math.abs(i - 2) + Math.abs(j - 2);
+    const room: RectRoomSpec = {
+      x: (i - 2) * 128, y: (j - 2) * 128, w: 128, h: 128,
+      floorHeight: man === 0 ? 24 : man === 1 ? 0 : 16
+    };
+    if (man === 0) room.tag = 9;
+    if (man === 1) { room.floorFlat = ringFlat; room.special = ringSpecial; }
+    rooms.push(room);
   }
   return {
     rooms,
-    triggers: [{ x1: 128, y1: 160, x2: 256, y2: 160, special: 9, tag: 9 }],
+    // Edge between the center (2,2) and its north ring cell — one room
+    // boundary edge, as mapBuilder requires.
+    triggers: [{ x1: 0, y1: 128, x2: 128, y2: 128, special: 9, tag: 9 }],
     things: [{ x: 192, y: -64, angle: 0, type: 1 }]
   };
 }
@@ -319,28 +332,28 @@ describe('EV_DoFloor destination table', () => {
     const f = floorOf(s, sec)!;
     expect(f.dest).toBe(fx(32)); // 24 + 8 (differs from own floor)
     expect(f.speed).toBe(4 * FRACUNIT);
-    step(s, 8);
-    expect(s.sectors.floorZ[sec]).toBe(0);
-    step(s, 1);
+    step(s, 8); // 64 → 32 in 8 moves (tics 0..7)
+    expect(s.sectors.floorZ[sec]).toBe(fx(32));
+    expect(f.removed).toBe(false);
+    step(s, 1); // 9th tic: pastdest
     expect(f.removed).toBe(true);
   });
 
   it('turboLower quirk branch: sealed (dest == own floor) does NOT add the +8', () => {
-    // LOWER_SPEC room 1 (floor 0): its highest surrounding is 64… pick a
-    // flat-openless case instead — a room whose highest equals its own:
+    // Fully enclosed 3×3 grid, ALL floors 0: highest surrounding == own
+    // floor → the vanilla `!=` guard skips the +8 → dest 0 == floorheight
+    // → pastdest on the FIRST tic.
     const s = stateFor({
-      rooms: [
-        { x: 0, y: 0, w: 256, h: 256, floorHeight: 0, tag: 71 },
-        { x: 256, y: 0, w: 256, h: 256, floorHeight: -64 }
-      ],
-      things: [{ x: 64, y: 128, angle: 0, type: 1 }]
+      rooms: (() => {
+        const r = grid3x3([[0, 0, 0], [0, 0, 0], [0, 0, 0]]);
+        r[4]!.tag = 71;
+        return r;
+      })(),
+      triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 71, tag: 71 }],
+      things: [{ x: 192, y: 64, angle: 0, type: 1 }]
     });
     const sec = secByTag(s, 71);
-    const line = s.map.lines.count - 1; // any line; only ->tag is read
-    s.map.lines.tag[line] = 71;
-    evDoFloor(s, line, FLOOR.turboLower);
-    // highest surrounding = 0 == own floor → NO +8 → dest 0 → pastdest
-    // on the FIRST tic (vanilla `!=` guard).
+    evDoFloor(s, lineBySpecial(s, 71), FLOOR.turboLower);
     expect(floorOf(s, sec)!.dest).toBe(0);
     step(s, 1);
     expect(floorOf(s, sec)).toBeNull();
@@ -454,7 +467,8 @@ describe('EV_DoFloor destination table', () => {
     const sec2 = secByTag(s2, 45);
     evDoFloor(s2, line, FLOOR.raiseToTexture); // s2 shares the SAME wad (textures NOT painted)
     expect(s2.map.sides.bottomTexture[s2.map.lines.sideNumFront[line]!]).toBe('');
-    expect(floorOf(s2, sec2)!.dest).toBe(fx(64) + 0x7fffffff); // MAXINT (no textures)
+    // MAXINT (no textures) — vanilla adds it UNCLAMPED; int32 wrap pinned.
+    expect(floorOf(s2, sec2)!.dest).toBe((fx(64) + 0x7fffffff) | 0);
   });
 
   it('lowerAndChange: FIRST dest-height neighbour in CSR order wins (excavate order)', () => {
@@ -496,41 +510,40 @@ describe('EV_DoFloor destination table', () => {
 /* ------------------------------------------------------------------ */
 
 describe('raiseFloorCrush stuck thing (damage slot cadence)', () => {
-  it('56-tall player under a 74 ceiling: floor passes, 10 dmg every !(lt&3), pastdest double-hit', () => {
+  it('56-tall player under a 74 ceiling: floor passes, 10 dmg every !(lt&3)', () => {
     const s = stateFor(raiseGrid(74, 56, 56));
     const sec = secByTag(s, 56);
     evDoFloor(s, lineBySpecial(s, 56), FLOOR.raiseFloorCrush);
     const f = floorOf(s, sec)!;
-    expect(f.dest).toBe(fx(88));
+    // dest = min(lowestCeilSurrounding 96, OWN ceiling 74) − 8 = 66 —
+    // the own-ceiling cap comes BEFORE the crush −8 (p_floor.c:308-320).
+    expect(f.dest).toBe(fx(66));
 
     // Floor rises 1/tic; P_ChangeSector refuses from floorZ 19 (19+56 >
-    // 74) — with crush=true the plane STAYS (no rollback, M6-04 pin) and
-    // the mover keeps pushing every tic.
-    step(s, 19);
+    // 74) — with crush=true the plane STAYS at the new height (M6-04
+    // pin) and the floor rides THROUGH the player to dest.
+    step(s, 19); // tics 0..18: floor 19; tic 18 is not !(lt&3)
     expect(s.sectors.floorZ[sec]).toBe(fx(19));
-    expect(s.hooks.damage.count).toBe(0); // tics 18 is not !(lt&3)… open tics start at 20
+    expect(s.hooks.damage.count).toBe(0);
 
-    step(s, 65); // → tic 84 (lt 84 open: 17th event)
+    step(s, 47); // → tics 0..65: floor arrives at 66 (tic 65 move)
     const open = s.hooks.damage.entries.filter((e) => (e.tic & 3) === 0);
     expect(s.hooks.damage.count).toBe(open.length);
-    expect(s.hooks.damage.count).toBeGreaterThan(0);
     for (const e of s.hooks.damage.entries) {
       expect(e.amount).toBe(10);
       expect(e.tic & 3).toBe(0);
     }
-    expect(s.hooks.damage.count).toBe(17); // tics 20,24,…,84
+    expect(s.hooks.damage.count).toBe(12); // tics 20,24,…,64
 
-    // Arrival: at lt 88 the mid-move arm became the PASTDEST arm — the
-    // rollback DOUBLE P_ChangeSector damages a SECOND time on that same
-    // open tic (pplane.ts pin) and the mover is REMOVED at the rolled-
-    // back-then-restored height 88 (lastpos was already 88).
-    step(s, 4); // 85..88
+    // Tic 66: pastdest arm — the clamped-plane P_ChangeSector plus the
+    // nofit rollback pair are BOTH gated, and 66&3=2 → zero damage.
+    step(s, 1);
     expect(f.removed).toBe(true);
     expect(sectorSpecialData(s.sectors, sec)).toBeNull();
-    expect(s.hooks.damage.count).toBe(19); // 17 + 2 at tic 88
-    expect(s.sectors.floorZ[sec]).toBe(fx(88));
-    expect(pmapHookCounts.crushBlood).toBe(19); // 4 P_Random each
-    expect(s.rng.prndindex).toBe(19 * 4); // blood draws consumed (M7 half)
+    expect(s.hooks.damage.count).toBe(12);
+    expect(s.sectors.floorZ[sec]).toBe(fx(66)); // lastpos == dest
+    expect(pmapHookCounts.crushBlood).toBe(12); // 4 P_Random each
+    expect(s.rng.prndindex).toBe(12 * 4); // blood draws consumed (M7 half)
   });
 });
 
@@ -561,7 +574,9 @@ describe('EV_BuildStairs', () => {
     step(s, 33); // sector 1 done (32 moves + detect)
     expect(s.sectors.floorZ[rooms[0]!]).toBe(fx(8));
     expect(movers[0]!.removed).toBe(true);
-    expect(s.sectors.floorZ[rooms[1]!]).toBe(fx(8)); // sector 2 at 8 of 16
+    // Sector 2 is mid-flight: 33 tics × ¼ = 8.25 of its 16 (parallel
+    // movers — 1.10 has NO per-hop vwait).
+    expect(s.sectors.floorZ[rooms[1]!]).toBe(33 * (FLOORSPEED / 4));
     step(s, 32 * 7); // → tic 257: sector 8 detect tic
     expect(s.sectors.floorZ[rooms[7]!]).toBe(fx(64));
     expect(movers.every((m) => m.removed)).toBe(true);
@@ -575,7 +590,7 @@ describe('EV_BuildStairs', () => {
     step(s, 5);
     expect(s.sectors.floorZ[1]).toBe(fx(16));
     expect(movers[0]!.removed).toBe(true);
-    expect(s.sectors.floorZ[2]).toBe(fx(16)); // sector 2 halfway (16 of 32)
+    expect(s.sectors.floorZ[2]).toBe(fx(20)); // sector 2 mid-flight (5 × 4)
     step(s, 28); // → tic 33: sector 8 (dest 128) detect
     expect(s.sectors.floorZ[8]).toBe(fx(128));
   });
@@ -621,7 +636,7 @@ describe('EV_BuildStairs', () => {
     // moves (its edge fronts the START room, not B).
     expect(busyFirst ? floorOf(s, b)!.dest : floorOf(s, b)!.dest).toBe(fx(busyFirst ? 24 : 16));
     if (busyFirst) expect(floorOf(s, b)!.dest).toBe(fx(24)); // the quirk value
-    expect(floorOf(s, a)).toBeNull(); // never spawned over the blocker
+    // A was NEVER spawned over: its specialdata is still the blocker.
     expect(sectorSpecialData(s.sectors, a)).toBe(blocker as never);
   });
 
@@ -676,10 +691,9 @@ describe('EV_DoDonut full cycle', () => {
     expect(s.sectors.floorZ[expectedS2]).toBe(fx(4));
     expect(s.sectors.special[expectedS2]).toBe(5);
 
-    step(s, 9); // tic 17: 32 units @ ½ = 32? no — 24@½=48 hole / 16@½=32 ring
-    // (hole: 24→16 = 16 units = 32 move tics; ring: 0→16 = 32 move tics —
-    // BOTH detect at tic 33.)
-    void 0;
+    step(s, 9); // tic 16: the HOLE is already done (8 units @ ½ = 16
+    // tics); the ring (16 units @ ½) reaches 16 at tic 32 and BOTH are
+    // gone by tic 33.
     step(s, 33 - 17);
     expect(s.sectors.floorZ[s1]).toBe(fx(16));
     expect(s.sectors.floorZ[expectedS2]).toBe(fx(16));
@@ -740,16 +754,23 @@ describe('retrigger + determinism', () => {
   });
 
   it('use-vs-cross parity: S1 45 vs W1 19 vs GR 83 — identical 90-tic profiles', () => {
-    const mk = (special: number): { s: GameState; sec: number; line: number } => {
+    // Each state must be the LAST bound world when its dispatcher fires
+    // (pCrossSpecialLine resolves through the module bind) — build and
+    // fire per-special.
+    const mk = (
+      special: number,
+      fire: (s: GameState, line: number) => void
+    ): { s: GameState; sec: number; line: number } => {
       const st = stateFor({ ...LOWER_SPEC, triggers: [{ x1: 256, y1: 96, x2: 256, y2: 160, special, tag: 45 }] });
-      return { s: st, sec: secByTag(st, 45), line: lineBySpecial(st, special) };
+      const line = lineBySpecial(st, special);
+      fire(st, line);
+      return { s: st, sec: secByTag(st, 45), line };
     };
-    const a = mk(45);
-    const b = mk(19);
-    const c = mk(83);
-    expect(pUseSpecialLine(a.s, PLAYER, a.line, 0)).toBe(true);
-    pCrossSpecialLine(b.s.pmap, b.line, 0, PLAYER);
-    pCrossSpecialLine(c.s.pmap, c.line, 0, PLAYER);
+    const a = mk(45, (s, line) => {
+      expect(pUseSpecialLine(s, PLAYER, line, 0)).toBe(true);
+    });
+    const b = mk(19, (s, line) => pCrossSpecialLine(s.pmap, line, 0, PLAYER));
+    const c = mk(83, (s, line) => pCrossSpecialLine(s.pmap, line, 0, PLAYER));
     const prof = (x: typeof a): number[] => {
       const out: number[] = [];
       for (let i = 0; i < 90; i++) {
@@ -792,19 +813,21 @@ describe('retrigger + determinism', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 6) Family coverage: 38 floors + 4 stairs + 1 donut, zero stubs     */
+/* 6) Family coverage: 39 floors + 4 stairs + 1 donut, zero stubs     */
 /* ------------------------------------------------------------------ */
 
 describe('floors family coverage (registry ids → live bodies)', () => {
+  // 39 = the 38 non-switch floor ids + S1 140 (raiseFloor512 is applied
+  // through P_UseSpecialLine's switch arm — p_switch.c:508).
   const FLOOR_IDS = [
     5, 18, 19, 23, 24, 30, 36, 37, 38, 40, 45, 55, 56, 58, 59, 60, 64, 65,
     69, 70, 71, 82, 83, 84, 91, 92, 93, 94, 96, 98, 101, 102, 119, 128,
-    129, 130, 131, 132
+    129, 130, 131, 132, 140
   ];
   const STAIR_IDS = [7, 8, 100, 127];
   const DONUT_IDS = [9];
 
-  it('the registry routes exactly 38 floor + 4 stair + 1 donut ids', () => {
+  it('the registry routes exactly 39 floor + 4 stair + 1 donut ids', () => {
     const floors: number[] = [];
     const stairs: number[] = [];
     const donuts: number[] = [];
