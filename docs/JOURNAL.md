@@ -149,3 +149,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - M4-08 re-bless 31 scenes → FIX-M4-09 sentinel-collision fix (refs -1024 range; red-first) → M4-10 diagnostic root-caused a MAPDATA decode swap (sidedef mid@20/bottom@12; M2-03-era bug that a fixture COMPAT shim had been masking; shim retired, research doc §6 corrected). 17 goldens re-blessed; L5 frames now show masked windows over real sprites + BASE2 bands floor-to-horizon.
 - LESSON: compat shims that compensate for bugs must carry a root-cause task ID at creation; 'shim (FINDING for M4-07)' cost two extra passes to unmask.
 - Milestones: M1 ✅ M2 ✅ M3 ✅ M4 ✅. Next: M5 plan (player physics + input — p_user replaces fly stub, momentum/friction/step-up/fall/bob, pointer-lock mouse, D009 revisit).
+- M5 plan merged (10 tasks/7 waves; FRICTION 0xe800, STOPSPEED 0x1000, walk thrust 51200/run 102400 pinned). Wave 1: pmaputl ∥ mouse.

@@ -76,3 +76,18 @@ Future tasks will be added as architects decompose milestones.
 | M4-08 | Goldens re-bless (≥24) + L5 | M4 | M4-07 | done (merged) |
 | M4-09 | FIX: openings-ref sentinel collision (masked flush) | M4 | M4-08 | done (merged) |
 | M4-10 | FIX: sidedef mid/bottom slot decode (mapdata) | M4 | M4-09 | done (merged) — M2-03 era bug root-caused |
+
+## M5 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M5-01 | p_maputl primitives | M5 | — | dispatched (agent 4d644781) |
+| M5-02 | P_CheckPosition + thinglinks | M5 | M5-01 | planned |
+| M5-03 | P_TryMove + TeleportMove shell | M5 | M5-02 | planned |
+| M5-04 | P_SlideMove + HitSlideLine | M5 | M5-03 | planned |
+| M5-05 | P_XYMovement + P_ZMovement | M5 | M5-03 | planned |
+| M5-06 | p_user replaces fly stub (D009 close) | M5 | M5-05 | planned |
+| M5-07 | Mouse input (pointer-lock platform + ticcmd) | M5 | — | dispatched (agent 9ae12fc4) |
+| M5-08 | Live-page integration + L4 e2e | M5 | M5-06/07 | planned |
+| M5-09 | L2 scripted-tic feel goldens | M5 | M5-06 | planned |
+| M5-10 | M5 exit + L5 motion review | M5 | M5-08/09 | planned |
