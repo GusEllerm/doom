@@ -72,7 +72,10 @@ describe('sampleInput', () => {
       strafe: false,
       speed: false,
       attack: false,
-      use: false
+      use: false,
+      // M5-07: keyboard-only snapshot ⇒ mouse channels idle (0 deltas).
+      mouseX: 0,
+      mouseY: 0
     });
   });
 

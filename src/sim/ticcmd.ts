@@ -68,10 +68,10 @@ export const TICDUP = 1;
 
 /**
  * The semantic stand-in for vanilla's `gamekeydown[]` probes in
- * G_BuildTiccmd (g_game.c:223+). The platform layer resolves keys/mouse into
- * these booleans; the sim never sees keycodes. Joystick/mouse-delta channels
- * (`joyxmove`, `mousex`, `mousey`) and double-click-to-use are out of M2
- * scope — see DEVIATIONS.
+ * G_BuildTiccmd (g_game.c:223+) plus the two mouse-delta channels (M5-07).
+ * The platform layer resolves keys/mouse into these fields; the sim never
+ * sees keycodes or DOM events. Joystick channels (`joyxmove`/`joyymove`)
+ * and double-click-to-use remain out of scope — see DEVIATIONS.
  */
 export interface GameInput {
   /** Left/strafe-left key (vanilla key_left). */
@@ -94,6 +94,17 @@ export interface GameInput {
   attack: boolean;
   /** Use button (key_use). */
   use: boolean;
+  /**
+   * Mouse X channel — vanilla `int mousex` (g_game.c:190): the sensitivity-
+   * SCALED delta (G_Responder's `data2*(mouseSensitivity+5)/10`, applied at
+   * the platform translation seam per A-07) accumulated since the last tic.
+   * Consumed once: G_BuildTiccmd zeroes it (g_game.c:411); the producer
+   * drains its own accumulator in sample().
+   */
+  mouseX: number;
+  /** Mouse Y channel — vanilla `int mousey` (g_game.c:191). Adds FORWARD
+   * (g_game.c:405); 1.10 has NO pitch/mouselook anywhere. */
+  mouseY: number;
 }
 
 export function emptyInput(): GameInput {
@@ -107,7 +118,9 @@ export function emptyInput(): GameInput {
     strafe: false,
     speed: false,
     attack: false,
-    use: false
+    use: false,
+    mouseX: 0,
+    mouseY: 0
   };
 }
 
@@ -118,8 +131,8 @@ export interface TurnheldState {
 
 /**
  * g_game.c `G_BuildTiccmd` for a single local player, minus the console/net/
- * demo-only parts (consistancy ring, chat char, double-click-use, mouse
- * deltas, weapon-change keys, special buttons). Structure kept verbatim:
+ * demo-only parts (consistancy ring, chat char, double-click-use, joystick,
+ * weapon-change keys, special buttons). Structure kept verbatim:
  *
  *  - turnheld += ticdup while left/right held, else 0 (g_game.c:267-271);
  *  - tspeed = 2 (slow, 320) while turnheld < SLOWTURNTICS else `speed`
@@ -129,6 +142,8 @@ export interface TurnheldState {
  *    clockwise sign;
  *  - forward/back add/sub forwardmove[speed]; strafeleft/right add to side
  *    regardless of the strafe modifier (g_game.c:309-329);
+ *  - mouse channels THEN: `forward += mousey`; strafe ? `side += mousex*2`
+ *    : `angleturn -= mousex*0x8` (g_game.c:403-409) — BEFORE the clamp;
  *  - both axes clamped to ±MAXPLMOVE before being ADDED onto the base
  *    (zero) command (g_game.c:371-379).
  */
@@ -162,6 +177,21 @@ export function gBuildTiccmd(input: GameInput, turn: TurnheldState): Ticcmd {
 
   if (input.attack) cmd.buttons |= BT_ATTACK;
   if (input.use) cmd.buttons |= BT_USE;
+
+  // Mouse channels — g_game.c:403-410, positioned EXACTLY between the key
+  // accumulation and the clamp (add-then-clamp order pinned: mouse-y joins
+  // `forward` BEFORE the ±MAXPLMOVE clamp, so mouse + held-forward key
+  // still caps at MAXPLMOVE, never exceeds it):
+  //   forward += mousey;                       (g_game.c:405 — NO pitch,
+  //   if (strafe) side += mousex*2;            //  mouse-y is forward/back)
+  //   else cmd->angleturn -= mousex*0x8;       (g_game.c:407-409; rightward
+  // mouse turns angle DOWN, matching the key convention) then
+  // `mousex = mousey = 0` (g_game.c:411) — the consumed-once rule lives in
+  // the input sampler (input/mouse.ts sample() drains); this function is
+  // pure and never mutates `input`.
+  forward += input.mouseY;
+  if (strafe) side += input.mouseX * 2;
+  else cmd.angleturn -= input.mouseX * 0x8;
 
   // clamp, then add onto the base command (g_game.c:371-379)
   if (forward > MAXPLMOVE) forward = MAXPLMOVE;
