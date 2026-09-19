@@ -73,4 +73,6 @@ Future tasks will be added as architects decompose milestones.
 | M4-05 | Static sprite pass (R_AddSprites/DrawVisSprite) | M4 | M4-03 | done (merged f47160f + fixup) |
 | M4-06 | Fixture extension (sky/fences/things/panning) | M4 | M4-01..03 | done (merged) |
 | M4-07 | Full-frame pipeline integration | M4 | M4-04/05 | done (merged e258081) |
-| M4-08 | Goldens re-bless (≥24) + L5 | M4 | M4-07 | dispatched (agent 3a95dca3) |
+| M4-08 | Goldens re-bless (≥24) + L5 | M4 | M4-07 | done (merged) |
+| M4-09 | FIX: openings-ref sentinel collision (masked flush) | M4 | M4-08 | done (merged) |
+| M4-10 | FIX: sidedef mid/bottom slot decode (mapdata) | M4 | M4-09 | done (merged) — M2-03 era bug root-caused |
