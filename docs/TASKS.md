@@ -98,3 +98,13 @@ Future tasks will be added as architects decompose milestones.
 |---|---|---|---|---|
 | M6-01 | Thinker arena + live world + hook slots | M6 | M5 | done (merged, 1001 tests) |
 | M6-02 | Fixture specials/tags/things | M6 | — | done (merged, 143 fixture tests) |
+| M6-05 | Vertical doors (37 ids) | M6 | M6-03/04 | done (merged) |
+| M6-06 | Plats/lifts (21 ids) | M6 | M6-03/04 | dispatched (agent 6c4e51ac) |
+| M6-07 | Floors/stairs/donut (43 ids) | M6 | M6-03/04 | planned |
+| M6-08 | Ceilings incl crushers (13 ids) | M6 | M6-03/04 | planned |
+| M6-09 | Lights + sector light specials | M6 | M6-03 | dispatched (agent b177cba8) |
+| M6-10 | Teleporters (4 ids) | M6 | M6-03 | planned |
+| M6-11 | Switches/locked doors/cards | M6 | M6-05/09 | planned |
+| M6-12 | Sector specials at feet + exits | M6 | M6-03/04 | planned |
+| M6-13 | Fixture corpus + E1M1 route e2e + L5 | M6 | all | planned |
+

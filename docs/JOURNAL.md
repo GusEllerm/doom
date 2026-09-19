@@ -168,3 +168,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - Milestones: M1-M5 ✅. Next: M6 (level mechanics) wave 1 per merged plan: thinker arena + fixture specials + p_tick.
 - M6-02 merged (door/switch/teleport/secret families; WALLFIX+M4FIX byte-stability pinned to pre-change shas). Truth: DOOM1 linedef special@6/tag@8 RAW — no Hexen packing (brief assumption corrected by implementer from R01). Wave 2 dispatched: registry (R05 137-number manifest) + T_MovePlane/crush contract.
 - M6-04 merged: plane-motion contract + crush truth (dmg=20 fixed/tic players; crush=1 kills monsters; door-reserved crush==2 semantics documented for M6-05).
+- M6 wave 3 partial out: doors MERGED (first special alive in-engine), plats+lights running. Queue: 07/08/10/12 as slots free, then 11, then 13 (corpus+E1M1 route).
