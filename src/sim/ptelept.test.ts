@@ -557,7 +557,12 @@ describe('special dispatch integration (39 / 97 / 125 / 126)', () => {
     });
     bindSpecialsWorld(s);
     const mo = s.players[0]!.mo;
-    for (let x = 96; x <= 320; x += 32) {
+    // 24-unit steps: landing exactly ON the trigger (x=256) keeps side ==
+    // oldside (no crossing), and a 32-unit jump to x=288 puts the r=16 bbox
+    // [272,304] past the line's blockmap box (never spechit'd). x=264 is the
+    // first landing with side != oldside AND a box that still touches x=256
+    // (same spacing pin as pspec.test.ts's 244 → 268 pair).
+    for (let x = 96; x <= 336; x += 24) {
       pTryMove(s.pmap, mo, fx(x), fx(128));
       if (teleportCounts.teleported > 0) break;
     }
