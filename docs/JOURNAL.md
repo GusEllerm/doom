@@ -150,3 +150,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - LESSON: compat shims that compensate for bugs must carry a root-cause task ID at creation; 'shim (FINDING for M4-07)' cost two extra passes to unmask.
 - Milestones: M1 ✅ M2 ✅ M3 ✅ M4 ✅. Next: M5 plan (player physics + input — p_user replaces fly stub, momentum/friction/step-up/fall/bob, pointer-lock mouse, D009 revisit).
 - M5 plan merged (10 tasks/7 waves; FRICTION 0xe800, STOPSPEED 0x1000, walk thrust 51200/run 102400 pinned). Wave 1: pmaputl ∥ mouse.
+- M5-07 merged (i_video.c scaling law + ev_mouse queue).
