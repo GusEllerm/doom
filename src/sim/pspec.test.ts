@@ -132,8 +132,15 @@ function lightThinkerKinds(state: GameState): number[] {
 // live families are covered by their family test file (plats: pplats.test,
 // M6-plan §M6-13.1 replaces this loop with real per-special scenarios).
 const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>(['plat', 'stopPlat']);
+// M6-07 registry subtable fill (floors family LIVE in pfloor.ts):
+// floors/stairs/donut actions no longer record stub hits — per-action
+// skip below + per-route skip via allLive (disjoint addition; the
+// plats-era LIVE_ACTIONS block above is untouched).
+const LIVE_ACTIONS_FLOORS: ReadonlySet<ActionId> = new Set<ActionId>([
+  'floor', 'stairs', 'donut'
+]);
 const allLive = (acts: readonly ActionSpec[]): boolean =>
-  acts.every((a) => LIVE_ACTIONS.has(a.action));
+  acts.every((a) => LIVE_ACTIONS.has(a.action) || LIVE_ACTIONS_FLOORS.has(a.action));
 
 function hits(fn: string, special: number): number {
   if (LIVE_EV.has(fn)) return plightsCalls[fn as keyof typeof plightsCalls];
@@ -152,6 +159,7 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
     for (const a of acts) {
       const fn = FN_OF[a.action];
       if (fn === null) continue; // 'exit' asserted via exitRequest
+      if (LIVE_ACTIONS_FLOORS.has(a.action)) continue; // M6-07 live family
       expect(hits(fn, special), `special ${special} → ${fn}`).toBe(1);
       void side;
       void mover;
@@ -337,9 +345,13 @@ describe('cross dispatch semantics', () => {
   it('cross 40 runs BOTH actions (ceiling then floor)', () => {
     bindSpecialsWorld(s);
     s.map.lines.special[line] = 40;
+    const thinkersBefore = s.thinkers.nextId;
     pCrossSpecialLine(s.pmap, line, 0, PLAYER);
     expect(hits('evDoCeiling', 40)).toBe(1);
-    expect(hits('evDoFloor', 40)).toBe(1);
+    // M6-07 fill: the floor action is LIVE (pfloor.ts) — the stub-hit
+    // probe becomes a live-effect probe: EV_DoFloor(lowerFloorToLowest)
+    // ran and spawned its mover(s).
+    expect(s.thinkers.nextId, 'live evDoFloor spawned').toBeGreaterThan(thinkersBefore);
     expect(s.map.lines.special[line]).toBe(0);
   });
 });
@@ -789,8 +801,11 @@ describe('M6-02 fixture smoke — registry routes the family specials', () => {
     expect(hits('evDoDoor', 90)).toBe(2);
     expect(s.map.lines.special[l90]).toBe(90);
     const l19 = lineWithSpecial(s, 19);
+    const thinkersBefore19 = s.thinkers.nextId;
     pCrossSpecialLine(s.pmap, l19, 0, PLAYER);
-    expect(hits('evDoFloor', 19)).toBe(1);
+    // M6-07 fill: floors LIVE — live-effect probe (mover spawned) in
+    // place of the old stub-hit probe.
+    expect(s.thinkers.nextId, 'live evDoFloor 19 spawned').toBeGreaterThan(thinkersBefore19);
     expect(s.map.lines.special[l19]).toBe(0);
     const l124 = lineWithSpecial(s, 124);
     expect(s.map.lines.flags[l124]! & ML_SECRET).toBe(ML_SECRET);
