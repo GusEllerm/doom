@@ -140,10 +140,11 @@ char  midtexture[8];
 int16 sector;           // sector behind this side (verified max = 181 with 182 sectors ✓)
 ```
 
-Convention: one-sided lines put the wall texture in **toptexture of sidedef 0** with
-midtexture empty (empirical: of 521 one-sided E1M1 lines, none had non-empty midtexture —
-the “solid uses TOPTEXTURE” convention holds for freedoom; renderer treats upper texture of
-a solid line specially, see R03). Mid-textured (masked) lines: two-sided bit set AND
+Convention (M4-10 verified on freedoom1 E1M1 raw bytes): one-sided lines put the wall
+texture in **midtexture (byte 20)** — vanilla's `sideDef_t` slot order is
+top@4/bottom@12/mid@20. (The earlier "solid uses TOPTEXTURE, mid never non-empty"
+claim was an artifact of a swapped decoder, since fixed in mapdata.ts.) Mid-textured
+(masked) lines: two-sided bit set AND
 midtexture non-empty; a plain two-sided line has both top/bottom textures chosen from the
 two neighboring sectors. Texture name compare: uppercase, trim trailing space/NUL;
 treat "-" as empty. **Confidence: High.**

@@ -654,17 +654,10 @@ function compileM4Spec(spec: M4MapSpec): {
           }
           front.mid = mids[0]!;
           back.mid = mids[0]!;
-          // COMPAT SHIM (FINDING for M4-07): src/wad/mapdata.ts decodes
-          // "midtexture" from byte 12 — vanilla's bottomtexture slot
-          // (doomdata.h mapsidedef_t: top@4, bottom@12, mid@20; R01 §6
-          // agrees). Until that swap is fixed the renderer's sideMasked
-          // only fires off byte 12. Dual-writing the masked name into the
-          // BOTTOM slot keeps today's renderer masked AND leaves vanilla
-          // bytes intact; the bottom texel never gets a span because M4
-          // masked edges join equal-height sectors. Door gaps deliberately
-          // keep mapBuilder's byte-identical single-write convention.
-          front.bottom = mids[0]!;
-          back.bottom = mids[0]!;
+          // M4-10: src/wad/mapdata.ts now decodes the vanilla slots
+          // (bottom@12, mid@20 — doomdata.h/R01 §6), so the single mid
+          // write above is all the renderer needs; the old COMPAT shim
+          // dual-writing the name into the bottom slot is gone.
         }
         if (door) {
           front.mid = TEX_DOOR;

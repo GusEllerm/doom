@@ -215,8 +215,9 @@ describe('loadRenderWorld FIXMAP round-trip', () => {
       }
     }
     // the fixture's blank-texture sidedefs still exercise the −1 sentinel,
-    // and the door gap paints DOORFIX0 as bottom texture (mapBuilder rule)
-    expect(Array.from(world.sideBotTex).filter((t) => t !== NO_TEXTURE).length).toBeGreaterThan(0);
+    // and the door gap carries DOORFIX0 as MIDtexture (vanilla slot mid@20;
+    // M4-10 decode fix — pre-fix it surfaced as bottomtexture via the swap)
+    expect(Array.from(world.sideMidTex).filter((t) => t !== NO_TEXTURE).length).toBeGreaterThan(0);
   });
 
   it('is deterministic: a second load produces byte-identical tables', () => {

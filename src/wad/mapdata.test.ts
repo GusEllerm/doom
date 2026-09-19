@@ -87,8 +87,8 @@ const side = (offsetX: number, offsetY: number, top: string, mid: string, bottom
   s16(0, offsetX)(v, o);
   s16(2, offsetY)(v, o);
   str8(4, top)(v, o);
-  str8(12, mid)(v, o);
-  str8(20, bottom)(v, o);
+  str8(12, bottom)(v, o); // vanilla mapsidedef_t: bottom@12, mid@20 (R01 §6)
+  str8(20, mid)(v, o);
   s16(28, sector)(v, o);
 };
 
@@ -312,15 +312,15 @@ describe('record round trips', () => {
     v.setInt16(0, -258, true); // textureoffset
     v.setInt16(2, 77, true); // rowoffset
     bytes.set([...'TOPTEX01'].map((c) => c.charCodeAt(0)), 4); // full 8, no NUL
-    bytes.set([...'MID2'].map((c) => c.charCodeAt(0)), 12); // trailing NULs
-    // bottomtexture bytes 20..27 stay 0x00 → empty name
+    bytes.set([...'BOT1'].map((c) => c.charCodeAt(0)), 12); // trailing NULs
+    bytes.set([...'MID2'].map((c) => c.charCodeAt(0)), 20); // vanilla bottom@12, mid@20
     v.setInt16(28, 0, true);
     const md = miniMap({ sidedefs: bytes, lindefs: linesToSide0 });
     expect(md.sideDefs[0]).toEqual({
       sector: 0,
       toptexture: 'TOPTEX01',
+      bottomtexture: 'BOT1',
       midtexture: 'MID2',
-      bottomtexture: '',
       offset: [-258, 77],
       light: 0,
     });
