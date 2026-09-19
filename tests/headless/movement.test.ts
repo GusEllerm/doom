@@ -354,7 +354,10 @@ describe('1000-tic determinism with noclip movement', () => {
     // (one-time, reason: 'M6 world-state fields' — §3.4 sector/globals/arena bytes)
     // then M6-03 (one-time, reason: 'P_SpawnSpecials at load' — sector-
     // special spawn clears + totalsecret at gInitGame): 2368943012 → 1563175793.
-    expect(h1).toBe(1563175793);
+    // then M6-09 (one-time, reason: 'sector-light specials live' — E1M1
+    // light thinkers spawn at load, draw P_Random and tick live lights):
+    // 1563175793 → 1350827061.
+    expect(h1).toBe(1350827061);
   });
 });
 
