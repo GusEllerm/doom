@@ -456,9 +456,11 @@ describe('EV_DoDoor normal (plan acceptance 1: 168-unit timing golden)', () => {
     const sec = secByTag(s, 30);
     const line = lineByTag(s, 30);
     expect(evDoDoor(s, line, VL.normal)).toBe(true);
+    const first = doorOf(s, sec);
     const n = thinkerCount(s.thinkers);
     expect(evDoDoor(s, line, VL.blazeRaise), 'specialdata → continue, rtn 0')
       .toBe(false);
+    expect(doorOf(s, sec), 'specialdata still the FIRST door').toBe(first);
     expect(thinkerCount(s.thinkers)).toBe(n);
     expect(unimplementedSpecial.count, 'live body records NO stub').toBe(0);
   });

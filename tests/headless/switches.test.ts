@@ -70,7 +70,9 @@ describe('debug giveCard (D013(f) card channel until M7 pickups)', () => {
     resetUnimplementedSpecial();
     expect(pUseSpecialLine(s, s.players[0]!.mo, line, 0)).toBe(true);
     expect(s.hooks.message.count).toBe(0);
-    expect(unimplementedSpecial.byFn.get('evDoDoor') ?? 0).toBe(1);
+    // M6-05b FLIP: the EV_DoDoor body is LIVE — no stub record (line 0
+    // carries no door tag here, so it stays a faithful rtn=0 pass).
+    expect(unimplementedSpecial.byFn.get('evDoDoor')).toBeUndefined();
     // Sanity: the blue/yellow slots are independent (giveCard is per-slot).
     expect(debugSim.giveCard(IT_BLUECARD)[IT_YELLOWCARD]).toBe(0);
     expect(s.players[0]!.cards[IT_BLUECARD]).toBe(1);

@@ -369,16 +369,28 @@ describe('locked specials (p_doors.c checks, p_switch.c dispatch)', () => {
         resetHookSlots(s.hooks);
         resetPswitchCounts();
         resetUnimplementedSpecial();
+        clearButtons();
+        const beforeUse = s.thinkers.nextId;
         expect(pUseSpecialLine(s, s.players[0]!.mo, l, 0)).toBe(true);
         expect(s.hooks.message.count, `${c.special} card ${slot}`).toBe(0);
-        expect(unimplementedSpecial.byFn.get('evDoDoor') ?? 0, `body ${c.special}`).toBe(1);
-        // EV_DoDoor is STILL the M6-03 stub on main (M6-05 never landed —
-        // ledger follow-up), so it returns false and the vanilla
-        // "failed action leaves the switch armed" flow keeps the texture
-        // BACK and the button DISARMED until the door body arrives.
-        expect(mid(s, l)).toBe(TEX_SWITCH_OFF);
-        expect(buttonList[0]!.btimer).toBe(0);
-        expect(s.map.lines.special[l]).toBe(c.special);
+        // M6-05b FLIP: EV_DoDoor is LIVE and the stand-in switch line's
+        // TAG matches a sector → action TRUE, so the vanilla gated flow
+        // runs: swap SW1→SW2, button pushed, disarm iff useAgain=0
+        // (S1 133/135/137; SR 99/134/136 stay armed). Stub log empty.
+        expect(
+          unimplementedSpecial.byFn.get('evDoDoor'), `body ${c.special} LIVE`
+        ).toBeUndefined();
+        expect(s.thinkers.nextId, 'blazeOpen mover spawned').toBeGreaterThan(beforeUse);
+        expect(mid(s, l), 'body TRUE ⇒ swap').toBe(TEX_SWITCH_ON);
+        const again = c.special === 99 || c.special === 134 || c.special === 136;
+        // pChangeSwitchTexture starts a button ONLY for useAgain=1 (SR).
+        if (again) {
+          expect(buttonList[0]!.btimer, 'SR: button pushed').toBeGreaterThan(0);
+        } else {
+          expect(buttonList[0]!.btimer, 'S1: no button').toBe(0);
+        }
+        expect(s.map.lines.special[l], again ? 'SR keeps armed' : 'S1 disarms')
+          .toBe(again ? c.special : 0);
       }
     }
   });
@@ -405,13 +417,21 @@ describe('locked specials (p_doors.c checks, p_switch.c dispatch)', () => {
       expect(s.hooks.message.byId?.get(c.msg), `msg ${c.special}`).toBe(1);
       expect(unimplementedSpecial.byFn.get('evVerticalDoor') ?? 0, `body ${c.special}`).toBe(0);
       expect(s.map.lines.special[l]).toBe(c.special); // never disarms (manuals)
-      // With the card: straight into the (still-stubbed M6-05) body:
+      // With the card: straight into the (LIVE since M6-05b) body:
       s.players[0]!.cards[c.card] = 1;
       resetUnimplementedSpecial();
       resetHookSlots(s.hooks);
+      const beforeUse = s.thinkers.nextId;
       expect(pUseSpecialLine(s, s.players[0]!.mo, l, 0)).toBe(true);
       expect(s.hooks.message.count).toBe(0);
-      expect(unimplementedSpecial.byFn.get('evVerticalDoor') ?? 0).toBe(1);
+      expect(s.thinkers.nextId, 'body LIVE: mover on the back sector')
+        .toBeGreaterThan(beforeUse);
+      expect(
+        unimplementedSpecial.byFn.get('evVerticalDoor'), 'no stub'
+      ).toBeUndefined();
+      // Open ids 32/33/34 disarm INSIDE the body (p_doors.c clearInside).
+      expect(s.map.lines.special[l], 'open types disarm inside')
+        .toBe(c.special === 32 || c.special === 33 || c.special === 34 ? 0 : c.special);
     }
   });
 
@@ -438,11 +458,17 @@ describe('locked specials (p_doors.c checks, p_switch.c dispatch)', () => {
       s.map.lines.special[l] = sp;
       resetUnimplementedSpecial();
       resetHookSlots(s.hooks);
+      const beforeBody = s.thinkers.nextId;
       expect(pUseSpecialLine(s, m, l, 0), `monster ${sp}`).toBe(true);
       expect(s.hooks.message.count, `monster ${sp} msg`).toBe(0);
+      // M6-05b FLIP: special 1 reaches the LIVE body (monsters spawn
+      // doors — the JDC gate is REUSE-only, p_doors.c); 32/33/34 stay
+      // in the lock branch's silent `if (!player) return` (no body).
+      expect(s.thinkers.nextId, `monster ${sp} body`)
+        .toBe(sp === 1 ? beforeBody + 1 : beforeBody);
       expect(
-        unimplementedSpecial.byFn.get('evVerticalDoor') ?? 0, `monster ${sp} body`
-      ).toBe(sp === 1 ? 1 : 0);
+        unimplementedSpecial.byFn.get('evVerticalDoor'), 'no stub'
+      ).toBeUndefined();
     }
     // Not on the list (21 S1 plat, 26 locked manual): gate vetoes ⇒
     // false, nothing runs.
@@ -550,7 +576,7 @@ describe('P_UseLines ray (p_map.c:1090-1160)', () => {
     pUseLines(s.players[0]!);
     expect(pswitchCounts.useSpecial).toBe(1); // dispatched once, then ABORT
     expect(pspecCounts.useSpecialLine).toBe(1);
-    expect(unimplementedSpecial.byLine[42]).toBe(1); // SR door-close stub
+    expect(unimplementedSpecial.byLine[42], 'SR door-close LIVE — no stub').toBe(0);
     expect(unimplementedSpecial.byLine[61]).toBe(0); // never reached
     expect(s.map.lines.special[lFar], 'far line untouched').toBe(61);
     expect(mid(s, lFar)).toBe(TEX_SWITCH_OFF);
