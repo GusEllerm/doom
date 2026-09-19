@@ -192,3 +192,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M6-05b stopped early (55 tool uses, nothing committed past stubs) -> t2 with incremental-commit mandate.
 - Concurrency opened: M7 wave 1 (01 states, 07 psprite) dispatched alongside doors — plans had decoupled them; 3 agents = harness cap.
 - M7-07 agent silent death (no notification, stubs-only). Lesson: branch-commit-timestamp polling catches what notifications miss; added to merge-turn routine.
+- Silent-death sweep (user report; all 3 agents gone, zero notifications): doors t3 + M7-01 t2 salvage from committed tips; M7-07 fresh t2. Method: branch-commit polling each turn, not just notifications.
