@@ -81,7 +81,7 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M5-01 | p_maputl primitives | M5 | — | dispatched (agent 4d644781) |
+| M5-01 | p_maputl primitives | M5 | — | done (merged) |
 | M5-02 | P_CheckPosition + thinglinks | M5 | M5-01 | planned |
 | M5-03 | P_TryMove + TeleportMove shell | M5 | M5-02 | planned |
 | M5-04 | P_SlideMove + HitSlideLine | M5 | M5-03 | planned |
