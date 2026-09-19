@@ -105,8 +105,10 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     const h2 = runHeadless(b, 1000, input);
     expect(h1).toBe(h2);
     // Golden recorded 2026-07 from this implementation on freedoom1.wad
-    // (pinned release, scripts/freedoom) — angle-only movement (no thrust
-    // pre-M2-07), 5 slow-ramp tics per turn sequence fully resolved.
-    expect(h1).toBe(3223249845);
+    // (pinned release, scripts/freedoom).
+    // RE-BLESSED M5-06 (one-time, reason: 'M5-06: p_user physics replaces
+    // D009 fly stub') — real thrust/friction/onground/z instead of the
+    // angle-only stub movement.
+    expect(h1).toBe(1134251855);
   });
 });

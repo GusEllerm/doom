@@ -10,8 +10,13 @@
 
 import { TICRATE } from '../core/constants';
 
+import { buildBlockMap } from './blockmap';
+import { sectorAtPoint } from './bsp';
 import type { RuntimeMap } from './map';
-import { createPlayer, pPlayerThink, pSpawnPlayer } from './player';
+import { buildThingLinks, allocThingSlot, thingSetPosition } from './thinglinks';
+import { pXYMovement, pZMovement } from './pmove';
+import { pPlayerThink } from './puser';
+import { createPlayer, ONFLOORZ, pSpawnPlayer } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { hashState, type GameState, type Skill } from './state';
@@ -36,7 +41,10 @@ export class GameSetupError extends Error {
  *    flag false, §"netgame=false");
  *  - `M_ClearRandom()` (g_game.c G_InitNew calls it at g_game.c:1414);
  *  - spawn via {@link pSpawnPlayer} at `playerstarts[0]` (p_mobj.c
- *    P_SpawnMapThing → doomednum 1 → P_SpawnPlayer).
+ *    P_SpawnMapThing → doomednum 1 → P_SpawnPlayer), completed by the
+ *    P_SpawnMobj tail (M5-06): floorz/ceilingz from the spawn subsector +
+ *    the ONFLOORZ resolution of p_mobj.c:519-522, and the P_SetThingPosition
+ *    thinglinks slot the shared mover path relinks every P_TryMove.
  */
 export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   const start = map.playerStarts[0];
@@ -46,8 +54,26 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   const player = createPlayer();
   pSpawnPlayer(player, start);
 
+  const bm = buildBlockMap(map);
+  const links = buildThingLinks(map, bm, { skill });
+  const pmap = { map, bm, links };
+
+  // p_mobj.c:519-526 (P_SpawnMobj tail): subsector floors/ceilings become
+  // the mobj's, THEN the ONFLOORZ token resolves to the actual floor.
+  const sector = sectorAtPoint(map, player.mo.x, player.mo.y);
+  player.mo.floorz = map.sectors.floorHeight[sector]!;
+  player.mo.ceilingz = map.sectors.ceilingHeight[sector]!;
+  if (player.mo.z === ONFLOORZ) player.mo.z = player.mo.floorz;
+
+  // P_SetThingPosition for the player mobj (M5-06: dynamic thinglinks
+  // slot — PIT_CheckThing's self-skip is then slot identity, D012).
+  const slot = allocThingSlot(links, player.mo.radius, player.mo.height, player.mo.flags);
+  player.mo.linkSlot = slot;
+  thingSetPosition(links, slot, player.mo.x, player.mo.y);
+
   const state: GameState = {
     map,
+    pmap,
     players: [player],
     gametic: 0,
     leveltime: 0,
@@ -86,8 +112,16 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
 
   // 4: special buttons (pause/save) — none.
 
-  // 5: GS_LEVEL → P_Ticker.
-  for (const p of state.players) pPlayerThink(p);
+  // 5: GS_LEVEL → P_Ticker (p_tick.c order, M5-06): P_PlayerThink for ALL
+  // players, THEN P_RunThinkers — the player's mobj thinker IS the M5-05
+  // P_XYMovement + P_ZMovement pair (no thinker arena until M7; the
+  // after-all-players order is kept so multi-player thinker interleaving
+  // never needs a re-bless).
+  for (const p of state.players) pPlayerThink(state.pmap, p, state.leveltime);
+  for (const p of state.players) {
+    pXYMovement(state.pmap, p.mo);
+    pZMovement(p.mo);
+  }
   state.leveltime++; // p_tick.c P_Ticker tail
 
   state.gametic++; // d_main.c tic loop tail

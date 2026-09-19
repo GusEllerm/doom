@@ -18,12 +18,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { runHeadless } from './sim/game';
+import { pTeleportMove } from './sim/pmap';
 import {
   CF_GODMODE,
   CF_NOCLIP,
   MF_NOCLIP,
-  MF_NOGRAVITY,
-  ONFLOORZ
+  MF_NOGRAVITY
 } from './sim/player';
 import { hashState, type GameState } from './sim/state';
 import { emptyInput, type GameInput } from './sim/ticcmd';
@@ -188,11 +188,14 @@ export const debugSim: SimDebugApi = {
     return inputOverride ? { ...inputOverride } : null;
   },
   warp(x: number, y: number, z?: number, angleDeg?: number): void {
-    const p = requireState().players[0]!;
-    p.mo.x = x | 0;
-    p.mo.y = y | 0;
-    p.mo.z = z === undefined ? ONFLOORZ : z | 0;
+    const st = requireState();
+    const p = st.players[0]!;
     if (angleDeg !== undefined) p.mo.angle = degToBam(angleDeg);
+    // M5-06: real teleport semantics — P_TeleportMove relinks and refreshes
+    // floorz/ceilingz (the physics reads them the very next tic), then the
+    // ONFLOORZ-default resolves to the destination floor (p_mobj.c:522).
+    pTeleportMove(st.pmap, p.mo, x | 0, y | 0);
+    p.mo.z = z === undefined ? p.mo.floorz : z | 0;
     // teleport semantics (§7): reactiontime lockout deliberately NOT set —
     // debug warps must not silently swallow the tics a test steps next.
   }
