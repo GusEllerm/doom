@@ -201,7 +201,8 @@ function setView(s: AutomapState, scaleMtof: number, cx: number, cy: number): vo
 const GOLDEN_FIXMAP_DEFAULT_SCALE = 58514; // FixedDiv(40960, 45875)
 const GOLDEN_FIXMAP_MIN_SCALE_MTOF = 40960; // fit 512 px→320 wide
 const GOLDEN_FIXMAP_MAX_SCALE_MTOF = 344064; // FixedDiv(168<<16, 2*PLAYERRADIUS)
-const GOLDEN_HASH_SCRIPT_200 = 2535244518;
+const GOLDEN_HASH_SCRIPT_200 = 4068524677; // RE-BLESSED M5-06: p_user physics
+// replaces the D009 fly stub — the follow-window player positions change.
 
 /* ------------------------------------------------------------------ */
 /* Constants (am_map.c verbatim)                                       */

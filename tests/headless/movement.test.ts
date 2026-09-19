@@ -1,17 +1,17 @@
 /**
- * M2-07 movement tests — noclip fly integration, keyboard-channel-driven
- * turning, debug-API wiring, determinism with motion (ARCHITECTURE §7
- * layer 2, M2-plan §M2-07).
+ * M5-06 movement tests — the D009 fly stub is GONE: p_user.c physics
+ * (P_Thrust → momentum → P_XYMovement/P_ZMovement) drives every path, and
+ * noclip means vanilla noclip (identical physics, checks skipped; D012).
  *
  * Goldens are dual-pinned: (a) exact committed integers (regression trip),
- * and (b) an independent re-derivation from the ticcmd/FixedMul definitions
- * (FORWARDMOVE table × p_user.c's ×2048 scale × tables.ts trig), so a
- * silent change in either layer trips.
+ * (b) independent re-derivation from the ticcmd/table/friction definitions
+ * (FORWARDMOVE ×2048 × the 1993 fine-cosine/sine tables × FRICTION 0xe800),
+ * so a silent change in any layer trips.
  *
- * noclip OFF is a DOCUMENTED PLACEHOLDER: vanilla movement needs
- * P_Thrust+friction+P_CheckPosition (M4 collisions / M5 physics), so the
- * OFF path must show EXACTLY zero translation; only the ON path has
- * movement goldens.
+ * The OLD fly-path goldens are MOVED (not deleted) into the
+ * "legacy D009 fly path" block below as engine-free arithmetic — they pin
+ * what the stub used to compute for the D009→D012 transition review
+ * (M5-plan §6 risk note).
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -26,16 +26,12 @@ import { WadFile } from '../../src/wad/wadfile';
 import { buildMapFromData } from '../../src/sim/map';
 import { gInitGame, gTicker, runHeadless } from '../../src/sim/game';
 import { hashState } from '../../src/sim/state';
-import {
-  CF_NOCLIP,
-  MF_NOCLIP,
-  MOVE_THRUST_SCALE,
-  pPlayerThink
-} from '../../src/sim/player';
+import { puserGlobals } from '../../src/sim/puser';
+import { CF_NOCLIP, MF_NOCLIP, MOVE_THRUST_SCALE } from '../../src/sim/player';
 import { emptyInput, FORWARDMOVE, SIDEMOVE, type GameInput } from '../../src/sim/ticcmd';
 import { FixedMul } from '../../src/core/fixed';
 import { finecosine, finesine } from '../../src/core/tables';
-import { ANG45, ANG90, ANGLETOFINESHIFT } from '../../src/core/constants';
+import { ANG45, ANG90, ANGLETOFINESHIFT, FRACUNIT } from '../../src/core/constants';
 import { buildFixtureMapWad, type RectMapSpec } from '../fixtures/mapBuilder';
 import { debugApi, debugSim } from '../../src/debug';
 
@@ -43,8 +39,12 @@ import { debugApi, debugSim } from '../../src/debug';
 /* Fixture boot                                                        */
 /* ------------------------------------------------------------------ */
 
+// Explicit start thing: the default fixture dot item is an MF_SOLID barrel
+// that would spawn ON the player (the fly path ignored things; physics
+// does not). Spawn stays at (128,128) exactly as in the M2 goldens.
 const FIX_SPEC: RectMapSpec = {
-  rooms: [{ x: 0, y: 0, w: 256, h: 256, lightLevel: 200 }]
+  rooms: [{ x: 0, y: 0, w: 256, h: 256, lightLevel: 200 }],
+  things: [{ x: 128, y: 128, angle: 0, type: 1 }]
 };
 
 function buildState(): ReturnType<typeof gInitGame> {
@@ -61,11 +61,22 @@ const SPAWN_Y = 8388608;
 
 const input = (over: Partial<GameInput>): GameInput => ({ ...emptyInput(), ...over });
 
+afterEach(() => {
+  puserGlobals.onground = false; // p_user.c file-scope global hygiene
+});
+
 const FWD_WALK = FORWARDMOVE[0] * MOVE_THRUST_SCALE; // 25*2048 = 51200
 const FWD_RUN = FORWARDMOVE[1] * MOVE_THRUST_SCALE; // 50*2048 = 102400
 const SIDE_WALK = SIDEMOVE[0] * MOVE_THRUST_SCALE; // 24*2048 = 49152
 
-/** Per-tic fly step from the ticcmd tables — the §M2-07 definition. */
+/** BigInt FixedMul oracle (exact product, arithmetic >>16, low 32 bits). */
+function fxm(a: number, b: number): number {
+  return Number(BigInt.asIntN(32, (BigInt(a) * BigInt(b)) >> 16n));
+}
+
+/** Per-tic LEGACY fly step from the ticcmd tables — the §M2-07 definition,
+ * retained for the historical block below ONLY (the engine no longer does
+ * this; D009 closed by M5-06/D012). */
 function flyStep(move: number, angle: number, side: number): [number, number] {
   const fF = angle >>> ANGLETOFINESHIFT;
   const fS = ((angle - ANG90) >>> 0) >>> ANGLETOFINESHIFT;
@@ -75,117 +86,208 @@ function flyStep(move: number, angle: number, side: number): [number, number] {
   ];
 }
 
+/** Momentum-curve re-derivation (p_user.c thrust + p_mobj.c friction,
+ * single substep, no blocking — noclip on an open plane): per tic the
+ * stride is the post-thrust momentum, mom then decodes by FRICTION. */
+function stride(
+  prevMom: number,
+  thrust: number
+): { step: number; mom: number } {
+  const step = (prevMom + thrust) | 0;
+  return { step, mom: fxm(step, 0xe800) };
+}
+
 /* ------------------------------------------------------------------ */
-/* Golden fly vectors (noclip ON, constant angle)                      */
+/* Spawn                                                               */
 /* ------------------------------------------------------------------ */
 
-describe('noclip fly goldens (p_user.c-scaled direct integration)', () => {
-  it('spawns FIXMAP player 1 at (128,128) fixed, angle 0', () => {
+describe('spawn state', () => {
+  it('FIXMAP player 1 at (128,128) fixed, angle 0, z resolved to the floor', () => {
     const s = buildState();
     expect(s.players[0]!.mo.x).toBe(SPAWN_X);
     expect(s.players[0]!.mo.y).toBe(SPAWN_Y);
     expect(s.players[0]!.mo.angle).toBe(0);
-  });
-
-  it('35 tics of walk-forward at angle 0/45/90 match the pinned exact sums', () => {
-    const goldens: readonly { angle: number; x: number; y: number; stepX: number; stepY: number }[] = [
-      { angle: 0, x: 10180573, y: 8389273, stepX: 51199, stepY: 19 },
-      { angle: ANG45, x: 9655223, y: 9656203, stepX: 36189, stepY: 36217 },
-      { angle: ANG90, x: 8387908, y: 10180573, stepX: -20, stepY: 51199 }
-    ];
-    for (const g of goldens) {
-      const s = buildState();
-      s.players[0]!.cheats |= CF_NOCLIP;
-      s.players[0]!.mo.angle = g.angle;
-      const [dx, dy] = flyStep(FWD_WALK, g.angle, 0);
-      expect([dx, dy], `step at angle ${g.angle}`).toEqual([g.stepX, g.stepY]);
-      const h = runHeadless(s, 35, () => input({ forward: true }));
-      expect(s.players[0]!.mo.x, `x at angle ${g.angle}`).toBe(SPAWN_X + 35 * dx);
-      expect(s.players[0]!.mo.y, `y at angle ${g.angle}`).toBe(SPAWN_Y + 35 * dy);
-      expect([s.players[0]!.mo.x, s.players[0]!.mo.y], `golden angle ${g.angle}`).toEqual([g.x, g.y]);
-      expect(h).toBe(hashState(s));
-      // fly path never touches momentum
-      expect(s.players[0]!.mo.momX).toBe(0);
-      expect(s.players[0]!.mo.momY).toBe(0);
-    }
-  });
-
-  it('run key doubles the walk step (FORWARDMOVE[1] scale, angle 0)', () => {
-    const s = buildState();
-    s.players[0]!.cheats |= CF_NOCLIP;
-    runHeadless(s, 35, () => input({ forward: true, speed: true }));
-    expect([s.players[0]!.mo.x, s.players[0]!.mo.y]).toEqual([11972538, 8389973]);
-    expect(flyStep(FWD_RUN, 0, 0)).toEqual([102398, 39]);
-  });
-
-  it('strafe-right 35 tics at angle 0/45/90 uses the exact angle-ANG90 basis', () => {
-    const goldens: readonly { angle: number; x: number; y: number }[] = [
-      { angle: 0, x: 8389238, y: 6668288 },
-      { angle: ANG45, x: 9605488, y: 7172603 },
-      { angle: ANG90, x: 10108893, y: 8389238 }
-    ];
-    for (const g of goldens) {
-      const s = buildState();
-      s.players[0]!.cheats |= CF_NOCLIP;
-      s.players[0]!.mo.angle = g.angle;
-      const [dx, dy] = flyStep(0, g.angle, SIDE_WALK);
-      runHeadless(s, 35, () => input({ strafeRight: true }));
-      expect([s.players[0]!.mo.x, s.players[0]!.mo.y], `strafe angle ${g.angle}`).toEqual([
-        SPAWN_X + 35 * dx,
-        SPAWN_Y + 35 * dy
-      ]);
-      expect([s.players[0]!.mo.x, s.players[0]!.mo.y], `golden strafe ${g.angle}`).toEqual([g.x, g.y]);
-    }
-  });
-
-  it('forward+turn-right 35 tics integrates turn by turn (5 slow + 30 normal ramp)', () => {
-    const s = buildState();
-    s.players[0]!.cheats |= CF_NOCLIP;
-    runHeadless(s, 35, () => input({ forward: true, turnRight: true }));
-
-    // Independent re-derivation: G_BuildTiccmd's turnheld ramp (loop.test
-    // golden) applied BEFORE each tic's step (p_user.c order).
-    let angle = 0;
-    let ex = SPAWN_X;
-    let ey = SPAWN_Y;
-    for (let tic = 0; tic < 35; tic++) {
-      angle = (angle + ((-(tic < 5 ? 320 : 640)) << 16)) >>> 0;
-      const [dx, dy] = flyStep(FWD_WALK, angle, 0);
-      ex = (ex + dx) | 0;
-      ey = (ey + dy) | 0;
-    }
-    expect(s.players[0]!.mo.x).toBe(ex);
-    expect(s.players[0]!.mo.y).toBe(ey);
-    expect([s.players[0]!.mo.x, s.players[0]!.mo.y, s.players[0]!.mo.angle]).toEqual([
-      9240965, 7178907, 2931818496
-    ]);
+    // M5-06: P_SpawnMobj tail — ONFLOORZ resolved at level boot, not a tic
+    // of stub-frozen z (M2) any more.
+    expect(s.players[0]!.mo.z).toBe(0);
   });
 });
 
 /* ------------------------------------------------------------------ */
-/* noclip OFF placeholder + divergence                                 */
+/* LEGACY D009 fly path — historical arithmetic (engine removed)       */
 /* ------------------------------------------------------------------ */
 
-describe('noclip OFF placeholder (motion arrives with M4/M5 physics)', () => {
-  it('identical forward script: OFF never translates, hashes diverge', () => {
-    const off = buildState();
-    const hOff = runHeadless(off, 35, () => input({ forward: true }));
-    expect([off.players[0]!.mo.x, off.players[0]!.mo.y]).toEqual([SPAWN_X, SPAWN_Y]);
+describe('legacy D009 fly path (HISTORICAL — arithmetic only, engine gone)', () => {
+  // D009 (M2-07) integrated the ticcmd DIRECTLY per tic with no momentum:
+  //   x += FixedMul(forwardmove*2048, finecosine) + strafe twin
+  // The goldens below pin that formula (and what the stub produced) for
+  // the transition record; the ENGINE now runs the momentum curve (the
+  // "noclip = vanilla momentum" blocks below). See docs DECISIONS D009 →
+  // D012 and the M5-plan §6 re-bless note.
+  it('fly formula still evaluates to the M2-07 committed steps', () => {
+    expect(flyStep(FWD_WALK, 0, 0)).toEqual([51199, 19]);
+    expect(flyStep(FWD_RUN, 0, 0)).toEqual([102398, 39]);
+    // what the stub engine produced (M2 goldens, superseded — NOT asserted
+    // against the engine): walk-35-at-angle-0 landed at (10180573, 8389273)
+    // and noclip-OFF never translated at all.
+    expect([SPAWN_X + 35 * 51199, SPAWN_Y + 35 * 19]).toEqual([10180573, 8389273]);
+  });
+});
 
+/* ------------------------------------------------------------------ */
+/* noclip = vanilla: the momentum curve goldens (D009 closure)         */
+/* ------------------------------------------------------------------ */
+
+describe('noclip walk goldens (P_Thrust + friction — same curve as clipped)', () => {
+  it('35 tics of walk-forward at angle 0/45/90 match the curve + goldens', () => {
+    const goldens: readonly { angle: number; x: number; y: number }[] = [
+      { angle: 0, x: 22391954, y: 8393671 },
+      { angle: ANG45, x: 18286581, y: 18294217 },
+      { angle: ANG90, x: 8383007, y: 22391954 }
+    ];
+    for (const g of goldens) {
+      const s = buildState();
+      s.players[0]!.cheats |= CF_NOCLIP;
+      s.players[0]!.mo.angle = g.angle >>> 0;
+      runHeadless(s, 35, () => input({ forward: true }));
+      const p = s.players[0]!.mo;
+      expect([p.x, p.y], `golden angle ${g.angle >>> 0}`).toEqual([g.x, g.y]);
+
+      // Independent re-derivation (thrust via tables, friction 0xe800):
+      const c = finecosine[g.angle >>> ANGLETOFINESHIFT]!;
+      const sN = finesine[g.angle >>> ANGLETOFINESHIFT]!;
+      let mx = 0;
+      let my = 0;
+      let x = SPAWN_X;
+      let y = SPAWN_Y;
+      for (let t = 0; t < 35; t++) {
+        const sx = stride(mx, fxm(FWD_WALK, c));
+        const sy = stride(my, fxm(FWD_WALK, sN));
+        x = (x + sx.step) | 0;
+        y = (y + sy.step) | 0;
+        mx = sx.mom;
+        my = sy.mom;
+      }
+      expect([p.x, p.y], `re-derived angle ${g.angle >>> 0}`).toEqual([x, y]);
+      // momentum lives now (the fly stub never had any):
+      expect(p.momx).toBe(mx);
+      expect(p.momy).toBe(my);
+      expect(mx !== 0 || my !== 0).toBe(true);
+    }
+  });
+
+  it('run key doubles the thrust (FORWARDMOVE[1], angle 0) + MAXMOVE split', () => {
+    const s = buildState();
+    s.players[0]!.cheats |= CF_NOCLIP;
+    runHeadless(s, 35, () => input({ forward: true, speed: true }));
+    expect([s.players[0]!.mo.x, s.players[0]!.mo.y]).toEqual([36395394, 8399147]);
+    // run strides exceed MAXMOVE/2 late in the run → the p_mobj.c half-split
+    // moves them (position identical to the single-step curve on open ground)
+    let mx = 0;
+    let x = SPAWN_X;
+    for (let t = 0; t < 35; t++) {
+      const sx = stride(mx, fxm(FWD_RUN, finecosine[0]!));
+      // MAXMOVE/2 half-split (p_mobj.c, positive-only quirk): the odd unit
+      // of a positive stride > 15*FRACUNIT is lost to the two floor-halves.
+      x = (x + (sx.step > 15 * FRACUNIT ? sx.step - (sx.step & 1) : sx.step)) | 0;
+      mx = sx.mom;
+    }
+    expect(s.players[0]!.mo.x).toBe(x);
+  });
+
+  it('strafe-right 35 tics at angle 0/45/90 uses the exact angle-ANG90 basis', () => {
+    const goldens: readonly { angle: number; x: number; y: number }[] = [
+      { angle: 0, x: 8393399, y: -5055106 },
+      { angle: ANG45, x: 17897877, y: -1114085 },
+      { angle: ANG90, x: 21831814, y: 8393399 }
+    ];
+    for (const g of goldens) {
+      const s = buildState();
+      s.players[0]!.cheats |= CF_NOCLIP;
+      s.players[0]!.mo.angle = g.angle >>> 0;
+      runHeadless(s, 35, () => input({ strafeRight: true }));
+      expect([s.players[0]!.mo.x, s.players[0]!.mo.y], `strafe ${g.angle >>> 0}`).toEqual([
+        g.x,
+        g.y
+      ]);
+      const fS = ((g.angle - ANG90) >>> 0) >>> ANGLETOFINESHIFT;
+      let mx = 0;
+      let my = 0;
+      let x = SPAWN_X;
+      let y = SPAWN_Y;
+      for (let t = 0; t < 35; t++) {
+        const sx = stride(mx, fxm(SIDE_WALK, finecosine[fS]!));
+        const sy = stride(my, fxm(SIDE_WALK, finesine[fS]!));
+        x = (x + sx.step) | 0;
+        y = (y + sy.step) | 0;
+        mx = sx.mom;
+        my = sy.mom;
+      }
+      expect([s.players[0]!.mo.x, s.players[0]!.mo.y], `strafe re-derived ${g.angle >>> 0}`).toEqual([x, y]);
+    }
+  });
+
+  it('forward+turn-right 35 tics: turn FIRST, thrust at the NEW angle', () => {
+    const s = buildState();
+    s.players[0]!.cheats |= CF_NOCLIP;
+    runHeadless(s, 35, () => input({ forward: true, turnRight: true }));
+    expect([s.players[0]!.mo.x, s.players[0]!.mo.y, s.players[0]!.mo.angle]).toEqual([
+      17125346, 37509, 2931818496
+    ]);
+
+    // turnheld ramp (5×320 slow, then 640) + per-tic thrust/friction.
+    let angle = 0;
+    let mx = 0;
+    let my = 0;
+    let x = SPAWN_X;
+    let y = SPAWN_Y;
+    for (let t = 0; t < 35; t++) {
+      angle = (angle + ((-(t < 5 ? 320 : 640)) << 16)) >>> 0;
+      const sx = stride(mx, fxm(FWD_WALK, finecosine[angle >>> ANGLETOFINESHIFT]!));
+      const sy = stride(my, fxm(FWD_WALK, finesine[angle >>> ANGLETOFINESHIFT]!));
+      x = (x + sx.step) | 0;
+      y = (y + sy.step) | 0;
+      mx = sx.mom;
+      my = sy.mom;
+    }
+    expect([s.players[0]!.mo.x, s.players[0]!.mo.y]).toEqual([x, y]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* noclip OFF is now the SAME physics (walls aside)                    */
+/* ------------------------------------------------------------------ */
+
+describe('noclip OFF = real physics (D009 placeholder gone)', () => {
+  it('35-tic forward walk clipped by the FIXMAP east wall: pins + viewz', () => {
+    const s = buildState();
+    const h = runHeadless(s, 35, () => input({ forward: true }));
+    const p = s.players[0]!.mo;
+    expect(p.x).toBe(15726887); // flush against the void wall (≈240u − ε)
+    expect(p.y).toBe(8392243); // the +19/tic table drift rides along
+    expect(h).toBe(1563898125); // RE-BLESSED M5-06: physics replaces D009
+    // viewz from P_CalcHeight now, not the 0 placeholder: z(0) + 41 + wave
+    expect(s.players[0]!.viewz).toBeGreaterThanOrEqual(40 * FRACUNIT);
+    expect(s.players[0]!.viewz).toBeLessThanOrEqual(49 * FRACUNIT);
+  });
+
+  it('noclip ON vs OFF same thrust (same mom) until the wall differs them', () => {
+    const off = buildState();
     const on = buildState();
     on.players[0]!.cheats |= CF_NOCLIP;
-    const hOn = runHeadless(on, 35, () => input({ forward: true }));
-    expect(on.players[0]!.mo.x).not.toBe(SPAWN_X);
-
-    expect(hOff).toBe(982937193); // pinned angle-free/off-path identity
-    expect(hOn).toBe(3658367640); // pinned noclip-ON hash
-    expect(hOff).not.toBe(hOn);
-
-    // OFF + turning: angle integrates (M2-06 path untouched), position fixed
-    const t = buildState();
-    runHeadless(t, 20, () => input({ forward: true, turnRight: true }));
-    expect([t.players[0]!.mo.x, t.players[0]!.mo.y]).toEqual([SPAWN_X, SPAWN_Y]);
-    expect(t.players[0]!.mo.angle).not.toBe(0);
+    for (let t = 0; t < 10; t++) {
+      gTicker(off, input({ forward: true }));
+      gTicker(on, input({ forward: true }));
+      expect(on.players[0]!.mo.momx).toBe(off.players[0]!.mo.momx);
+      expect(on.players[0]!.mo.x).toBe(off.players[0]!.mo.x); // still no wall yet
+    }
+    for (let t = 0; t < 25; t++) {
+      gTicker(off, input({ forward: true }));
+      gTicker(on, input({ forward: true }));
+    }
+    expect(on.players[0]!.mo.x).toBeGreaterThan(off.players[0]!.mo.x); // through it
+    expect(on.players[0]!.mo.flags & MF_NOCLIP).toBe(MF_NOCLIP);
+    expect(off.players[0]!.mo.flags & MF_NOCLIP).toBe(0);
   });
 
   it('CF_NOCLIP toggles MF_NOCLIP on the mobj every tic (p_user.c sync)', () => {
@@ -193,8 +295,11 @@ describe('noclip OFF placeholder (motion arrives with M4/M5 physics)', () => {
     const p = s.players[0]!;
     expect(p.mo.flags & MF_NOCLIP).toBe(0);
     p.cheats |= CF_NOCLIP;
-    pPlayerThink(p);
+    gTicker(s);
     expect(p.mo.flags & MF_NOCLIP).toBe(MF_NOCLIP);
+    p.cheats = 0;
+    gTicker(s);
+    expect(p.mo.flags & MF_NOCLIP).toBe(0);
   });
 });
 
@@ -218,8 +323,8 @@ describe('1000-tic determinism with noclip movement', () => {
     const h1 = runHeadless(a, 1000, scripted);
     const h2 = runHeadless(b, 1000, scripted);
     expect(h1).toBe(h2);
-    expect(h1).toBe(2314677956); // golden recorded from this implementation
-    expect([a.players[0]!.mo.x, a.players[0]!.mo.y]).toEqual([5176195, 3983219]);
+    expect(h1).toBe(1269964399); // RE-BLESSED M5-06: physics replaces D009
+    expect([a.players[0]!.mo.x, a.players[0]!.mo.y]).toEqual([-25465553, -39676152]);
     expect(a.gametic).toBe(1000);
     expect(a.leveltime).toBe(1000);
   });
@@ -244,11 +349,9 @@ describe('1000-tic determinism with noclip movement', () => {
     const h2 = runHeadless(b, 1000, scripted);
     expect(h1).toBe(h2);
     expect(h1).toBe(hashState(b));
-    // moved off the (-416,256) spawn (forward/back/turn script, noclip flies
-    // through E1M1 walls — no collision yet by design)
     expect([a.players[0]!.mo.x, a.players[0]!.mo.y]).not.toEqual([-416 << 16, 256 << 16]);
-    // golden recorded from this implementation on freedoom1.wad
-    expect(h1).toBe(3659787626);
+    // golden RE-BLESSED M5-06 (reason: p_user physics replaces D009 fly stub)
+    expect(h1).toBe(4224798260);
   });
 });
 
@@ -297,12 +400,13 @@ describe('debug sim API (window.__doom.sim surface, node-attached)', () => {
     expect(debugSim.getInput()).toBeNull();
   });
 
-  it('warp sets fixed coords + angleDeg→BAM; state() mirrors them', () => {
+  it('warp teleports (fix coords + z resolved) + angleDeg→BAM; state() mirrors', () => {
     const s = debugSim.attach(buildState());
     debugSim.warp(-416 << 16, 256 << 16, undefined, 90);
     const p = s.players[0]!;
     expect([p.mo.x, p.mo.y]).toEqual([-27262976, 16777216]);
     expect(p.mo.angle).toBe(0x40000000);
+    expect(p.mo.z).toBe(p.mo.floorz); // M5-06: warp resolves the floor (VOID −128 here)
     const st = debugSim.getState();
     expect(st).toBe(s);
   });

@@ -26,7 +26,11 @@ const SPEC: RectMapSpec = {
   rooms: [
     { x: 0, y: 0, w: 256, h: 256, lightLevel: 200 },
     { x: 256, y: 0, w: 256, h: 256, lightLevel: 128 }
-  ]
+  ],
+  // M5-06: explicit spawn (the default fixture dot item is an MF_SOLID
+  // barrel and would spawn INSIDE the player — the D009 fly path ignored
+  // things, real physics does not).
+  things: [{ x: 128, y: 128, angle: 0, type: 1 }]
 };
 
 function fixMap(name = 'FIXMAP') {
@@ -50,10 +54,15 @@ const script =
   });
 
 /* Goldens recorded 2026-07 from this implementation on FIXMAP. Any change to
- * the ticcmd/player/state math must regenerate + explain these. */
-const GOLDEN_IDLE_1000 = 1045968512;
-const GOLDEN_SCRIPT_1000 = 1083377395;
-const GOLDEN_TURNLEFT_1000 = 39118657;
+ * the ticcmd/player/state math must regenerate + explain these.
+ * RE-BLESSED M5-06 (one-time): 'p_user physics replaces D009 fly stub' —
+ * every scripted 1000-tic hash moves with real thrust/friction/onground/z
+ * (spawn z resolves ONFLOORZ→floor; idle differs for that reason alone).
+ * The fixture SPEC also gained an explicit player start (the default dot
+ * item is an MF_SOLID barrel that used to spawn INSIDE the player). */
+const GOLDEN_IDLE_1000 = 4202744993;
+const GOLDEN_SCRIPT_1000 = 2889435375;
+const GOLDEN_TURNLEFT_1000 = 3987467428;
 
 describe('gInitGame', () => {
   it('spawns player 0 at the doomednum-1 start, clocks and rng zeroed', () => {
