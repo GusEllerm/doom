@@ -15,6 +15,7 @@ import { WadFile } from '../../src/wad/wadfile';
 import {
   DEFAULT_DOOR_SPECIAL,
   DOT_THING,
+  ML_SECRET,
   MapCheckError,
   MapSpecError,
   TEX_DOOR,
@@ -23,6 +24,7 @@ import {
   buildFixtureMapWad,
   mapSelfCheck,
   type DoorGapSpec,
+  type LineTriggerSpec,
   type RectMapSpec
 } from './mapBuilder';
 
@@ -177,6 +179,153 @@ describe('regression fixtures', () => {
     expect(door.s0.mid).toBe(TEX_DOOR);
     expect(door.s1!.mid).toBe(TEX_DOOR);
     expect(between.filter((l) => l.special === 0)).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M6-02 — optional trigger lines (specials/tags/switch/secret)
+// ---------------------------------------------------------------------------
+
+function trigMap(spec: RectMapSpec): RawLine[] {
+  return readMap(buildFixtureMapWad(spec)).lines;
+}
+
+describe('M6-02 trigger lines', () => {
+  const twoRooms: RectMapSpec = {
+    rooms: [
+      { x: 0, y: 0, w: 256, h: 256, tag: 7, special: 9 },
+      { x: 256, y: 0, w: 256, h: 256 }
+    ]
+  };
+
+  it('void-edge teleport trigger: raw special/tag, no texture, splits the wall', () => {
+    const t: LineTriggerSpec = { x1: 0, y1: 64, x2: 0, y2: 128, special: 97, tag: 31 };
+    const lines = trigMap({ ...twoRooms, triggers: [t] });
+    const line = lines.find((l) => l.special === 97)!;
+    expect(line).toBeDefined();
+    expect(line.tag).toBe(31);
+    expect(line.s0.mid).toBe('');
+    expect(line.s1!.mid).toBe('');
+    expect(line.flags & ML_SECRET).toBe(0);
+    // Edge split: the x=0 wall now has segments 0..64, 64..128, 128..256.
+    const west = lines.filter(
+      (l) => l.s0.sector === 1 && l.s1!.sector === VOID_SECTOR && l.x1 === 0
+    );
+    expect(west.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('switch trigger writes side-0 mid ONLY; secret flag lands on the line', () => {
+    const t: LineTriggerSpec = {
+      x1: 256,
+      y1: 96,
+      x2: 256,
+      y2: 160,
+      special: 21,
+      tag: 7,
+      texture: 'SW1MTX',
+      secret: true
+    };
+    const lines = trigMap({ ...twoRooms, triggers: [t] });
+    const line = lines.find((l) => l.special === 21)!;
+    expect(line.tag).toBe(7);
+    expect(line.flags & ML_SECRET).toBe(ML_SECRET);
+    // Front (side 0) belongs to the earlier-indexed room (sector 1).
+    const front = line.s0.sector === 1 ? line.s0 : line.s1!;
+    const back = line.s0.sector === 1 ? line.s1! : line.s0;
+    expect(front.mid).toBe('SW1MTX');
+    expect(back.mid).toBe('');
+  });
+
+  it('door secret flag; door + trigger never fire together', () => {
+    const lines = trigMap({
+      ...twoRooms,
+      doors: [{ x1: 256, y1: 96, x2: 256, y2: 160, secret: true }]
+    });
+    const door = lines.find((l) => l.special === DEFAULT_DOOR_SPECIAL)!;
+    expect(door.flags & ML_SECRET).toBe(ML_SECRET);
+    expect(door.s0.mid).toBe(TEX_DOOR);
+  });
+
+  it('sector special/tag decode unchanged: room 0 carries special 9 tag 7', () => {
+    expect(() => mapSelfCheck(buildFixtureMapWad(twoRooms))).not.toThrow();
+  });
+
+  it('typed errors: off-edge, door/trigger and trigger/trigger overlap, bad special', () => {
+    const rooms = twoRooms.rooms;
+    expect(() =>
+      buildFixtureMapWad({ rooms, triggers: [{ x1: 8, y1: 64, x2: 8, y2: 128 }] })
+    ).toThrowError(MapSpecError); // floats in the void, not on any edge
+    expect(() =>
+      buildFixtureMapWad({
+        rooms,
+        doors: [{ x1: 256, y1: 96, x2: 256, y2: 160 }],
+        triggers: [{ x1: 256, y1: 128, x2: 256, y2: 192, special: 1 }]
+      })
+    ).toThrowError(MapSpecError); // door/trigger overlap
+    expect(() =>
+      buildFixtureMapWad({
+        rooms,
+        triggers: [
+          { x1: 256, y1: 96, x2: 256, y2: 160, special: 97 },
+          { x1: 256, y1: 128, x2: 256, y2: 192, special: 39 }
+        ]
+      })
+    ).toThrowError(MapSpecError); // trigger/trigger overlap
+    expect(() =>
+      buildFixtureMapWad({ rooms, triggers: [{ x1: 0, y1: 64, x2: 0, y2: 128, special: 40000 }] })
+    ).toThrowError(MapSpecError); // special must fit int16
+    expect(() =>
+      buildFixtureMapWad({ rooms, triggers: [{ x1: 0, y1: 64, x2: 32, y2: 128 }] })
+    ).toThrowError(MapSpecError); // not axis-aligned
+  });
+
+  it('triggers: [] / omitted ⇒ byte-identical (optional-field stability)', () => {
+    const a = buildFixtureMapWad(twoRooms);
+    const b = buildFixtureMapWad({ ...twoRooms, triggers: [] });
+    const c = buildFixtureMapWad({
+      rooms: twoRooms.rooms.map((r) => ({ ...r })),
+      doors: []
+    });
+    expect(Array.from(b)).toEqual(Array.from(a));
+    expect(Array.from(c)).toEqual(Array.from(a));
+  });
+
+  it('seeded property: tagged rooms + triggers + things stay selfCheck-green', () => {
+    const rnd = mulberry32(0xbeef0602);
+    for (let seed = 0; seed < 50; seed++) {
+      const base = randomSpec(mulberry32(seed * 7919 + 13));
+      const rooms = base.rooms.map((r, i) => ({ ...r, tag: i + 1, special: (seed + i) % 18 }));
+      const triggers: LineTriggerSpec[] = rooms.slice(0, 2).map((r, i) => ({
+        x1: r.x,
+        y1: r.y + 32,
+        x2: r.x,
+        y2: r.y + 96,
+        special: ((seed * 37 + i * 11) % 140) + 1,
+        tag: ((seed + i) % rooms.length) + 1,
+        texture: seed % 2 === 0 ? 'SW1MTX' : undefined,
+        secret: seed % 3 === 0
+      }));
+      const spec: RectMapSpec = {
+        rooms,
+        triggers,
+        things: [
+          { x: rooms[0]!.x + 8, y: rooms[0]!.y + 8, angle: 0, type: 1 },
+          { x: rooms[0]!.x + 16, y: rooms[0]!.y + 16, angle: 90, type: 14 },
+          { x: rooms[0]!.x + 24, y: rooms[0]!.y + 24, angle: 0, type: 5 },
+          { x: rooms[0]!.x + 32, y: rooms[0]!.y + 32, angle: 0, type: 6 },
+          { x: rooms[0]!.x + 40, y: rooms[0]!.y + 40, angle: 0, type: 13 },
+          { x: rooms[0]!.x + 48, y: rooms[0]!.y + 48, angle: 0, type: 11 }
+        ]
+      };
+      const name = `T${seed}`;
+      const wad = buildFixtureMapWad(spec, name);
+      try {
+        mapSelfCheck(wad, name);
+      } catch (e) {
+        throw new Error(`seed ${seed} failed: ${String(e)}\nspec=${JSON.stringify(spec)}`);
+      }
+      void rnd();
+    }
   });
 });
 

@@ -28,6 +28,21 @@
  *    room-void edge is a spec error.
  *  - THINGS: default = player starts 1..4 + one dot item (doomednum 2035) at
  *    room 0's center; `spec.things` replaces the list wholesale.
+ *  - TRIGGER LINES (M6-02, docs/design/M6-plan.md §M6-02) are `spec.triggers`:
+ *    axis-aligned segments lying on a room boundary edge (room-room OR
+ *    room-VOID — unlike doors, which need two rooms) that split the edge like
+ *    a door gap; the middle linedef(s) carry the RAW int16 `special` + `tag`
+ *    exactly as the DOOM1 LINEDEFS record stores them (R01 §5: special SHORT
+ *    @ offset 6, tag SHORT @ 8 — offset 12 is sidenum[1]; there are NO args
+ *    and NO packing in the DOOM1 WAD format, see the m6Fixtures header).
+ *    Optional `texture` writes the name to the FRONT (room-side, sidenum[0])
+ *    mid-texture only — the switch-marker convention, because vanilla
+ *    P_ChangeSwitchTexture scans side 0's texture slots (R05 §12). Optional
+ *    `secret: true` sets ML_SECRET (0x020) on the line (R05 §1.2 monster-use
+ *    gate). Doors gained the same optional `secret` flag. EVERY new field is
+ *    OPTIONAL: a spec without them compiles BYTE-IDENTICAL to the pre-M6
+ *    generator (pinned by the sha goldens in m6Fixtures.test.ts — the M3/M4
+ *    render goldens cannot move).
  *
  * ## DUMMY-SECTOR choice for "one-sided-looking" void walls (documented)
  *
@@ -91,6 +106,8 @@ import { patch2x2, synthFlat, synthPnames, synthTexture1 } from './smallWads';
 
 /** ML_TWOSIDED (R01 §5): back sidedef exists. */
 export const ML_TWOSIDED = 0x004;
+/** ML_SECRET (R01 §5): automap-solid; monsters never use the line (R05 §1.2). */
+export const ML_SECRET = 0x020;
 /** MAPBLOCKSIZE: 128 map units per blockmap block (R01 §13). */
 export const BLOCK_SIZE = 128;
 /** Blockmap origin inset below the minimum vertex (task NOTE). */
@@ -170,6 +187,29 @@ export interface DoorGapSpec {
   /** Linedef special; default 1. */
   readonly special?: number;
   readonly tag?: number; // default 0
+  /** true ⇒ ML_SECRET flag on the line (M6-02; default false ⇒ byte-identical). */
+  readonly secret?: boolean;
+}
+
+/**
+ * M6-02 — a specials/tag LINE on any room boundary edge (room-room or
+ * room-void). Splits the edge like a door gap; emits RAW int16 special/tag
+ * into the LINEDEFS slots (R01 §5 — DOOM1 format, no args, no packing).
+ * `texture` (e.g. a switch marker name) lands on the FRONT side's mid slot
+ * only; on a room-room edge front = the earlier-indexed room, on a room-void
+ * edge front = the room side. `secret` sets ML_SECRET.
+ */
+export interface LineTriggerSpec {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  /** Raw linedef special (R05 §2 census; default 0 = plain tagged/secret line). */
+  readonly special?: number;
+  readonly tag?: number; // default 0
+  /** Side-0 mid-texture marker (switch/door name); default none. */
+  readonly texture?: string;
+  readonly secret?: boolean; // default false
 }
 
 export interface ThingSpec {
@@ -185,6 +225,9 @@ export interface ThingSpec {
 export interface RectMapSpec {
   readonly rooms: readonly RectRoomSpec[];
   readonly doors?: readonly DoorGapSpec[];
+  /** M6-02: specials/tag lines on room boundary edges (optional; absent ⇒
+   * byte-identical output to the pre-M6 generator). */
+  readonly triggers?: readonly LineTriggerSpec[];
   /** Replaces the default players 1-4 + dot list entirely when present. */
   readonly things?: readonly ThingSpec[];
 }
@@ -308,6 +351,31 @@ function validateSpec(spec: RectMapSpec): void {
       throw new MapSpecError(`door ${i} must be axis-aligned`);
     }
   });
+  (spec.triggers ?? []).forEach((t, i) => {
+    checkInt(t.x1, `trigger ${i}.x1`);
+    checkInt(t.y1, `trigger ${i}.y1`);
+    checkInt(t.x2, `trigger ${i}.x2`);
+    checkInt(t.y2, `trigger ${i}.y2`);
+    if (t.x1 === t.x2 && t.y1 === t.y2) {
+      throw new MapSpecError(`trigger ${i} is degenerate`);
+    }
+    if (t.x1 !== t.x2 && t.y1 !== t.y2) {
+      throw new MapSpecError(`trigger ${i} must be axis-aligned`);
+    }
+    if (
+      t.special !== undefined &&
+      !(Number.isInteger(t.special) && t.special >= 0 && t.special <= 32767)
+    ) {
+      throw new MapSpecError(`trigger ${i}.special must be int16, got ${t.special}`);
+    }
+    if (
+      t.tag !== undefined &&
+      !(Number.isInteger(t.tag) && t.tag >= -32768 && t.tag <= 32767)
+    ) {
+      throw new MapSpecError(`trigger ${i}.tag must be int16, got ${t.tag}`);
+    }
+    if (t.texture !== undefined) checkName(t.texture, `trigger ${i}.texture`);
+  });
 }
 
 /** Room boundary edges in CLOCKWISE order ⇒ front (right of travel) faces inward. */
@@ -335,7 +403,12 @@ function roomEdges(r: RectRoomSpec): RoomEdge[] {
   ];
 }
 
-function doorLine(d: DoorGapSpec): { axis: 'v' | 'h'; c: number; a0: number; a1: number } {
+function doorLine(d: Pick<DoorGapSpec, 'x1' | 'y1' | 'x2' | 'y2'>): {
+  axis: 'v' | 'h';
+  c: number;
+  a0: number;
+  a1: number;
+} {
   return d.x1 === d.x2
     ? { axis: 'v', c: d.x1, a0: Math.min(d.y1, d.y2), a1: Math.max(d.y1, d.y2) }
     : { axis: 'h', c: d.y1, a0: Math.min(d.x1, d.x2), a1: Math.max(d.x1, d.x2) };
@@ -389,6 +462,27 @@ function compileSpec(spec: RectMapSpec): CompiledSpec {
       );
     }
   }
+  // M6-02 triggers: same mechanism, but a room-VOID edge is legal too (a
+  // switch on a solid wall). Must sit inside ONE room edge span.
+  const trigs = (spec.triggers ?? []).map((t, i) => ({ ...doorLine(t), spec: t, index: i }));
+  const matchedTrigs = new Set<number>();
+  rooms.forEach((r) => {
+    for (const e of roomEdges(r)) {
+      for (const t of trigs) {
+        if (t.axis !== e.axis || t.c !== e.c) continue;
+        if (t.a0 < e.a0 || t.a1 > e.a1) continue;
+        matchedTrigs.add(t.index);
+      }
+    }
+  });
+  for (const t of trigs) {
+    if (!matchedTrigs.has(t.index)) {
+      throw new MapSpecError(
+        `trigger ${t.index} must lie inside one room boundary edge ` +
+          `(${t.axis} line at ${t.c}, span [${t.a0}, ${t.a1}])`
+      );
+    }
+  }
   // No two doors may overlap on the same wall line.
   for (let a = 0; a < doors.length; a++) {
     for (let b = a + 1; b < doors.length; b++) {
@@ -396,6 +490,23 @@ function compileSpec(spec: RectMapSpec): CompiledSpec {
       const db = doors[b]!;
       if (da.axis === db.axis && da.c === db.c && Math.min(da.a1, db.a1) > Math.max(da.a0, db.a0)) {
         throw new MapSpecError(`doors ${a} and ${b} overlap on the same wall line`);
+      }
+    }
+  }
+  // …and no door/trigger or trigger/trigger overlap either (M6-02).
+  for (const d of doors) {
+    for (const t of trigs) {
+      if (d.axis === t.axis && d.c === t.c && Math.min(d.a1, t.a1) > Math.max(d.a0, t.a0)) {
+        throw new MapSpecError(`door ${d.index} and trigger ${t.index} overlap on the same wall line`);
+      }
+    }
+  }
+  for (let a = 0; a < trigs.length; a++) {
+    for (let b = a + 1; b < trigs.length; b++) {
+      const ta = trigs[a]!;
+      const tb = trigs[b]!;
+      if (ta.axis === tb.axis && ta.c === tb.c && Math.min(ta.a1, tb.a1) > Math.max(ta.a0, tb.a0)) {
+        throw new MapSpecError(`triggers ${a} and ${b} overlap on the same wall line`);
       }
     }
   }
@@ -440,6 +551,13 @@ function compileSpec(spec: RectMapSpec): CompiledSpec {
         cuts.add(d.a0);
         cuts.add(d.a1);
       }
+      const edgeTrigs = trigs.filter(
+        (t) => t.axis === e.axis && t.c === e.c && t.a0 >= e.a0 && t.a1 <= e.a1
+      );
+      for (const t of edgeTrigs) {
+        cuts.add(t.a0);
+        cuts.add(t.a1);
+      }
       const pts = [...cuts].sort((a, b) => a - b);
       for (let p = 0; p + 1 < pts.length; p++) {
         const a0 = pts[p]!;
@@ -454,6 +572,7 @@ function compileSpec(spec: RectMapSpec): CompiledSpec {
         seen.add(key);
         const neighbor = overlaps.find((o) => o.s <= mid && mid < o.t)?.room ?? null;
         const door = edgeDoors.find((d) => d.a0 <= mid && mid < d.a1);
+        const trig = edgeTrigs.find((t) => t.a0 <= mid && mid < t.a1);
         if (door && neighbor === null) {
           throw new MapSpecError(`door ${door.index} on a room-void edge of room ${i}`);
         }
@@ -475,15 +594,22 @@ function compileSpec(spec: RectMapSpec): CompiledSpec {
         if (door) {
           front.mid = TEX_DOOR;
           back.mid = TEX_DOOR;
+        } else if (trig?.spec.texture) {
+          // Side-0-only marker (switch texture etc.): vanilla switch scans
+          // read side 0's slots only (R05 §12), so the back stays clear.
+          front.mid = trig.spec.texture;
         }
+        const secretLine = (door?.spec.secret ?? false) || (trig?.spec.secret ?? false);
         lines.push({
           x1: v1x,
           y1: v1y,
           x2: v2x,
           y2: v2y,
-          flags: ML_TWOSIDED,
-          special: door ? door.spec.special ?? DEFAULT_DOOR_SPECIAL : 0,
-          tag: door?.spec.tag ?? 0,
+          flags: ML_TWOSIDED | (secretLine ? ML_SECRET : 0),
+          special: door
+            ? door.spec.special ?? DEFAULT_DOOR_SPECIAL
+            : trig?.spec.special ?? 0,
+          tag: door ? door.spec.tag ?? 0 : trig?.spec.tag ?? 0,
           sides: [front, back]
         });
       }
