@@ -150,7 +150,7 @@ function grid3x3(floors: [number, number, number][], ceilings?: [number, number,
 const LOWEST_GRID: RectMapSpec = {
   rooms: (() => {
     const r = grid3x3([[24, -32, 24], [24, 0, 24], [24, 24, 24]]);
-    r[4]!.tag = 23;
+    r[4] = { ...r[4]!, tag: 23 };
     return r;
   })(),
   triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 23, tag: 23 }],
@@ -165,7 +165,7 @@ function raiseGrid(centerCeil: number, tag: number, special: number): RectMapSpe
     [[24, 24, 24], [24, 0, 24], [24, 24, 24]],
     [[96, 96, 96], [96, centerCeil, 96], [96, 96, 96]]
   );
-  rooms[4]!.tag = tag;
+  rooms[4] = { ...rooms[4]!, tag };
   return {
     rooms,
     triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special, tag }],
@@ -190,7 +190,7 @@ const TURBO_SPEC: RectMapSpec = {
 const NEAREST_GRID: RectMapSpec = {
   rooms: (() => {
     const r = grid3x3([[16, 16, 32], [24, 0, 24], [24, 24, 24]]);
-    r[4]!.tag = 18;
+    r[4] = { ...r[4]!, tag: 18 };
     return r;
   })(),
   triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 18, tag: 18 }],
@@ -206,10 +206,9 @@ const EXCAVATE_GRID: RectMapSpec = {
     // WEST candidate (r3): floor 0, special 5 damage, FIXFLAT1. The
     // SOUTH candidate (r1, row j=0): floor 0, special 0, default FIXFLAT0.
     // The two differ in BOTH channels so the CSR-order pickup is visible.
-    r[3]!.special = 5;
-    r[3]!.floorFlat = 'FIXFLAT1';
-    r[1]!.floorFlat = 'FIXFLAT0';
-    r[4]!.tag = 37;
+    r[3] = { ...r[3]!, special: 5, floorFlat: 'FIXFLAT1' };
+    r[1] = { ...r[1]!, floorFlat: 'FIXFLAT0' };
+    r[4] = { ...r[4]!, tag: 37 };
     return r;
   })(),
   triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 37, tag: 37 }],
@@ -263,10 +262,10 @@ function donutSpec(ringFlat: string, ringSpecial: number): RectMapSpec {
     const man = Math.abs(i - 2) + Math.abs(j - 2);
     const room: RectRoomSpec = {
       x: (i - 2) * 128, y: (j - 2) * 128, w: 128, h: 128,
-      floorHeight: man === 0 ? 24 : man === 1 ? 0 : 16
+      floorHeight: man === 0 ? 24 : man === 1 ? 0 : 16,
+      ...(man === 0 ? { tag: 9 } : {}),
+      ...(man === 1 ? { floorFlat: ringFlat, special: ringSpecial } : {})
     };
-    if (man === 0) room.tag = 9;
-    if (man === 1) { room.floorFlat = ringFlat; room.special = ringSpecial; }
     rooms.push(room);
   }
   return {
@@ -346,7 +345,7 @@ describe('EV_DoFloor destination table', () => {
     const s = stateFor({
       rooms: (() => {
         const r = grid3x3([[0, 0, 0], [0, 0, 0], [0, 0, 0]]);
-        r[4]!.tag = 71;
+        r[4] = { ...r[4]!, tag: 71 };
         return r;
       })(),
       triggers: [{ x1: 128, y1: 0, x2: 128, y2: 128, special: 71, tag: 71 }],
@@ -642,7 +641,6 @@ describe('EV_BuildStairs', () => {
 
   it('retrigger: specialdata refuses the START sector; a fresh mover after completion', () => {
     const s = stateFor(stairRow(7, 7));
-    const start = secByTag(s, 7);
     const line = lineBySpecial(s, 7);
     evBuildStairs(s, line, STAIR.build8);
     const before = s.thinkers.nextId;
@@ -710,7 +708,6 @@ describe('EV_DoDonut full cycle', () => {
 
   it('retrigger: s1 specialdata refuses; s2 has NO check (vanilla overwrite pin)', () => {
     const s = stateFor(donutSpec('FIXFLAT1', 0));
-    const s1 = secByTag(s, 9);
     const line = lineBySpecial(s, 9);
     evDoDonut(s, line);
     expect(evDoDonut(s, line)).toBe(false); // s1 busy → continue, rtn 0
