@@ -193,7 +193,7 @@ const SCENES: Scene[] = [
     stat: 'floor',
     ticCount: 215,
     captureTics: CAP_LIFT,
-    inputAt: (t, st) => ({ ...emptyInput(), forward: st.players[0]!.mo.x < 460 * FRACUNIT }),
+    inputAt: (_t, st) => ({ ...emptyInput(), forward: st.players[0]!.mo.x < 460 * FRACUNIT }),
     warp: { x: 48, y: 128, angleDeg: 0 },
     expect: (stat, frames) => {
       // floor goes DOWN under the rider, HOLDS (vanilla PLATWAIT=3), rises
@@ -217,7 +217,7 @@ const SCENES: Scene[] = [
     stat: 'ceiling',
     ticCount: 105,
     captureTics: CAP8,
-    inputAt: (t, st) => ({ ...emptyInput(), forward: st.players[0]!.mo.x < 300 * FRACUNIT }),
+    inputAt: (_t, st) => ({ ...emptyInput(), forward: st.players[0]!.mo.x < 300 * FRACUNIT }),
     warp: { x: 48, y: 128, angleDeg: 0 },
     expect: (stat) => {
       expect(Math.min(...stat)).toBeLessThanOrEqual(40 * FRACUNIT); // crushed deep
