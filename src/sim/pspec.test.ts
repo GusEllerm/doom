@@ -519,9 +519,10 @@ describe('P_SpawnSpecials (map setup wiring)', () => {
     expect(unimplementedSpecial.bySector[2]).toBe(0);
     expect(unimplementedSpecial.bySector[4]).toBe(0);
     expect(unimplementedSpecial.bySector[12]).toBe(0);
-    // Door spawner 10 is NOT in scope here (M6-05 owns pdoors spawners).
-    expect(unimplementedSpecial.bySector[10]).toBe(1);
-    expect(unimplementedSpecial.byFn.get('pSpawnDoorCloseIn30')).toBe(1);
+    // M6-05b: door spawner 10 is LIVE too (pdoors.ts body) — zero stub
+    // hits; the thinker payload is asserted in pdoors.test.ts.
+    expect(unimplementedSpecial.bySector[10]).toBe(0);
+    expect(unimplementedSpecial.byFn.get('pSpawnDoorCloseIn30')).toBeUndefined();
     // Thinker census in arena order (= ascending sector spawn order):
     // sectors 2(strobe 2), 3(strobe 4), 4(flash 1), 5(strobe 12 sync).
     expect(lightThinkerKinds(s)).toEqual([3, 3, 2, 3]);
