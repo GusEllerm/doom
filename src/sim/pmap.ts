@@ -365,3 +365,26 @@ export function pCheckPosition(world_: PMapWorld, thing: Mover, x: number, y: nu
 
   return true;
 }
+
+/* ------------------------------------------------------------------ */
+/* P_TryMove / P_TeleportMove — p_map.c:94-537 (M5-03 stub)             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * STUB (M5-03 in progress): `P_TryMove(thing, x, y)`.
+ */
+export function pTryMove(_world: PMapWorld, _thing: Mover, _x: number, _y: number): boolean {
+  throw new Error('M5-03: pTryMove not implemented yet');
+}
+
+/**
+ * STUB (M5-03 in progress): `P_TeleportMove(thing, x, y)`.
+ */
+export function pTeleportMove(
+  _world: PMapWorld,
+  _thing: Mover,
+  _x: number,
+  _y: number,
+): boolean {
+  throw new Error('M5-03: pTeleportMove not implemented yet');
+}
