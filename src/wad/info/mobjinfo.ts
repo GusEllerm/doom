@@ -355,12 +355,13 @@ export const mobjinfo: readonly MobjInfo[] = [
 
 /** doomednum → first MT_ with that doomednum (vanilla spawn-scan semantics;
  *  doomednum -1 excluded). Unknown doomednums: callers warn+skip (R12). */
-export const DOOMEDNUM_TO_MT: ReadonlyMap<number, number> = new Map(
-  mobjinfo.flatMap((m, i) => (m.doomednum !== -1 ? [[m.doomednum, i] as const] : [])).reduce((acc, e) => {
-    if (!acc.some((p) => p[0] === e[0])) acc.push(e)
-    return acc
-  }, [] as [number, number][]),
-)
+const doomednumPairs: [number, number][] = []
+mobjinfo.forEach((m, i) => {
+  if (m.doomednum !== -1 && !doomednumPairs.some((p) => p[0] === m.doomednum)) {
+    doomednumPairs.push([m.doomednum, i])
+  }
+})
+export const DOOMEDNUM_TO_MT: ReadonlyMap<number, number> = new Map(doomednumPairs)
 
 /** Number of spawnable (doomednum != -1) entries. */
 export const NUM_SPAWNABLE_MOBJS = mobjinfo.filter((m) => m.doomednum !== -1).length

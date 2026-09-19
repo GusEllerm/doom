@@ -6,7 +6,8 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-/** doomdef.h:182-195 weaponindex_t. */
+/** doomdef.h:180-195 weapontype_t. Values are the C values: `NUMWEAPONS` sits
+ *  BEFORE `wp_nochange`, so wp_nochange is 10 (doomdef.h:189-193). */
 export const WP = {
   wp_fist: 0,
   wp_pistol: 1,
@@ -17,19 +18,24 @@ export const WP = {
   wp_bfg: 6,
   wp_chainsaw: 7,
   wp_supershotgun: 8,
-  wp_nochange: 9,
+  wp_nochange: 10,
 } as const
+/** doomdef.h:191 NUMWEAPONS (weapon slots, NOT including wp_nochange). */
 export const NUMWEAPONS = 9
 
-/** doomdef.h:201-208 ammo_t (explicit: maxammo/clipammo index into this). */
+/** doomdef.h:201-209 ammotype_t. Values are the C values: `NUMAMMO` sits
+ *  BEFORE `am_noammo`, so am_noammo is 5 (d_items.c's fist/chainsaw rows
+ *  carry am_noammo, never used as a maxammo[]/clipammo[] index — those
+ *  arrays are NUMAMMO=4 long, guarded by the ammo!=am_noammo tests). */
 export const AMMO = {
   am_clip: 0,
   am_shell: 1,
   am_cell: 2,
   am_misl: 3,
-  am_noammo: 4,
+  am_noammo: 5,
 } as const
-export const NUMAMMO = 5
+/** doomdef.h:206 NUMAMMO (ammunition kinds, NOT including am_noammo). */
+export const NUMAMMO = 4
 
 /** weaponinfo_t — ammo type + the five psprite state chains. */
 export interface WeaponInfo {
@@ -42,13 +48,13 @@ export interface WeaponInfo {
 }
 
 export const weaponinfo: readonly WeaponInfo[] = [
-  { ammo: 4, upState: 4, downState: 3, readyState: 2, atkState: 5, flashState: 0 },
+  { ammo: AMMO.am_noammo, upState: 4, downState: 3, readyState: 2, atkState: 5, flashState: 0 },
   { ammo: 0, upState: 12, downState: 11, readyState: 10, atkState: 13, flashState: 17 },
   { ammo: 1, upState: 20, downState: 19, readyState: 18, atkState: 21, flashState: 30 },
   { ammo: 0, upState: 51, downState: 50, readyState: 49, atkState: 52, flashState: 55 },
   { ammo: 3, upState: 59, downState: 58, readyState: 57, atkState: 60, flashState: 63 },
   { ammo: 2, upState: 76, downState: 75, readyState: 74, atkState: 77, flashState: 79 },
   { ammo: 2, upState: 83, downState: 82, readyState: 81, atkState: 84, flashState: 88 },
-  { ammo: 4, upState: 70, downState: 69, readyState: 67, atkState: 71, flashState: 0 },
+  { ammo: AMMO.am_noammo, upState: 70, downState: 69, readyState: 67, atkState: 71, flashState: 0 },
   { ammo: 1, upState: 34, downState: 33, readyState: 32, atkState: 35, flashState: 47 },
 ]

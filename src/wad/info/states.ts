@@ -1809,7 +1809,7 @@ export function stateAdvance(start: number, tic: number): StateRow {
     if (tics === -1) break
     tics--
     if (tics === 0) {
-      const next = setStateChain(stateNext[state])
+      const next = setStateChain(stateNext[state] as number)
       if (!next.alive) return stateAt(S.S_NULL)
       state = next.state
       tics = next.tics
