@@ -181,3 +181,4 @@ RESUME QUEUE (plan waves): M6-07/08/10/12 parallel → M6-11 → M6-13 (corpus, 
 ## 2026-09-17 — ⏸ PAUSE #3 (user) — M6 at 6/13, all gates green
 Merged through M6-06 (plats — incl. conflict resolution: plats+lights both edited pspec.test.ts helpers; both live-family blocks kept, green). 1139 unit tests, 14 e2e, goldens clean; 54/156 specials live. Tree clean, no agents running.
 RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-13 (corpus + E1M1 key-route + renderer live-sector/light wiring GAP). Then M7 (plan merged) → M8 plan → M9-M12.
+- 2026-09-18: resumed; dispatching M6-07/08/10 (12 next slot).
