@@ -30,6 +30,8 @@ import { pRunThinkers, sectorSpecialData, thinkerCount } from './ptick';
 import { makePlaneContext } from './pplane';
 import { resetUnimplementedSpecial, unimplementedSpecial, VL } from './specials-table';
 import {
+  evDoDoor,
+  evVerticalDoor,
   pSpawnDoorCloseIn30,
   pSpawnDoorRaiseIn5Mins,
   VDOORSPEED,
@@ -39,6 +41,7 @@ import {
   DOORRAISE5MIN,
   SFX_DOROPN,
   SFX_DORCLS,
+  SFX_BDOPN,
   SFX_BDCLS,
   type Door
 } from './pdoors';
@@ -297,11 +300,323 @@ describe('T_VerticalDoor state-machine arms (direct)', () => {
   });
 });
 
-/* pmap/thing-crush arms are covered with the EV_* bodies (step 2). */
+/* pmap/thing-crush arms are covered below with the EV_* bodies (step 2). */
+
+import { pTeleportMove } from './pmap';
+import { PLAYER_FLAGS } from './player';
+import { MF_SOLID } from './thinglinks';
+import type { Mover } from './pmap';
 
 /* makePlaneContext sanity: a state satisfies PlaneHost (contract probe). */
 it('GameState satisfies PlaneHost (pplane contract)', () => {
   const s = stateFor(RAISE5);
   expect(() => makePlaneContext(s)).not.toThrow();
   expect(() => pSpawnDoorRaiseIn5Mins(s, secByTag(s, 14), 1)).not.toThrow();
+});
+
+/* ------------------------------------------------------------------ */
+/* EV_DoDoor fixtures (step 2)                                          */
+/* ------------------------------------------------------------------ */
+
+const PLAYER: Mover = {
+  x: 0, y: 0, z: 0, radius: fx(16), height: fx(56),
+  flags: MF_SOLID | PLAYER_FLAGS, player: true
+};
+const MONSTER: Mover = {
+  x: 0, y: 0, z: 0, radius: fx(16), height: fx(56),
+  flags: MF_SOLID, player: undefined
+};
+
+// Closed tagged slab (ceiling 0 == floor) under a 172 ring — EV_DoDoor
+// raise types cap at 172−4 = 168 (plan acceptance 4 topheight rule).
+const RAISE168: RectMapSpec = {
+  rooms: [
+    { x: 0, y: 0, w: 128, h: 256, ceilingHeight: 172 },
+    { x: 128, y: 0, w: 128, h: 256, floorHeight: 0, ceilingHeight: 0, tag: 30 },
+    { x: 256, y: 0, w: 128, h: 256, ceilingHeight: 172 },
+    { x: 128, y: 256, w: 128, h: 128, ceilingHeight: 172 },
+    { x: 128, y: -128, w: 128, h: 128, ceilingHeight: 172 }
+  ],
+  triggers: [{ x1: 0, y1: 96, x2: 0, y2: 160, special: 29, tag: 30 }],
+  things: [{ x: 64, y: 128, angle: 0, type: 1 }]
+};
+
+// OPEN tagged slab (ceiling 128) with a 128 ring — close types seat at
+// 128−4 = 124 (the −4 UNDER-the-neighbours pin); close30ThenOpen re-
+// raises to the sector's OWN 128. Player spawns INSIDE the slab for the
+// stuck-down arm.
+const STUCK16: RectMapSpec = {
+  rooms: [
+    { x: 0, y: 0, w: 128, h: 256 },
+    { x: 128, y: 0, w: 128, h: 256, ceilingHeight: 128, tag: 16 },
+    { x: 256, y: 0, w: 128, h: 256 },
+    { x: 128, y: 256, w: 128, h: 128 },
+    { x: 128, y: -128, w: 128, h: 128 }
+  ],
+  triggers: [{ x1: 0, y1: 96, x2: 0, y2: 160, special: 50, tag: 16 }],
+  things: [{ x: 192, y: 128, angle: 0, type: 1 }]
+};
+
+// Manual door (special from the gap): west room 172, slab CLOSED under a
+// 172 ring (topheight 168), door-use line on the west edge, front = room 0.
+function manualSpec(special: number): RectMapSpec {
+  return {
+    rooms: [
+      { x: 0, y: 0, w: 128, h: 256, ceilingHeight: 172 },
+      { x: 128, y: 0, w: 128, h: 256, floorHeight: 0, ceilingHeight: 0 },
+      { x: 256, y: 0, w: 128, h: 256, ceilingHeight: 172 },
+      { x: 128, y: 256, w: 128, h: 128, ceilingHeight: 172 },
+      { x: 128, y: -128, w: 128, h: 128, ceilingHeight: 172 }
+    ],
+    doors: [{ x1: 128, y1: 64, x2: 128, y2: 192, special }],
+    things: [{ x: 64, y: 128, angle: 0, type: 1 }]
+  };
+}
+
+function lineByTag(s: GameState, tag: number): number {
+  for (let i = 0; i < s.map.lines.count; i++) {
+    if (s.map.lines.tag[i] === tag) return i;
+  }
+  throw new Error(`no line tagged ${tag}`);
+}
+
+function lineBySpecial(s: GameState, special: number): number {
+  for (let i = 0; i < s.map.lines.count; i++) {
+    if (s.map.lines.special[i] === special) return i;
+  }
+  throw new Error(`no line with special ${special}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* EV_DoDoor — tagged types (plan acceptance 1/3/4)                     */
+/* ------------------------------------------------------------------ */
+
+describe('EV_DoDoor normal (plan acceptance 1: 168-unit timing golden)', () => {
+  it('up 84+detect | wait 150 | down 84+detect = 320 tics', () => {
+    const s = stateFor(RAISE168);
+    const sec = secByTag(s, 30);
+    const line = lineByTag(s, 30);
+
+    expect(evDoDoor(s, line, VL.normal), 'rtn=1').toBe(true);
+    const d = doorOf(s, sec);
+    expect(d.type).toBe(VL.normal);
+    expect(d.direction).toBe(1);
+    expect(d.speed).toBe(VDOORSPEED);
+    expect(d.topwait).toBe(VDOORWAIT);
+    expect(d.topheight, 'lowestCeilSurrounding − 4F').toBe(fx(168));
+    expect(sfxCount(s, SFX_DOROPN), 'not already open → doropn').toBe(1);
+
+    step(s, 83);
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(166));
+    step(s, 1); // 84th move lands on 168
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(168));
+    step(s, 1); // pastdest-up → WAIT at top
+    expect(doorOf(s, sec).direction).toBe(0);
+    expect(doorOf(s, sec).topcountdown).toBe(150);
+
+    step(s, 149);
+    expect(doorOf(s, sec).direction).toBe(0);
+    step(s, 1); // 150th wait tic → DOWN + dorcls
+    expect(doorOf(s, sec).direction).toBe(-1);
+    expect(sfxCount(s, SFX_DORCLS)).toBe(1);
+
+    step(s, 83);
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(2));
+    step(s, 1); // lands on floor
+    expect(s.sectors.ceilingZ[sec]).toBe(0);
+    step(s, 1); // pastdest-down → unlink
+    expect(sectorSpecialData(s.sectors, sec)).toBeNull();
+  });
+
+  it('blazeRaise: speed 8, sfx_bdopn, down-pastdest unlinks WITH sfx_bdcls', () => {
+    const s = stateFor(RAISE168);
+    const sec = secByTag(s, 30);
+    expect(evDoDoor(s, lineByTag(s, 30), VL.blazeRaise)).toBe(true);
+    const d = doorOf(s, sec);
+    expect(d.speed, 'VDOORSPEED*4').toBe(8 * FRACUNIT);
+    expect(sfxCount(s, SFX_BDOPN)).toBe(1);
+    step(s, 20);
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(160));
+    step(s, 1); // 21st move lands
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(168));
+    step(s, 1); // → wait 150
+    expect(d.direction).toBe(0);
+    step(s, 150); // expiry → down + bdcls
+    expect(d.direction).toBe(-1);
+    expect(sfxCount(s, SFX_BDCLS), 'bdcls at wait expiry').toBe(1);
+    step(s, 21 + 1);
+    expect(s.sectors.ceilingZ[sec]).toBe(0);
+    expect(sectorSpecialData(s.sectors, sec), 'blaze down-pastdest frees')
+      .toBeNull();
+    expect(sfxCount(s, SFX_BDCLS), 'bdcls at arrival too').toBe(2);
+  });
+
+  it('refuse-while-moving: second EV_DoDoor is rtn=0, no second thinker', () => {
+    const s = stateFor(RAISE168);
+    const sec = secByTag(s, 30);
+    const line = lineByTag(s, 30);
+    expect(evDoDoor(s, line, VL.normal)).toBe(true);
+    const n = thinkerCount(s.thinkers);
+    expect(evDoDoor(s, line, VL.blazeRaise), 'specialdata → continue, rtn 0')
+      .toBe(false);
+    expect(thinkerCount(s.thinkers)).toBe(n);
+    expect(unimplementedSpecial.count, 'live body records NO stub').toBe(0);
+  });
+
+  it('already-open raise is SILENT (topheight != ceilingheight pin)', () => {
+    const s = stateFor(RAISE168);
+    const sec = secByTag(s, 30);
+    s.sectors.ceilingZ[sec] = fx(168); // == topheight before the call
+    expect(evDoDoor(s, lineByTag(s, 30), VL.normal)).toBe(true);
+    expect(sfxCount(s, SFX_DOROPN), 'no sound when already open').toBe(0);
+  });
+});
+
+describe('EV_DoDoor close family (−4 seat + close30 re-wait + stuck-down)', () => {
+  it('close: topheight = lowestCeilSurrounding − 4 = 124, DOWN + dorcls', () => {
+    const s = stateFor(STUCK16);
+    const sec = secByTag(s, 16);
+    pTeleportMove(s.pmap, s.players[0]!.mo, fx(64), fx(128)); // out of the slab
+    expect(evDoDoor(s, lineByTag(s, 16), VL.close)).toBe(true);
+    const d = doorOf(s, sec);
+    expect(d.topheight).toBe(fx(124));
+    expect(d.direction).toBe(-1);
+    expect(sfxCount(s, SFX_DORCLS)).toBe(1);
+    step(s, 64 + 1);
+    expect(s.sectors.ceilingZ[sec]).toBe(0);
+    expect(sectorSpecialData(s.sectors, sec)).toBeNull();
+  });
+
+  it('close30ThenOpen: own-ceiling capture, down, 1050 hold, RE-RAISE, free', () => {
+    const s = stateFor(STUCK16);
+    const sec = secByTag(s, 16);
+    pTeleportMove(s.pmap, s.players[0]!.mo, fx(64), fx(128));
+    expect(evDoDoor(s, lineByTag(s, 16), VL.close30ThenOpen)).toBe(true);
+    const d = doorOf(s, sec);
+    expect(d.topheight, 'target = OWN ceilingheight at spawn').toBe(fx(128));
+    expect(d.direction).toBe(-1);
+    step(s, 64 + 1); // down to floor
+    expect(d.direction, 'down-pastdest → WAIT 1050').toBe(0);
+    expect(d.topcountdown).toBe(DOORHOLD30);
+    step(s, 1049);
+    expect(d.direction).toBe(0);
+    step(s, 1); // 1050th → UP + doropn
+    expect(d.direction).toBe(1);
+    expect(sfxCount(s, SFX_DOROPN)).toBe(1);
+    step(s, 64 + 1); // up to 128 → pastdest-up → unlink
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(128));
+    expect(sectorSpecialData(s.sectors, sec)).toBeNull();
+  });
+
+  it('close blocked by the player: STAYS DOWN ticking, zero damage (pin)', () => {
+    const s = stateFor(STUCK16); // player spawns INSIDE the slab
+    const sec = secByTag(s, 16);
+    expect(evDoDoor(s, lineByTag(s, 16), VL.close)).toBe(true);
+    step(s, 200);
+    const d = doorOf(s, sec);
+    expect(d.direction, 'DO NOT GO BACK UP — still DOWN').toBe(-1);
+    const cz = s.sectors.ceilingZ[sec]!;
+    expect(cz, 'rolled back to the fit height, never seats').toBeGreaterThan(fx(50));
+    step(s, 50);
+    expect(s.sectors.ceilingZ[sec], 'retry-every-tic, still blocked').toBe(cz);
+    expect(s.hooks.damage.count, 'doors never damage (crush=false literal)').toBe(0);
+    // clear the slab → the SAME thinker completes (no respawn).
+    pTeleportMove(s.pmap, s.players[0]!.mo, fx(64), fx(128));
+    step(s, 64 + 2);
+    expect(s.sectors.ceilingZ[sec]).toBe(0);
+    expect(sectorSpecialData(s.sectors, sec)).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* EV_VerticalDoor — manuals (plan acceptance 2)                        */
+/* ------------------------------------------------------------------ */
+
+describe('EV_VerticalDoor manual raise (special 1)', () => {
+  it('spawn: back-sector door, range = lowestCeilSurrounding − 4', () => {
+    const s = stateFor(manualSpec(1));
+    const line = lineBySpecial(s, 1);
+    const sec = s.map.lines.sectorBack[line]!;
+    expect(evVerticalDoor(s, line, PLAYER)).toBe(true);
+    const d = doorOf(s, sec);
+    expect(d.type).toBe(VL.normal);
+    expect(d.direction).toBe(1);
+    expect(d.speed).toBe(VDOORSPEED);
+    expect(d.topwait).toBe(VDOORWAIT);
+    expect(d.topheight).toBe(fx(168));
+    expect(sfxCount(s, SFX_DOROPN), 'sound from the sector').toBe(1);
+    expect(s.map.lines.special[line], 'manuals stay armed').toBe(1);
+    expect(unimplementedSpecial.count).toBe(0);
+  });
+
+  it('toggle: down → back UP; waiting + player → down; waiting + monster → JDC', () => {
+    const s = stateFor(manualSpec(1));
+    const line = lineBySpecial(s, 1);
+    const sec = s.map.lines.sectorBack[line]!;
+    evVerticalDoor(s, line, PLAYER);
+    const d = doorOf(s, sec);
+
+    d.direction = -1;
+    expect(evVerticalDoor(s, line, MONSTER)).toBe(true);
+    expect(d.direction, 'going down: reverses for ANYone').toBe(1);
+
+    d.direction = 0;
+    expect(evVerticalDoor(s, line, MONSTER), 'JDC: bad guys never close').toBe(false);
+    expect(d.direction).toBe(0);
+
+    expect(evVerticalDoor(s, line, PLAYER)).toBe(true);
+    expect(d.direction, 'player at top → start going down').toBe(-1);
+  });
+
+  it('monster use on a still door still spawns (reuse gate only is JDC)', () => {
+    const s = stateFor(manualSpec(1));
+    const line = lineBySpecial(s, 1);
+    const sec = s.map.lines.sectorBack[line]!;
+    expect(evVerticalDoor(s, line, MONSTER)).toBe(true);
+    expect(doorOf(s, sec).direction).toBe(1);
+  });
+});
+
+describe('EV_VerticalDoor open types (special-clear inside the body)', () => {
+  it('31: type open, line special → 0, up-pastdest frees (no wait)', () => {
+    const s = stateFor(manualSpec(31));
+    const line = lineBySpecial(s, 31);
+    const sec = s.map.lines.sectorBack[line]!;
+    expect(evVerticalDoor(s, line, PLAYER)).toBe(true);
+    expect(doorOf(s, sec).type).toBe(VL.open);
+    expect(s.map.lines.special[line], 'open types disarm HERE').toBe(0);
+    step(s, 84 + 1);
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(168));
+    step(s, 1);
+    expect(sectorSpecialData(s.sectors, sec), 'open never waits at top')
+      .toBeNull();
+  });
+
+  it('118: blazeOpen speed 8 + disarm; 117: blazeRaise keeps the line', () => {
+    const s = stateFor(manualSpec(118));
+    const line = lineBySpecial(s, 118);
+    const sec = s.map.lines.sectorBack[line]!;
+    evVerticalDoor(s, line, PLAYER);
+    expect(doorOf(s, sec).speed).toBe(8 * FRACUNIT);
+    expect(s.map.lines.special[line]).toBe(0);
+
+    const s2 = stateFor(manualSpec(117));
+    const line2 = lineBySpecial(s2, 117);
+    const sec2 = s2.map.lines.sectorBack[line2]!;
+    evVerticalDoor(s2, line2, PLAYER);
+    expect(doorOf(s2, sec2).speed).toBe(8 * FRACUNIT);
+    expect(s2.map.lines.special[line2], 'raise ids stay armed').toBe(117);
+  });
+
+  it('quirk: OPEN id over a live thinker spawns a SECOND thinker (leak pin)', () => {
+    const s = stateFor(manualSpec(31));
+    const line = lineBySpecial(s, 31);
+    const sec = s.map.lines.sectorBack[line]!;
+    pSpawnDoorCloseIn30(s, sec); // live WAITING thinker on the slab
+    const n = thinkerCount(s.thinkers);
+    evVerticalDoor(s, line, PLAYER); // NOT in the reuse switch → fall-through
+    expect(thinkerCount(s.thinkers), 'second thinker (vanilla leak)').toBe(n + 1);
+    expect(doorOf(s, sec).type, 'specialdata now the open door').toBe(VL.open);
+    expect(s.map.lines.special[line]).toBe(0);
+  });
 });
