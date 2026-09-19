@@ -166,3 +166,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - L5 motion strip reviewed: wall approach scales correctly, bob oscillation visible around horizon, step-up at t=40 with squat lag + recovery, turn swing per feel-09 ramp. PASS.
 - Feel evidence is analytic-grade: friction asymptote, fall parabola, turn-ramp re-derivations — 12/13 scenarios not hash-dependent.
 - Milestones: M1-M5 ✅. Next: M6 (level mechanics) wave 1 per merged plan: thinker arena + fixture specials + p_tick.
+- M6-02 merged (door/switch/teleport/secret families; WALLFIX+M4FIX byte-stability pinned to pre-change shas). Truth: DOOM1 linedef special@6/tag@8 RAW — no Hexen packing (brief assumption corrected by implementer from R01). Wave 2 dispatched: registry (R05 137-number manifest) + T_MovePlane/crush contract.
