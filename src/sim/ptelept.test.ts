@@ -28,6 +28,7 @@ import { loadMap } from '../wad/mapdata';
 import { buildMapFromData } from './map';
 import { sectorAtPoint } from './bsp';
 import { gInitGame } from './game';
+import { pTryMove } from './pmap';
 import { hashState } from './state';
 import type { GameState, Skill } from './state';
 import { buildThingLinks, MF_MISSILE, MF_SOLID } from './thinglinks';
@@ -539,6 +540,35 @@ describe('special dispatch integration (39 / 97 / 125 / 126)', () => {
     expect(teleportCounts.teleported).toBe(0);
     expect(mo.x).toBe(fx(64));
     expect(s.map.lines.special[line]).toBe(0); // p_spec.c clears regardless
+  });
+
+  it('wired live: a REAL P_TryMove crossing (p_map.c spechit → P_CrossSpecialLine) teleports', () => {
+    const s = stateFor({
+      rooms: [
+        { x: 0, y: 0, w: 256, h: 256 },
+        { x: 256, y: 0, w: 256, h: 256 },
+        { x: 512, y: 0, w: 256, h: 256, tag: 31, floorHeight: 64 }
+      ],
+      triggers: [{ x1: 256, y1: 96, x2: 256, y2: 160, special: 39, tag: 31 }],
+      things: [
+        { x: 64, y: 128, angle: 0, type: 1 },
+        { x: 640, y: 128, angle: 90, type: THING_TELEPORT_DEST }
+      ]
+    });
+    bindSpecialsWorld(s);
+    const mo = s.players[0]!.mo;
+    for (let x = 96; x <= 320; x += 32) {
+      pTryMove(s.pmap, mo, fx(x), fx(128));
+      if (teleportCounts.teleported > 0) break;
+    }
+    expect(teleportCounts.evTeleport).toBe(1);
+    expect(teleportCounts.teleported).toBe(1);
+    expect(mo.x).toBe(fx(640));
+    expect(mo.y).toBe(fx(128));
+    expect(mo.z).toBe(fx(64));
+    expect(mo.angle).toBe(ANG90);
+    expect(mo.reactiontime).toBe(TELEPORT_REACTIONTIME);
+    expect(s.hooks.sfx.byId?.get(SFX_TELEPT)).toBe(2);
   });
 
   it('97 GR: keeps the special and teleports again on every crossing', () => {
