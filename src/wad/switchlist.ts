@@ -101,6 +101,11 @@ export function buildSwitchList(
   // Data-driven pass over the texture directory (TEXTURE1 order).
   for (const name of textureNames) {
     if (name.length < 4 || !name.startsWith('SW1') || name[3] === '2') continue;
+    // Episode filter (vanilla semantics): a KNOWN name above this
+    // gamemode's episode is not in the list (shareware never sees the
+    // registered/Doom-II pairs even if the directory carries them).
+    const known = ALPH_SWITCH_LIST.find((p) => p.name1 === name);
+    if (known && known.episode > episode) continue;
     const pair = 'SW2' + name.slice(3);
     if (!present.has(pair)) continue;
     add(name, pair);
