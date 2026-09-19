@@ -29,6 +29,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { createKeyboardInput } from './input/keyboard';
+import { createMouseInput } from './input/mouse';
 import {
   amCreateState,
   amResponder,
@@ -133,7 +134,15 @@ function stepTic(): void {
     amResponder(am, eventQueue.shift()!, world);
   }
 
-  gTicker(state, keyboard.sample());
+  // M5-07: mouse channels merge into the same per-tic snapshot — vanilla
+  // G_BuildTiccmd reads gamekeydown[] and mousex/mousey at ONE point per
+  // tic; sample() drains the deltas (consumed-once, g_game.c:411).
+  const input = keyboard.sample();
+  const mouse = mouseInput.sample();
+  input.mouseX = mouse.mouseX;
+  input.mouseY = mouse.mouseY;
+
+  gTicker(state, input);
   amTicker(am, player); // G_Ticker GS_LEVEL automap item (g_game.c)
 }
 
@@ -185,6 +194,22 @@ const keyboard = createKeyboardInput({
     eventQueue.push(ev.type === 'keydown' ? keydown(ev.data1) : keyup(ev.data1));
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* Mouse (M5-07) — pointer-lock translation seam                        */
+/* ------------------------------------------------------------------ */
+
+// Canvas click captures the pointer (browser-native; Esc releases it —
+// UI-only, no sim state). mousemove.movementX/Y feed the raw ev_mouse
+// accumulator ONLY while locked; sensitivity scaling + once-per-tic drain
+// live in input/mouse.ts (translation seam, unit-tested with FAKE
+// pointer-lock events — headless-chromium pointer lock is unreliable,
+// M5-plan §6, so real-lock behavior is an honest L4 subset, not gated on).
+const mouseInput = createMouseInput();
+mouseInput.attach(
+  window as unknown as Parameters<typeof mouseInput.attach>[0],
+  canvas
+);
 
 /* ------------------------------------------------------------------ */
 /* WAD boot + 404 → file-picker fallback (viewer pattern)               */
