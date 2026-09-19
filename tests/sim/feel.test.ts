@@ -16,6 +16,9 @@
  * Goldens blessed 2026-07 from THIS implementation (post-M5-06 physics);
  * the M5-06 re-blessed files (loop/movement/game goldens) are NOT touched —
  * this suite is NEW evidence, fixtures-only, spec data via feelFixtures.
+ * RE-BLESSED M6-01 (one-time, reason: 'M6 world-state fields'): every
+ * committed hashState literal here moves by the §3.4 sector-SoA/globals/
+ * arena bytes alone — scenario inputs and player math are unchanged.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -89,10 +92,10 @@ afterEach(() => {
 
 describe('feel-01 walk-forward accel curve', () => {
   const pins: ReadonlyArray<[number, RectMapSpec, number, number]> = [
-    [20, ARENA, 1052791972, 39934747],
-    [35, ARENA, 2743185392, 47557778],
-    [70, BIGARENA, 3954673052, 167172207],
-    [140, BIGARENA, 1406538645, 205395002]
+    [20, ARENA, 2186604783, 39934747],
+    [35, ARENA, 3861037851, 47557778],
+    [70, BIGARENA, 2288443767, 167172207],
+    [140, BIGARENA, 1113780842, 205395002]
   ];
   for (const [tics, spec, hash, pinX] of pins) {
     it(`${tics} tics: hash + per-tic BigInt curve`, () => {
@@ -156,8 +159,8 @@ describe('feel-02 friction glide after release', () => {
     expect(g.dx).toBe(4505303);
     const twin = bootFeel(ARENA);
     runHeadless(twin, 20, () => fwd);
-    expect(runHeadless(twin, 60)).toBe(3315418116);
-    expect(hashState(s)).toBe(3315418116);
+    expect(runHeadless(twin, 60)).toBe(1452708559);
+    expect(hashState(s)).toBe(1452708559);
   });
 });
 
@@ -170,7 +173,7 @@ describe('feel-03 run (speed) curve', () => {
   it('20 tics run: hash + BigInt curve at thrust 102400', () => {
     const c = curve(20, 512 << 16, 512 << 16, () => thrustVec(T_RUN, 0));
     const { h, s } = scripted(ARENA, 20, () => in_({ forward: true, speed: true }));
-    expect(h).toBe(550635207);
+    expect(h).toBe(4060847548);
     const p = s.players[0]!;
     expect([p.mo.x, p.mo.momx]).toEqual([c.x.at(-1), c.momx.at(-1)]);
     expect(thrustVec(T_RUN, 0)).toEqual([102398, 39]); // FORWARDMOVE[1]×2048
@@ -190,7 +193,7 @@ describe('feel-04 strafe straightness', () => {
     const basis = (0 - (1 << 30)) >>> 0; // 0 − ANG90 ≡ ANG270
     const c = curve(20, 512 << 16, 512 << 16, () => thrustVec(T_SIDE, basis));
     const { h, s } = scripted(ARENA, 20, () => in_({ strafeRight: true }));
-    expect(h).toBe(1421194309);
+    expect(h).toBe(2943759802);
     const p = s.players[0]!;
     expect([p.mo.x, p.mo.y, p.mo.momx, p.mo.momy]).toEqual([
       c.x.at(-1), c.y.at(-1), c.momx.at(-1), c.momy.at(-1)
@@ -199,7 +202,7 @@ describe('feel-04 strafe straightness', () => {
   });
   it('strafeLeft 20: mirrored hash + drift-free straightness', () => {
     const { h, s } = scripted(ARENA, 20, () => in_({ strafeLeft: true }));
-    expect(h).toBe(2387412174);
+    expect(h).toBe(2980329305);
     const p = s.players[0]!;
     // FixedMul floor-truncation is not bit-mirror: the x-drink is ±2 fixed/tic
     expect([p.mo.x - (512 << 16), p.mo.y - (512 << 16)]).toEqual([-2436, 6125103]);
@@ -210,7 +213,7 @@ describe('feel-04 strafe straightness', () => {
     const { h, s } = scripted(ARENA, 40, (g) =>
       g < 20 ? in_({ strafeRight: true }) : in_({ strafeLeft: true })
     );
-    expect(h).toBe(470800951);
+    expect(h).toBe(814650316);
     const p = s.players[0]!;
     // x (cross-axis) cancels to 1107 fixed; y keeps the −57u of geometric
     // asymmetry: momentum reversal decays through the OLD displacement while
@@ -254,12 +257,12 @@ describe('feel-05 step-up 24 boundary', () => {
     expect(snapDvh).toBe((VIEWHEIGHT - 17 * FRACUNIT) >> 3);
     expect(p.mo.z).toBe(24 * FRACUNIT); // z+24 PIN
     const twin = bootFeel(stepRoom(24));
-    expect(runHeadless(twin, 40, () => fwd)).toBe(1004102449);
-    expect(hashState(s)).toBe(1004102449);
+    expect(runHeadless(twin, 40, () => fwd)).toBe(824126521);
+    expect(hashState(s)).toBe(824126521);
   });
   it('against a +25 step: blocked flush below 240, z stays 0', () => {
     const { h, s } = scripted(stepRoom(25), 40, () => fwd);
-    expect(h).toBe(2889456458);
+    expect(h).toBe(2075566235);
     const p = s.players[0]!;
     expect(p.mo.z).toBe(0);
     expect(p.mo.x).toBeLessThan(240 * FRACUNIT); // 25 > MAXSTEP ⇒ never mounts
@@ -301,8 +304,8 @@ describe('feel-06 45° wall slide + corner round-trip', () => {
     expect(pmoveHookCounts.slideMove).toBe(112);
     expect([p.mo.x, p.mo.y]).toEqual([25164724, 15727712]); // NE corner of E
     const twin = bootFeel(SLIDECORNER);
-    expect(runHeadless(twin, 150, () => fwd)).toBe(3387285546);
-    expect(hashState(s)).toBe(3387285546);
+    expect(runHeadless(twin, 150, () => fwd)).toBe(546394290);
+    expect(hashState(s)).toBe(546394290);
   });
 });
 
@@ -352,8 +355,8 @@ describe('feel-07 500-unit fall, squat, bob resume', () => {
       expect(probe.players[0]!.mo.z).toBe(-Math.floor((GRAVITY * k * (k + 3)) / 2));
     }
     const twin = bootFeel(LEDGE);
-    expect(runHeadless(twin, 120, () => fwd)).toBe(2264852997);
-    expect(hashState(s)).toBe(2264852997);
+    expect(runHeadless(twin, 120, () => fwd)).toBe(4141819775);
+    expect(hashState(s)).toBe(4141819775);
   });
 });
 
@@ -394,8 +397,8 @@ describe('feel-08 bob wave 60 tics', () => {
     expect(maxV - VIEWHEIGHT).toBeLessThanOrEqual(MAXBOB / 2);
     expect(minV - VIEWHEIGHT).toBeGreaterThanOrEqual(-MAXBOB / 2);
     const twin = bootFeel(ARENA);
-    expect(runHeadless(twin, 60, () => fwd)).toBe(654479547);
-    expect(hashState(s)).toBe(654479547);
+    expect(runHeadless(twin, 60, () => fwd)).toBe(2300162272);
+    expect(hashState(s)).toBe(2300162272);
   });
 });
 
@@ -429,7 +432,7 @@ describe('feel-09 turn-while-moving combined trajectory', () => {
       my = fmOracle(dy, 0xe800);
     }
     const { h, s } = scripted(ARENA, 40, script);
-    expect(h).toBe(208417007);
+    expect(h).toBe(3716806388);
     const p = s.players[0]!;
     expect([p.mo.x, p.mo.y]).toEqual([x, y]);
     expect(p.mo.angle).toBe((-(5 * 320 + 25 * 640) << 16) >>> 0); // = 3141533696
@@ -470,9 +473,9 @@ describe('feel-10 noclip momentum parity (D012)', () => {
     expect(n.players[0]!.mo.z).toBe(0); // NOCLIP z-seed still tracks floorz
     const n2 = bootFeel(ROOM256);
     setNoclip(n2, true);
-    expect(runHeadless(n2, 30, () => fwd)).toBe(2115651067);
-    expect(hashState(n)).toBe(2115651067);
-    expect(runHeadlessDoubleRun(ROOM256, 30)).toBe(649222214); // clipped twin
+    expect(runHeadless(n2, 30, () => fwd)).toBe(1179467731);
+    expect(hashState(n)).toBe(1179467731);
+    expect(runHeadlessDoubleRun(ROOM256, 30)).toBe(3771421214); // clipped twin
   });
 });
 
@@ -486,7 +489,7 @@ describe('feel-10 noclip momentum parity (D012)', () => {
 describe('feel-11 solid thing blocks (barrel)', () => {
   it('non-noclip: flush under the 102 boundary forever; noclip walks through', () => {
     const { h, s } = scripted(BARREL, 40, () => fwd);
-    expect(h).toBe(2579994341);
+    expect(h).toBe(1942444525);
     const p = s.players[0]!;
     expect(p.mo.x).toBe(6348970);
     expect(p.mo.x).toBeLessThan(102 * FRACUNIT); // bbox right edge < 128−10 ⇒ |dx|<26 never met
@@ -498,7 +501,7 @@ describe('feel-11 solid thing blocks (barrel)', () => {
     const n2 = bootFeel(BARREL);
     setNoclip(n2, true);
     expect(runHeadless(n2, 40, () => fwd)).toBe(hn);
-    expect(hn).toBe(1472300288);
+    expect(hn).toBe(436575480);
     expect(n.players[0]!.mo.x).toBe(20862794); // past the barrel, past the room
   });
 });
@@ -530,12 +533,12 @@ describe('feel-12 low ceiling rule-1 boundary + viewz clamp', () => {
     expect(maxV).toBeLessThanOrEqual(52 * FRACUNIT); // viewz ≤ ceilingz−4 clamp bound
     expect(maxV).toBe(3211152); // wave peak < 49u ⇒ the clamp is provably dormant (header)
     const twin = bootFeel(low(56));
-    expect(runHeadless(twin, 60, () => fwd)).toBe(1293857243);
-    expect(hashState(s)).toBe(1293857243);
+    expect(runHeadless(twin, 60, () => fwd)).toBe(2570629723);
+    expect(hashState(s)).toBe(2570629723);
   });
   it('ceiling 55: frozen at the spawn (rule 1 blocks every move)', () => {
     const { h, s } = scripted(low(55), 60, () => fwd);
-    expect(h).toBe(2392897064);
+    expect(h).toBe(4145970399);
     const p = s.players[0]!;
     expect(p.mo.x).toBe(32 << 16); // never moved
     expect(p.mo.z).toBe(-1 * FRACUNIT); // z clipped to ceilingz−height (55−56)
@@ -591,7 +594,7 @@ describe('feel-13 marathon 2000-tic route', () => {
     const h = hashState(s);
     const twin = bootFeel(MARATHON);
     expect(runHeadless(twin, 2000, script)).toBe(h);
-    expect(h).toBe(1700451568);
+    expect(h).toBe(2916867642);
   });
 });
 

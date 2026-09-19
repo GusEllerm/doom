@@ -59,10 +59,15 @@ const script =
  * every scripted 1000-tic hash moves with real thrust/friction/onground/z
  * (spawn z resolves ONFLOORZ→floor; idle differs for that reason alone).
  * The fixture SPEC also gained an explicit player start (the default dot
- * item is an MF_SOLID barrel that used to spawn INSIDE the player). */
-const GOLDEN_IDLE_1000 = 4202744993;
-const GOLDEN_SCRIPT_1000 = 2889435375;
-const GOLDEN_TURNLEFT_1000 = 3987467428;
+ * item is an MF_SOLID barrel that used to spawn INSIDE the player).
+ * RE-BLESSED M6-01 (one-time, reason: 'M6 world-state fields'): hashState
+ * now serializes the live sector SoA + run globals + thinker arena (§3.4).
+ * All three scripted 1000-tic hashes move by the added bytes alone — no
+ * player-field or tic-order semantics changed (sectors static, arena
+ * empty). */
+const GOLDEN_IDLE_1000 = 222082345;
+const GOLDEN_SCRIPT_1000 = 4261453639;
+const GOLDEN_TURNLEFT_1000 = 3587061596;
 
 describe('gInitGame', () => {
   it('spawns player 0 at the doomednum-1 start, clocks and rng zeroed', () => {

@@ -6,6 +6,29 @@
 // counters and both PRNG indices. Sectors/mobjs/etc. extend this record as
 // later tasks land (append-only).
 //
+// M6-01 adds the LIVE WORLD: the mutable sector SoA (floorZ/ceilingZ/light/
+// special + static tag copy + `specialdata` thinker back-refs), the thinker
+// arena (ptick.ts), the hook slots (hooks.ts), `exitRequest` and the
+// totalsecret/secretcount/specialexit run globals. hashState extends per
+// ARCHITECTURE §3.4 (per-sector floorZ/ceilingZ/light/special + arena in
+// arena order) — ONE-TIME re-bless, reason "M6 world-state fields".
+//
+// SECTOR AUTHORITY (M6-01 design call, pinned here): `state.sectors` is the
+// SIM-side authority — movers mutate ONLY these arrays. It is seeded at
+// gInitGame as a value copy of the static load-time SoA (`map.sectors`), so
+// until the first mover lands (M6-03+) the two are value-identical while
+// static. The renderer keeps reading the STATIC load-time copy it already
+// consumes: the 3D pass gets heights/lights through loadRenderWorld's own
+// copy of `md.sectors` (render/rdata.ts) and automap through its
+// structural map.sectors read-view — src/render may import sim/state only,
+// and no live accessor may be added to sim/map.ts, which is outside this
+// task's owns list. Frame output is therefore provably UNCHANGED
+// (tests/render/liveview.test.ts: E1M1 goldens unmoved + live==static
+// assertion). GAP FOR M6-03+: once movers mutate heights/lights the render
+// side (rdata world tables) must be re-pointed at the live arrays exposed
+// HERE (state.ts is the sanctioned seam) — logged as a follow-up; no
+// render/** edit was in scope for M6-01.
+//
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import type { PMapWorld } from './pmap';
@@ -13,6 +36,8 @@ import type { RuntimeMap } from './map';
 import type { Player } from './player';
 import type { PrngState } from './prng';
 import type { GameInput, TurnheldState } from './ticcmd';
+import type { HookSlots, ExitKind } from './hooks';
+import type { Thinker, ThinkerArena } from './ptick';
 
 /* ------------------------------------------------------------------ */
 /* GameState                                                           */
@@ -21,6 +46,43 @@ import type { GameInput, TurnheldState } from './ticcmd';
 /** doomdef.h `skill_t` {sk_baby=0, sk_easy, sk_medium, sk_hard,
  * sk_nightmare}; g_game.c `d_skill` defaults to sk_medium (2). */
 export type Skill = 0 | 1 | 2 | 3 | 4;
+
+/**
+ * LIVE mutable sector SoA (M6-01) — parallel arrays mirroring
+ * `map.sectors` (fixed-point heights, same units). `floorZ/ceilingZ/light/
+ * special` are mutated by movers/lights/damage-clears (M6-03+); `tag` is a
+ * value copy that must NEVER be mutated (read convenience so specials read
+ * the same record the hash covers); `specialData` holds the p_spec.c
+ * mover back-refs and is NOT hashed (pointer slot — the arena hashes the
+ * thinkers themselves).
+ */
+export interface LiveSectors {
+  readonly count: number;
+  readonly floorZ: Int32Array;
+  readonly ceilingZ: Int32Array;
+  readonly light: Int32Array;
+  readonly special: Int32Array;
+  readonly tag: Int32Array;
+  readonly specialData: (Thinker | null)[];
+}
+
+/** Load-time copy (fresh-level semantics): value-copy the static SoA; every
+ * sector starts live==static. */
+export function createLiveSectors(map: RuntimeMap): LiveSectors {
+  const n = map.sectors.count;
+  return {
+    count: n,
+    floorZ: new Int32Array(map.sectors.floorHeight),
+    ceilingZ: new Int32Array(map.sectors.ceilingHeight),
+    light: new Int32Array(map.sectors.lightLevel),
+    special: new Int32Array(map.sectors.special),
+    tag: new Int32Array(map.sectors.tag),
+    specialData: new Array<(Thinker | null)>(n).fill(null)
+  };
+}
+
+/** hashState exitRequest enum code (canonical serialization). */
+const EXIT_CODE: Record<'none' | ExitKind, number> = { none: 0, normal: 1, secret: 2 };
 
 export interface GameState {
   readonly map: RuntimeMap;
@@ -41,6 +103,24 @@ export interface GameState {
   /** Vanilla rndindex/prndindex (§3.3). */
   readonly rng: PrngState;
   skill: Skill;
+  /** M6-01 live mutable sector SoA — sim-side authority, seeded from
+   * map.sectors (see file header for the renderer seam story). */
+  readonly sectors: LiveSectors;
+  /** M6-01 thinker arena (p_tick.c thinkercap; fresh per level =
+   * P_InitThinkers at load). */
+  readonly thinkers: ThinkerArena;
+  /** M6-01 typed side-effect slots (damage/sfx/message/exit no-ops). */
+  readonly hooks: HookSlots;
+  /** g_game.c G_ExitLevel/G_SecretExitLevel proxy until M9 (D013(e)). */
+  exitRequest: 'none' | ExitKind;
+  /** g_game.c:125 `totalsecret` — counted at load by P_SpawnSpecials
+   * (sector special 9 pass, M6-03); hashed. */
+  totalsecret: number;
+  /** d_player.h `player->secretcount` proxy — single-player lives on the
+   * run (p_spec.c:1050); hashed. */
+  secretcount: number;
+  /** g_game.c `specialexit` flag (G_SecretExitLevel marker); hashed. */
+  specialexit: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -51,16 +131,27 @@ const FNV_OFFSET = 2166136261;
 const FNV_PRIME = 16777619;
 
 /**
- * FNV-1a (32-bit) over the canonical little-endian byte serialization of the
- * M2-scoped state fields: leveltime, gametic, rndindex, prndindex, then per
+ * FNV-1a (32-bit) over the canonical little-endian byte serialization of
+ * the §3.4 fields: leveltime, gametic, rndindex, prndindex; the M6 run
+ * globals (totalsecret, secretcount, specialexit, exitRequest code); per
  * player the fixed fields (x, y, z, angle, momx, momy, viewz, viewheight) +
- * health, cheats, playerstate and the 3 consumed ticcmd fields. int32 fields
- * are written as signed i32; `angle` (BAM, u32) via Uint32 so ANG180-class
- * values hash bit-exactly.
+ * health, cheats, playerstate and the 3 consumed ticcmd fields; per SECTOR
+ * in index order the live SoA quadruple (floorZ, ceilingZ, light, special);
+ * then the thinker ARENA in arena (insertion) order: live count, then per
+ * live thinker its id and payload words. int32 fields are written as
+ * signed i32; `angle` (BAM, u32) via Uint32 so ANG180-class values hash
+ * bit-exactly. Re-blessed ONCE at M6-01, reason "M6 world-state fields".
  */
 export function hashState(s: GameState): number {
   const playerWords = 14; // see layout below
-  const buf = new ArrayBuffer(16 + s.players.length * playerWords * 4);
+  // Arena words: live count + per live thinker (id, wordCount, words).
+  let arenaWords = 1;
+  for (const t of s.thinkers.entries.values()) {
+    if (!t.removed) arenaWords += 2 + t.hashWords.length;
+  }
+  const buf = new ArrayBuffer(
+    (8 + s.players.length * playerWords + s.sectors.count * 4 + arenaWords) * 4
+  );
   const dv = new DataView(buf);
   let o = 0;
   dv.setInt32(o, s.leveltime | 0, true); o += 4;
@@ -85,6 +176,33 @@ export function hashState(s: GameState): number {
     // (playerWords = 14: the last word carries angleturn & buttons)
     dv.setInt32(o, ((p.cmd.angleturn << 16) | p.cmd.buttons) | 0, true); o += 4;
   }
+  // M6 run globals.
+  dv.setInt32(o, s.totalsecret | 0, true); o += 4;
+  dv.setInt32(o, s.secretcount | 0, true); o += 4;
+  dv.setInt32(o, s.specialexit ? 1 : 0, true); o += 4;
+  dv.setInt32(o, EXIT_CODE[s.exitRequest], true); o += 4;
+  // Per-sector live quadruple, sector-index order (§3.4).
+  for (let i = 0; i < s.sectors.count; i++) {
+    dv.setInt32(o, s.sectors.floorZ[i]!, true); o += 4;
+    dv.setInt32(o, s.sectors.ceilingZ[i]!, true); o += 4;
+    dv.setInt32(o, s.sectors.light[i]!, true); o += 4;
+    dv.setInt32(o, s.sectors.special[i]!, true); o += 4;
+  }
+  // Thinker arena in arena (insertion) order; sentinel-pending entries are
+  // logically dead and excluded (they never tick either).
+  const arenaCountPos = o;
+  o += 4; // reserved for the live count
+  let live = 0;
+  for (const t of s.thinkers.entries.values()) {
+    if (t.removed) continue;
+    live++;
+    dv.setInt32(o, t.id | 0, true); o += 4;
+    dv.setInt32(o, t.hashWords.length | 0, true); o += 4;
+    for (const w of t.hashWords) {
+      dv.setInt32(o, w | 0, true); o += 4;
+    }
+  }
+  dv.setInt32(arenaCountPos, live, true);
   const bytes = new Uint8Array(buf);
   let h = FNV_OFFSET;
   for (let i = 0; i < bytes.length; i++) {

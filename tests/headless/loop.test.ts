@@ -109,6 +109,9 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     // RE-BLESSED M5-06 (one-time, reason: 'M5-06: p_user physics replaces
     // D009 fly stub') — real thrust/friction/onground/z instead of the
     // angle-only stub movement.
-    expect(h1).toBe(1134251855);
+    // RE-BLESSED M6-01 (one-time, reason: 'M6 world-state fields') — the
+    // 333-sector E1M1 SoA + run globals + empty arena extend hashState;
+    // value 1134251855 → 3285949243 from the added bytes alone.
+    expect(h1).toBe(3285949243);
   });
 });
