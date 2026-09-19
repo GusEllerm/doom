@@ -150,6 +150,13 @@ export interface DoomDebugApi {
   state(): DebugStateSnapshot;
   /** Grab the current 320x200 indexed framebuffer. */
   capture(): CaptureResult;
+  /** M6-13 FINDING 3 seam: pop (drain + discard) input accumulated
+   * BETWEEN scripted phases while the sim was paused — queued vanilla
+   * key events (D_ProcessEvents queue, d_main.c) and unsampled raw mouse
+   * deltas. Prevents a held/queued event from flooding the first live
+   * tics after `pause(false)`. Returns what was dropped; null when the
+   * main.ts input wiring is absent (headless/tests). */
+  popInput(): { events: number; mouse: { x: number; y: number } } | null;
   /** Direct sim-core surface (M2-07): state access, noclip, tic stepping. */
   sim: SimDebugApi;
 }
