@@ -10,9 +10,12 @@
 // Dispatch call sites (R05 §Dispatch, p_map.c):
 //   cross — P_TryMove spechit loop, `side != oldside` →
 //     pCrossSpecialLine(w, linenum, oldside, mover)  (pmap.ts, live);
-//   use   — PTR_UseTraverse → pUseSpecialLine(...) — the FULL P_UseSpecialLine
-//     (P_UseLines/PathTraverse, cards, buttons) is M6-11's; this is the
-//     registry-routing skeleton with the vanilla gate structure;
+//   use   — PTR_UseTraverse (pswitch.ts, M6-11) → pUseSpecialLine below;
+//     the USE dispatcher STAYS HERE (registry routing — its vanilla gate
+//     structure was already source-faithful); the p_switch.c machinery
+//     (P_UseLines/PathTraverse ray, switchlist, buttons, cards) lives in
+//     pswitch.ts and reaches this function via setUseDispatcher (one-way
+//     import graph, no pspec↔pswitch cycle);
 //   shoot — P_LineAttack traverse → pShootSpecialLine(...) — the line
 //     attack call site arrives with M7 weapons.
 //
@@ -51,7 +54,10 @@ import {
   pSpawnLightFlash, pSpawnStrobeFlash, pSpawnGlowingLight, pSpawnFireFlicker
 } from './plights';
 import { evTeleport } from './ptelept';
-import { pChangeSwitchTexture, evDoLockedDoor } from './pswitch';
+import {
+  pChangeSwitchTexture, evDoLockedDoor, bindSwitchWorld, setUseDispatcher,
+  buttonList, MAXBUTTONS, BWHERE, SFX_SWTCHN
+} from './pswitch';
 import { damageSlot } from './hooks';
 import { pRandom } from './prng';
 import { gExitLevel, gSecretExitLevel } from './pexit';
@@ -127,36 +133,20 @@ export function resetPspecCounts(): void {
 /* pSpawnSpecials — the active level binds via bindSpecialsWorld)        */
 /* ------------------------------------------------------------------ */
 
-export const MAXBUTTONS = 16; // p_spec.h
+export const MAXLINEANIMS = 64; // p_spec.c
 // MAXPLATS now LIVES in pplats.ts (M6-06, vanilla defines activeplats in
 // p_plats.c); re-exported here for the M6-03 consumers.
 export { MAXPLATS, activePlats } from './pplats';
 // MAXCEILINGS now LIVES in pceilng.ts (M6-08, vanilla defines
 // activeceilings in p_ceilng.c); re-exported here for the M6-03 consumers.
 export { MAXCEILINGS, activeCeilings } from './pceilng';
-export const MAXLINEANIMS = 64; // p_spec.c
-export const BUTTONTIME = 35; // p_spec.h (used by M6-11's P_StartButton)
-
-/** sounds.h sfxenum_t sfx_swtchn (index counting from sfx_None=0). M10
- * replaces id→lump decoding; the id is pinned here for the button tick. */
-export const SFX_SWTCHN = 23;
-
-/** bwhere_e (p_spec.h). */
-export const BWHERE = { top: 0, middle: 1, bottom: 2 } as const;
-
-/** button_t slot (buttonlist[]). M6-11's P_StartButton fills these; the
- * P_UpdateSpecials tick below is generic and already live. */
-export interface ButtonSlot {
-  line: number; // −1 = free
-  where: number; // BWHERE
-  btexture: string; // texture to restore when the timer expires
-  btimer: number;
-}
-
-export const buttonList: ButtonSlot[] = Array.from(
-  { length: MAXBUTTONS },
-  () => ({ line: -1, where: 0, btexture: '', btimer: 0 })
-);
+// MAXBUTTONS/BUTTONTIME/BWHERE/ButtonSlot/buttonList/SFX_SWTCHN now LIVE
+// in pswitch.ts (M6-11, p_switch.c owns P_StartButton + the button_T;
+// the activeplats precedent) — re-exported here for the M6-03 consumers.
+export {
+  MAXBUTTONS, BUTTONTIME, BWHERE, SFX_SWTCHN, buttonList
+} from './pswitch';
+export type { ButtonSlot } from './pswitch';
 
 /** activeplats[] / activeceilings[] — both LIVE in their family files
  * (activeplats pplats.ts M6-06, activeCeilings pceilng.ts M6-08 —
@@ -398,6 +388,11 @@ export function pUseSpecialLine(
   return true;
 }
 
+// Publish the USE dispatcher for pswitch.ts's PTR_UseTraverse (the
+// pslide self-registration precedent; module-eval order is safe —
+// pswitch evaluates first and only CALLS this later).
+setUseDispatcher(pUseSpecialLine);
+
 /* ------------------------------------------------------------------ */
 /* P_SpawnSpecials — p_spec.c SPECIAL SPAWNING (map setup)              */
 /* ------------------------------------------------------------------ */
@@ -430,6 +425,7 @@ const SPAWN_FNS: Record<SpawnActionId, (s: SpecWorld, sector: number, arg: numbe
  */
 export function pSpawnSpecials(s: SpecWorld): void {
   bindSpecialsWorld(s);
+  bindSwitchWorld(s); // M6-11: the P_UseLines ray world (pmap.bm walker)
 
   // Init special SECTORs (ascending sector index, p_spec.c).
   for (let i = 0; i < s.sectors.count; i++) {
@@ -454,7 +450,11 @@ export function pSpawnSpecials(s: SpecWorld): void {
     }
   }
 
-  // Init other misc stuff.
+  // Init other misc stuff. NOTE (M6-11): vanilla resets ONLY
+  // `buttonlist[i].btimer` — the soundorg POINTER survives level reloads
+  // (aliasing quirk); the port keeps the M6-03 full-reset idiom for the
+  // four bookkeeping fields but leaves soundorgSector (the
+  // P_ChangeSwitchTexture slot-0 origin) untouched, matching vanilla.
   activePlats.fill(null);
   activeCeilings.fill(null);
   for (const b of buttonList) {

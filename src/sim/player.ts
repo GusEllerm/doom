@@ -66,6 +66,17 @@ export const CF_NOCLIP = 1;
 export const CF_GODMODE = 2;
 export const CF_NOMOMENTUM = 4;
 
+/** doomdef.h:160-173 `card_t` — the `player.cards[]` slot indices
+ * (M6-11; key SKULLs are distinct slots, the lock checks OR the pair).
+ * d_player.h `int cards[NUMCARDS]`. */
+export const IT_BLUECARD = 0;
+export const IT_YELLOWCARD = 1;
+export const IT_REDCARD = 2;
+export const IT_BLUESKULL = 3;
+export const IT_YELLOWSKULL = 4;
+export const IT_REDSKULL = 5;
+export const NUMCARDS = 6;
+
 /* ------------------------------------------------------------------ */
 /* MobjStub — the player's mobj_t slice (a full MoveMobj)              */
 /* ------------------------------------------------------------------ */
@@ -118,6 +129,20 @@ export interface Player extends MovePlayerState {
   health: number;
   /** d_player.h `int cheats` — CF_* bits. */
   cheats: number;
+  /** d_player.h `int cards[NUMCARDS]` (doomdef.h card_t order, IT_*).
+   * 0/1 per slot. Written by M7 pickups (P_GiveCard) and the debug
+   * giveCard hook until then (D013(f)). NOT in the hashState
+   * serialization yet (M6-11 keeps goldens unmoved — deviation note;
+   * M7 reviews the inventory hashing together with powers[]). */
+  cards: Int32Array;
+  /** p_user.c `player->usedown` — the BT_USE edge latch (one P_UseLines
+   * per key-press, "Do not repeatedly use a line past the first time in
+   * the tics, 'event'", p_user.c:320 comment). */
+  usedown: boolean;
+  /** player_t `char *message` — written by the locked-use refusals
+   * (PD_* ids, pswitch.ts/pdoors.ts); the M9 HUD reads/clears it; the
+   * messageSlot log is the observable channel meanwhile. */
+  message: string;
 }
 
 export function createPlayer(): Player {
@@ -149,7 +174,10 @@ export function createPlayer(): Player {
     sidemove: 0,
     bob: 0,
     health: 100,
-    cheats: 0
+    cheats: 0,
+    cards: new Int32Array(NUMCARDS),
+    usedown: false,
+    message: ''
   };
   (p.mo as MobjStub).playerRef = p;
   return p;

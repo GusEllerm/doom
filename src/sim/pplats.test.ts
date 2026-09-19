@@ -30,6 +30,7 @@ import { emptyInput } from './ticcmd';
 import { pRunThinkers, sectorSpecialData } from './ptick';
 import { pCrossSpecialLine, pUseSpecialLine, pShootSpecialLine, activePlats } from './pspec';
 import { LINE_SPECIALS, PLAT, unimplementedSpecial, resetUnimplementedSpecial } from './specials-table';
+import { pswitchCounts, resetPswitchCounts } from './pswitch';
 import { RNDTABLE } from './prng';
 import { hashState, type GameState } from './state';
 import { pmapHookCounts, resetPmapHookCounts } from './pmap';
@@ -112,6 +113,7 @@ beforeEach(() => {
   resetPplatsCounts();
   resetPlatFlatCopies();
   resetPmapHookCounts();
+  resetPswitchCounts(); // M6-11: swap-count assertions
 });
 
 /* ------------------------------------------------------------------ */
@@ -526,15 +528,14 @@ describe('use-vs-cross parity (S1 21 vs W1 10 / GR 88)', () => {
     const b = floorSeries(s2, shaft2, 130);
     expect(a).toEqual(b);
     expect(a[118]).toBe(fx(24)); // up done at tic 118, detect+remove at 119
-    // W1 10 clears at dispatch (p_cross side); the S1 clear lives inside
-    // P_ChangeSwitchTexture (M6-11) — the line stays armed until then,
-    // pinned by pspec.test “leaves the switch armed”.
-    expect(s1.map.lines.special[l1]).toBe(21);
+    // W1 10 clears at dispatch (p_cross side); the S1 clear now LIVES in
+    // P_ChangeSwitchTexture (M6-11 landed): disarm-first, so parity holds.
+    expect(s1.map.lines.special[l1]).toBe(0);
     expect(s2.map.lines.special[l2]).toBe(0);
-    // The only stub touched is the switch-texture swap (S1 success);
-    // zero plat-family stubs: M6-11 owns the button machinery.
-    expect(unimplementedSpecial.count).toBe(1);
-    expect(unimplementedSpecial.byFn.get('pChangeSwitchTexture')).toBe(1);
+    // Zero stubs: the switch swap is the REAL body now (M6-11) — and the
+    // fixture switch line carries no SW1 texture, so only the disarm ran.
+    expect(unimplementedSpecial.count).toBe(0);
+    expect(pswitchCounts.changeSwitchTexture).toBe(1);
   });
 
   it('GR 88 keeps firing but the moving/specialdata-held sector refuses', () => {
@@ -595,6 +596,7 @@ describe('plats family coverage (registry ids → live bodies, zero stubs)', () 
       s.map.lines.tag[line] = 77;
       s.sectors.tag[1] = 77;
       resetUnimplementedSpecial();
+      resetPswitchCounts();
 
       const trig = e.use ?? e.cross ?? e.shoot;
       const stopOnly = trig!.actions.every((a) => a.action === 'stopPlat');
@@ -615,21 +617,19 @@ describe('plats family coverage (registry ids → live bodies, zero stubs)', () 
       else if (e.cross) pCrossSpecialLine(s.pmap, line, 0, PLAYER);
       else pShootSpecialLine(s, PLAYER, line);
 
-      expect(unimplementedSpecial.count, `id ${id} stubs`).toBe(
-        switchy && !stopOnly ? 1 : 0
-      );
+      expect(unimplementedSpecial.count, `id ${id} stubs`).toBe(0);
       if (!stopOnly) {
-        // Non-stop ids re-fire perpetuals via stasis OR are refused by
-        // specialdata; either way the live body ran — the only tolerated
-        // stub entry is shoot 47's p_switch.c texture swap.
+        // M6-11: the switch swap is the REAL body now — zero stubs on
+        // every plat id (the swap attempt itself is counted below).
         for (const fn of unimplementedSpecial.byFn.keys()) {
           expect(fn, `id ${id} fn`).toBe('pChangeSwitchTexture');
         }
       }
       if (switchy && !stopOnly) {
         // gateSwitch/thenSwitch route: live action succeeded ⇒ the
-        // (stubbed) switch-texture swap ran — count-only, M6-11 owns it.
-        expect(unimplementedSpecial.byFn.get('pChangeSwitchTexture')).toBe(1);
+        // (REAL, M6-11) switch-texture swap ran — count-only here; the
+        // swap/button semantics live in pswitch.test.
+        expect(pswitchCounts.changeSwitchTexture, `id ${id} swap`).toBe(1);
       }
     }
   });

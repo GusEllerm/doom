@@ -23,7 +23,8 @@ import {
   CF_GODMODE,
   CF_NOCLIP,
   MF_NOCLIP,
-  MF_NOGRAVITY
+  MF_NOGRAVITY,
+  NUMCARDS
 } from './sim/player';
 import { hashState, type GameState } from './sim/state';
 import { emptyInput, type GameInput } from './sim/ticcmd';
@@ -161,7 +162,9 @@ function liveSnapshot(state: GameState): DebugStateLive {
       weapons: 0,
       powerups: {},
       onGroundSector: -1,
-      noclip: (p.cheats & CF_NOCLIP) !== 0
+      noclip: (p.cheats & CF_NOCLIP) !== 0,
+      // M6-11: live card inventory (IT_* slot order; giveCard until M7).
+      cards: Array.from(p.cards)
     },
     sectors: { count: state.map.sectors.count },
     thinkers: { count: 0 },
@@ -192,6 +195,16 @@ export const debugSim: SimDebugApi = {
   },
   getNoclip(): boolean {
     return ((requireState().players[0]?.cheats ?? 0) & CF_NOCLIP) !== 0;
+  },
+  giveCard(index: number): number[] {
+    // P_GiveCard debug channel (D013(f), M6-plan §0.6/§M6-11): M7's real
+    // pickups (doomednum 5/6/13 → P_TouchSpecialThing) replace this.
+    if (!Number.isInteger(index) || index < 0 || index >= NUMCARDS) {
+      throw new RangeError(`giveCard: card index ${index} outside 0..${NUMCARDS - 1}`);
+    }
+    const p = requireState().players[0]!;
+    p.cards[index] = 1;
+    return Array.from(p.cards);
   },
   runTics(tics: number, input?: Partial<GameInput> | null): number {
     const state = requireState();
