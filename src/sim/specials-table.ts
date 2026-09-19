@@ -14,7 +14,8 @@
 //           → use.gateSwitch/thenSwitch carry the useAgain value; the
 //           texture stub (M6-11) owns the actual `special = 0`.
 //   Manuals (1,26-28,31-34,117,118) never touch special in the dispatcher
-//   (the open-type clear lives inside EV_VerticalDoor — M6-05).
+//   (the open-type clear lives inside EV_VerticalDoor — M6-05b, carried as
+//   data: use.clearInside on 31/32/33/34/118, p_doors.c `line->special = 0`).
 //
 // EXCEPTIONS pinned from source (do not "fix"):
 //   • cross 52/124 (exits) do NOT clear line->special (p_spec.c);
@@ -173,6 +174,11 @@ export interface TriggerSpec {
   /** use: non-player things may activate (the manual {1,32,33,34} list;
    * ML_SECRET still vetoes first, R05 §1.2). */
   readonly monsterUseOk?: boolean;
+  /** use (manual OPEN ids 31/32/33/34/118): the ACTION BODY clears
+   * `line->special = 0` inside EV_VerticalDoor (p_doors.c) — the
+   * dispatcher never touches it; the corpus lifecycle models the
+   * disarm iff the body actually ran (M6-05b FLIP). */
+  readonly clearInside?: boolean;
 }
 
 export interface LineSpecialEntry {
@@ -235,17 +241,17 @@ function buildLineTable(): (LineSpecialEntry | null)[] {
     MAX_LINE_SPECIAL + 1
   ).fill(null);
   const entries: readonly LineSpecialEntry[] = [
-    // ---- manuals (use-only; clear lives inside EV_VerticalDoor, M6-05) ----
+    // ---- manuals (use-only; the open-type clear is DATA: clearInside) ----
     { id: 1, name: 'MANUAL DOOR RAISE', use: { actions: [c('verticalDoor')], monsterUseOk: true } },
     { id: 26, name: 'MANUAL BLUE LOCKED', use: { actions: [c('verticalDoor')] } },
     { id: 27, name: 'MANUAL YELLOW LOCKED', use: { actions: [c('verticalDoor')] } },
     { id: 28, name: 'MANUAL RED LOCKED', use: { actions: [c('verticalDoor')] } },
-    { id: 31, name: 'MANUAL DOOR OPEN', use: { actions: [c('verticalDoor')] } },
-    { id: 32, name: 'MANUAL BLUE OPEN', use: { actions: [c('verticalDoor')], monsterUseOk: true } },
-    { id: 33, name: 'MANUAL RED OPEN', use: { actions: [c('verticalDoor')], monsterUseOk: true } },
-    { id: 34, name: 'MANUAL YELLOW OPEN', use: { actions: [c('verticalDoor')], monsterUseOk: true } },
+    { id: 31, name: 'MANUAL DOOR OPEN', use: { actions: [c('verticalDoor')], clearInside: true } },
+    { id: 32, name: 'MANUAL BLUE OPEN', use: { actions: [c('verticalDoor')], monsterUseOk: true, clearInside: true } },
+    { id: 33, name: 'MANUAL RED OPEN', use: { actions: [c('verticalDoor')], monsterUseOk: true, clearInside: true } },
+    { id: 34, name: 'MANUAL YELLOW OPEN', use: { actions: [c('verticalDoor')], monsterUseOk: true, clearInside: true } },
     { id: 117, name: 'MANUAL BLAZE RAISE', use: { actions: [c('verticalDoor')] } },
-    { id: 118, name: 'MANUAL BLAZE OPEN', use: { actions: [c('verticalDoor')] } },
+    { id: 118, name: 'MANUAL BLAZE OPEN', use: { actions: [c('verticalDoor')], clearInside: true } },
 
     // ---- use S1 / SR / exit switches ----
     { id: 7, name: 'S1 BUILD STAIRS', use: { actions: [c('stairs', STAIR.build8)], gateSwitch: 0 } },

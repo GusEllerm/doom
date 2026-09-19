@@ -319,11 +319,12 @@ function lineClassTest(special: number): void {
         expect(ok.messageCount, 'no refusal with the card').toBe(0);
         expect(ok.thinkerDelta + ok.stubLineHits, 'mover spawned OR door-stub hit')
           .toBeGreaterThanOrEqual(1);
-        // disarm iff the ACTION returned true (gateSwitch=0 S1) — with the
-        // M6-05 body pending the door action still returns false, so the
-        // switch faithfully stays armed (pswitch.test's failed-action pin).
+        // disarm iff the ACTION returned true (gateSwitch=0 S1) OR the
+        // body cleared INSIDE (manual OPEN ids — registry clearInside,
+        // p_doors.c; M6-05b FLIP from the stub-era always-armed model).
         expect(ok.lineSpecialAfter, 'disarm iff gateSwitch=0 AND action fired')
-          .toBe(entry.use?.gateSwitch === 0 && ok.thinkerDelta > 0 ? 0 : special);
+          .toBe((entry.use?.gateSwitch === 0 || entry.use?.clearInside === true) &&
+                ok.thinkerDelta > 0 ? 0 : special);
       });
       it('double-run hash-equal', () => {
         expect(runLine(special, locked).hash).toBe(runLine(special, locked).hash);
@@ -392,6 +393,7 @@ function lineClassTest(special: number): void {
       else if (route === 'use') {
         if (entry.use?.switchBefore !== undefined) want = 0; // 11/51: disarm BEFORE the call
         else if (entry.use?.gateSwitch === 0) want = fired ? 0 : special; // S1 iff action true
+        else if (entry.use?.clearInside === true) want = fired ? 0 : special; // p_doors.c open-types (M6-05b FLIP)
         else want = special; // SR / manuals / 138-139 (useAgain=1)
       } else want = special;
       expect(e.lineSpecialAfter, 'post-dispatch line special').toBe(want);
