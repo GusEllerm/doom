@@ -52,3 +52,7 @@ GitHub origin (GusEllerm/doom) present; user authorized pushes. main pushed & tr
 ## D012 — Noclip = real physics with checks skipped (supersedes D009 fly math)
 - M5-06 source truth: 1.10 has NO special noclip motion branch — noclip sets MF_NOCLIP; movement is the SAME thrust/friction/momentum pipeline, with P_TryMove's internal checks skipped. The M2 fly-stub math (D009) never existed in vanilla and is now deleted (kept as documented history in movement.test.ts).
 - Residual deviation kept: we also set MF_NOGRAVITY with noclip (vanilla noclip player falls — we chose floating noclip for a viewer tool; revisit if any golden disagrees).
+
+## D014 — Merge verification is mechanical, never narrative (2026-09, M6-05 incident)
+- Incident: M6-05 (doors) recorded as merged in docs; `git log`/file probes later showed NO door code ever landed (dispatch-era harness error killed the agent pre-report; the merge turn's evidence was not checked against the claimed paths). All downstream tasks correctly stub-avoided it, and M6-13's corpus auto-flips assertions — the system absorbed the lie, but a milestone claim ("doors live") was false for weeks.
+- Rule: `scripts/verify-merge.sh <branch> <path>...` (NEW): asserts branch tip reachable-merged (log ancestry) AND probe paths' post-merge content signatures (grep patterns) on main; orchestrator must run it IN the merge turn and quote its output; ledger "done" entries cite the merge SHA. Ledger-vs-git drift is a P0: fix ledger same turn, note in journal.
