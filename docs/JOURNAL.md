@@ -152,3 +152,9 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - M5 plan merged (10 tasks/7 waves; FRICTION 0xe800, STOPSPEED 0x1000, walk thrust 51200/run 102400 pinned). Wave 1: pmaputl ∥ mouse.
 - M5-07 merged (i_video.c scaling law + ev_mouse queue).
 - Concurrency policy → 'more if safe' (user): saturated to cap 3 by pulling forward M6+M7 plan drafting (docs-only, disjoint branches) alongside M5 collision chain. M7 plan coarsely deps M6 (absent at authoring) — reconcile at merge.
+
+## 2026-09-16 — /tmp MIRROR DECAY INCIDENT
+- Discovered (M7 planner report): macOS /tmp cleanup ate the offline source mirrors (linuxdoom-1.10 down to 14 files, doomsrc to 5). Some earlier agent sessions ran against partial sources — their reports compensated via research-note verbatim quotes (verified adequate in spot checks: M5-01/02 cite p_maputl/p_map which existed at their run times).
+- RESTORED: /tmp/DOOM-master/linuxdoom-1.10 = 62 .c files from official id-Software/DOOM master.zip (network fine). /tmp/doomsrc not restored (mirror canonical).
+- RULE: every dispatch brief now assumes /tmp may be empty; implementers verify target file exists (one ls) before grep-planning; orchestrator re-checks mirror at session start (ls *.c | wc -l == 62).
+- M7 plan + M6 plan merged (both written during the partial-source window; M7 explicitly routed ambiguities to empirical Freedoom L2 fixtures instead of folklore — sound methodologically).
