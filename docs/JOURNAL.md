@@ -160,3 +160,9 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - M7 plan + M6 plan merged (both written during the partial-source window; M7 explicitly routed ambiguities to empirical Freedoom L2 fixtures instead of folklore — sound methodologically).
 - M5 chain 01-06 merged fast (mirror restored; source-truth corrections: no telefrag param on TryMove; slide is 3-retry intra-tic; noclip truth D012). Wave 6 parallel: live e2e + feel goldens.
 - M5-09 merged: feel suite 13 scenarios — 7 analytic (friction asymptote 546133 = 200·4095/15·(256/232)^n etc), 32767 short overflow truth, corner livelock absent-on-grids truth.
+
+## 2026-09-17 — 🏁 M5 COMPLETE (player physics + input)
+- M5-08 (live page; pointer-lock real-device fix) + M5-10 (motion strip + 9 mechanical exit guards) merged. Gates: 973 tests, 14 e2e, goldens automap/walls/motion drift-free.
+- L5 motion strip reviewed: wall approach scales correctly, bob oscillation visible around horizon, step-up at t=40 with squat lag + recovery, turn swing per feel-09 ramp. PASS.
+- Feel evidence is analytic-grade: friction asymptote, fall parabola, turn-ramp re-derivations — 12/13 scenarios not hash-dependent.
+- Milestones: M1-M5 ✅. Next: M6 (level mechanics) wave 1 per merged plan: thinker arena + fixture specials + p_tick.
