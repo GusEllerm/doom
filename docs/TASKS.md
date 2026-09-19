@@ -91,3 +91,11 @@ Future tasks will be added as architects decompose milestones.
 | M5-08 | Live-page integration + L4 e2e | M5 | M5-06/07 | done (merged) |
 | M5-09 | L2 scripted-tic feel goldens | M5 | M5-06 | done (merged, 23 tests) |
 | M5-10 | M5 exit + L5 motion review | M5 | M5-08/09 | done (merged) |
+
+## M6 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M6-01 | Thinker arena + live world + hook slots | M6 | M5 | dispatched (agent 149b5909) |
+| M6-02 | Fixture specials/tags/things | M6 | — | dispatched (agent 1223279f) |
+| M6-03+ | (see docs/design/M6-plan.md §1 wave table) | M6 | 01/02 | planned |
