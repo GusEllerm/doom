@@ -183,3 +183,4 @@ Merged through M6-06 (plats — incl. conflict resolution: plats+lights both edi
 RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-13 (corpus + E1M1 key-route + renderer live-sector/light wiring GAP). Then M7 (plan merged) → M8 plan → M9-M12.
 - 2026-09-18: resumed; dispatching M6-07/08/10 (12 next slot).
 - User-stopped wave recovered: 07/10 salvage-finishers on t2 branches (work preserved by auto-commits), 08 fresh t2. M6-12 queues next.
+- M6-08 merged (t2): 81/156 specials live. Truth: down-moving crushers NEVER call P_ChangeSector (only return crushed) — P_ChangeSector crush damage is the floors' path; crushers use damageSlot(10) @ !(leveltime&3). Kill deferred M7 (slot + gib hooks).

@@ -140,7 +140,9 @@ const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>([
   'plat', 'stopPlat',
   // M6-10: EV_Teleport is live — 39/97/125/126 displacement, clear and
   // monster-gate semantics are pinned by ptelept.test.ts.
-  'teleport'
+  'teleport',
+  // M6-08: ceilings/crushers live.
+  'ceiling', 'crushStop'
 ]);
 const allLive = (acts: readonly ActionSpec[]): boolean =>
   acts.every((a) => LIVE_ACTIONS.has(a.action));
@@ -162,6 +164,9 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
     for (const a of acts) {
       const fn = FN_OF[a.action];
       if (fn === null) continue; // 'exit' asserted via exitRequest
+      if (LIVE_ACTIONS.has(a.action)) continue; // live family (e.g. cross 40's
+      // ceiling half since M6-08 — routed for real; only the still-stubbed
+      // half records hits)
       expect(hits(fn, special), `special ${special} → ${fn}`).toBe(1);
       void side;
       void mover;
@@ -366,13 +371,21 @@ describe('cross dispatch semantics', () => {
     expect(hits('pChangeSwitchTexture', 29)).toBe(0);
   });
 
-  it('cross 40 runs BOTH actions (ceiling then floor)', () => {
+  it('cross 40 runs BOTH actions (live ceiling M6-08, then floor stub)', () => {
     bindSpecialsWorld(s);
     s.map.lines.special[line] = 40;
+    // Ceiling is LIVE (M6-08): park the tag on nothing so the real
+    // EV_DoCeiling scan is a no-op here — the BOTH-actions truth is the
+    // floor stub firing even though the ceiling action ran for real.
+    const savedTag = s.map.lines.tag[line]!;
+    s.map.lines.tag[line] = 4242;
     pCrossSpecialLine(s.pmap, line, 0, PLAYER);
-    expect(hits('evDoCeiling', 40)).toBe(1);
+    expect(unimplementedSpecial.entries.filter(
+      (e) => e.fn === 'evDoCeiling' && e.special === 40
+    ).length).toBe(0); // no stub — live
     expect(hits('evDoFloor', 40)).toBe(1);
     expect(s.map.lines.special[line]).toBe(0);
+    s.map.lines.tag[line] = savedTag;
   });
 });
 
