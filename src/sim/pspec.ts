@@ -45,7 +45,7 @@ import { ML_SECRET } from './pspec-helpers';
 import { evDoDoor, evVerticalDoor, pSpawnDoorCloseIn30, pSpawnDoorRaiseIn5Mins } from './pdoors';
 import { activePlats, evDoPlat, evStopPlat } from './pplats';
 import { evDoFloor, evBuildStairs, evDoDonut } from './pfloor';
-import { evDoCeiling, evCeilingCrushStop } from './pceilng';
+import { activeCeilings, evDoCeiling, evCeilingCrushStop } from './pceilng';
 import {
   evLightTurnOn, evStartLightStrobing, evTurnTagLightsOff,
   pSpawnLightFlash, pSpawnStrobeFlash, pSpawnGlowingLight, pSpawnFireFlicker
@@ -60,7 +60,6 @@ import {
 import type { ActionId, ActionSpec, SpawnActionId, TriggerSpec } from './specials-table';
 
 import type { Mover, PMapWorld } from './pmap';
-import type { Thinker } from './ptick';
 import type { SpecWorld } from './pspec-helpers';
 
 /* Helpers live in pspec-helpers.ts (cycle-free home for the family files);
@@ -128,7 +127,9 @@ export const MAXBUTTONS = 16; // p_spec.h
 // MAXPLATS now LIVES in pplats.ts (M6-06, vanilla defines activeplats in
 // p_plats.c); re-exported here for the M6-03 consumers.
 export { MAXPLATS, activePlats } from './pplats';
-export const MAXCEILINGS = 30; // p_spec.h
+// MAXCEILINGS now LIVES in pceilng.ts (M6-08, vanilla defines
+// activeceilings in p_ceilng.c); re-exported here for the M6-03 consumers.
+export { MAXCEILINGS, activeCeilings } from './pceilng';
 export const MAXLINEANIMS = 64; // p_spec.c
 export const BUTTONTIME = 35; // p_spec.h (used by M6-11's P_StartButton)
 
@@ -153,11 +154,9 @@ export const buttonList: ButtonSlot[] = Array.from(
   () => ({ line: -1, where: 0, btexture: '', btimer: 0 })
 );
 
-/** activeplats[] / activeceilings[] — activeplats LIVES in pplats.ts
- * (re-exported above, M6-06); activeceilings is the p_ceilng.c global
- * (p_ceilng.ts owns it from M6-08; the stasis scans index these). */
-export const activeCeilings: (Thinker | null)[] =
-  new Array<Thinker | null>(MAXCEILINGS).fill(null);
+/** activeplats[] / activeceilings[] — both LIVE in their family files
+ * (activeplats pplats.ts M6-06, activeCeilings pceilng.ts M6-08 —
+ * re-exported above; the stasis scans index these). */
 
 /** linespeciallist[] / numlinespecials (special-48 scroll collection). */
 export const lineSpecialList = { lines: new Int32Array(MAXLINEANIMS), count: 0 };
