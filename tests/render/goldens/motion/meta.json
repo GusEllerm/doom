@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "generator": "scripts/motion-strip.mjs",
+  "set": "motion",
+  "pipeline": "FIXMAP fixture (mapBuilder, f0 | +24 step) -> gInitGame -> warp (debug convention) -> scripted 70 tics (walk + turn ramp held 10s + straighten; feel-09 turnheld) -> renderFrame per tic 0..70 with P_CalcHeight viewz -> 8 labelled frames (tics 0/10/../70, 3x5-font stats) blitted into one indexed strip -> sha256(strip indices)",
+  "scenes": {
+    "m5-10-walk-turn-step": {
+      "kind": "motion",
+      "script": "FIXMAP fixture (room f0 | f+24 step @x304) -> warp (48,64,0deg) -> walk fwd tics 1-70, turn-right held 10-19, turn-left 20-29 (feel-09 ramp) -> render frame at tics 0/10/.../70 with P_CalcHeight viewz -> 8-frame labelled strip",
+      "reason": "M5-10 motion evidence",
+      "updatedAt": "2026-09-19",
+      "png": "m5-10-walk-turn-step.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 3145728,
+          "yU": 16777216,
+          "zU": 0,
+          "viewzU": 0,
+          "viewheightU": 2686976,
+          "bobU": 0,
+          "momx": 0,
+          "momy": 0,
+          "angleBam": 0,
+          "frameSha": "73b347d129e6952aa875e221967d2286380552a89b2e5e767997df9ee3e2093c"
+        },
+        {
+          "tic": 10,
+          "xU": 5300394,
+          "yU": 16777995,
+          "zU": 0,
+          "viewzU": 2756730,
+          "viewheightU": 2686976,
+          "bobU": 446323,
+          "momx": 309986,
+          "momy": 111,
+          "angleBam": 0,
+          "frameSha": "921db2252f515f039a7f38dbb018587d2134c322be81982044772daa366c0f25"
+        },
+        {
+          "tic": 20,
+          "xU": 9486773,
+          "yU": 16450907,
+          "zU": 0,
+          "viewzU": 2557137,
+          "viewheightU": 2686976,
+          "bobU": 819284,
+          "momx": 412869,
+          "momy": -76991,
+          "angleBam": 3980394496,
+          "frameSha": "5a45759206300f57a40420e5fdc46bf898ca27a0d348937fc531b813e1f7cd19"
+        },
+        {
+          "tic": 30,
+          "xU": 14332548,
+          "yU": 15517993,
+          "zU": 0,
+          "viewzU": 2846047,
+          "viewheightU": 2686976,
+          "bobU": 990164,
+          "momx": 458881,
+          "momy": -51051,
+          "angleBam": 104857600,
+          "frameSha": "2da5ef8300275d6d6bc174c3c3f7720dc1e8301db9eb3abfc626bce6ef0a3b90"
+        },
+        {
+          "tic": 40,
+          "xU": 19527540,
+          "yU": 15506927,
+          "zU": 1572864,
+          "viewzU": 2745608,
+          "viewheightU": 1343488,
+          "bobU": 1048576,
+          "momx": 477795,
+          "momy": 28400,
+          "angleBam": 104857600,
+          "frameSha": "1a41155fd3f74dbc6a729e8178ffaa1868c894c296a1d75dac99cd8b40385b7e"
+        },
+        {
+          "tic": 50,
+          "xU": 24848898,
+          "yU": 16026670,
+          "zU": 1572864,
+          "viewzU": 4432864,
+          "viewheightU": 2686976,
+          "bobU": 1048576,
+          "momx": 484863,
+          "momy": 58088,
+          "angleBam": 104857600,
+          "frameSha": "d892d2424713a43753be7620217ec5fa247737b8628c7d116262830b765b067a"
+        },
+        {
+          "tic": 60,
+          "xU": 30217472,
+          "yU": 16744766,
+          "zU": 1572864,
+          "viewzU": 4084544,
+          "viewheightU": 2686976,
+          "bobU": 1048576,
+          "momx": 487504,
+          "momy": 69183,
+          "angleBam": 104857600,
+          "frameSha": "1a0aecb3547591432f75a61c41897b9adb3ca5f0f16a786d822a38f83fa8c62e"
+        },
+        {
+          "tic": 70,
+          "xU": 35603694,
+          "yU": 17536978,
+          "zU": 1572864,
+          "viewzU": 4437408,
+          "viewheightU": 2686976,
+          "bobU": 1048576,
+          "momx": 488491,
+          "momy": 73328,
+          "angleBam": 104857600,
+          "frameSha": "432c807ce4f5acfa170435513fcb003ebda821bc1e5b33582d3d0a678e36d0f6"
+        }
+      ],
+      "indexSha256": "28795899a15cc8d572e6eec9d4ded7158ba49b2069dec2622e3ebc73041871d2",
+      "history": [
+        {
+          "reason": "M5-10 motion evidence",
+          "at": "2026-09-19",
+          "indexSha256": "1374c9f6477e49897f5980ad8e48024e769da2c694d1173ff3ae32e998d6ad07"
+        },
+        {
+          "reason": "M5-10 motion evidence",
+          "at": "2026-09-19",
+          "indexSha256": "28795899a15cc8d572e6eec9d4ded7158ba49b2069dec2622e3ebc73041871d2"
+        }
+      ]
+    }
+  }
+}
