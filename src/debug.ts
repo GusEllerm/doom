@@ -65,6 +65,19 @@ export interface RenderDebugSource {
 
 let renderSource: RenderDebugSource | null = null;
 
+/**
+ * M5-08 mouse-injection seam: main.ts registers a raw-delta injector feeding
+ * the SAME ev_mouse accumulator the pointer-lock mousemove path feeds
+ * (input/mouse.ts `motion`) — the event-queue seam M5-plan §5.4/§6 puts the
+ * load on, since headless-chromium pointer lock is unreliable. No sim import
+ * here: the injector is a plain (dx,dy)=>void callback.
+ */
+let mouseInjector: ((dx: number, dy: number) => void) | null = null;
+
+export function attachMouseInjection(fn: ((dx: number, dy: number) => void) | null): void {
+  mouseInjector = fn;
+}
+
 /** The documented counter subset (extra source fields like solidsegDrops are
  * deliberately not echoed into the §7 snapshot shape). */
 function pickCounters(c: {
@@ -136,6 +149,10 @@ function liveSnapshot(state: GameState): DebugStateLive {
       x: p.mo.x,
       y: p.mo.y,
       z: p.mo.z,
+      // M5-08 read-out: the live P_CalcHeight outputs (viewz is the 0-pin
+      // until the first tic; see sim/player.ts spawn pin note).
+      viewz: p.viewz,
+      bob: p.bob,
       angleDeg: bamToDeg(p.mo.angle),
       health: p.health,
       // G9-pinned defaults (subsystems land post-M2, see types/debug.ts):
@@ -198,6 +215,13 @@ export const debugSim: SimDebugApi = {
     p.mo.z = z === undefined ? p.mo.floorz : z | 0;
     // teleport semantics (§7): reactiontime lockout deliberately NOT set —
     // debug warps must not silently swallow the tics a test steps next.
+  },
+  injectMouse(dx: number, dy: number): void {
+    requireState();
+    if (mouseInjector === null) {
+      throw new Error('injectMouse: main.ts mouse wiring not registered');
+    }
+    mouseInjector(dx | 0, dy | 0);
   }
 };
 

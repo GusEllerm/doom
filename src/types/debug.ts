@@ -41,6 +41,10 @@ export interface DebugStateLive {
     y: number;
     /** fixed (ONFLOORZ until P_CalcHeight) */
     z: number;
+    /** M5-08: fixed eye height (P_CalcHeight; 0 pinned pre-first-tic) */
+    viewz: number;
+    /** M5-08: fixed bob accumulator (P_CalcHeight |mom|^2>>2, MAXBOB cap) */
+    bob: number;
     /** degrees [0,360) derived from the BAM angle */
     angleDeg: number;
     health: number;
@@ -110,6 +114,11 @@ export interface SimDebugApi {
   warp(x: number, y: number, z?: number, angleDeg?: number): void;
   /** Current GameInput produced by the sticky override (debug introspection). */
   getInput(): GameInput | null;
+  /** M5-08: inject a RAW (unscaled) device delta into the live ev_mouse
+   * accumulator — the same queue the pointer-lock mousemove path feeds
+   * (input/mouse.ts motion()). Sensitivity scaling + once-per-tic drain
+   * happen at the tic boundary exactly like the real device path. */
+  injectMouse(dx: number, dy: number): void;
 }
 
 export interface DoomDebugApi {
