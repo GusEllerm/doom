@@ -621,3 +621,72 @@ describe.skipIf(!hasWad)('freedoom1.wad flat/sky goldens (M4-02)', () => {
     expect(world!.missingFlats).toEqual([]); // committed: empty on E1M1
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* 8. M6-13 live-sector view (the M6-09 gap closure)                   */
+/* ------------------------------------------------------------------ */
+
+describe('loadRenderWorld live sector view (M6-13)', () => {
+  function fixtureTextures(): Map<string, TextureDef> {
+    return new Map<string, TextureDef>([
+      ['FIXWALL0', mkTexture('FIXWALL0', 64, 128, () => 9)],
+      ['DOORFIX0', mkTexture('DOORFIX0', 64, 128, () => 11)],
+    ]);
+  }
+  function fixtureMd(): MapData {
+    const bytes = buildFixtureMapWad(FIX_SPEC);
+    return loadMap(WadFile.parse(arrayBuf(bytes)), 'FIXMAP');
+  }
+
+  it('conforming live view: the three SoA arrays ARE the live buffers (shared, zero copy)', () => {
+    const md = fixtureMd();
+    const n = md.sectors.length;
+    const live = {
+      floorZ: new Int32Array(n).fill(7 * FRACUNIT),
+      ceilingZ: new Int32Array(n).fill(64 * FRACUNIT),
+      light: new Int32Array(n).fill(128)
+    };
+    const w = loadRenderWorld(md, fixtureTextures(), [], live);
+    expect(w.sectorFloor).toBe(live.floorZ); // identity, not a copy
+    expect(w.sectorCeil).toBe(live.ceilingZ);
+    expect(w.sectorLight).toBe(live.light);
+    // in-place sim-side mutation is immediately visible to the renderer
+    live.floorZ[1] = (40 * FRACUNIT) | 0;
+    expect(w.sectorFloor[1]).toBe(40 * FRACUNIT);
+  });
+
+  it('live==static on a fresh level: frames fed the live view match the static tables', () => {
+    const md = fixtureMd();
+    const statics = loadRenderWorld(md, fixtureTextures());
+    const live = {
+      floorZ: Int32Array.from(md.sectors, (s) => (s.floorLh * FRACUNIT) | 0),
+      ceilingZ: Int32Array.from(md.sectors, (s) => (s.ceilingLh * FRACUNIT) | 0),
+      light: Int32Array.from(md.sectors, (s) => s.lightLevel)
+    };
+    const w = loadRenderWorld(md, fixtureTextures(), [], live);
+    expect(Array.from(w.sectorFloor)).toEqual(Array.from(statics.sectorFloor));
+    expect(Array.from(w.sectorCeil)).toEqual(Array.from(statics.sectorCeil));
+    expect(Array.from(w.sectorLight)).toEqual(Array.from(statics.sectorLight));
+  });
+
+  it('length-mismatched live view falls back to the static load-time copy', () => {
+    const md = fixtureMd();
+    const live = {
+      floorZ: new Int32Array(1),
+      ceilingZ: new Int32Array(1),
+      light: new Int32Array(md.sectors.length)
+    };
+    const w = loadRenderWorld(md, fixtureTextures(), [], live);
+    expect(w.sectorFloor).not.toBe(live.floorZ);
+    const statics = loadRenderWorld(md, fixtureTextures());
+    expect(Array.from(w.sectorFloor)).toEqual(Array.from(statics.sectorFloor));
+  });
+
+  it('omitting live keeps the pre-M6-13 behaviour byte-for-byte (no sharing)', () => {
+    const md = fixtureMd();
+    const w = loadRenderWorld(md, fixtureTextures());
+    const w2 = loadRenderWorld(md, fixtureTextures());
+    expect(w.sectorFloor).not.toBe(w2.sectorFloor); // distinct copies per load
+    expect(Array.from(w.sectorFloor)).toEqual(Array.from(w2.sectorFloor));
+  });
+});

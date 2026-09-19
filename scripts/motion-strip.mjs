@@ -36,10 +36,15 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync, inflateSync } from 'node:zlib';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const GOLDENS = join(ROOT, 'tests', 'render', 'goldens', 'motion');
-const META = join(GOLDENS, 'meta.json');
-const REVIEW = join(ROOT, 'test-results', 'goldens', 'motion');
-const TEST_FILE = join('tests', 'render', 'motion.test.ts');
+// M6-13: optional --set <name> (default "motion"). The mechanics set
+// (tests/render/mechanics.test.ts → tests/render/goldens/mechanics) is the
+// L5 SPECIALS-driven strip set; the protocol (dump JSON + bin, meta with
+// REQUIRED --reason + history, PNG writer) is byte-for-byte identical.
+let SET = 'motion';
+const SETS = {
+  motion: { test: join('tests', 'render', 'motion.test.ts') },
+  mechanics: { test: join('tests', 'render', 'mechanics.test.ts') }
+};
 const PIPELINE =
   'FIXMAP fixture (mapBuilder, f0 | +24 step) -> gInitGame -> warp (debug convention) -> scripted 70 tics (walk + turn ramp held 10s + straighten; feel-09 turnheld) -> renderFrame per tic 0..70 with P_CalcHeight viewz -> 8 labelled frames (tics 0/10/../70, 3x5-font stats) blitted into one indexed strip -> sha256(strip indices)';
 
@@ -49,10 +54,17 @@ let reason = null;
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--check') check = true;
-  else if (a === '--reason') reason = argv[++i] ?? '';
+  else if (a === '--set') {
+    SET = argv[++i] ?? '';
+    if (!(SET in SETS)) die(`unknown set '${SET}' (known: ${Object.keys(SETS).join(', ')})`);
+  } else if (a === '--reason') reason = argv[++i] ?? '';
   else if (a.startsWith('--reason=')) reason = a.slice('--reason='.length);
-  else die(`unknown argument: ${a} (usage: --reason "text" | --check)`);
+  else die(`unknown argument: ${a} (usage: [--set motion|mechanics] --reason "text" | --check)`);
 }
+const GOLDENS_DIR = join(ROOT, 'tests', 'render', 'goldens', SET);
+const META = join(GOLDENS_DIR, 'meta.json');
+const REVIEW = join(ROOT, 'test-results', 'goldens', SET);
+const TEST_FILE = SETS[SET].test;
 if (check && reason !== null) die('--check takes no --reason');
 if (!check && (reason === null || reason.trim() === '')) {
   die('REGENERATION requires a reason: --reason "why the strips change" (meta.json records it)');
@@ -92,12 +104,12 @@ function readdirSorted(d) {
 
 const meta = existsSync(META)
   ? JSON.parse(readFileSync(META, 'utf8'))
-  : { schema: 1, generator: 'scripts/motion-strip.mjs', set: 'motion', pipeline: PIPELINE, scenes: {} };
+  : { schema: 1, generator: 'scripts/motion-strip.mjs', set: SET, pipeline: PIPELINE, scenes: {} };
 
 let failed = false;
 const today = new Date().toISOString().slice(0, 10);
 const names = [...new Set([...Object.keys(dumps), ...Object.keys(meta.scenes ?? {})])].sort();
-if (!check) mkdirp(GOLDENS);
+if (!check) mkdirp(GOLDENS_DIR);
 
 for (const name of names) {
   const dump = dumps[name];
@@ -118,7 +130,7 @@ for (const name of names) {
       failed = true;
       continue;
     }
-    const pngPath = join(GOLDENS, entry.png ?? `${name}.png`);
+    const pngPath = join(GOLDENS_DIR, entry.png ?? `${name}.png`);
     if (!existsSync(pngPath)) {
       console.error(`DRIFT  ${name} blessed PNG missing: ${pngPath}`);
       failed = true;
@@ -157,7 +169,7 @@ for (const name of names) {
     indexSha256: dump.indexSha256,
     history: [...(prev?.history ?? []), { reason, at: today, indexSha256: dump.indexSha256 }]
   };
-  writeFileSync(join(GOLDENS, pngName), pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256, dump.paletteRgb));
+  writeFileSync(join(GOLDENS_DIR, pngName), pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256, dump.paletteRgb));
   console.log(`bless  ${name} → ${pngName}`);
 }
 

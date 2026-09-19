@@ -209,7 +209,15 @@ export interface RenderWorld {
 
   /* ---- SECTORS SoA ---- */
   readonly numSectors: number;
-  /** floor/ceiling height << FRACBITS. */
+  /** floor/ceiling height << FRACBITS. M6-13 LIVE-SECTOR WIRING (closes
+   * the M6-09 gap — rdata previously always read the static md.sectors
+   * copy): when {@link loadRenderWorld} is handed the sim's mutable
+   * LiveSectors view, these three arrays ARE the live arrays (shared
+   * buffers — movers/light thinkers mutate them in place, so every frame
+   * sees current geometry with ZERO per-frame copy). Without `live` they
+   * stay the static load-time copies (all committed goldens unmoved:
+   * live == static until a special runs, and static-only callers are
+   * unchanged). */
   readonly sectorFloor: Int32Array;
   readonly sectorCeil: Int32Array;
   /** Raw 0…255 light level (wallLightNum from M3-01 consumes it). */
@@ -302,16 +310,33 @@ function toFixedUnits(units: number): number {
 }
 
 /**
+ * M6-13: structural view of the sim's LIVE sector SoA
+ * (src/sim/state.ts LiveSectors satisfies it by construction — the same
+ * structural-typing seam main.ts already uses for player/map; keeps
+ * render/** free of sim imports, A-06). Fixed-point heights + raw light,
+ * indexed by sector, mutated IN PLACE by the mover/light families.
+ */
+export interface LiveSectorView {
+  readonly floorZ: Int32Array;
+  readonly ceilingZ: Int32Array;
+  readonly light: Int32Array;
+}
+
+/**
  * Build the renderer's numeric tables from decoded map data + composed
  * textures + (optionally) the F_START/F_END flat lumps ({@link
- * {@link flatsFromWad}). Pure read of all inputs (no mutation),
+ * {@link flatsFromWad}) + (optionally, M6-13) the sim's live sector SoA
+ * ({@link LiveSectorView}). Pure read of all inputs (no mutation),
  * deterministic, and independent of anything in sim/**. Omitting `flats`
- * keeps the pre-M4 behaviour: every flatNum is −1.
+ * keeps the pre-M4 behaviour: every flatNum is −1. Omitting `live` (or a
+ * `live` whose array lengths disagree with the map) keeps the pre-M6-13
+ * static load-time sector copy.
  */
 export function loadRenderWorld(
   md: MapData,
   textures: ReadonlyMap<string, TextureDef>,
   flats: readonly FlatSource[] = [],
+  live?: LiveSectorView,
 ): RenderWorld {
   /* ---------------- textures (vanilla texturenum = directory order) -- */
   const textureNames: string[] = [];
@@ -360,14 +385,28 @@ export function loadRenderWorld(
 
   /* ---------------- sectors ---------------------------------------- */
   const numSectors = md.sectors.length;
-  const sectorFloor = new Int32Array(numSectors);
-  const sectorCeil = new Int32Array(numSectors);
-  const sectorLight = new Int32Array(numSectors);
-  for (let i = 0; i < numSectors; i += 1) {
-    const s = md.sectors[i]!;
-    sectorFloor[i] = toFixedUnits(s.floorLh);
-    sectorCeil[i] = toFixedUnits(s.ceilingLh);
-    sectorLight[i] = s.lightLevel;
+  // M6-13 live-sector wiring: a length-conforming live view IS the
+  // renderer's sector table (shared buffers — the sim mutates them in
+  // place); otherwise the static load-time copy (pre-M6-13, byte-identical).
+  const liveOk =
+    live !== undefined &&
+    live.floorZ.length === numSectors &&
+    live.ceilingZ.length === numSectors &&
+    live.light.length === numSectors;
+  let sectorFloor: Int32Array = new Int32Array(numSectors);
+  let sectorCeil: Int32Array = new Int32Array(numSectors);
+  let sectorLight: Int32Array = new Int32Array(numSectors);
+  if (liveOk) {
+    sectorFloor = live!.floorZ;
+    sectorCeil = live!.ceilingZ;
+    sectorLight = live!.light;
+  } else {
+    for (let i = 0; i < numSectors; i += 1) {
+      const s = md.sectors[i]!;
+      sectorFloor[i] = toFixedUnits(s.floorLh);
+      sectorCeil[i] = toFixedUnits(s.ceilingLh);
+      sectorLight[i] = s.lightLevel;
+    }
   }
 
   /* ---------------- sidedefs --------------------------------------- */

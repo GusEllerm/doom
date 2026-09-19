@@ -1,0 +1,311 @@
+{
+  "schema": 1,
+  "generator": "scripts/motion-strip.mjs",
+  "set": "mechanics",
+  "pipeline": "FIXMAP fixture (mapBuilder, f0 | +24 step) -> gInitGame -> warp (debug convention) -> scripted 70 tics (walk + turn ramp held 10s + straighten; feel-09 turnheld) -> renderFrame per tic 0..70 with P_CalcHeight viewz -> 8 labelled frames (tics 0/10/../70, 3x5-font stats) blitted into one indexed strip -> sha256(strip indices)",
+  "scenes": {
+    "m6-crusher": {
+      "kind": "mechanics",
+      "script": "FIXMAP crusher (corridor | antechamber | tagged hall c128) -> warp (48,128,0deg) -> walk fwd <=45 tics, cross W1 fastCrushAndRaise trigger @x256 -> STOP in antechamber, hall ceiling crushes down (8/tic) and climbs (2/tic) in view (SC caption) -> 8 frames t=0..105",
+      "reason": "M6 door-through evidence",
+      "updatedAt": "2026-09-19",
+      "png": "m6-crusher.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        15,
+        30,
+        45,
+        60,
+        75,
+        90,
+        105
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 3145728,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 8388608,
+          "frameSha": "4114f2277240650caafd53f40d8e08b09443897503326ca97a75ddcf55de9d21"
+        },
+        {
+          "tic": 15,
+          "xU": 7264185,
+          "yU": 8390094,
+          "zU": 0,
+          "viewzU": 2365528,
+          "statU": 8388608,
+          "frameSha": "ed00a52ed5fd5d14934f2b2fe09675bc45d85678e46c8fe2697d4639c2865843"
+        },
+        {
+          "tic": 30,
+          "xU": 14525550,
+          "yU": 8392721,
+          "zU": 0,
+          "viewzU": 2851177,
+          "statU": 8388608,
+          "frameSha": "9fb78826c3bf34d4e51b7e03d19ab7f365fe758b32a04bac6cf3972a85bf81d2"
+        },
+        {
+          "tic": 45,
+          "xU": 21826312,
+          "yU": 8395353,
+          "zU": 0,
+          "viewzU": 2880029,
+          "statU": 6946816,
+          "frameSha": "a1af1bd3b6a1ecf0499e8ec2b5d3434c62d08757ba69d0d84247ae34850e9cb0"
+        },
+        {
+          "tic": 60,
+          "xU": 24267647,
+          "yU": 8396184,
+          "zU": 0,
+          "viewzU": 2683411,
+          "statU": 4980736,
+          "frameSha": "f068bf4ca7e441837fc5fb73e1a84fe6348a8ff3e49544b7368d1342cdf9fad7"
+        },
+        {
+          "tic": 75,
+          "xU": 24825225,
+          "yU": 8396319,
+          "zU": 0,
+          "viewzU": 2686454,
+          "statU": 3014656,
+          "frameSha": "eaf8d7b9619a7828c5d272a02b5b6d6783bcababf40d652f7b54595c14f85d68"
+        },
+        {
+          "tic": 90,
+          "xU": 24952511,
+          "yU": 8396319,
+          "zU": 0,
+          "viewzU": 2686985,
+          "statU": 1048576,
+          "frameSha": "814405788eb8039cd8a3b921e7f35b599cb098396c4f5e462a228d53d6f9c837"
+        },
+        {
+          "tic": 105,
+          "xU": 24952511,
+          "yU": 8396319,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 1835008,
+          "frameSha": "7452df9f475181493477f32bcb50d60a312ba782746184ded3d1dfc81082f42f"
+        }
+      ],
+      "indexSha256": "62d88c865446375f146c365c54202407c6e0608e67d2c070d4487d2bd15a98c2",
+      "history": [
+        {
+          "reason": "M6 door-through evidence",
+          "at": "2026-09-19",
+          "indexSha256": "62d88c865446375f146c365c54202407c6e0608e67d2c070d4487d2bd15a98c2"
+        }
+      ]
+    },
+    "m6-lift-through": {
+      "kind": "mechanics",
+      "script": "FIXMAP lift (corridor | tagged plat f0, sump f-24) -> warp (48,128,0deg) -> walk fwd until x≥520 (cross W1 plat trigger @x512 ~tic 63), momentum-stop ON the shaft -> floor -24 under the rider, PLATWAIT 105, raise -> player RIDES the special (SF/Z captions) -> 8 frames t=0/30/60/80/120/160/190/215",
+      "reason": "M6 door-through evidence",
+      "updatedAt": "2026-09-19",
+      "png": "m6-lift-through.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        30,
+        60,
+        80,
+        120,
+        160,
+        190,
+        215
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 3145728,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 0,
+          "frameSha": "ed96e1fa55fe570390ab4fc1edacce6fc542c63726a949de4318b0ad480c7443"
+        },
+        {
+          "tic": 30,
+          "xU": 14525550,
+          "yU": 8392721,
+          "zU": 0,
+          "viewzU": 2851177,
+          "statU": 0,
+          "frameSha": "ac875b9f90343e27b161ca2db49952eca90fcac3a64b2f464dc689fd67c4816f"
+        },
+        {
+          "tic": 60,
+          "xU": 30648032,
+          "yU": 8398496,
+          "zU": 0,
+          "viewzU": 2511680,
+          "statU": 0,
+          "frameSha": "32ef34d8bf286850d18525366acd5024c65b2a0509b02ba1eeb89843c3f02741"
+        },
+        {
+          "tic": 80,
+          "xU": 35332201,
+          "yU": 8400098,
+          "zU": -1310720,
+          "viewzU": 1769472,
+          "statU": -1572864,
+          "frameSha": "48d5fdec59155db6c7ae51aade70ce1fb2a0d2a2537765c54427f397ed0a8d4f"
+        },
+        {
+          "tic": 120,
+          "xU": 36745021,
+          "yU": 8400459,
+          "zU": -1572864,
+          "viewzU": 1114112,
+          "statU": -1572864,
+          "frameSha": "39c7309c5805d6a15e9778a38e27c118bc55b1f053a13647ecd05bbeac32d58d"
+        },
+        {
+          "tic": 160,
+          "xU": 36745021,
+          "yU": 8400459,
+          "zU": -1572864,
+          "viewzU": 1114112,
+          "statU": -1572864,
+          "frameSha": "39c7309c5805d6a15e9778a38e27c118bc55b1f053a13647ecd05bbeac32d58d"
+        },
+        {
+          "tic": 190,
+          "xU": 36745021,
+          "yU": 8400459,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 0,
+          "frameSha": "65c16ea4d1494d30cba86d78f2a8ac5d36bfdd990ca5e6e00a20a1a2004471f6"
+        },
+        {
+          "tic": 215,
+          "xU": 36745021,
+          "yU": 8400459,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 0,
+          "frameSha": "65c16ea4d1494d30cba86d78f2a8ac5d36bfdd990ca5e6e00a20a1a2004471f6"
+        }
+      ],
+      "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd",
+      "history": [
+        {
+          "reason": "M6 door-through evidence",
+          "at": "2026-09-19",
+          "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
+        }
+      ]
+    },
+    "m6-light-paint": {
+      "kind": "mechanics",
+      "script": "FIXMAP light (corridor | tagged room light 40) -> warp (48,128,0deg) -> walk fwd <=105 tics, cross W1 lightOn(255) trigger @x512 (~tic 66) -> tagged light SoA 40→255, room ahead repaints at full brightness (SL caption) -> 8 frames t=0..105",
+      "reason": "M6 door-through evidence",
+      "updatedAt": "2026-09-19",
+      "png": "m6-light-paint.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        15,
+        30,
+        45,
+        60,
+        75,
+        90,
+        105
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 3145728,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 2621440,
+          "frameSha": "b285455b7d0b247e0ab61dd95ec0413e86a7126e6df78e62639456afd0fb1f27"
+        },
+        {
+          "tic": 15,
+          "xU": 7264185,
+          "yU": 8390094,
+          "zU": 0,
+          "viewzU": 2365528,
+          "statU": 2621440,
+          "frameSha": "0edbf0c568b2a451f31ca8fece850f3843ddb01f42733c2256b5b2d2636654d8"
+        },
+        {
+          "tic": 30,
+          "xU": 14525550,
+          "yU": 8392721,
+          "zU": 0,
+          "viewzU": 2851177,
+          "statU": 2621440,
+          "frameSha": "bb6921542796df3dc9ff1b2b41ad40cc29b648dffabe961d05fba73f9aa36223"
+        },
+        {
+          "tic": 45,
+          "xU": 22504802,
+          "yU": 8395601,
+          "zU": 0,
+          "viewzU": 3182280,
+          "statU": 2621440,
+          "frameSha": "3ea5071af91f19fbe7c22aae07b69351cc40a4f6606764796cb3b27e89b49173"
+        },
+        {
+          "tic": 60,
+          "xU": 30648032,
+          "yU": 8398496,
+          "zU": 0,
+          "viewzU": 2511680,
+          "statU": 2621440,
+          "frameSha": "ab876fcec3ba52005c09139b079390e5a74dec24522649ca390e696de729c4cd"
+        },
+        {
+          "tic": 75,
+          "xU": 38828707,
+          "yU": 8401391,
+          "zU": 0,
+          "viewzU": 2194088,
+          "statU": 16711680,
+          "frameSha": "1d35d10cf7957708b6b2761e84e6ebb03d7602d96ce63686432e7b9849d2f3d2"
+        },
+        {
+          "tic": 90,
+          "xU": 47017936,
+          "yU": 8404286,
+          "zU": 0,
+          "viewzU": 2869080,
+          "statU": 16711680,
+          "frameSha": "e4abce7d40afbb8a8016dc37e9e2716c8a9a916196550bbc60809ce9cbbec445"
+        },
+        {
+          "tic": 105,
+          "xU": 49281282,
+          "yU": 8406539,
+          "zU": 0,
+          "viewzU": 2691651,
+          "statU": 16711680,
+          "frameSha": "4d68df48840bbeaebdc0ac64824bd6af3162f45df6bb1030f93cdc897e9f3546"
+        }
+      ],
+      "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42",
+      "history": [
+        {
+          "reason": "M6 door-through evidence",
+          "at": "2026-09-19",
+          "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
+        }
+      ]
+    }
+  }
+}
