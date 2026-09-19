@@ -1,4 +1,6 @@
-// sim/pmap — p_map.c part 1 (M5-02): P_CheckPosition + thinglinks scan.
+// sim/pmap — p_map.c parts 1+2 (M5-02 CheckPosition/thinglinks, M5-03
+// TryMove/TeleportMove): P_CheckPosition + thinglinks scan + P_TryMove +
+// P_TeleportMove.
 //
 // Faithful port of linuxdoom-1.10 p_map.c movement-clipping queries:
 //   P_CheckPosition (p_map.c:374-450) with the EXACT 1.10 order —
@@ -29,12 +31,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { MAXRADIUS } from './map';
+import { FRACUNIT } from '../core/constants';
 import { blockIndexOf, blockLinesBoxIterator } from './blockmap';
 import type { RuntimeMap } from './map';
 import type { BlockMap } from './blockmap';
 import { sectorAtPoint } from './bsp';
-import { bumpValidcount, pBoxOnLineSide, pLineOpening } from './pmaputl';
+import { bumpValidcount, pBoxOnLineSide, pLineOpening, pPointOnLineSide } from './pmaputl';
+import { pCrossSpecialLineStub } from './pcross.stub';
 import {
+  MF_DROPOFF,
+  MF_FLOAT,
   MF_MISSILE,
   MF_NOCLIP,
   MF_PICKUP,
@@ -42,9 +48,15 @@ import {
   MF_SKULLFLY,
   MF_SOLID,
   MF_SPECIAL,
+  MF_TELEPORT,
   thingLinksIterator,
+  thingSetPosition,
+  thingUnsetPosition,
   type ThingLinks,
 } from './thinglinks';
+
+/** 24*FRACUNIT — p_map.c's literal step-up / dropoff limit in P_TryMove. */
+export const MAXSTEP = 24 * FRACUNIT;
 
 /** p_map.c:69 `#define MAXSPECIALCROSS 8`. */
 export const MAXSPECIALCROSS = 8;
@@ -71,11 +83,17 @@ export interface Mover {
   height: number;
   /** MF_* bits (p_mobj.h). */
   flags: number;
-  /** vanilla `mobj_t.player != NULL` — disables the ML_BLOCKMONSTERS test. */
+  /** vanilla `mobj_t.player != NULL` — disables the ML_BLOCKMONSTERS test
+   * and gates PIT_StompThing (non-players don't stomp off map30). */
   player?: boolean;
   /** ThingLinks slot standing for this mover (PIT_CheckThing's pointer
    * self-skip `thing == tmthing`); −1/undefined = not in the grid. */
   linkSlot?: number;
+  /** mobj_t floorz (p_mobj.h:234) — written by P_TryMove/P_TeleportMove on
+   * success; z itself is P_ZMovement's (M5-05), TryMove never moves z. */
+  floorz?: number;
+  /** mobj_t ceilingz — written on successful move (same pin as floorz). */
+  ceilingz?: number;
 }
 
 /** Everything the clipping queries read (built once per level). */
@@ -83,6 +101,10 @@ export interface PMapWorld {
   readonly map: RuntimeMap;
   readonly bm: BlockMap;
   readonly links: ThingLinks;
+  /** doomstat `gamemap` (PIT_StompThing's boss-level exception `!= 30`);
+   * default 1 — doom1 never has a map 30, so the exception is doom2-only
+   * folklore kept faithful but inert here (M5-plan §0.5). */
+  readonly gamemap?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -105,6 +127,12 @@ export interface PMapHooks {
   skullFlyHit?: (slot: number, attacker: Mover) => void;
   /** p_map.c:325-329 missile hit damage/explode, M7/M8. */
   missileHit?: (slot: number, source: Mover) => void;
+  /** p_map.c:108 P_DamageMobj(thing, tmthing, tmthing, 10000) — the
+   * PIT_StompThing telefrag (P_TeleportMove only). M6/M8 own the damage/
+   * death roster; the DEFAULT is a documented no-op (victim survives in
+   * place, teleport still succeeds — exactly the vanilla control flow
+   * minus the kill). */
+  telefrag?: (slot: number, stumper: Mover) => void;
 }
 
 export const pmapHooks: PMapHooks = {};
@@ -114,6 +142,7 @@ export const pmapHookCounts = {
   touchSpecialThing: 0,
   skullFlyHit: 0,
   missileHit: 0,
+  telefrag: 0,
   /** writes past spechit[0..7] (vanilla: silent memory corruption — here:
    * the extra lines simply are not stored, numspechit still counts them). */
   spechitOverflow: 0,
@@ -123,6 +152,7 @@ export function resetPmapHookCounts(): void {
   pmapHookCounts.touchSpecialThing = 0;
   pmapHookCounts.skullFlyHit = 0;
   pmapHookCounts.missileHit = 0;
+  pmapHookCounts.telefrag = 0;
   pmapHookCounts.spechitOverflow = 0;
 }
 
@@ -147,7 +177,7 @@ export const tm = {
   /** tmx/tmy (fixed) */
   x: 0,
   y: 0,
-  /** "move would be ok if within tmfloorz - tmceilingz" (set by M5-03). */
+  /** "move would be ok if within tmfloorz - tmceilingz" (set by pTryMove). */
   floatok: false,
   tmfloorz: 0,
   tmceilingz: 0,
@@ -362,6 +392,188 @@ export function pCheckPosition(world_: PMapWorld, thing: Mover, x: number, y: nu
   ) {
     return false;
   }
+
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* P_TryMove — p_map.c:452-537                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `P_TryMove(thing, x, y)` — 1.10 signature: **no telefrag/dropoff
+ * parameter** (M5-plan §0.3; the `boolean telefrag` 4th arg is the Boom/
+ * 1.9-line folklore, as is any `MF_FLOAT` 49*FRACUNIT floatdrop test —
+ * neither exists in linuxdoom-1.10 p_map.c). After {@link pCheckPosition}:
+ *   1. `tmceilingz - tmfloorz < height`              ⇒ doesn't fit
+ *   2. floatok = true
+ *   3. `!MF_TELEPORT && tmceilingz - z < height`     ⇒ must lower itself
+ *   4. `!MF_TELEPORT && tmfloorz - z > 24*FRACUNIT`  ⇒ too big a step up
+ *   5. `!(MF_DROPOFF|MF_FLOAT) && tmfloorz - tmdropoffz > 24*FRACUNIT`
+ *      ⇒ don't stand over a dropoff (players carry MF_DROPOFF ⇒ ledges ok)
+ * MF_NOCLIP skips the whole check block but NOT the z seed — CheckPosition
+ * still tracked floorz/ceilingz and noclip still relinks (D009 revisit:
+ * noclip = vanilla semantics, checks skipped, tracking intact).
+ * On success: unset-then-set link move (order pinned for the thinglinks
+ * chains, M5-plan §M5-03.4), thing.floorz/ceilingz = tm values, z
+ * untouched (P_ZMovement, M5-05), then the spechit crossing loop — back-
+ * wards, side-vs-oldside, feeding the counted {@link pCrossSpecialLineStub}
+ * (real dispatch M6; the counter is the only gap — the scan side is live).
+ */
+export function pTryMove(world_: PMapWorld, thing: Mover, x: number, y: number): boolean {
+  tm.floatok = false;
+  if (!pCheckPosition(world_, thing, x, y)) return false; // solid wall or thing
+
+  if (!(thing.flags & MF_NOCLIP)) {
+    if (((tm.tmceilingz - tm.tmfloorz) | 0) < thing.height) return false; // doesn't fit
+
+    tm.floatok = true;
+
+    if (!(thing.flags & MF_TELEPORT) && ((tm.tmceilingz - thing.z) | 0) < thing.height) {
+      return false; // mobj must lower itself to fit
+    }
+    if (!(thing.flags & MF_TELEPORT) && ((tm.tmfloorz - thing.z) | 0) > MAXSTEP) {
+      return false; // too big a step up
+    }
+    if (
+      !(thing.flags & (MF_DROPOFF | MF_FLOAT)) &&
+      ((tm.tmfloorz - tm.tmdropoffz) | 0) > MAXSTEP
+    ) {
+      return false; // don't stand over a dropoff
+    }
+  }
+
+  // the move is ok, so link the thing into its new position
+  // (P_UnsetThingPosition → fields → P_SetThingPosition; the unset-first
+  // order keeps the mover's own slot out of the destination-cell chains —
+  // it can never be seen mid-move, M5-plan §M5-03.4).
+  const links = world_.links;
+  const slot = thing.linkSlot ?? -1;
+  if (slot >= 0) thingUnsetPosition(links, slot);
+
+  const oldx = thing.x;
+  const oldy = thing.y;
+  thing.floorz = tm.tmfloorz;
+  thing.ceilingz = tm.tmceilingz;
+  thing.x = x;
+  thing.y = y;
+
+  if (slot >= 0) thingSetPosition(links, slot, x, y);
+
+  // if any special lines were hit, do the effect
+  // (`while (numspechit--)` walks the list backwards and leaves the
+  // counter at −1 — pinned; overflow slots past spechit[0..7] would read
+  // adjacent memory in vanilla, here they are skipped (already counted
+  // via pmapHookCounts.spechitOverflow) after the valid range).
+  if (!(thing.flags & (MF_TELEPORT | MF_NOCLIP))) {
+    for (let i = tm.numspechit - 1; i >= 0; i--) {
+      if (i >= MAXSPECIALCROSS) continue;
+      const line = tm.spechit[i]!;
+      const side = pPointOnLineSide(world_.map, x, y, line);
+      const oldside = pPointOnLineSide(world_.map, oldx, oldy, line);
+      if (side !== oldside && world_.map.lines.special[line]!) {
+        pCrossSpecialLineStub(line, oldside, thing); // ← M6 wires the real dispatch
+      }
+    }
+    tm.numspechit = -1; // vanilla loop-exit state (next query resets to 0)
+  }
+
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* P_TeleportMove + PIT_StompThing — p_map.c:75-177                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `PIT_StompThing(thing)` verbatim: only MF_SHOOTABLE victims, box
+ * distance test, self-skip; non-player stumpers fail the teleport off
+ * map 30 (doom1: never true — see {@link PMapWorld.gamemap}); players
+ * telefrag: `P_DamageMobj(thing, tmthing, tmthing, 10000)` →
+ * {@link pmapHooks.telefrag} slot (default no-op — victim survives in
+ * place, the move still succeeds; M6/M8 register the real damage).
+ */
+export function pitStompThing(slot: number): boolean {
+  const w = world!;
+  const thing = tm.thing!;
+  const flags = w.links.flags[slot]!;
+
+  if (!(flags & MF_SHOOTABLE)) return true;
+
+  const blockdist = (w.links.radius[slot]! + thing.radius) | 0;
+  if (abs32(w.links.x[slot]! - tm.x) >= blockdist || abs32(w.links.y[slot]! - tm.y) >= blockdist) {
+    return true; // didn't hit it
+  }
+
+  if (slot === (thing.linkSlot ?? -1)) return true; // don't clip against self
+
+  // monsters don't stomp things except on boss level
+  if (!thing.player && (w.gamemap ?? 1) !== 30) return false;
+
+  pmapHookCounts.telefrag++;
+  pmapHooks.telefrag?.(slot, thing);
+  return true;
+}
+
+/**
+ * `P_TeleportMove(thing, x, y)` — pins from p_map.c:82-177:
+ *  • seeds the tm state exactly like P_CheckPosition (box, subsector
+ *    floor/ceiling seed, validcount++, numspechit = 0) but with NO
+ *    MF_NOCLIP early-out and NO line scan at all — teleports cross walls;
+ *  • the thing pass is PIT_StompThing over the MAXRADIUS-extended box:
+ *    a failing stomp (non-player onto a shootable thing) aborts BEFORE
+ *    any relink — position and links untouched;
+ *  • success relinks (unset/set) and writes floorz/ceilingz —
+ *    **momentum and z are NOT touched** (vanilla clears nothing here; the
+ *    callers set z, e.g. ONFLOORZ/teleport destination, M6).
+ */
+export function pTeleportMove(world_: PMapWorld, thing: Mover, x: number, y: number): boolean {
+  world = world_;
+  tm.thing = thing;
+  tm.flags = thing.flags;
+  tm.x = x;
+  tm.y = y;
+
+  const r = thing.radius;
+  tm.bbox.top = (y + r) | 0;
+  tm.bbox.bottom = (y - r) | 0;
+  tm.bbox.right = (x + r) | 0;
+  tm.bbox.left = (x - r) | 0;
+
+  const sector = sectorAtPoint(world_.map, x, y);
+  tm.ceilingline = -1;
+
+  const S = world_.map.sectors;
+  tm.tmfloorz = S.floorHeight[sector]!;
+  tm.tmdropoffz = tm.tmfloorz;
+  tm.tmceilingz = S.ceilingHeight[sector]!;
+
+  scan.valid = world_.map.lines.valid;
+  scan.stamp = bumpValidcount(); // validcount++
+  tm.numspechit = 0;
+
+  // kill anything occupying the position (p_map.c:152-157)
+  const links = world_.links;
+  const orgX = links.bm.originX;
+  const orgY = links.bm.originY;
+  const txl = blockIndexOf((tm.bbox.left - orgX - MAXRADIUS) | 0);
+  const txh = blockIndexOf((tm.bbox.right - orgX + MAXRADIUS) | 0);
+  const tyl = blockIndexOf((tm.bbox.bottom - orgY - MAXRADIUS) | 0);
+  const tyh = blockIndexOf((tm.bbox.top - orgY + MAXRADIUS) | 0);
+  for (let bx = txl; bx <= txh; bx++) {
+    for (let by = tyl; by <= tyh; by++) {
+      if (!thingLinksIterator(links, bx, by, pitStompThing)) return false;
+    }
+  }
+
+  // the move is ok, so link the thing into its new position
+  const slot = thing.linkSlot ?? -1;
+  if (slot >= 0) thingUnsetPosition(links, slot);
+  thing.floorz = tm.tmfloorz;
+  thing.ceilingz = tm.tmceilingz;
+  thing.x = x;
+  thing.y = y;
+  if (slot >= 0) thingSetPosition(links, slot, x, y);
 
   return true;
 }

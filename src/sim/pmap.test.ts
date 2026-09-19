@@ -1,5 +1,6 @@
 /**
- * sim/pmap tests (M5-02) — P_CheckPosition + thinglinks (p_map.c part 1).
+ * sim/pmap tests (M5-02 + M5-03) — P_CheckPosition + thinglinks +
+ * P_TryMove/P_TeleportMove (p_map.c parts 1-2).
  *
  * Acceptance (M5-plan §M5-02): 1) wall/one-sided/two-sided-open truth
  * table; 2) floorz = max of openbottoms across touched lines (raised-ledge
@@ -31,7 +32,7 @@ import { loadMap } from '../wad/mapdata';
 import { buildMapFromData, type RuntimeMap } from './map';
 import { buildBlockMap } from './blockmap';
 import { sectorAtPoint } from './bsp';
-import { pBoxOnLineSide } from './pmaputl';
+import { pBoxOnLineSide, pPointOnLineSide } from './pmaputl';
 import {
   MAXSPECIALCROSS,
   ML_BLOCKING,
@@ -39,15 +40,19 @@ import {
   pCheckPosition,
   pmapHookCounts,
   pmapHooks,
+  pTeleportMove,
+  pTryMove,
   resetPmapHookCounts,
   tm,
   type Mover,
   type PMapWorld,
 } from './pmap';
+import { pcrossCounts, pcrossHooks, resetPcrossCounts } from './pcross.stub';
 import {
   allocThingSlot,
   buildThingLinks,
   MF_DROPOFF,
+  MF_FLOAT,
   MF_MISSILE,
   MF_NOCLIP,
   MF_PICKUP,
@@ -55,6 +60,7 @@ import {
   MF_SKULLFLY,
   MF_SOLID,
   MF_SPECIAL,
+  MF_TELEPORT,
   thingLinksIterator,
   thingSetPosition,
   thingUnsetPosition,
@@ -151,9 +157,12 @@ function mulberry32(seed: number): () => number {
 
 beforeEach(() => {
   resetPmapHookCounts();
+  resetPcrossCounts();
   delete pmapHooks.touchSpecialThing;
   delete pmapHooks.skullFlyHit;
   delete pmapHooks.missileHit;
+  delete pmapHooks.telefrag;
+  delete pcrossHooks.crossSpecialLine;
 });
 
 /* Two rooms touching at x=128 (sector 1 | sector 2), player start only. */
@@ -649,5 +658,388 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 P_CheckPosition vs brute force', ()
     const a = sweep(w, 0xabc);
     const b = sweep(w, 0xabc);
     expect(a).toEqual(b);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M5-03: P_TryMove height tests (acceptance 1)                         */
+/* ------------------------------------------------------------------ */
+
+/* Two rooms touching at x=128; room 2 is the destination geometry. */
+function stepRoom(floor: number, ceiling?: number): RectMapSpec {
+  return {
+    rooms: [
+      { x: 0, y: 0, w: 128, h: 128 },
+      { x: 128, y: 0, w: 128, h: 128, floorHeight: floor, ...(ceiling === undefined ? {} : { ceilingHeight: ceiling }) },
+    ],
+    things: [{ x: 32, y: 32, type: 1 }],
+  };
+}
+
+describe('P_TryMove step-up / height tests', () => {
+  it('24-unit step accepted; floorz/ceilingz written, z untouched', () => {
+    const w = world(stepRoom(24));
+    const mo = mover(fx(112), fx(64));
+    expect(pTryMove(w.pmap, mo, fx(128), fx(64))).toBe(true);
+    expect(tm.floatok).toBe(true);
+    expect(mo.x).toBe(fx(128));
+    expect(mo.floorz).toBe(fx(24));
+    expect(mo.ceilingz).toBe(fx(128));
+    expect(mo.z).toBe(0); // TryMove never moves z (P_ZMovement, M5-05)
+  });
+
+  it('25-unit step rejected (too big a step up); nothing written', () => {
+    const w = world(stepRoom(25));
+    const mo = mover(fx(112), fx(64));
+    expect(pTryMove(w.pmap, mo, fx(128), fx(64))).toBe(false);
+    expect(tm.floatok).toBe(true); // floatok flips before checks 2-4 (p_map.c)
+    expect(mo.x).toBe(fx(112));
+    expect(mo.floorz).toBeUndefined();
+  });
+
+  it('destination does not fit at all: floor 24 ceiling 55 ⇒ rejected (range < h56)', () => {
+    const w = world(stepRoom(24, 55));
+    expect(pTryMove(w.pmap, mover(fx(112), fx(64)), fx(128), fx(64))).toBe(false);
+  });
+
+  it('headroom over the step: ceiling 80 (opentop-floor = 56) accepted, 79 rejected', () => {
+    expect(pTryMove(world(stepRoom(24, 80)).pmap, mover(fx(112), fx(64)), fx(128), fx(64))).toBe(true);
+    expect(pTryMove(world(stepRoom(24, 79)).pmap, mover(fx(112), fx(64)), fx(128), fx(64))).toBe(false);
+  });
+
+  it('must-lower-itself boundary (z above dest floor): ceiling 60 rejects z=10, 66 accepts', () => {
+    // dest floor 0 range 60 ≥ 56 passes the fit test, but ceiling - z = 50 < 56
+    const low = world(stepRoom(0, 60));
+    const mo = mover(fx(112), fx(64), { z: fx(10) });
+    expect(pTryMove(low.pmap, mo, fx(128), fx(64))).toBe(false);
+    expect(tm.floatok).toBe(true);
+    const ok = world(stepRoom(0, 66));
+    expect(pTryMove(ok.pmap, mover(fx(112), fx(64), { z: fx(10) }), fx(128), fx(64))).toBe(true);
+  });
+
+  it('MF_TELEPORT skips the lowering/step/dropoff tests but not the fit test or wall scan', () => {
+    const w = world(stepRoom(25)); // plain 25-step: rejected without MF_TELEPORT
+    const ghost = mover(fx(112), fx(64), { flags: PLAYER_FLAGS | MF_TELEPORT });
+    expect(pTryMove(w.pmap, ghost, fx(128), fx(64))).toBe(true);
+    expect(ghost.floorz).toBe(fx(25));
+    // the unconditional fit test (check 1) still applies to MF_TELEPORT:
+    const tight = world(stepRoom(25, 55)); // range 30 < 56
+    expect(
+      pTryMove(tight.pmap, mover(fx(112), fx(64), { flags: PLAYER_FLAGS | MF_TELEPORT }), fx(128), fx(64)),
+    ).toBe(false);
+    const line = sharedLineX(w.map, 128, 1, 2);
+    w.map.lines.sectorBack[line] = -1; // one-sided: CheckPosition still blocks
+    expect(pTryMove(w.pmap, ghost, fx(128), fx(64))).toBe(false);
+  });
+
+  it('ML_BLOCKING wall vector + thing block short-circuit before the height tests', () => {
+    const w = world(stepRoom(0));
+    w.map.lines.flags[sharedLineX(w.map, 128, 1, 2)]! |= ML_BLOCKING;
+    expect(pTryMove(w.pmap, mover(fx(128), fx(64)), fx(128), fx(64))).toBe(false);
+    const b = world(barrelRoom);
+    expect(pTryMove(b.pmap, mover(fx(64), fx(64)), fx(128), fx(128))).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M5-03: dropoff rules (acceptance 2)                                  */
+/* ------------------------------------------------------------------ */
+
+/* Room A raised 64, room B floor 0 — the ledge line at x=128. */
+const ledgeRooms: RectMapSpec = {
+  rooms: [
+    { x: 0, y: 0, w: 128, h: 128, floorHeight: 64 },
+    { x: 128, y: 0, w: 128, h: 128 },
+  ],
+  things: [{ x: 32, y: 32, type: 1 }],
+};
+
+describe('P_TryMove dropoff rules', () => {
+  it('MF_DROPOFF player walks off the 64-unit ledge (tmfloorz−tmdropoffz = 64)', () => {
+    const w = world(ledgeRooms);
+    const mo = mover(fx(112), fx(64), { z: fx(64) });
+    expect(pTryMove(w.pmap, mo, fx(136), fx(64))).toBe(true);
+    expect(mo.floorz).toBe(fx(64)); // straddling box still sees the high floor
+    expect(tm.tmfloorz - tm.tmdropoffz).toBe(fx(64));
+  });
+
+  it('non-DROPOFF/non-FLOAT thing refuses the same ledge; MF_FLOAT accepts', () => {
+    const w = world(ledgeRooms);
+    const grunt = { flags: MF_SOLID | MF_SHOOTABLE, player: false, z: fx(64) };
+    expect(pTryMove(w.pmap, mover(fx(112), fx(64), grunt), fx(136), fx(64))).toBe(false);
+    const floater = mover(fx(112), fx(64), { flags: MF_SOLID | MF_FLOAT, player: false, z: fx(64) });
+    expect(pTryMove(w.pmap, floater, fx(136), fx(64))).toBe(true);
+  });
+
+  it('the dropoff edge is pure tmfloorz−tmdropoffz: no linedef flag participates (1.10 has no ML_BLOCKMAP float edge)', () => {
+    const w = world(ledgeRooms);
+    const line = sharedLineX(w.map, 128, 1, 2);
+    w.map.lines.flags[line]! |= 8; // ML_DONTPEGTOP-era bit; no BF/ML_BLOCKMAP float semantics exist in 1.10
+    expect(pTryMove(w.pmap, mover(fx(112), fx(64), { z: fx(64) }), fx(136), fx(64))).toBe(true);
+    expect(
+      pTryMove(w.pmap, mover(fx(112), fx(64), { flags: MF_SOLID, player: false, z: fx(64) }), fx(136), fx(64)),
+    ).toBe(false);
+    // ML_BLOCKING still hard-blocks for the normal reason (not the drop test)
+    const w2 = world(ledgeRooms);
+    w2.map.lines.flags[sharedLineX(w2.map, 128, 1, 2)]! |= ML_BLOCKING;
+    expect(pTryMove(w2.pmap, mover(fx(112), fx(64), { z: fx(64) }), fx(136), fx(64))).toBe(false);
+  });
+
+  it('noclip bypasses all four checks yet keeps floorz/ceilingz tracking + relink', () => {
+    const w = world(ledgeRooms);
+    const mo = mover(fx(112), fx(64), { flags: PLAYER_FLAGS | MF_NOCLIP, z: fx(64) });
+    expect(pTryMove(w.pmap, mo, fx(200), fx(2000))).toBe(true); // through walls, off-map-ish
+    expect(mo.x).toBe(fx(200));
+    expect(mo.floorz).toBeDefined();
+    expect(mo.ceilingz).toBeDefined();
+    expect(tm.floatok).toBe(false); // check block skipped entirely
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M5-03: special-line crossing call site (acceptance 3)                */
+/* ------------------------------------------------------------------ */
+
+function specialWorld(): { w: World; line: number } {
+  const w = world(twoRooms);
+  const line = sharedLineX(w.map, 128, 1, 2);
+  w.map.lines.special[line] = 1;
+  return { w, line };
+}
+
+describe('P_TryMove spechit crossing → P_CrossSpecialLine stub', () => {
+  it('one crossing = exactly one call with the OLD side; numspechit ends −1', () => {
+    const { w, line } = specialWorld();
+    const calls: [number, number][] = [];
+    pcrossHooks.crossSpecialLine = (l, side) => calls.push([l, side]);
+    expect(pTryMove(w.pmap, mover(fx(112), fx(64)), fx(140), fx(64))).toBe(true); // box straddles
+    expect(pcrossCounts.crossSpecialLine).toBe(1);
+    expect(calls).toEqual([[line, pPointOnLineSide(w.map, fx(112), fx(64), line)]]);
+    expect(tm.numspechit).toBe(-1); // `while (numspechit--)` exit state
+  });
+
+  it('spechit touched without a side flip: loop ran, zero calls', () => {
+    const { w } = specialWorld();
+    expect(pTryMove(w.pmap, mover(fx(112), fx(64)), fx(120), fx(64))).toBe(true);
+    expect(pcrossCounts.crossSpecialLine).toBe(0);
+    expect(tm.numspechit).toBe(-1);
+  });
+
+  it('approach-then-cross walk: fires once total across the two legs', () => {
+    const { w } = specialWorld();
+    const n0 = pcrossCounts.crossSpecialLine;
+    const mo = mover(fx(112), fx(64));
+    expect(pTryMove(w.pmap, mo, fx(120), fx(64))).toBe(true);
+    expect(pTryMove(w.pmap, mo, fx(136), fx(64))).toBe(true);
+    expect(pcrossCounts.crossSpecialLine - n0).toBe(1);
+  });
+
+  it('parallel walk never contacts the line: no spechit, no call', () => {
+    const { w } = specialWorld();
+    expect(pTryMove(w.pmap, mover(fx(145), fx(64)), fx(145), fx(80))).toBe(true);
+    expect(tm.numspechit).toBe(-1);
+    expect(pcrossCounts.crossSpecialLine).toBe(0);
+  });
+
+  it('MF_TELEPORT mover crosses physically but the dispatch is skipped (counter stays)', () => {
+    const { w } = specialWorld();
+    const ghost = mover(fx(112), fx(64), { flags: PLAYER_FLAGS | MF_TELEPORT });
+    expect(pTryMove(w.pmap, ghost, fx(140), fx(64))).toBe(true);
+    expect(pcrossCounts.crossSpecialLine).toBe(0);
+    expect(tm.numspechit).toBe(1); // loop never ran: spechit list left as seeded
+  });
+
+  it('noclip mover: no scan, no dispatch, counter 0', () => {
+    const { w } = specialWorld();
+    const mo = mover(fx(112), fx(64), { flags: PLAYER_FLAGS | MF_NOCLIP });
+    expect(pTryMove(w.pmap, mo, fx(144), fx(64))).toBe(true);
+    expect(pcrossCounts.crossSpecialLine).toBe(0);
+    expect(tm.numspechit).toBe(0); // noclip returned before the line scan
+  });
+
+  it('P_TeleportMove never dispatches crossings (spechit not even collected)', () => {
+    const { w } = specialWorld();
+    expect(pTeleportMove(w.pmap, mover(fx(112), fx(64)), fx(144), fx(64))).toBe(true);
+    expect(pcrossCounts.crossSpecialLine).toBe(0);
+    expect(tm.numspechit).toBe(0);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M5-03: relink order + blocked-attempt inertness (acceptance 4)       */
+/* ------------------------------------------------------------------ */
+
+describe('P_TryMove relinking', () => {
+  /** Visit order + coords over every cell (chain-shape fingerprint). */
+  const fingerprint = (links: ThingLinks): string[] => {
+    const out: string[] = [];
+    for (let bx = 0; bx < links.bm.width; bx++) {
+      for (let by = 0; by < links.bm.height; by++) {
+        thingLinksIterator(links, bx, by, (s) => {
+          out.push(`${bx},${by}:${s}@${links.x[s]},${links.y[s]}`);
+          return true;
+        });
+      }
+    }
+    return out;
+  };
+
+  it('unset-then-set order == direct unset/set order: identical chains (hashState sees one position)', () => {
+    const a = world(barrelRoom);
+    const slotA = allocThingSlot(a.links, fx(16), fx(56), PLAYER_FLAGS);
+    const moA = mover(fx(64), fx(64), { linkSlot: slotA });
+    thingSetPosition(a.links, slotA, fx(64), fx(64));
+
+    const b = world(barrelRoom);
+    const slotB = allocThingSlot(b.links, fx(16), fx(56), PLAYER_FLAGS);
+    thingSetPosition(b.links, slotB, fx(64), fx(64));
+
+    for (let t = 0; t < 40; t++) {
+      const nx = fx(40 + ((t * 13) % 180));
+      const ny = fx(32 + ((t * 29) % 40)); // stays clear of the barrel at (128,128)
+      expect(pTryMove(a.pmap, moA, nx, ny)).toBe(true);
+      thingUnsetPosition(b.links, slotB);
+      thingSetPosition(b.links, slotB, nx, ny);
+    }
+    expect(fingerprint(a.links)).toEqual(fingerprint(b.links));
+    expect(a.links.linked[slotA]).toBe(1);
+  });
+
+  it('blocked TryMove: position, floorz and links untouched', () => {
+    const w = world(barrelRoom);
+    const slot = allocThingSlot(w.links, fx(16), fx(56), PLAYER_FLAGS);
+    const mo = mover(fx(64), fx(64), { linkSlot: slot });
+    thingSetPosition(w.links, slot, fx(64), fx(64));
+    expect(pTryMove(w.pmap, mo, fx(128), fx(128))).toBe(false); // barrel
+    expect(mo.x).toBe(fx(64));
+    expect(mo.floorz).toBeUndefined();
+    expect(w.links.x[slot]).toBe(fx(64));
+    expect(w.links.linked[slot]).toBe(1);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M5-03: P_TeleportMove + PIT_StompThing (telefrag shell)              */
+/* ------------------------------------------------------------------ */
+
+describe('P_TeleportMove', () => {
+  it('ignores walls entirely; writes floorz/ceilingz of the destination; z untouched', () => {
+    const w = world({
+      rooms: [
+        { x: 0, y: 0, w: 128, h: 128 },
+        { x: 192, y: 0, w: 128, h: 128, floorHeight: 16, ceilingHeight: 96 },
+      ],
+      things: [{ x: 32, y: 32, type: 1 }],
+    });
+    const mo = mover(fx(64), fx(64), { z: fx(999) });
+    expect(pTeleportMove(w.pmap, mo, fx(256), fx(64))).toBe(true); // across the wall gap
+    expect(mo.x).toBe(fx(256));
+    expect(mo.floorz).toBe(fx(16));
+    expect(mo.ceilingz).toBe(fx(96));
+    expect(mo.z).toBe(fx(999)); // momentum/z: vanilla clears nothing here
+  });
+
+  it('player telefrags: counter + typed hook fire, victim survives (no-op default), move succeeds', () => {
+    const w = world(barrelRoom);
+    const seen: number[] = [];
+    pmapHooks.telefrag = (slot) => seen.push(slot);
+    expect(pTeleportMove(w.pmap, mover(fx(64), fx(64)), fx(128), fx(128))).toBe(true);
+    expect(pmapHookCounts.telefrag).toBe(1);
+    expect(seen).toEqual([0]); // barrel slot
+    expect(w.links.linked[0]).toBe(1); // "killed" thing stays in place until M6/M8
+    expect(w.links.x[0]).toBe(fx(128));
+    // contrast: the same spot via TryMove is blocked (MF_SOLID)
+    expect(pTryMove(w.pmap, mover(fx(64), fx(64)), fx(128), fx(128))).toBe(false);
+  });
+
+  it('non-player stomp fails off map 30: nothing moves or relinks', () => {
+    const w = world(barrelRoom);
+    const slot = allocThingSlot(w.links, fx(16), fx(56), MF_SOLID | MF_SHOOTABLE);
+    const mo = mover(fx(64), fx(64), { flags: MF_SOLID | MF_SHOOTABLE, player: false, linkSlot: slot });
+    thingSetPosition(w.links, slot, fx(64), fx(64));
+    expect(pTeleportMove(w.pmap, mo, fx(128), fx(128))).toBe(false);
+    expect(mo.x).toBe(fx(64));
+    expect(w.links.x[slot]).toBe(fx(64));
+    expect(pmapHookCounts.telefrag).toBe(0);
+  });
+
+  it('gamemap 30 exception pinned: non-player stomp succeeds + telefrags there', () => {
+    const base = world(barrelRoom);
+    const w: PMapWorld = { map: base.map, bm: base.bm, links: base.links, gamemap: 30 };
+    const mo = mover(fx(64), fx(64), { flags: MF_SOLID | MF_SHOOTABLE, player: false });
+    expect(pTeleportMove(w, mo, fx(128), fx(128))).toBe(true);
+    expect(pmapHookCounts.telefrag).toBe(1);
+  });
+
+  it('non-shootable solid does NOT block a teleport (PIT_StompThing ignores it)', () => {
+    const solidBarrel = new Map<number, ThingInfo>([
+      [2035, { radius: fx(10), height: fx(42), flags: MF_SOLID }],
+    ]);
+    const w = world(barrelRoom, solidBarrel);
+    expect(pTeleportMove(w.pmap, mover(fx(64), fx(64)), fx(128), fx(128))).toBe(true);
+    expect(pmapHookCounts.telefrag).toBe(0);
+  });
+
+  it('MF_NOCLIP does not skip the stomp scan (unlike P_CheckPosition)', () => {
+    const w = world(barrelRoom);
+    const mo = mover(fx(64), fx(64), { flags: PLAYER_FLAGS | MF_NOCLIP });
+    expect(pTeleportMove(w.pmap, mo, fx(128), fx(128))).toBe(true);
+    expect(pmapHookCounts.telefrag).toBe(1);
+  });
+
+  it('self-slot is skipped: teleport onto own position succeeds without stomping self', () => {
+    const w = world(barrelRoom);
+    const slot = allocThingSlot(w.links, fx(16), fx(56), PLAYER_FLAGS);
+    const mo = mover(fx(64), fx(64), { linkSlot: slot });
+    thingSetPosition(w.links, slot, fx(64), fx(64));
+    expect(pTeleportMove(w.pmap, mo, fx(66), fx(64))).toBe(true);
+    expect(pmapHookCounts.telefrag).toBe(0);
+    expect(w.links.x[slot]).toBe(fx(66));
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M5-03: 1000-call scripted TryMove walk determinism                   */
+/* ------------------------------------------------------------------ */
+
+describe('1000-step scripted TryMove determinism', () => {
+  function walk(seed: number): number {
+    const w = world(barrelRoom);
+    const slot = allocThingSlot(w.links, fx(16), fx(56), PLAYER_FLAGS);
+    const mo = mover(fx(64), fx(64), { linkSlot: slot });
+    thingSetPosition(w.links, slot, fx(64), fx(64));
+    const rnd = mulberry32(seed);
+    let acc = 0x811c9dc5 | 0;
+    const mix = (v: number): void => {
+      acc = Math.imul(acc ^ v, 0x01000193) | 0;
+    };
+    let moved = 0;
+    let blocked = 0;
+    for (let t = 0; t < 1000; t++) {
+      const nx = fx(32 + Math.floor(rnd() * 192));
+      const ny = fx(32 + Math.floor(rnd() * 192));
+      if (pTryMove(w.pmap, mo, nx, ny)) moved++;
+      else blocked++;
+      mix(mo.x);
+      mix(mo.y);
+      mix(mo.floorz ?? -1);
+      mix(mo.ceilingz ?? -1);
+      mix(w.links.x[slot]!);
+      mix(w.links.y[slot]!);
+    }
+    mix(moved);
+    mix(blocked);
+    mix(pcrossCounts.crossSpecialLine);
+    return acc;
+  }
+
+  // Blessed from this port (2026-07), 1000 mulberry32(0x51df) hops in the
+  // 256-unit barrel room (same-seed double run equal at bless time).
+  const GOLDEN = -38303909;
+
+  it('golden hash + same-seed double run identical', () => {
+    const a = walk(0x51df);
+    expect(a).toBe(walk(0x51df));
+    expect(a).toBe(GOLDEN);
   });
 });
