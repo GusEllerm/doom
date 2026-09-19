@@ -96,6 +96,6 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M6-01 | Thinker arena + live world + hook slots | M6 | M5 | dispatched (agent 149b5909) |
+| M6-01 | Thinker arena + live world + hook slots | M6 | M5 | done (merged, 1001 tests) |
 | M6-02 | Fixture specials/tags/things | M6 | — | dispatched (agent 1223279f) |
 | M6-03+ | (see docs/design/M6-plan.md §1 wave table) | M6 | 01/02 | planned |
