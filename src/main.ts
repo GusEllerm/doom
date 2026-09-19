@@ -242,7 +242,12 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // adds the two data halves the full frame needs: the F_START/F_END flats
   // (R_InitFlats — planes/sky never touch names) and the once-per-map sprite
   // tables (census → lump decode → the mobj-less static thing list).
-  const world = loadRenderWorld(md, texturesFromWad(wad), flatsFromWad(wad));
+  // M6-13 live-sector wiring (M6-09 gap, plan §3.5 state-seam read): the
+  // render world's floor/ceiling/light arrays ARE the live SoA — movers
+  // and light thinkers mutate state.sectors in place, every frame sees
+  // them with zero copy. Static frames stay byte-identical (live ==
+  // static until a special runs; liveview/walls goldens unmoved).
+  const world = loadRenderWorld(md, texturesFromWad(wad), flatsFromWad(wad), state.sectors);
   const mapView = buildRenderMapView(md);
   const tables = initLightTables(decodeColormap(wad.readLumpByName('COLORMAP')));
   const sprites = buildMapSprites({ md, map: mapView, wad });
