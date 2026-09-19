@@ -185,3 +185,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - User-stopped wave recovered: 07/10 salvage-finishers on t2 branches (work preserved by auto-commits), 08 fresh t2. M6-12 queues next.
 - M6-08 merged (t2): 81/156 specials live. Truth: down-moving crushers NEVER call P_ChangeSector (only return crushed) — P_ChangeSector crush damage is the floors' path; crushers use damageSlot(10) @ !(leveltime&3). Kill deferred M7 (slot + gib hooks).
 - M6-08 merged: 81/156 specials live. Truth banked: down-crush NEVER calls P_ChangeSector (crush damage there is the FLOORS' path); crushers damageSlot(10) on !(leveltime&3).
+- M6-07 merged (salvage t2): floors/stairs/donut live; donut reuses live plats. pspec.test 3-way union conflict resolved (LIVE_ACTIONS single set incl floors; cross-40 test rewritten both-halves-live). ~120 specials live. Remaining: M6-12 (running) then M6-11 dispatch then M6-13 exit.

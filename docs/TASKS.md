@@ -100,7 +100,7 @@ Future tasks will be added as architects decompose milestones.
 | M6-02 | Fixture specials/tags/things | M6 | — | done (merged, 143 fixture tests) |
 | M6-05 | Vertical doors (37 ids) | M6 | M6-03/04 | done (merged) |
 | M6-06 | Plats/lifts (21 ids) | M6 | M6-03/04 | done (merged) |
-| M6-07 | Floors/stairs/donut (43 ids) | M6 | M6-03/04 | salvage t2 (agent 42a4ddf6; impl was live, tests unfinished) |
+| M6-07 | Floors/stairs/donut (43 ids) | M6 | M6-03/04 | done (merged t2, salvage) |
 | M6-08 | Ceilings incl crushers (13 ids) | M6 | M6-03/04 | done (merged t2, 19 tests) |
 | M6-09 | Lights + sector light specials | M6 | M6-03 | done (merged; headless goldens re-blessed w/ reason) |
 | M6-10 | Teleporters (4 ids) | M6 | M6-03 | done (merged, 32 tests) |
