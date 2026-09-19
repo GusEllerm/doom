@@ -107,3 +107,12 @@ Future tasks will be added as architects decompose milestones.
 | M6-11 | Switches/locked doors/cards | M6 | M6-05/09 | done (merged; registry manifest complete) |
 | M6-12 | Sector specials at feet + exits | M6 | M6-03/04 | done (merged, 19 tests) |
 | M6-13 | Fixture corpus + E1M1 route e2e + L5 | M6 | all | done (merged; 1731 tests; exit pending M6-05b flip) |
+
+## M7 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M7-01 | State-table infra + ActionId registry | M7 | M5/M6 | dispatched (agent 6545d9ff) |
+| M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | dispatched (agent 09e20ba4) |
+| M7-02..11 | (see docs/design/M7-plan.md) | M7 | waves | planned |
+
