@@ -1,6 +1,7 @@
 // sim/pmap — p_map.c parts 1+2 (M5-02 CheckPosition/thinglinks, M5-03
 // TryMove/TeleportMove): P_CheckPosition + thinglinks scan + P_TryMove +
-// P_TeleportMove.
+// P_TeleportMove, plus the SECTOR HEIGHT CHANGING block (p_map.c:1237-1345,
+// M6-04): P_ChangeSector + PIT_ChangeSector + the crush model.
 //
 // Faithful port of linuxdoom-1.10 p_map.c movement-clipping queries:
 //   P_CheckPosition (p_map.c:374-450) with the EXACT 1.10 order —
@@ -38,6 +39,10 @@ import type { BlockMap } from './blockmap';
 import { sectorAtPoint } from './bsp';
 import { bumpValidcount, pBoxOnLineSide, pLineOpening, pPointOnLineSide } from './pmaputl';
 import { pCrossSpecialLineStub } from './pcross.stub';
+import { pThingHeightClip, type MoveMobj } from './pmove';
+import { pRandom, type PrngState } from './prng';
+import { damageSlot, type HookSlots } from './hooks';
+import type { LiveSectors } from './state';
 import {
   MF_DROPOFF,
   MF_FLOAT,
@@ -60,6 +65,11 @@ export const MAXSTEP = 24 * FRACUNIT;
 
 /** p_map.c:69 `#define MAXSPECIALCROSS 8`. */
 export const MAXSPECIALCROSS = 8;
+
+/** p_mobj.h:164 MF_DROPPED (0x20000) — PIT_ChangeSector's dropped-item
+ * crunch branch (local definition follows the pmove.ts MF_CORPSE precedent;
+ * thinglinks.ts is outside M6-04's owns). */
+export const MF_DROPPED = 0x20000;
 
 /** doomdata.h:101/104 linedef option bits used by PIT_CheckLine. */
 export const ML_BLOCKING = 1;
@@ -105,6 +115,15 @@ export interface PMapWorld {
    * default 1 — doom1 never has a map 30, so the exception is doom2-only
    * folklore kept faithful but inert here (M5-plan §0.5). */
   readonly gamemap?: number;
+  /** M6-04 LIVE HEIGHT VIEW (state.ts LiveSectors). When wired, the
+   * subsector seed of P_CheckPosition/P_TeleportMove reads the LIVE
+   * floorZ/ceilingZ instead of the static load-time SoA — the single-source
+   * truth vanilla gets from having one `sectors[]`. While the world is
+   * static the two arrays are value-identical (state.ts seeding), so every
+   * M2/M5 golden is unmoved. Wiring: `makePlaneContext()` (pplane.ts) wires
+   * it lazily and idempotently; gInitGame wiring (game.ts is outside
+   * M6-04's owns) is the M6-13 integration follow-up. */
+  sectors?: LiveSectors;
 }
 
 /* ------------------------------------------------------------------ */
@@ -137,12 +156,28 @@ export interface PMapHooks {
 
 export const pmapHooks: PMapHooks = {};
 
-/** Counts for every hook (absent or present) + the spechit overflow note. */
+/** Counts for every hook (absent or present) + the spechit overflow note
+ * + the M6-04 crush-model counters (PIT_ChangeSector branches). */
 export const pmapHookCounts = {
   touchSpecialThing: 0,
   skullFlyHit: 0,
   missileHit: 0,
   telefrag: 0,
+  /** PIT_ChangeSector's `health <= 0 → S_GIBS` branch (p_map.c:1269-1279):
+   * unreachable pre-M7 — grid things carry no health field and no dead
+   * mobjs exist; counter proves the branch is never silently skipped. */
+  crushGib: 0,
+  /** PIT_ChangeSector's `MF_DROPPED → P_RemoveMobj` branch (p_map.c:1282-
+   * 1287): thing unlinked from the grid, collision flags cleared. */
+  crushDroppedRemoved: 0,
+  /** blood mobj the vanilla crusher sprays per damage event (p_map.c:1302-
+   * 1308): the mobj spawn is M7, but its 4 `P_Random()` momentum draws are
+   * consumed HERE so the gameplay PRNG stream never re-blesses when M7
+   * lands the visual. */
+  crushBlood: 0,
+  /** PIT_ChangeSector visits that returned "thing fits" (P_ThingHeightClip
+   * true) — diagnostic only, no deviation attached. */
+  crushClipOk: 0,
   /** writes past spechit[0..7] (vanilla: silent memory corruption — here:
    * the extra lines simply are not stored, numspechit still counts them). */
   spechitOverflow: 0,
@@ -153,6 +188,10 @@ export function resetPmapHookCounts(): void {
   pmapHookCounts.skullFlyHit = 0;
   pmapHookCounts.missileHit = 0;
   pmapHookCounts.telefrag = 0;
+  pmapHookCounts.crushGib = 0;
+  pmapHookCounts.crushDroppedRemoved = 0;
+  pmapHookCounts.crushBlood = 0;
+  pmapHookCounts.crushClipOk = 0;
   pmapHookCounts.spechitOverflow = 0;
 }
 
@@ -350,10 +389,14 @@ export function pCheckPosition(world_: PMapWorld, thing: Mover, x: number, y: nu
   const sector = sectorAtPoint(world_.map, x, y);
   tm.ceilingline = -1; // ceilingline = NULL (sky-hack tracker)
 
+  // M6-04 live-height seam: with the live SoA wired (PMapWorld.sectors) the
+  // seed IS vanilla's single sector->floorheight/ceilingheight read; static
+  // worlds keep reading the load-time copy (value-identical while static).
+  const live = world_.sectors;
   const S = world_.map.sectors;
-  tm.tmfloorz = S.floorHeight[sector]!;
+  tm.tmfloorz = live ? live.floorZ[sector]! : S.floorHeight[sector]!;
   tm.tmdropoffz = tm.tmfloorz;
-  tm.tmceilingz = S.ceilingHeight[sector]!;
+  tm.tmceilingz = live ? live.ceilingZ[sector]! : S.ceilingHeight[sector]!;
 
   scan.valid = world_.map.lines.valid;
   scan.stamp = bumpValidcount(); // validcount++
@@ -543,10 +586,11 @@ export function pTeleportMove(world_: PMapWorld, thing: Mover, x: number, y: num
   const sector = sectorAtPoint(world_.map, x, y);
   tm.ceilingline = -1;
 
+  const live = world_.sectors; // M6-04 live-height seam (see pCheckPosition)
   const S = world_.map.sectors;
-  tm.tmfloorz = S.floorHeight[sector]!;
+  tm.tmfloorz = live ? live.floorZ[sector]! : S.floorHeight[sector]!;
   tm.tmdropoffz = tm.tmfloorz;
-  tm.tmceilingz = S.ceilingHeight[sector]!;
+  tm.tmceilingz = live ? live.ceilingZ[sector]! : S.ceilingHeight[sector]!;
 
   scan.valid = world_.map.lines.valid;
   scan.stamp = bumpValidcount(); // validcount++
@@ -576,4 +620,191 @@ export function pTeleportMove(world_: PMapWorld, thing: Mover, x: number, y: num
   if (slot >= 0) thingSetPosition(links, slot, x, y);
 
   return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* SECTOR HEIGHT CHANGING — p_map.c:1237-1345 (M6-04)                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * p_map.c:1252-1253 module globals `crushchange`/`nofit`, verbatim shape:
+ * set once per P_ChangeSector, read by the PIT visitor. Exported so tests
+ * can pin the "second call undoes the first" interplay the T_MovePlane
+ * rollback relies on.
+ */
+export const sectorCrush = { crushchange: false, nofit: false };
+
+/**
+ * Call context for P_ChangeSector (the port's explicit-world stand-in for
+ * the p_map.c globals `leveltime` + the implicit level + the M6-01 slots).
+ *  - `sectors` is the LIVE SoA the mover just mutated (pplane.ts writes it
+ *    before calling); it is lazily wired onto `world` so the P_CheckPosition
+ *    seed inside every P_ThingHeightClip sees the NEW height — the single-
+ *    source-of-truth vanilla gets for free. A mismatch against an already-
+ *    wired view throws (two live worlds on one clipping world = bug).
+ *  - `movers` maps ThingLinks slot → live Mover object (players/pre-M7
+ *    movers). Resolved slots clip on the MOVER (authoritative floorz/z);
+ *    unresolved slots clip on a scratch materialisation of the SoA with
+ *    the documented deviation "resting on the floor assumed" — exact for
+ *    every grid thing that exists pre-M7 (statics spawn ONFLOORZ,
+ *    p_mobj.c:517-523, and nothing moves them until M7 mobjs).
+ */
+export interface CrushContext {
+  readonly world: PMapWorld;
+  readonly sectors: LiveSectors;
+  readonly hooks: HookSlots;
+  readonly rng: PrngState;
+  /** p_tick.c `leveltime` — the crush cadence `!(leveltime&3)` reads it. */
+  leveltime: number;
+  readonly movers?: readonly (Mover | null)[];
+}
+
+export class SectorLiveViewError extends Error {
+  constructor(msg: string) {
+    super(msg);
+    this.name = 'SectorLiveViewError';
+  }
+}
+
+/** Active context for the PIT visitor (vanilla's implicit globals). */
+let crushCtx: CrushContext | null = null;
+
+/** Reusable clip materialisation for SoA-only slots (MoveMobj-shaped so
+ * pThingHeightClip applies; the momentum fields are never read there). */
+const clipScratch: MoveMobj = {
+  x: 0, y: 0, z: 0, radius: 0, height: 0, flags: 0,
+  momx: 0, momy: 0, momz: 0, floorz: 0, ceilingz: 0,
+  linkSlot: -1,
+};
+
+/**
+ * `PIT_ChangeSector(thing)` — p_map.c:1257-1312 verbatim, argument =
+ * ThingLinks slot. CRUSH TRUTH (pinned against the 1.10 source, the
+ * kill path is NOT P_KillMobj and NOT a line/side loop):
+ *   1. P_ThingHeightClip fits → keep checking (clip already moved z);
+ *   2. `health <= 0` → S_GIBS + radius/height 0 + MF_SOLID cleared
+ *      (p_map.c:1269-1279) — NO health store exists pre-M7: unreachable,
+ *      counted (pmapHookCounts.crushGib), M7 P_DamageMobj/death states
+ *      supply it (M6-plan §4 "Crush kill deferred");
+ *   3. MF_DROPPED → P_RemoveMobj, keep checking (the port unlinks the slot
+ *      and clears the collision bits — the grid-identical removal);
+ *   4. not MF_SHOOTABLE ("bloody gibs or something") → keep checking, NO
+ *      block, NO damage;
+ *   5. `nofit = true` — the mover must roll back (or crush-and-stay);
+ *   6. `crushchange && !(leveltime&3)` → `P_DamageMobj(thing,NULL,NULL,10)`
+ *      through the M6-01 damageSlot (amount 10, source null, 4-tic
+ *      cadence — the slot signature M7 must not re-invent), then the
+ *      MT_BLOOD spray: mobj spawn deferred to M7, its FOUR P_Random()
+ *      momentum draws consumed here (stream-position parity).
+ * ALWAYS returns true ("keep checking — crush other things"): one blocked
+ * thing never aborts the scan. No validcount dedup: a thing is visited
+ * once per owning block CELL (blocklinks group by ORIGIN point).
+ */
+export function pitChangeSector(slot: number): boolean {
+  const c = crushCtx!;
+  const links = c.world.links;
+  const live = c.movers?.[slot];
+
+  let thing: MoveMobj;
+  if (live !== undefined && live !== null) {
+    thing = live as MoveMobj; // mover object is the authority (floorz/z live on it)
+  } else {
+    clipScratch.x = links.x[slot]!;
+    clipScratch.y = links.y[slot]!;
+    clipScratch.z = links.z[slot]!;
+    clipScratch.radius = links.radius[slot]!;
+    clipScratch.height = links.height[slot]!;
+    clipScratch.flags = links.flags[slot]!;
+    clipScratch.linkSlot = slot;
+    // Deviation (documented above): no per-slot floorz store pre-M7 ⇒ the
+    // onfloor test (thing->z == thing->floorz, p_map.c:533) is materialised
+    // as z==floorz ⇒ RESTING. Exact for ONFLOORZ-spawned statics.
+    clipScratch.floorz = clipScratch.z;
+    clipScratch.ceilingz = 0;
+    thing = clipScratch;
+  }
+
+  if (pThingHeightClip(c.world, thing)) {
+    pmapHookCounts.crushClipOk++;
+    links.z[thing.linkSlot ?? slot] = thing.z; // persist the clip rise/fall in the SoA
+    return true;
+  }
+
+  // (2) `health <= 0 → S_GIBS` (p_map.c:1269-1279): NO health/dead store
+  // exists pre-M7, so no grid thing can be a corpse yet — the branch is
+  // documented-unreachable (pmapHookCounts.crushGib pins it at 0); M7's
+  // P_DamageMobj/death states make it reachable and add it here (M6-plan
+  // §4 “Crush kill deferred”).
+
+  // (3) crunch dropped items — p_map.c:1282-1287
+  if (thing.flags & MF_DROPPED) {
+    thingUnsetPosition(links, slot);
+    const cleared = thing.flags & ~(MF_SOLID | MF_SPECIAL | MF_SHOOTABLE);
+    links.flags[slot] = cleared;
+    thing.flags = cleared;
+    pmapHookCounts.crushDroppedRemoved++;
+    return true; // keep checking
+  }
+
+  // (4) assume it is bloody gibs or something — p_map.c:1289-1292
+  if (!(thing.flags & MF_SHOOTABLE)) return true;
+
+  // (5) blocks the plane
+  sectorCrush.nofit = true;
+
+  // (6) crush damage + blood spray — p_map.c:1297-1309
+  if (sectorCrush.crushchange && !(c.leveltime & 3)) {
+    // `thing` id namespace: ThingLinks slot (pre-M7 all crushable things
+    // ARE grid slots); M7 unifies with the thinker-arena id namespace the
+    // hooks.ts doc names.
+    damageSlot(c.hooks, slot, 10, null, c.leveltime);
+    // spray blood in a random direction — mobj spawn is M7, the four
+    // P_Random draws are the stream-visible half and run NOW.
+    pRandom(c.rng);
+    pRandom(c.rng);
+    pRandom(c.rng);
+    pRandom(c.rng);
+    pmapHookCounts.crushBlood++;
+  }
+
+  // keep checking (crush other things)
+  return true;
+}
+
+/**
+ * `P_ChangeSector(sector, crunch)` — p_map.c:1320-1345 verbatim: reset
+ * `nofit`, latch `crushchange`, then the BLOCKBOX loop
+ * `for x=BOXLEFT..BOXRIGHT { for y=BOXBOTTOM..BOXTOP } P_BlockThingsIterator`
+ * — x OUTER / y INNER over the P_GroupLines blockbox (map.ts stores it
+ * pre-clamped to the grid). TRUTH PIN against the plan's open question:
+ * 1.10 iterates NOTHING's line/side lists and NO sector thinglist — the
+ * "sector->lines → sides → blockbox" folklore is later-source; the blockbox
+ * cell loop with no validcount dedup is the source (p_map.c:1330-1334).
+ * Returns `nofit` — anything that no longer fits (T_MovePlane rollbacks /
+ * crush results are the consumer; see pplane.ts).
+ */
+export function pChangeSector(ctx: CrushContext, sector: number, crunch: boolean): boolean {
+  // Lazy, idempotent live-view wiring (see PMapWorld.sectors doc).
+  const w = ctx.world;
+  if (w.sectors === undefined) w.sectors = ctx.sectors;
+  else if (w.sectors !== ctx.sectors) {
+    throw new SectorLiveViewError(
+      'PMapWorld.sectors already wired to a different LiveSectors instance',
+    );
+  }
+
+  sectorCrush.nofit = false;
+  sectorCrush.crushchange = crunch;
+  crushCtx = ctx;
+  try {
+    const S = ctx.world.map.sectors;
+    for (let x = S.blockBoxLeft[sector]!; x <= S.blockBoxRight[sector]!; x++) {
+      for (let y = S.blockBoxBottom[sector]!; y <= S.blockBoxTop[sector]!; y++) {
+        thingLinksIterator(ctx.world.links, x, y, pitChangeSector);
+      }
+    }
+  } finally {
+    crushCtx = null;
+  }
+  return sectorCrush.nofit;
 }
