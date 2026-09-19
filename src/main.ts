@@ -41,7 +41,7 @@ import {
 import { gInitGame, gTicker, TICS_PER_SECOND } from './sim/game';
 import { buildMapFromData } from './sim/map';
 import type { GameState } from './sim/state';
-import { attachRenderDebug, debugApi, debugSim, installDebugApi } from './debug';
+import { attachRenderDebug, attachMouseInjection, debugApi, debugSim, installDebugApi } from './debug';
 import { blitToCanvas, buildLut, Framebuffer } from './render/framebuffer';
 import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
 import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
@@ -205,11 +205,26 @@ const keyboard = createKeyboardInput({
 // live in input/mouse.ts (translation seam, unit-tested with FAKE
 // pointer-lock events — headless-chromium pointer lock is unreliable,
 // M5-plan §6, so real-lock behavior is an honest L4 subset, not gated on).
+// M5-08: the lock mirror reads `document.pointerLockElement` (the DOM
+// property lives on document, NOT window — the M5-07 window target would
+// have read undefined and locked OUT every real lock change); e2e drives
+// the same seam with dispatched pointerlockchange/mousemove events.
 const mouseInput = createMouseInput();
 mouseInput.attach(
-  window as unknown as Parameters<typeof mouseInput.attach>[0],
+  document as unknown as Parameters<typeof mouseInput.attach>[0],
   canvas
 );
+// __doom.sim.injectMouse(dx,dy) (M5-08, plan §M5-08 owns-list): feed the
+// SAME raw ev_mouse accumulator the locked mousemove path feeds, bypassing
+// only the lock GATE (headless pointer lock is unreliable — §6). Scaling,
+// accumulation across tics and the consumed-once drain stay on the real
+// per-tic sample() path.
+attachMouseInjection((dx, dy) => {
+  const was = mouseInput.locked();
+  mouseInput.setLocked(true);
+  mouseInput.motion(dx, dy);
+  mouseInput.setLocked(was);
+});
 
 /* ------------------------------------------------------------------ */
 /* WAD boot + 404 → file-picker fallback (viewer pattern)               */

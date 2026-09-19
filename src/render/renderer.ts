@@ -129,6 +129,10 @@ export interface FramePlayer {
     /** BAM angle, u32 */
     readonly angle: number;
   };
+  /** M5-08 viewz read-through (P_CalcHeight output, fixed). Absent or 0
+   * (the sim's "pre-first-tic" spawn pin) ⇒ renderer keeps the
+   * z + 41·FRACUNIT placeholder, so frame-0 views stay byte-identical. */
+  readonly viewz?: number;
 }
 
 /** Automap overlay bundle (optional dep): `state` is the sim AutomapState
@@ -340,7 +344,18 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
   //    effect on the very next frame, no stale view).
   const mo = deps.player.mo;
   const z = mo.z === undefined || mo.z === ONFLOORZ_TOKEN ? 0 : mo.z;
-  setupView(ctx.view, { x: mo.x, y: mo.y, z, angle: mo.angle });
+  // M5-08 viewz read-through: once P_CalcHeight has written player.viewz
+  // (nonzero — 0 is the documented spawn pin until the first tic), the eye
+  // height carries bob/squat/ceiling-clamp verbatim. Pre-first-tic frames
+  // fall back to the z+41<<16 placeholder — frame-0 goldens unmoved.
+  const vz = deps.player.viewz;
+  setupView(ctx.view, {
+    x: mo.x,
+    y: mo.y,
+    z,
+    angle: mo.angle,
+    viewz: vz !== undefined && vz !== 0 ? vz : undefined,
+  });
 
   // 2. R_ClearClipSegs / R_ClearDrawSegs / R_ClearPlanes (clip arrays +
   //    visplane table + base x/y scales; bsp.walk repeats it idempotently)
