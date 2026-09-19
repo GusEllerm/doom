@@ -90,11 +90,13 @@ import {
 } from './player';
 import {
   pFindLowestCeilingSurrounding,
+  pFindSectorFromLineTag,
   type SpecWorld
 } from './pspec-helpers';
 import {
   pAddThinker,
   pRemoveThinker,
+  sectorSpecialData,
   setSectorSpecialData,
   type Thinker,
   type ThinkerFn
@@ -109,7 +111,6 @@ import {
   type PlaneHost
 } from './pplane';
 import { VL } from './specials-table';
-import { recordLineStub } from './specials-table';
 import type { Mover } from './pmap';
 
 /* ------------------------------------------------------------------ */
@@ -358,17 +359,78 @@ export function tVerticalDoor(
 }
 
 /* ------------------------------------------------------------------ */
-/* EV_DoDoor — p_doors.c:212-293 (LIVE at commit step 2 of this task)  */
+/* EV_DoDoor — p_doors.c:212-293 (LIVE)                                */
 /* ------------------------------------------------------------------ */
 
-/** `EV_DoDoor(line, vldoor_e)` — tagged door actions (p_doors.c). */
+/** `EV_DoDoor(line, vldoor_e)` — tagged door actions (p_doors.c).
+ * `rtn` is the any-sector-got-a-mover flag: pure specialdata refusals
+ * (`continue`, header pin) return false and leave vanilla control flow
+ * armed (pswitch failed-action pin). */
 export function evDoDoor(s: SpecWorld, line: number, type: number): boolean {
-  recordLineStub(s, 'evDoDoor', line, type);
-  return false;
+  let rtn = 0;
+  let secnum = -1;
+
+  while ((secnum = pFindSectorFromLineTag(s, line, secnum)) >= 0) {
+    // sec->specialdata ⇒ continue (never spawn over a live mover).
+    if (sectorSpecialData(s.sectors, secnum) !== null) continue;
+
+    const d = newDoor(s, secnum, type); // rtn=1 + P_AddThinker + hook
+    d.topwait = VDOORWAIT;
+    d.speed = VDOORSPEED;
+
+    switch (type) {
+      case VL.blazeClose:
+        d.topheight =
+          (pFindLowestCeilingSurrounding(s, secnum) - 4 * FRACUNIT) | 0;
+        d.direction = DIR_DOWN;
+        d.speed = (VDOORSPEED * 4) | 0; // blazing = 8/unit-tic (pin)
+        doorSound(s, SFX_BDCLS);
+        break;
+
+      case VL.close:
+        d.topheight =
+          (pFindLowestCeilingSurrounding(s, secnum) - 4 * FRACUNIT) | 0;
+        d.direction = DIR_DOWN;
+        doorSound(s, SFX_DORCLS);
+        break;
+
+      case VL.close30ThenOpen:
+        // Re-open target = the sector's OWN current ceiling (captured
+        // here, before the move — T_VerticalDoor re-raises to it).
+        d.topheight = s.sectors.ceilingZ[secnum]!;
+        d.direction = DIR_DOWN;
+        doorSound(s, SFX_DORCLS);
+        break;
+
+      case VL.blazeRaise:
+      case VL.blazeOpen:
+        d.direction = DIR_UP;
+        d.topheight =
+          (pFindLowestCeilingSurrounding(s, secnum) - 4 * FRACUNIT) | 0;
+        d.speed = (VDOORSPEED * 4) | 0;
+        // `if (topheight != ceilingheight)` — already-open: silent (pin).
+        if (d.topheight !== s.sectors.ceilingZ[secnum]!) doorSound(s, SFX_BDOPN);
+        break;
+
+      case VL.normal:
+      case VL.open:
+        d.direction = DIR_UP;
+        d.topheight =
+          (pFindLowestCeilingSurrounding(s, secnum) - 4 * FRACUNIT) | 0;
+        if (d.topheight !== s.sectors.ceilingZ[secnum]!) doorSound(s, SFX_DOROPN);
+        break;
+
+      default:
+        break;
+    }
+    rtn = 1;
+    syncDoorHash(d);
+  }
+  return rtn === 1;
 }
 
 /* ------------------------------------------------------------------ */
-/* EV_VerticalDoor — p_doors.c:299-411 (LIVE at commit step 2)         */
+/* EV_VerticalDoor — p_doors.c:299-411 (LIVE)                          */
 /* ------------------------------------------------------------------ */
 
 /** `EV_VerticalDoor(line, thing)` — manuals/locked manuals (p_doors.c).
@@ -415,8 +477,88 @@ export function evVerticalDoor(
       break; // 1/31/117/118: no lock check at all (p_doors.c)
   }
 
-  recordLineStub(s, 'evVerticalDoor', line, 0);
-  return false;
+  const special = s.map.lines.special[line]!;
+
+  // `sec = sides[line->sidenum[side^1]].sector` — side = 0 ⇒ the BACK
+  // sector (only front sides can be used; the use dispatcher already
+  // gated the side). A one-sided line reads sides[garbage] in vanilla —
+  // deviation pin: manual lines are two-sided by construction, bail 0.
+  const sec = s.map.lines.sectorBack[line]!;
+  if (sec < 0) return false;
+
+  // "if the sector has an active thinker, use it" — ONLY the raise ids
+  // {1,26,27,28,117}; the open ids fall through and spawn a SECOND
+  // thinker over specialdata (verbatim leak quirk, header pin).
+  const live = sectorSpecialData(s.sectors, sec);
+  if (live !== null) {
+    switch (special) {
+      case 1: // ONLY FOR "RAISE" DOORS, NOT "OPEN"s
+      case 26:
+      case 27:
+      case 28:
+      case 117: {
+        const d = live as Partial<DoorState>;
+        if (d.direction === DIR_DOWN) {
+          d.direction = DIR_UP; // go back up
+        } else {
+          if (mover?.player !== true) return false; // JDC: bad guys never close doors
+          d.direction = DIR_DOWN; // start going down immediately
+        }
+        // Cross-family specialdata reads `direction` from another
+        // payload = vanilla's garbage read; sync only real doors.
+        if ('topheight' in d) syncDoorHash(live as Door);
+        return true;
+      }
+      default:
+        break; // open ids: fall through to the second spawn
+    }
+  }
+
+  // "for proper sound" — 117/118 blazing, everything else the normal
+  // door-open sfx (the locked default branch plays sfx_doropn too).
+  doorSound(s, special === 117 || special === 118 ? SFX_BDOPN : SFX_DOROPN);
+
+  // new door thinker
+  const d = newDoor(s, sec, VL.normal);
+  d.direction = DIR_UP;
+  d.speed = VDOORSPEED;
+  d.topwait = VDOORWAIT;
+
+  switch (special) {
+    case 1:
+    case 26:
+    case 27:
+    case 28:
+      d.type = VL.normal;
+      break;
+
+    case 31:
+    case 32:
+    case 33:
+    case 34:
+      d.type = VL.open;
+      s.map.lines.special[line] = 0; // open types disarm HERE (pin)
+      break;
+
+    case 117: // blazing door raise
+      d.type = VL.blazeRaise;
+      d.speed = (VDOORSPEED * 4) | 0;
+      break;
+
+    case 118: // blazing door open
+      d.type = VL.blazeOpen;
+      s.map.lines.special[line] = 0;
+      d.speed = (VDOORSPEED * 4) | 0;
+      break;
+
+    default:
+      break;
+  }
+
+  // find the top and bottom of the movement range
+  d.topheight = (pFindLowestCeilingSurrounding(s, sec) - 4 * FRACUNIT) | 0;
+  syncDoorHash(d);
+  return true;
 }
 
 /** `player->message = PD_*K; S_StartSound(NULL, sfx_oof);` (p_doors.c
