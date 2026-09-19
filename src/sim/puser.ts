@@ -30,8 +30,9 @@
 // Out of scope on this path (counted or documented, per M5-plan §0.10):
 // P_DeathThink (needs R_PointToAngle2/psprites); P_PlayerInSpecialSector
 // was the M5 gap — LIVE since M6-12 (call site below, body in pspec.ts
-// mirroring p_spec.c:1009). Weapon change / P_UseLines / P_MovePsprites /
-// powerups: M7.
+// mirroring p_spec.c:1009); P_UseLines LIVE since M6-11 (use-button
+// block below, p_map.c:1127 via pswitch.ts). Weapon change /
+// P_MovePsprites / powerups: M7.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -43,6 +44,8 @@ import { sectorAtPoint } from './bsp';
 import type { PMapWorld } from './pmap';
 import './pslide'; // M5-06: loads pslide's self-registration of pmoveHooks.slideMove
 import { boundSpecialsWorld, feetCounts, pPlayerInSpecialSector } from './pspec';
+import { pUseLines } from './pswitch';
+import { BT_USE } from './ticcmd';
 import {
   CF_NOMOMENTUM,
   CF_NOCLIP,
@@ -270,6 +273,18 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
     feetCounts.unbound++;
   }
 
-  // BT_CHANGE weapon select, BT_USE P_UseLines, P_MovePsprites, powerup
-  // counters: no M5 subjects (M6/M7) — intentionally absent, not faked.
+  // check for use — p_user.c:320-330 (M6-11). One P_UseLines per PRESS:
+  // `usedown` latches while the button is held ("Do not repeatedly use
+  // a line past the first time in the tics, 'event'", p_user.c:318).
+  if (p.cmd.buttons & BT_USE) {
+    if (!p.usedown) {
+      pUseLines(p);
+      p.usedown = true;
+    }
+  } else {
+    p.usedown = false;
+  }
+
+  // BT_CHANGE weapon select, P_MovePsprites, powerup counters: no
+  // subjects yet (M7) — intentionally absent, not faked.
 }

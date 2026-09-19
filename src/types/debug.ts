@@ -54,6 +54,10 @@ export interface DebugStateLive {
     powerups: Record<string, number>;
     onGroundSector: number;
     noclip: boolean;
+    /** M6-11: player.cards[NUMCARDS] (doomdef card_t slot order: blue
+     * card, yellow card, red card, blue skull, yellow skull, red skull);
+     * 0/1 per slot, debug giveCard until the M7 pickups (D013(f)). */
+    cards: number[];
   };
   sectors: { count: number };
   thinkers: { count: number };
@@ -103,6 +107,14 @@ export interface SimDebugApi {
   setNoclip(enabled: boolean): boolean;
   /** Read CF_NOCLIP on player 0. */
   getNoclip(): boolean;
+  /**
+   * M6-11 debug card grant (D013(f)): set `player 0 .cards[index] = 1`
+   * (P_GiveCard semantics, p_inter.c — until M7's P_TouchSpecialThing
+   * pickups replace it). index = doomdef.h card_t slot (0 blue card,
+   * 1 yellow, 2 red, 3 blue skull, 4 yellow skull, 5 red skull); returns
+   * the resulting 6-slot array. Throws RangeError on a bad index.
+   */
+  giveCard(index: number): number[];
   /** Run exactly n tics (G_Ticker path, §3.2) with the given input snapshot
    * (or the sticky setInput override, else empty); returns hashState(). */
   runTics(tics: number, input?: Partial<GameInput> | null): number;

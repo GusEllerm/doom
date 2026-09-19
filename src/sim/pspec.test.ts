@@ -28,6 +28,7 @@ import { PLAYER_FLAGS } from './player';
 import { MF_MISSILE, MF_SOLID } from './thinglinks';
 import type { GameState } from './state';
 import { resetUpdateSpecialsCounts, updateSpecialsCounts } from './ptick';
+import { resetHookSlots } from './hooks';
 import { ML_TWOSIDED } from './pspec-helpers';
 
 import {
@@ -46,6 +47,7 @@ import {
   LINE_SPECIALS, registryManifest, unimplementedSpecial,
   resetUnimplementedSpecial, SLOWDARK
 } from './specials-table';
+import { pswitchCounts, resetPswitchCounts } from './pswitch';
 import type { ActionId, ActionSpec } from './specials-table';
 // M6-09: the lights family (EV_LightTurnOn/EV_StartLightStrobing/
 // EV_TurnTagLightsOff + the sector spawners) went LIVE — the coverage
@@ -103,6 +105,7 @@ beforeEach(() => {
   resetUpdateSpecialsCounts();
   resetPlightsCalls();
   resetTeleportCounts();
+  resetPswitchCounts();
 });
 
 /* ------------------------------------------------------------------ */
@@ -144,7 +147,11 @@ const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>([
   // M6-08: ceilings/crushers live.
   'ceiling', 'crushStop',
   // M6-07: floors/stairs/donut live (pfloor.ts).
-  'floor', 'stairs', 'donut'
+  'floor', 'stairs', 'donut',
+  // M6-11: EV_DoLockedDoor live (card/skull check + PD_*O refusal);
+  // 99/133–137 are covered by pswitch.test.ts. (verticalDoor/door STAY
+  // stubred — M6-05's bodies never landed; ledger follow-up.)
+  'lockedDoor'
 ]);
 const allLive = (acts: readonly ActionSpec[]): boolean =>
   acts.every((a) => LIVE_ACTIONS.has(a.action));
@@ -198,24 +205,40 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
   });
 
   it('use ids: pUseSpecialLine hits each route once + the switch stub per flag', () => {
+    // Locked manuals (M6-11): the card check lives INSIDE evVerticalDoor
+    // and refuses before the (still-stubbed, M6-05-pending) body — no
+    // stub hit, PD_*K + sfx_oof, switch untouched.
+    const LOCKED_MANUAL = new Set([26, 27, 28, 32, 33, 34]);
     for (let id = 1; id <= 141; id++) {
       const e = LINE_SPECIALS[id];
       if (!e?.use) continue;
       if (allLive(e.use.actions)) continue; // live family — see LIVE_ACTIONS
       resetUnimplementedSpecial();
       resetPlightsCalls();
+      resetPswitchCounts();
+      resetHookSlots(s.hooks);
       s.map.lines.special[line] = id;
       s.exitRequest = 'none';
       s.specialexit = false;
       bindSpecialsWorld(s);
+      if (LOCKED_MANUAL.has(id)) {
+        expect(pUseSpecialLine(s, s.players[0]!.mo, line, 0), `use ${id}`).toBe(true);
+        expect(unimplementedSpecial.count, `use ${id} stubs`).toBe(0);
+        expect(s.hooks.message.count, `use ${id} msg`).toBe(1);
+        expect(s.hooks.sfx.byId?.get(34), `use ${id} oof`).toBe(1);
+        expect(s.map.lines.special[line], `use ${id} armed`).toBe(id);
+        continue;
+      }
       expect(pUseSpecialLine(s, PLAYER, line, 0), `use ${id} returns true`).toBe(true);
       expectActions(e.use.actions, id);
-      const sw = hits('pChangeSwitchTexture', id);
+      // M6-11: P_ChangeSwitchTexture is the REAL body (pswitch.ts) — the
+      // per-call counter replaces the old stub recorder (texture swap /
+      // disarm semantics pinned in pswitch.test).
       const expectSw =
         e.use.switchBefore !== undefined || e.use.thenSwitch !== undefined ? 1 : 0;
       // gateSwitch entries: stub action returned false ⇒ switch NOT swapped
       // (vanilla "failed action leaves switch armed"), pinned:
-      expect(sw, `use ${id} switch stub`).toBe(expectSw);
+      expect(pswitchCounts.changeSwitchTexture, `use ${id} switch`).toBe(expectSw);
       if (e.use.actions.some((a) => a.action === 'exit')) {
         expect(s.exitRequest, `use exit ${id}`).toBe(id === 51 ? 'secret' : 'normal');
       }
@@ -226,11 +249,12 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
     for (const id of [24, 46, 47]) {
       if (allLive(LINE_SPECIALS[id]!.shoot!.actions)) continue; // see LIVE_ACTIONS
       resetUnimplementedSpecial();
+      resetPswitchCounts();
       s.map.lines.special[line] = id;
       const e = LINE_SPECIALS[id]!.shoot!;
       pShootSpecialLine(s, PLAYER, line);
       expectActions(e.actions, id);
-      expect(hits('pChangeSwitchTexture', id), `shoot ${id} switch`).toBe(1);
+      expect(pswitchCounts.changeSwitchTexture, `shoot ${id} switch`).toBe(1);
     }
   });
 
@@ -816,10 +840,18 @@ describe('M6-02 fixture smoke — registry routes the family specials', () => {
     const l63 = lineWithSpecial(s, 63);
     expect(pUseSpecialLine(s, PLAYER, l63, 0)).toBe(true);
     expect(hits('evDoDoor', 63)).toBe(1);
-    expect(hits('pChangeSwitchTexture', 63)).toBe(0); // action failed ⇒ armed
+    expect(pswitchCounts.changeSwitchTexture).toBe(0); // action failed ⇒ armed
     expect(s.map.lines.special[l63]).toBe(63);
-    expect(pUseSpecialLine(s, PLAYER, lineWithSpecial(s, 26), 0)).toBe(true);
-    expect(hits('evVerticalDoor', 26)).toBe(1); // lock branch: EV_VerticalDoor body (M6-05)
+    // Locked manual 26 (M6-11): the REAL card check refuses BEFORE the
+    // (still-stubbed, M6-05-pending) door body — p_doors.c:368-380: no
+    // body hit, message PD_BLUEK + sfx_oof, special stays armed.
+    resetPswitchCounts();
+    const l26 = lineWithSpecial(s, 26);
+    expect(pUseSpecialLine(s, s.players[0]!.mo, l26, 0)).toBe(true);
+    expect(hits('evVerticalDoor', 26)).toBe(0);
+    expect(s.hooks.message.byId?.get('PD_BLUEK')).toBe(1);
+    expect(s.hooks.sfx.byId?.get(34)).toBe(1); // sfx_oof (sounds.h 34)
+    expect(s.map.lines.special[l26]).toBe(26);
     // W1 cross 4 (monster-allowed): fires for monsters and clears.
     const l4 = lineWithSpecial(s, 4);
     pCrossSpecialLine(s.pmap, l4, 0, monster());
