@@ -173,3 +173,7 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 ## 2026-09-17 — M6-09 merged (lights) — PAUSE PENDING behind M6-06
 - Light thinkers live with exact PRNG profiles (flicker 0.25 draws/tic, flash &64 polarity-flip quirk, strobe 0 draws/tic, glow silent). Headless goldens re-blessed ONCE (reason 'sector-light specials live'); render goldens unmoved BECAUSE rdata still reads static md.sectors — live lights invisible to frames until M6-13 wires the renderer's sector source (GAP TRACKED: M6-13).
 - PAUSE #3 requested: after M6-06 (plats, running) merges, stop. Resume queue: M6-07 floors/stairs/donut, M6-08 ceilings/crushers, M6-10 teleports, M6-12 feet-specials+exits (parallelizable per plan), then M6-11 switches/cards, M6-13 corpus+E1M1 route (includes renderer live-sector wiring).
+
+## 2026-09-17 — PAUSE #3 (user) — M6 6/13 merged, all gates green
+Merged+pushed through M6-06 (plats: player-walk-off = vanilla quirk kept; CRUSHING plat raises ceiling before move — p_doors.c:400 truth; S1 plat lines clear special@6 verbatim; 54 specials live of 156). Tree clean, no agents running.
+RESUME QUEUE (plan waves): M6-07/08/10/12 parallel → M6-11 → M6-13 (corpus, E1M1 key-route, renderer live-sector/light wiring GAP included). Then M7 (weapons plan merged) → M8 plan → ...
