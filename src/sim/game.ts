@@ -19,7 +19,9 @@ import { pPlayerThink } from './puser';
 import { createPlayer, ONFLOORZ, pSpawnPlayer } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
-import { hashState, type GameState, type Skill } from './state';
+import { createHookSlots } from './hooks';
+import { createThinkerArena, pRunThinkers, pUpdateSpecials } from './ptick';
+import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */
 export const TICS_PER_SECOND = TICRATE;
@@ -79,7 +81,18 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
     leveltime: 0,
     turnheld: 0,
     rng: createPrngState(),
-    skill
+    skill,
+    // M6-01 live world. Fresh arena per level = P_InitThinkers
+    // (p_tick.c:71, called from G_DeferedInitNew/P_SetupLevel); fresh
+    // hook-slot logs; live sector SoA value-copied from the load-time
+    // arrays (state.ts header: authority + renderer seam story).
+    sectors: createLiveSectors(map),
+    thinkers: createThinkerArena(),
+    hooks: createHookSlots(),
+    exitRequest: 'none',
+    totalsecret: 0, // P_SpawnSpecials sector-9 pass (M6-03) counts this
+    secretcount: 0,
+    specialexit: false
   };
   mClearRandom(state.rng); // g_game.c:1414
   return state;
@@ -97,8 +110,12 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
  *  3. build the ticcmd and copy it into `player.cmd` (vanilla copies from the
  *     netcmds ring; single-player builds directly, same slot semantics);
  *  4. special buttons — none in M2 (no-op);
- *  5. `gamestate == GS_LEVEL`: P_Ticker = P_PlayerThink per player, then
- *     `leveltime++` (P_RunThinkers/P_UpdateSpecials arrive in later tasks).
+ *  5. `gamestate == GS_LEVEL`: P_Ticker (p_tick.c order, ARCHITECTURE §3.2,
+ *     M6-01): P_PlayerThink per player → P_RunThinkers (thinker arena)
+ *     → P_UpdateSpecials (M6-01 counted no-op; M6-03 body) →
+ *     P_RespawnSpecials (level respawn = M9, no-op) → `leveltime++`.
+ *  The paused / menu-pause gates of p_tick.c:140-152 are M9 (no `paused`
+ *  source exists yet).
  *
  * `gametic++` (vanilla d_main.c:383-385 right after G_Ticker) is folded in
  * here so the headless loop cannot forget it.
@@ -112,16 +129,21 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
 
   // 4: special buttons (pause/save) — none.
 
-  // 5: GS_LEVEL → P_Ticker (p_tick.c order, M5-06): P_PlayerThink for ALL
-  // players, THEN P_RunThinkers — the player's mobj thinker IS the M5-05
-  // P_XYMovement + P_ZMovement pair (no thinker arena until M7; the
-  // after-all-players order is kept so multi-player thinker interleaving
-  // never needs a re-bless).
+  // 5: GS_LEVEL → P_Ticker (p_tick.c order, M5-06 + M6-01): P_PlayerThink
+  // for ALL players, THEN P_RunThinkers — the player's mobj thinker IS the
+  // M5-05 P_XYMovement + P_ZMovement pair run at the all-players position
+  // (the player mobj enters the arena with M7 mobjs; the after-all-players
+  // order is kept so multi-player thinker interleaving never needs a
+  // re-bless — the arena is empty for M5 scenarios, so this is order-
+  // identical to M5-06).
   for (const p of state.players) pPlayerThink(state.pmap, p, state.leveltime);
   for (const p of state.players) {
     pXYMovement(state.pmap, p.mo);
     pZMovement(p.mo);
   }
+  pRunThinkers(state.thinkers); // p_tick.c P_RunThinkers (M6-01 arena)
+  pUpdateSpecials(); // p_spec.c button/scroll tick — M6-03 body
+  // P_RespawnSpecials: level-restart respawn queue — no source pre-M9 (no-op).
   state.leveltime++; // p_tick.c P_Ticker tail
 
   state.gametic++; // d_main.c tic loop tail

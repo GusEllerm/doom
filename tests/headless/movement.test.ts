@@ -265,7 +265,7 @@ describe('noclip OFF = real physics (D009 placeholder gone)', () => {
     const p = s.players[0]!.mo;
     expect(p.x).toBe(15726887); // flush against the void wall (≈240u − ε)
     expect(p.y).toBe(8392243); // the +19/tic table drift rides along
-    expect(h).toBe(1563898125); // RE-BLESSED M5-06: physics replaces D009
+    expect(h).toBe(169379333); // RE-BLESSED M6-01 'M6 world-state fields' (was M5-06)
     // viewz from P_CalcHeight now, not the 0 placeholder: z(0) + 41 + wave
     expect(s.players[0]!.viewz).toBeGreaterThanOrEqual(40 * FRACUNIT);
     expect(s.players[0]!.viewz).toBeLessThanOrEqual(49 * FRACUNIT);
@@ -323,7 +323,7 @@ describe('1000-tic determinism with noclip movement', () => {
     const h1 = runHeadless(a, 1000, scripted);
     const h2 = runHeadless(b, 1000, scripted);
     expect(h1).toBe(h2);
-    expect(h1).toBe(1269964399); // RE-BLESSED M5-06: physics replaces D009
+    expect(h1).toBe(515888135); // RE-BLESSED M6-01 'M6 world-state fields' (was M5-06)
     expect([a.players[0]!.mo.x, a.players[0]!.mo.y]).toEqual([-25465553, -39676152]);
     expect(a.gametic).toBe(1000);
     expect(a.leveltime).toBe(1000);
@@ -350,8 +350,9 @@ describe('1000-tic determinism with noclip movement', () => {
     expect(h1).toBe(h2);
     expect(h1).toBe(hashState(b));
     expect([a.players[0]!.mo.x, a.players[0]!.mo.y]).not.toEqual([-416 << 16, 256 << 16]);
-    // golden RE-BLESSED M5-06 (reason: p_user physics replaces D009 fly stub)
-    expect(h1).toBe(4224798260);
+    // golden RE-BLESSED M5-06 (physics replaces D009) then M6-01
+    // (one-time, reason: 'M6 world-state fields' — §3.4 sector/globals/arena bytes)
+    expect(h1).toBe(2368943012);
   });
 });
 
