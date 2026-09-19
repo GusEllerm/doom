@@ -61,8 +61,11 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-import { FixedDiv, FixedMul, FRACBITS } from '../core/fixed';
-import type { DivLine, Side } from './bsp';
+import { FixedDiv, FixedMul, FRACBITS, FRACUNIT } from '../core/fixed';
+import { MAXINT } from '../core/constants';
+import { MAPBLOCKUNITS } from '../core/constants';
+import { pointOnDivlineSide, type DivLine, type Side } from './bsp';
+import { blockLinesIterator, MAPBLOCKSHIFT, type BlockMap } from './blockmap';
 import {
   ST_HORIZONTAL,
   ST_POSITIVE,
@@ -84,6 +87,18 @@ export const PT_ADDTHINGS = 2;
 export const PT_EARLYOUT = 4;
 
 /** Thrown where vanilla would do nothing sane (UB / unimplemented path). */
+/** p_local.h:39 MAPBLOCKSIZE — 128 units in fixed point. (Our core
+ * constant of the same magnitude is named MAPBLOCKUNITS; vanilla's
+ * MAPBLOCKUNITS is the bare 128 — the naming inversion noted in
+ * sim/blockmap.ts.) */
+const MAPBLOCKSIZE = MAPBLOCKUNITS;
+
+/** p_local.h:42 MAPBTOFRAC = MAPBLOCKSHIFT − FRACBITS = 7. */
+const MAPBTOFRAC = MAPBLOCKSHIFT - FRACBITS;
+
+/** PIT_AddLineIntercepts' "two routines" threshold, p_maputl.c:570-573. */
+const TRACE_FAR = 16 * FRACUNIT;
+
 export class PMaputlError extends Error {
   constructor(message: string) {
     super(message);
@@ -341,4 +356,250 @@ export function pLineOpening(map: OpeningMapView, line: number): LineOpening {
 
   opening.openrange = (opening.opentop - opening.openbottom) | 0;
   return opening;
+}
+
+/* ------------------------------------------------------------------ */
+/* Intercept arena (p_maputl.c:544-549 intercepts[]/intercept_p)        */
+/* ------------------------------------------------------------------ */
+
+/** Read-only view of one intercept, valid ONLY during the traverser call
+ * (vanilla `intercept_t* in` semantics — copy fields out to keep them). */
+export interface Intercept {
+  /** fixed fraction of the trace (0..FRACUNIT inside the segment) */
+  frac: number;
+  isLine: boolean;
+  /** linedef index (−1 for things — M7+) */
+  line: number;
+}
+
+/** Vanilla `traverser_t`: return false to stop the traversal (early out). */
+export type Traverser = (in_: Intercept) => boolean;
+
+const interceptFrac = new Int32Array(MAXINTERCEPTS);
+const interceptIsLine = new Uint8Array(MAXINTERCEPTS);
+const interceptLine = new Int32Array(MAXINTERCEPTS);
+let interceptP = 0;
+
+/** Module singletons standing in for `trace`/`earlyout` (p_maputl.c:547-549).
+ * Only one traversal is active at a time — vanilla's single-threaded rule. */
+const trace: DivLineMut = { x: 0, y: 0, dx: 0, dy: 0 };
+let earlyout = false;
+/** The linedef view PIT_AddLineIntercepts reads (vanilla implicit state). */
+let activeMap: LineMapView | null = null;
+const dlScratch: DivLineMut = { x: 0, y: 0, dx: 0, dy: 0 };
+const view: Intercept = { frac: 0, isLine: false, line: -1 };
+const scan: { valid: Int32Array; stamp: number } = { valid: new Int32Array(0), stamp: 0 };
+
+/** Read the current trace divline (slide traverse, M5-04, reads these). */
+export function pathTrace(): Readonly<DivLineMut> {
+  return trace;
+}
+
+/* ------------------------------------------------------------------ */
+/* PIT_AddLineIntercepts — p_maputl.c:556-610                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `PIT_AddLineIntercepts(ld)` verbatim (line index instead of pointer).
+ * The "avoid precision problems with two routines" branch picks
+ * {@link pointOnDivlineSide} on the line endpoints for traces longer than
+ * 16 units, {@link pPointOnLineSide} on the trace endpoints otherwise
+ * (p_maputl.c:570-582). earlyout fires only on truly one-sided lines
+ * (sectorBack sentinel −1 ⇔ vanilla `!ld->backsector`).
+ */
+function pitAddLineIntercepts(line: number): boolean {
+  const map = activeMap!;
+  const L = map.lines;
+
+  let s1: Side;
+  let s2: Side;
+  if (
+    trace.dx > TRACE_FAR ||
+    trace.dy > TRACE_FAR ||
+    trace.dx < -TRACE_FAR ||
+    trace.dy < -TRACE_FAR
+  ) {
+    s1 = pointOnDivlineSide(map.verticesX[L.v1[line]!]!, map.verticesY[L.v1[line]!]!, trace);
+    s2 = pointOnDivlineSide(map.verticesX[L.v2[line]!]!, map.verticesY[L.v2[line]!]!, trace);
+  } else {
+    s1 = pPointOnLineSide(map, trace.x, trace.y, line);
+    s2 = pPointOnLineSide(map, (trace.x + trace.dx) | 0, (trace.y + trace.dy) | 0, line);
+  }
+
+  if (s1 === s2) return true; // line isn't crossed
+
+  // hit the line
+  divLineFrom(map, line, dlScratch);
+  const frac = pInterceptVector(trace, dlScratch);
+
+  if (frac < 0) return true; // behind source
+
+  // try to early out the check
+  if (earlyout && frac < FRACUNIT && L.sectorBack[line] === -1) {
+    return false; // stop checking
+  }
+
+  if (interceptP === MAXINTERCEPTS) {
+    throw new PMaputlError('P_PathTraverse: MAXINTERCEPTS overflow');
+  }
+  interceptFrac[interceptP] = frac;
+  interceptIsLine[interceptP] = 1;
+  interceptLine[interceptP] = line;
+  interceptP++;
+
+  return true; // continue
+}
+
+/* ------------------------------------------------------------------ */
+/* P_TraverseIntercepts — p_maputl.c:677-735                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `P_TraverseIntercepts(func, maxfrac)` verbatim: repeatedly pick the
+ * LOWEST-index intercept with the smallest frac (strict `<` scan ⇒ ties go
+ * to insertion order — the exact ordering rule later traversers rely on),
+ * stop when the next frac exceeds maxfrac, and poison consumed entries
+ * with MAXINT.
+ */
+export function pTraverseIntercepts(trav: Traverser, maxfrac: number): boolean {
+  let count = interceptP;
+  let inIdx = 0;
+
+  while (count-- > 0) {
+    let dist = MAXINT;
+    for (let s = 0; s < interceptP; s++) {
+      if (interceptFrac[s]! < dist) {
+        dist = interceptFrac[s]!;
+        inIdx = s;
+      }
+    }
+
+    if (dist > maxfrac) return true; // checked everything in range
+
+    view.frac = dist;
+    view.isLine = interceptIsLine[inIdx] === 1;
+    view.line = interceptLine[inIdx]!;
+    if (!trav(view)) return false; // don't bother going farther
+
+    interceptFrac[inIdx] = MAXINT;
+  }
+
+  return true; // everything was traversed
+}
+
+/* ------------------------------------------------------------------ */
+/* P_PathTraverse — p_maputl.c:737-879                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `P_PathTraverse(x1,y1,x2,y2,flags,trav)` verbatim: blockmap DDA over the
+ * 128-unit grid (MAPBLOCKSHIFT/MAPBTOFRAC FixedDiv steps, 64-iteration
+ * round-off guard), `validcount++` dedup through blockmap.ts's
+ * {@link BlockScan}, PT_EARLYOUT ⇔ earlyout, then
+ * {@link pTraverseIntercepts} at FRACUNIT. Fixed-point coords in.
+ *
+ * Deviations: PT_ADDTHINGS throws (thing intercepts need M5-02 thinglinks;
+ * PIT_AddThingIntercepts itself is a straight port away from that); the
+ * MAXINTERCEPTS arena throws instead of corrupting memory.
+ */
+export function pPathTraverse(
+  map: LineMapView,
+  bm: BlockMap,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  flags: number,
+  trav: Traverser,
+): boolean {
+  earlyout = (flags & PT_EARLYOUT) !== 0;
+
+  scan.valid = map.lines.valid;
+  scan.stamp = bumpValidcount(); // vanilla `validcount++`
+  interceptP = 0;
+  activeMap = map;
+
+  if (((x1 - bm.originX) & (MAPBLOCKSIZE - 1)) === 0) x1 = (x1 + FRACUNIT) | 0; // don't side exactly on a line
+  if (((y1 - bm.originY) & (MAPBLOCKSIZE - 1)) === 0) y1 = (y1 + FRACUNIT) | 0;
+
+  trace.x = x1;
+  trace.y = y1;
+  trace.dx = (x2 - x1) | 0;
+  trace.dy = (y2 - y1) | 0;
+
+  x1 = (x1 - bm.originX) | 0;
+  y1 = (y1 - bm.originY) | 0;
+  const xt1 = x1 >> MAPBLOCKSHIFT;
+  const yt1 = y1 >> MAPBLOCKSHIFT;
+
+  x2 = (x2 - bm.originX) | 0;
+  y2 = (y2 - bm.originY) | 0;
+  const xt2 = x2 >> MAPBLOCKSHIFT;
+  const yt2 = y2 >> MAPBLOCKSHIFT;
+
+  let mapxstep: number;
+  let partial: number;
+  let ystep: number;
+  if (xt2 > xt1) {
+    mapxstep = 1;
+    partial = (FRACUNIT - ((x1 >> MAPBTOFRAC) & (FRACUNIT - 1))) | 0;
+    ystep = FixedDiv((y2 - y1) | 0, abs32((x2 - x1) | 0));
+  } else if (xt2 < xt1) {
+    mapxstep = -1;
+    partial = (x1 >> MAPBTOFRAC) & (FRACUNIT - 1);
+    ystep = FixedDiv((y2 - y1) | 0, abs32((x2 - x1) | 0));
+  } else {
+    mapxstep = 0;
+    partial = FRACUNIT;
+    ystep = 256 * FRACUNIT;
+  }
+  let yintercept = ((y1 >> MAPBTOFRAC) + FixedMul(partial, ystep)) | 0;
+
+  let mapystep: number;
+  let xstep: number;
+  if (yt2 > yt1) {
+    mapystep = 1;
+    partial = (FRACUNIT - ((y1 >> MAPBTOFRAC) & (FRACUNIT - 1))) | 0;
+    xstep = FixedDiv((x2 - x1) | 0, abs32((y2 - y1) | 0));
+  } else if (yt2 < yt1) {
+    mapystep = -1;
+    partial = (y1 >> MAPBTOFRAC) & (FRACUNIT - 1);
+    xstep = FixedDiv((x2 - x1) | 0, abs32((y2 - y1) | 0));
+  } else {
+    mapystep = 0;
+    partial = FRACUNIT;
+    xstep = 256 * FRACUNIT;
+  }
+  let xintercept = ((x1 >> MAPBTOFRAC) + FixedMul(partial, xstep)) | 0;
+
+  // Step through map blocks (count guards a round-off skipping the break).
+  let mapx = xt1;
+  let mapy = yt1;
+
+  for (let count = 0; count < 64; count++) {
+    if (flags & PT_ADDLINES) {
+      if (!blockLinesIterator(bm, mapx, mapy, pitAddLineIntercepts, scan)) {
+        return false; // early out
+      }
+    }
+
+    if (flags & PT_ADDTHINGS) {
+      throw new PMaputlError('P_PathTraverse: PT_ADDTHINGS needs M5-02 thinglinks');
+    }
+
+    if (mapx === xt2 && mapy === yt2) {
+      break;
+    }
+
+    if ((yintercept >> FRACBITS) === mapy) {
+      yintercept = (yintercept + ystep) | 0;
+      mapx += mapxstep;
+    } else if ((xintercept >> FRACBITS) === mapx) {
+      xintercept = (xintercept + xstep) | 0;
+      mapy += mapystep;
+    }
+  }
+
+  // go through the sorted list
+  return pTraverseIntercepts(trav, FRACUNIT);
 }
