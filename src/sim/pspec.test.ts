@@ -53,6 +53,10 @@ import type { ActionId, ActionSpec } from './specials-table';
 // instead of the unimplementedSpecial stub log (registry subtable fill).
 import { plightsCalls, resetPlightsCalls } from './plights';
 import type { LightThinker, StrobeThinker } from './plights';
+// M6-10: the teleport family went LIVE (EV_Teleport, p_telept.c) — the
+// 39/97/125/126 assertions below read the family's counters + the real
+// mover displacement instead of the stub log (registry subtable fill).
+import { teleportCounts, resetTeleportCounts } from './ptelept';
 
 const fx = (u: number): number => (u * FRACUNIT) | 0;
 
@@ -98,6 +102,7 @@ beforeEach(() => {
   resetPspecHelperCounts();
   resetUpdateSpecialsCounts();
   resetPlightsCalls();
+  resetTeleportCounts();
 });
 
 /* ------------------------------------------------------------------ */
@@ -131,7 +136,12 @@ function lightThinkerKinds(state: GameState): number[] {
 // stub-hit assertion below is a pre-implementation skeleton check only —
 // live families are covered by their family test file (plats: pplats.test,
 // M6-plan §M6-13.1 replaces this loop with real per-special scenarios).
-const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>(['plat', 'stopPlat']);
+const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>([
+  'plat', 'stopPlat',
+  // M6-10: EV_Teleport is live — 39/97/125/126 displacement, clear and
+  // monster-gate semantics are pinned by ptelept.test.ts.
+  'teleport'
+]);
 const allLive = (acts: readonly ActionSpec[]): boolean =>
   acts.every((a) => LIVE_ACTIONS.has(a.action));
 
@@ -282,29 +292,51 @@ describe('cross dispatch semantics', () => {
     bindSpecialsWorld(s);
     s.map.lines.special[line] = 125;
     resetUnimplementedSpecial();
+    resetTeleportCounts();
+    const before = { x: PLAYER.x, y: PLAYER.y };
     pCrossSpecialLine(s.pmap, line, 0, PLAYER);
     expect(s.map.lines.special[line]).toBe(125);
     expect(unimplementedSpecial.count).toBe(0);
-    pCrossSpecialLine(s.pmap, line, 0, monster());
-    expect(hits('evTeleport', 125)).toBe(1);
+    // M6-10 fill: the live body runs for the PLAYER? No — 125 is monsterOnly,
+    // so EV_Teleport is never reached (pspec.ts's branch, not the body).
+    expect(teleportCounts.evTeleport).toBe(0);
+    expect([PLAYER.x, PLAYER.y]).toEqual([before.x, before.y]);
+    const mo = monster();
+    const moBefore = { x: mo.x, y: mo.y };
+    pCrossSpecialLine(s.pmap, line, 0, mo);
+    expect(teleportCounts.evTeleport).toBe(1); // monster: the body runs
+    // …and FIXMAP has no doomednum-14 destination → the verbatim silent fail
+    // (no move), while the clear inside the !player branch still happens.
+    expect(teleportCounts.noDestination).toBe(1);
+    expect([mo.x, mo.y]).toEqual([moBefore.x, moBefore.y]);
     expect(s.map.lines.special[line]).toBe(0);
   });
 
   it('126: monster-only, never clears (player and monster passes)', () => {
     bindSpecialsWorld(s);
     s.map.lines.special[line] = 126;
+    resetTeleportCounts();
     pCrossSpecialLine(s.pmap, line, 0, PLAYER);
+    expect(teleportCounts.evTeleport).toBe(0); // monsterOnly branch
     pCrossSpecialLine(s.pmap, line, 1, monster());
     expect(s.map.lines.special[line]).toBe(126);
-    expect(hits('evTeleport', 126)).toBe(1);
+    expect(teleportCounts.evTeleport).toBe(1); // GR: body reached, side gate inside
+    expect(teleportCounts.backSideRejected).toBe(1);
   });
 
-  it('teleport wiring passes the crossing side to EV_Teleport (gate body: M6-10)', () => {
+  it('teleport wiring passes the crossing side to EV_Teleport (live side gate)', () => {
     bindSpecialsWorld(s);
     s.map.lines.special[line] = 39;
+    resetTeleportCounts();
+    const before = { x: PLAYER.x, y: PLAYER.y };
     pCrossSpecialLine(s.pmap, line, 1, PLAYER);
-    const ev = unimplementedSpecial.entries.find((e) => e.fn === 'evTeleport');
-    expect(ev?.arg).toBe(1); // side recorded; side==1 rejection lands M6-10
+    // M6-10 fill: EV_Teleport's `side == 1 → return 0` body gate — counted,
+    // no move, and the W1 clear still runs (p_spec.c clears regardless).
+    expect(teleportCounts.evTeleport).toBe(1);
+    expect(teleportCounts.backSideRejected).toBe(1);
+    expect(teleportCounts.teleported).toBe(0);
+    expect([PLAYER.x, PLAYER.y]).toEqual([before.x, before.y]);
+    expect(s.map.lines.special[line]).toBe(0);
   });
 
   it('use gates: side-1 refusal, 124 side-1 no-op, monster {1,32,33,34} + ML_SECRET', () => {
