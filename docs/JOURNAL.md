@@ -159,3 +159,4 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - RULE: every dispatch brief now assumes /tmp may be empty; implementers verify target file exists (one ls) before grep-planning; orchestrator re-checks mirror at session start (ls *.c | wc -l == 62).
 - M7 plan + M6 plan merged (both written during the partial-source window; M7 explicitly routed ambiguities to empirical Freedoom L2 fixtures instead of folklore — sound methodologically).
 - M5 chain 01-06 merged fast (mirror restored; source-truth corrections: no telefrag param on TryMove; slide is 3-retry intra-tic; noclip truth D012). Wave 6 parallel: live e2e + feel goldens.
+- M5-09 merged: feel suite 13 scenarios — 7 analytic (friction asymptote 546133 = 200·4095/15·(256/232)^n etc), 32767 short overflow truth, corner livelock absent-on-grids truth.

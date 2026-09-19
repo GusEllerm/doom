@@ -89,5 +89,5 @@ Future tasks will be added as architects decompose milestones.
 | M5-06 | p_user replaces fly stub (D009 close) | M5 | M5-05 | done (merged) |
 | M5-07 | Mouse input (pointer-lock platform + ticcmd) | M5 | — | done (merged) |
 | M5-08 | Live-page integration + L4 e2e | M5 | M5-06/07 | dispatched (agent c232431d) |
-| M5-09 | L2 scripted-tic feel goldens | M5 | M5-06 | dispatched (agent c7eaf8e6) |
+| M5-09 | L2 scripted-tic feel goldens | M5 | M5-06 | done (merged, 23 tests) |
 | M5-10 | M5 exit + L5 motion review | M5 | M5-08/09 | planned |
