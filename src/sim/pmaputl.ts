@@ -61,8 +61,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-import { FixedMul, FRACBITS } from '../core/fixed';
-import type { Side } from './bsp';
+import { FixedDiv, FixedMul, FRACBITS } from '../core/fixed';
+import type { DivLine, Side } from './bsp';
 import {
   ST_HORIZONTAL,
   ST_POSITIVE,
@@ -94,6 +94,7 @@ export class PMaputlError extends Error {
 /** The minimal map surface the point/box/opening helpers need (SoA views;
  * tests may pass a RuntimeMap or a hand-built subset). */
 export type LineMapView = Pick<RuntimeMap, 'verticesX' | 'verticesY' | 'lines'>;
+export type OpeningMapView = LineMapView & Pick<RuntimeMap, 'sectors'>;
 
 /** Mutable divline_t scratch (bsp's DivLine fields are readonly). */
 export interface DivLineMut {
@@ -249,4 +250,95 @@ export function divLineFrom(map: LineMapView, line: number, out?: DivLineMut): D
   dl.dx = L.dx[line]!;
   dl.dy = L.dy[line]!;
   return dl;
+}
+
+/* ------------------------------------------------------------------ */
+/* P_InterceptVector — p_maputl.c:221-256 (`#if 1` branch)             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `P_InterceptVector(v2, v1)` verbatim, INCLUDING the `>>8` pre-shifts
+ * inside the FixedMul arguments (binding — R04 §14 pt.4: they keep the
+ * products inside gcc's 32-bit `long` at the cost of dropping the low 8
+ * bits of the shifted operand; do NOT “optimize” them away).
+ *
+ *  - `den == 0` (parallel OR co-linear) ⇒ 0 — the commented-out
+ *    `I_Error("parallel")` of :241 is dead in 1.10.
+ *  - `FixedDiv` is core/fixed's, incl. its saturating guard (vanilla
+ *    p_maputl calls the very same m_fixed.c FixedDiv).
+ *  - Precision cost (pinned by the BigInt oracle test): each `>>8` drops
+ *    ≤ 2^8⁄2^16 = 1/256 of a map unit from the shifted delta/origin, and
+ *    FixedMul truncates at bit 16 — the returned frac can deviate from
+ *    the exact rational intercept by O(2^−8) relative; the oracle asserts
+ *    the EXACT shifted-integer recipe (not the ideal rational).
+ *
+ * Returns the fraction of the way along divline v1 (FRACUNIT = the
+ * intersection), possibly negative (behind v1's start) or > FRACUNIT.
+ */
+export function pInterceptVector(v2: DivLine, v1: DivLine): number {
+  const den = (FixedMul((v1.dy >> 8) | 0, v2.dx) - FixedMul((v1.dx >> 8) | 0, v2.dy)) | 0;
+
+  if (den === 0) return 0; // parallel or co-linear (:239-242)
+
+  const num =
+    (FixedMul(((v1.x - v2.x) | 0) >> 8, v1.dy) +
+      FixedMul(((v2.y - v1.y) | 0) >> 8, v1.dx)) |
+    0;
+
+  return FixedDiv(num, den);
+}
+
+/* ------------------------------------------------------------------ */
+/* P_LineOpening — p_maputl.c:290-330                                   */
+/* ------------------------------------------------------------------ */
+
+/** The four p_maputl.c:294-297 globals (opentight/closing do NOT exist in
+ * 1.10 — plain min/max only, M5-plan §M5-01 “no midtex rules here”). */
+export interface LineOpening {
+  /** fixed */
+  opentop: number;
+  /** fixed */
+  openbottom: number;
+  /** fixed, = opentop − openbottom (stale on one-sided early-out!) */
+  openrange: number;
+  /** fixed, = min(front.floor, back.floor) */
+  lowfloor: number;
+}
+
+/** Module singleton standing in for the C globals (vanilla semantics:
+ * one active opening at a time, read by the caller before the next call). */
+export const opening: LineOpening = { opentop: 0, openbottom: 0, openrange: 0, lowfloor: 0 };
+
+/**
+ * `P_LineOpening(linedef)` verbatim. One-sided (sideNumBack sentinel −1,
+ * standing in for `sidenum[1] == -1`) sets ONLY openrange = 0 and returns —
+ * opentop/openbottom/lowfloor keep whatever the previous call left (the
+ * vanilla stale-global quirk, pinned by test). Otherwise plain min/max:
+ * opentop = min(ceilings), openbottom = max(floors), lowfloor = min(floors),
+ * openrange = opentop − openbottom.
+ */
+export function pLineOpening(map: OpeningMapView, line: number): LineOpening {
+  const L = map.lines;
+  if (L.sideNumBack[line] === -1) {
+    opening.openrange = 0; // single sided line (:305-309)
+    return opening;
+  }
+
+  const f = L.sectorFront[line]!;
+  const b = L.sectorBack[line]!;
+  const S = map.sectors;
+
+  opening.opentop =
+    S.ceilingHeight[f]! < S.ceilingHeight[b]! ? S.ceilingHeight[f]! : S.ceilingHeight[b]!;
+
+  if (S.floorHeight[f]! > S.floorHeight[b]!) {
+    opening.openbottom = S.floorHeight[f]!;
+    opening.lowfloor = S.floorHeight[b]!;
+  } else {
+    opening.openbottom = S.floorHeight[b]!;
+    opening.lowfloor = S.floorHeight[f]!;
+  }
+
+  opening.openrange = (opening.opentop - opening.openbottom) | 0;
+  return opening;
 }

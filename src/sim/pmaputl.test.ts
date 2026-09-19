@@ -19,7 +19,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { FRACUNIT } from '../core/constants';
+import { FRACBITS, FRACUNIT } from '../core/constants';
 import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
 import { WadFile } from '../wad/wadfile';
 import { loadMap } from '../wad/mapdata';
@@ -29,16 +29,42 @@ import {
   type FixedBBox,
   type LineArrays,
   type RuntimeMap,
+  type SectorArrays,
 } from './map';
 import {
+  opening,
   pAproxDistance,
   pBoxOnLineSide,
+  pInterceptVector,
+  pLineOpening,
   pPointOnLineSide,
   type LineMapView,
 } from './pmaputl';
 
 const FU = FRACUNIT;
 const fx = (units: number): number => (units * FU) | 0;
+const FRAC = (n: number): number => Math.trunc(n * FU);
+
+/** FIXMAP fixture map (rect builder → wad → RuntimeMap), as in M2 suites. */
+function rt(spec: RectMapSpec, name = 'FIXMAP'): RuntimeMap {
+  const bytes = buildFixtureMapWad(spec, name);
+  const buf = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+  return buildMapFromData(loadMap(WadFile.parse(buf), name));
+}
+
+/** mulberry32 (seeded PRNG — no Math.random anywhere, A-INT1). */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /* Hand-built SoA views (no lumps needed for pure-geometry tests)       */
@@ -226,9 +252,7 @@ describe('pBoxOnLineSide — straddle −1, four slopetypes', () => {
         { x: -128, y: 0, w: 128, h: 128 },
       ],
     };
-    const bytes = buildFixtureMapWad(spec, 'FIXMAP');
-    const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-    const map: RuntimeMap = buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP'));
+    const map: RuntimeMap = rt(spec);
     // The shared edge is the only vertical line at x = −128.
     let shared = -1;
     for (let i = 0; i < map.lines.count; i++) {
@@ -305,5 +329,207 @@ describe('pBoxOnLineSide — straddle −1, four slopetypes', () => {
     // The −1 cases really are straddles per the exact predicate: the two
     // probed corners disagree.
     expect(exactSide(m, 0, 0, 64)).not.toBe(exactSide(m, 0, 64, 0));
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 2a. P_LineOpening (p_maputl.c:290-330)                               */
+/* ------------------------------------------------------------------ */
+
+describe('pLineOpening — plain 1.10 min/max (no opentight/closing)', () => {
+  it('two-sided heights: min ceiling, max floor, min floor as lowfloor', () => {
+    const spec: RectMapSpec = {
+      rooms: [
+        { x: 0, y: 0, w: 128, h: 128, floorHeight: 0, ceilingHeight: 128 },
+        { x: 128, y: 0, w: 128, h: 128, floorHeight: 24, ceilingHeight: 96 },
+      ],
+    };
+    const map = rt(spec);
+    let shared = -1;
+    for (let i = 0; i < map.lines.count; i++) {
+      const f = map.lines.sectorFront[i]!;
+      const b = map.lines.sectorBack[i]!;
+      if (Math.min(f, b) === 1 && Math.max(f, b) === 2) shared = i; // room1↔room2
+    }
+    expect(shared).toBeGreaterThanOrEqual(0);
+
+    const op = pLineOpening(map, shared);
+    expect(op).toBe(opening); // the module singleton (vanilla globals)
+    expect(op.opentop).toBe(fx(96)); // min(128, 96)
+    expect(op.openbottom).toBe(fx(24)); // max(0, 24)
+    expect(op.lowfloor).toBe(fx(0)); // min(0, 24)
+    expect(op.openrange).toBe(fx(96) - fx(24));
+  });
+
+  it('one-sided sets ONLY openrange=0 — stale globals quirk pinned', () => {
+    // line 0 two-sided (sectors 0/1), line 1 one-sided (sideNumBack −1).
+    const m = handMap([
+      { v1: [0, 0], v2: [0, 128] },
+      { v1: [64, 0], v2: [64, 128] },
+    ]) as LineMapView & { sectors: SectorArrays };
+    m.lines.sideNumBack[0] = 1;
+    m.lines.sectorFront[0] = 0;
+    m.lines.sectorBack[0] = 1;
+    m.sectors = {
+      count: 2,
+      floorHeight: Int32Array.from([fx(0), fx(24)]),
+      ceilingHeight: Int32Array.from([fx(128), fx(96)]),
+    } as unknown as SectorArrays;
+
+    const before = pLineOpening(m, 0);
+    expect(before.opentop).toBe(fx(96));
+    expect(before.openrange).toBe(fx(96) - fx(24));
+
+    const after = pLineOpening(m, 1);
+    expect(after).toBe(before); // same singleton, zero allocation
+    expect(after.openrange).toBe(0);
+    // Vanilla leaves opentop/openbottom/lowfloor from the PREVIOUS call:
+    expect(after.opentop).toBe(fx(96));
+    expect(after.openbottom).toBe(fx(24));
+    expect(after.lowfloor).toBe(fx(0));
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 2b. P_InterceptVector (p_maputl.c:221-256) — BigInt oracle           */
+/* ------------------------------------------------------------------ */
+
+/** Exact C-semantics pipeline in BigInt: FixedMul = (a*b)>>16 truncated to
+ * the low 32 bits (x86 long wrap), arithmetic >>8, int32 wrap on +−, then
+ * FixedDiv = abs32 guard (MININT wraps!) then exact rational truncation. */
+const wrap32 = (v: bigint): bigint => {
+  v &= 0xffffffffn;
+  return v >= 0x80000000n ? v - 0x100000000n : v;
+};
+const bMul = (a: bigint, b: bigint): bigint => wrap32((a * b) >> 16n);
+const bAbs = (v: bigint): bigint => (v === -0x80000000n ? v : v < 0n ? -v : v);
+const bDiv = (a: bigint, b: bigint): bigint => {
+  const aa = bAbs(a);
+  const ab = bAbs(b);
+  if ((aa >> 14n) >= ab) return (a ^ b) < 0n ? -0x80000000n : 0x7fffffffn;
+  return wrap32((a * 65536n) / b);
+};
+
+interface DL {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+}
+
+/** BigInt twin of P_InterceptVector(v2, v1) — the binding oracle. */
+function interceptVectorOracle(v2: DL, v1: DL): number {
+  const den = wrap32(
+    bMul(BigInt(v1.dy) >> 8n, BigInt(v2.dx)) - bMul(BigInt(v1.dx) >> 8n, BigInt(v2.dy)),
+  );
+  if (den === 0n) return 0;
+  const num = wrap32(
+    bMul(wrap32(BigInt(v1.x) - BigInt(v2.x)) >> 8n, BigInt(v1.dy)) +
+      bMul(wrap32(BigInt(v2.y) - BigInt(v1.y)) >> 8n, BigInt(v1.dx)),
+  );
+  return Number(bDiv(num, den));
+}
+
+/** Fully exact (unshifted) rational frac along v2 + its denominator (for
+ * conditioning), for the precision-cost report:
+ * frac = cross(P1−P2, v1d) / cross(v2d, v1d) × FRACUNIT. */
+function exactFrac(v2: DL, v1: DL): { frac: number; den: number } | null {
+  const num =
+    (BigInt(v1.x) - BigInt(v2.x)) * BigInt(v1.dy) -
+    (BigInt(v1.y) - BigInt(v2.y)) * BigInt(v1.dx);
+  const den = BigInt(v2.dx) * BigInt(v1.dy) - BigInt(v2.dy) * BigInt(v1.dx);
+  if (den === 0n) return null; // parallel/coplanar: no finite frac
+  return { frac: Number((num * 65536n) / den), den: Number(den) }; // fixed² units
+}
+
+describe('pInterceptVector — BigInt oracle, den==0, precision cost', () => {
+  it('axis crossing exactly at 1/2 (hand-computed)', () => {
+    const trace: DL = { x: 0, y: 0, dx: fx(100), dy: 0 };
+    const wall: DL = { x: fx(50), y: 0, dx: 0, dy: fx(100) };
+    // num = (50>>8 units-fixed)*dy… pinned both by hand and by oracle.
+    expect(pInterceptVector(trace, wall)).toBe(FRAC(0.5));
+    expect(pInterceptVector(trace, wall)).toBe(interceptVectorOracle(trace, wall));
+  });
+
+  it('diagonal trace vs wall; behind-start ⇒ negative', () => {
+    const diag: DL = { x: 0, y: 0, dx: fx(100), dy: fx(100) };
+    const wall: DL = { x: fx(50), y: 0, dx: 0, dy: fx(100) };
+    expect(pInterceptVector(diag, wall)).toBe(FRAC(0.5));
+    expect(pInterceptVector(diag, wall)).toBe(interceptVectorOracle(diag, wall));
+
+    const behind: DL = { x: fx(-50), y: 0, dx: 0, dy: fx(100) };
+    const f = pInterceptVector(diag, behind);
+    expect(f).toBeLessThan(0);
+    expect(f).toBe(interceptVectorOracle(diag, behind));
+  });
+
+  it('negative-coordinate geometry matches the oracle', () => {
+    const trace: DL = { x: fx(-200), y: fx(-200), dx: fx(300), dy: fx(300) };
+    const wall: DL = { x: fx(-100), y: fx(-250), dx: 0, dy: fx(200) };
+    expect(pInterceptVector(trace, wall)).toBe(interceptVectorOracle(trace, wall));
+    expect(pInterceptVector(trace, wall)).toBeGreaterThan(0);
+    expect(pInterceptVector(trace, wall)).toBeLessThan(FRAC(1));
+  });
+
+  it('den == 0 ⇒ 0: parallel AND co-linear (1.10 has no axis fast path)', () => {
+    const parallel: DL = { x: 0, y: fx(50), dx: fx(100), dy: 0 };
+    expect(pInterceptVector({ x: 0, y: 0, dx: fx(100), dy: 0 }, parallel)).toBe(0);
+    const colinear: DL = { x: fx(100), y: 0, dx: fx(100), dy: 0 };
+    expect(pInterceptVector({ x: 0, y: 0, dx: fx(100), dy: 0 }, colinear)).toBe(0);
+    const prop: DL = { x: 0, y: fx(10), dx: fx(64), dy: fx(64) };
+    expect(pInterceptVector({ x: 0, y: 0, dx: fx(64), dy: fx(64) }, prop)).toBe(0);
+    // …and the oracle agrees those are den==0 cases:
+    expect(interceptVectorOracle({ x: 0, y: 0, dx: fx(100), dy: 0 }, colinear)).toBe(0);
+  });
+
+  it('FixedDiv saturation guard reachable (huge num, tiny den) ⇒ ±MININT/MAXINT', () => {
+    // Near-parallel with big deltas: |num|>>14 >= |den| → saturate per C abs.
+    const trace: DL = { x: fx(30000), y: 0, dx: fx(1) + 1, dy: 65536 * 2048 + 255 };
+    const wall: DL = { x: 0, y: 0, dx: -fx(1), dy: 65536 * 2048 + 254 };
+    expect(pInterceptVector(trace, wall)).toBe(interceptVectorOracle(trace, wall));
+  });
+
+  it('seeded differential vs the BigInt oracle (exact bit-for-bit)', () => {
+    const rnd = mulberry32(0x5eed01);
+    for (let i = 0; i < 5000; i++) {
+      const q = (u: number): number => (u << FRACBITS) | 0;
+      const ri = (lo: number, hi: number): number => Math.floor(lo + rnd() * (hi - lo + 1));
+      const v2: DL = { x: q(ri(-512, 512)), y: q(ri(-512, 512)), dx: q(ri(-300, 300)), dy: q(ri(-300, 300)) };
+      const v1: DL = { x: q(ri(-512, 512)), y: q(ri(-512, 512)), dx: q(ri(-300, 300)), dy: q(ri(-300, 300)) };
+      expect(pInterceptVector(v2, v1), `${i}: ${JSON.stringify([v2, v1])}`).toBe(
+        interceptVectorOracle(v2, v1),
+      );
+    }
+  });
+
+  it('precision cost of the >>8 pre-shifts: bounded vs the exact rational', () => {
+    // Documented cost (module header): each >>8 drops the low 8 bits of an
+    // operand (1/256 map unit) and FixedMul truncates at bit 16, so the
+    // returned frac deviates from the ideal intercept. Measured bound over
+    // a seeded sample of sane (sub-block to few-hundred-unit) geometry:
+    const rnd = mulberry32(0xc057);
+    let maxErr = 0;
+    for (let i = 0; i < 4000; i++) {
+      const q = (u: number): number => (u << FRACBITS) | 0;
+      const ri = (lo: number, hi: number): number => Math.floor(lo + rnd() * (hi - lo + 1));
+      const rf = (): number => (q(ri(-400, 400)) + ri(0, 65535)) | 0; // lowbits too
+      const v2: DL = { x: rf(), y: rf(), dx: (q(ri(60, 300)) + ri(0, 255)) | 0, dy: (q(ri(-300, 300)) + ri(0, 255)) | 0 };
+      const v1: DL = { x: rf(), y: rf(), dx: (q(ri(-300, 300)) + ri(0, 255)) | 0, dy: (q(ri(1, 300)) + ri(0, 255)) | 0 };
+      const got = pInterceptVector(v2, v1);
+      const exact = exactFrac(v2, v1);
+      // Well-conditioned samples only: intersection inside the trace and
+      // far from parallel (den ≥ ~2% of |v1d|·|v2d| — near-parallel cases
+      // amplify the shift truncation without bound, which is the SAME
+      // amplification vanilla has; the documented cost is for sane traces).
+      if (exact === null) continue;
+      const scale =
+        Math.abs(v1.dx * v2.dy) + Math.abs(v1.dy * v2.dx); // fixed² (exact doubles)
+      if (Math.abs(exact.den) * 20 < scale || Math.abs(exact.frac) > 2 * FRACUNIT) continue;
+      maxErr = Math.max(maxErr, Math.abs(got - exact.frac));
+    }
+    // O(2^-8) relative on unit-scale deltas → far under 1/16 of a unit for
+    // this geometry class; the assert pins that the cost stays bounded.
+    expect(maxErr).toBeLessThan(4096);
+    expect(maxErr).toBeGreaterThan(0); // the shift cost is REAL (not free)
   });
 });
