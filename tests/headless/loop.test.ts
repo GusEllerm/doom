@@ -112,6 +112,10 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     // RE-BLESSED M6-01 (one-time, reason: 'M6 world-state fields') — the
     // 333-sector E1M1 SoA + run globals + empty arena extend hashState;
     // value 1134251855 → 3285949243 from the added bytes alone.
-    expect(h1).toBe(3285949243);
+    // RE-BLESSED M6-03 (one-time, reason: 'P_SpawnSpecials at load') —
+    // the sector-special spawn clears (1/2/3/8/10/12/13/14/17 → 0) and
+    // the E1M1 sector-9 totalsecret++ now mutate live state at gInitGame;
+    // value 3285949243 → 869939862.
+    expect(h1).toBe(869939862);
   });
 });
