@@ -64,6 +64,15 @@ export interface MobjStub {
   momX: number;
   /** fixed */
   momY: number;
+  /** fixed — mobj_t momz (p_mobj.h:244); written by P_ZMovement (M5-05),
+   * 0 here (additive M5-03 extension so TryMove-era spatial state lives
+   * on ONE stub — no parallel mobj struct). */
+  momz: number;
+  /** mobj_t floorz (p_mobj.h:234) — written by pTryMove/pTeleportMove on
+   * success (M5-03); z itself stays untouched by those (M5-05 gravity). */
+  floorz: number;
+  /** mobj_t ceilingz — written on successful move (same pin as floorz). */
+  ceilingz: number;
   /** p_user.c: teleport lockout countdown (P_MovePlayer skip). */
   reactiontime: number;
 }
@@ -102,6 +111,9 @@ export function createPlayer(): Player {
       flags: 0,
       momX: 0,
       momY: 0,
+      momz: 0,
+      floorz: 0,
+      ceilingz: 0,
       reactiontime: 0
     },
     playerstate: PST_LIVE,

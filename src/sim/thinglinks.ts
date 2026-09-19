@@ -56,6 +56,11 @@ export const MF_PICKUP = 0x800;
 export const MF_NOCLIP = 0x1000;
 /** p_mobj.h:150 MF_MISSILE. */
 export const MF_MISSILE = 0x10000;
+/** p_mobj.h:152/155 MF_SLIDE / MF_FLOAT (values pinned for M5-03 TryMove). */
+export const MF_SLIDE = 0x2000;
+export const MF_FLOAT = 0x4000;
+/** p_mobj.h:158 MF_TELEPORT ("no thing left behind / skip step checks"). */
+export const MF_TELEPORT = 0x8000;
 /** p_mobj.h:156/159 MF_SHADOW / MF_NOBLOOD. */
 export const MF_SHADOW = 0x40000;
 export const MF_NOBLOOD = 0x80000;
