@@ -191,3 +191,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M6-13 merged: 451-test registry-driven corpus, E1M1 runtime-derived key-route e2e, renderer LIVE-SECTOR BINDING (goldens byte-identical — live≡static proof), mechanics strips. FINDING: M6-05 door body never landed (ledger drift, D014 rule + verify-merge.sh now enforce content probes). M6-05b dispatched. M6 exit = 05b merge + checklist flip.
 - M6-05b stopped early (55 tool uses, nothing committed past stubs) -> t2 with incremental-commit mandate.
 - Concurrency opened: M7 wave 1 (01 states, 07 psprite) dispatched alongside doors — plans had decoupled them; 3 agents = harness cap.
+- M7-07 agent silent death (no notification, stubs-only). Lesson: branch-commit-timestamp polling catches what notifications miss; added to merge-turn routine.

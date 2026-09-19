@@ -113,6 +113,6 @@ Future tasks will be added as architects decompose milestones.
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
 | M7-01 | State-table infra + ActionId registry | M7 | M5/M6 | dispatched (agent 6545d9ff) |
-| M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | dispatched (agent 09e20ba4) |
+| M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | SILENT DEATH -> re-dispatched t2 (agent e1f7b451) |
 | M7-02..11 | (see docs/design/M7-plan.md) | M7 | waves | planned |
 
