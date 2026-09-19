@@ -43,7 +43,7 @@ import { MF_MISSILE } from './thinglinks';
 import { ML_SECRET } from './pspec-helpers';
 
 import { evDoDoor, evVerticalDoor, pSpawnDoorCloseIn30, pSpawnDoorRaiseIn5Mins } from './pdoors';
-import { evDoPlat, evStopPlat } from './ppplats';
+import { activePlats, evDoPlat, evStopPlat } from './pplats';
 import { evDoFloor, evBuildStairs, evDoDonut } from './pfloor';
 import { evDoCeiling, evCeilingCrushStop } from './pceilng';
 import {
@@ -125,7 +125,9 @@ export function resetPspecCounts(): void {
 /* ------------------------------------------------------------------ */
 
 export const MAXBUTTONS = 16; // p_spec.h
-export const MAXPLATS = 30; // p_spec.h
+// MAXPLATS now LIVES in pplats.ts (M6-06, vanilla defines activeplats in
+// p_plats.c); re-exported here for the M6-03 consumers.
+export { MAXPLATS, activePlats } from './pplats';
 export const MAXCEILINGS = 30; // p_spec.h
 export const MAXLINEANIMS = 64; // p_spec.c
 export const BUTTONTIME = 35; // p_spec.h (used by M6-11's P_StartButton)
@@ -151,10 +153,9 @@ export const buttonList: ButtonSlot[] = Array.from(
   () => ({ line: -1, where: 0, btexture: '', btimer: 0 })
 );
 
-/** activeplats[] / activeceilings[] (p_plats.c / p_ceilng.c globals; the
- * M6-06/M6-08 stasis scans index these). */
-export const activePlats: (Thinker | null)[] =
-  new Array<Thinker | null>(MAXPLATS).fill(null);
+/** activeplats[] / activeceilings[] — activeplats LIVES in pplats.ts
+ * (re-exported above, M6-06); activeceilings is the p_ceilng.c global
+ * (p_ceilng.ts owns it from M6-08; the stasis scans index these). */
 export const activeCeilings: (Thinker | null)[] =
   new Array<Thinker | null>(MAXCEILINGS).fill(null);
 

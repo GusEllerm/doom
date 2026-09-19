@@ -105,6 +105,15 @@ const FN_OF: Record<ActionId, string | null> = {
   verticalDoor: 'evVerticalDoor', lockedDoor: 'evDoLockedDoor', exit: null
 };
 
+// Families whose stub bodies are REPLACED by the live code (M6 waves 3+;
+// each family task adds its action ids here when its bodies land). The
+// stub-hit assertion below is a pre-implementation skeleton check only —
+// live families are covered by their family test file (plats: pplats.test,
+// M6-plan §M6-13.1 replaces this loop with real per-special scenarios).
+const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>(['plat', 'stopPlat']);
+const allLive = (acts: readonly ActionSpec[]): boolean =>
+  acts.every((a) => LIVE_ACTIONS.has(a.action));
+
 function hits(fn: string, special: number): number {
   return unimplementedSpecial.entries.filter(
     (e) => e.fn === fn && e.special === special
@@ -131,6 +140,7 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
     for (let id = 1; id <= 141; id++) {
       const e = LINE_SPECIALS[id];
       if (!e?.cross) continue;
+      if (allLive(e.cross.actions)) continue; // live family — see LIVE_ACTIONS
       resetUnimplementedSpecial();
       s.map.lines.special[line] = id;
       s.exitRequest = 'none';
@@ -152,6 +162,7 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
     for (let id = 1; id <= 141; id++) {
       const e = LINE_SPECIALS[id];
       if (!e?.use) continue;
+      if (allLive(e.use.actions)) continue; // live family — see LIVE_ACTIONS
       resetUnimplementedSpecial();
       s.map.lines.special[line] = id;
       s.exitRequest = 'none';
@@ -173,6 +184,7 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
 
   it('shoot ids 24/46/47: unconditional action + ChangeSwitchTexture', () => {
     for (const id of [24, 46, 47]) {
+      if (allLive(LINE_SPECIALS[id]!.shoot!.actions)) continue; // see LIVE_ACTIONS
       resetUnimplementedSpecial();
       s.map.lines.special[line] = id;
       const e = LINE_SPECIALS[id]!.shoot!;
