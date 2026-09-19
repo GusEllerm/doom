@@ -8,6 +8,7 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+import type { PMapWorld } from './pmap';
 import type { RuntimeMap } from './map';
 import type { Player } from './player';
 import type { PrngState } from './prng';
@@ -23,6 +24,10 @@ export type Skill = 0 | 1 | 2 | 3 | 4;
 
 export interface GameState {
   readonly map: RuntimeMap;
+  /** M5-06: the clipping world (blockmap + thinglinks) the shared mover
+   * path (P_TryMove/P_XYMovement/P_ZMovement) runs on. Built once per
+   * level by gInitGame; NOT part of the hashState serialization. */
+  readonly pmap: PMapWorld;
   /** Single-player: index 0 = consoleplayer. Slots are sparse only if a
    * later netgame task adds them. */
   readonly players: Player[];
@@ -48,7 +53,7 @@ const FNV_PRIME = 16777619;
 /**
  * FNV-1a (32-bit) over the canonical little-endian byte serialization of the
  * M2-scoped state fields: leveltime, gametic, rndindex, prndindex, then per
- * player the fixed fields (x, y, z, angle, momX, momY, viewz, viewheight) +
+ * player the fixed fields (x, y, z, angle, momx, momy, viewz, viewheight) +
  * health, cheats, playerstate and the 3 consumed ticcmd fields. int32 fields
  * are written as signed i32; `angle` (BAM, u32) via Uint32 so ANG180-class
  * values hash bit-exactly.
@@ -67,8 +72,8 @@ export function hashState(s: GameState): number {
     dv.setInt32(o, p.mo.y, true); o += 4;
     dv.setInt32(o, p.mo.z, true); o += 4;
     dv.setUint32(o, p.mo.angle >>> 0, true); o += 4;
-    dv.setInt32(o, p.mo.momX, true); o += 4;
-    dv.setInt32(o, p.mo.momY, true); o += 4;
+    dv.setInt32(o, p.mo.momx, true); o += 4;
+    dv.setInt32(o, p.mo.momy, true); o += 4;
     dv.setInt32(o, p.viewz, true); o += 4;
     dv.setInt32(o, p.viewheight, true); o += 4;
     dv.setInt32(o, p.health | 0, true); o += 4;

@@ -1,38 +1,59 @@
-// sim/player.ts — minimal player_t + mobj stand-in and the M2 subset of
-// P_SpawnPlayer (p_mobj.c) / P_PlayerThink (p_user.c).
+// sim/player.ts — player_t (d_player.h) + the M5-06 player mobj stand-in
+// and P_SpawnPlayer (p_mobj.c) subset.
 //
-// The vanilla `mobj_t` is a full thinker/state-machine object; M2 needs only
-// the kinematic fields P_MovePlayer touches, so Player.mo is a plain record
-// (`MobjStub`) — mobj states/thinkers arrive with physics (M2-07+) and
-// monsters (M5). Fields and constants are named after d_player.h / p_mobj.h.
+// M5-06 (D009 closure): the D009 fly path (pFlyNoclip) and the M2
+// P_PlayerThink skeleton are GONE — the real p_user.c think lives in
+// sim/puser.ts. `Player` is now the mover-side player_t slice: it extends
+// pmove's MovePlayerState (the fields P_XYMovement/P_ZMovement reach
+// through `mo->player`), and `Player.mo` extends pmove's MoveMobj (the
+// mobj_t kinematic slice), so the shared pmap/pmove/pslide movers and the
+// player are ONE object — momentum, floorz/ceilingz and thinglinks slots
+// live exactly once (no parallel mobj struct, same rule as M5-03/05).
+//
+// Fields and constants are named after d_player.h / p_mobj.h / info.c.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { angAdd, FixedMul, FRACBITS, FRACUNIT } from '../core/fixed';
-import { ANG45, ANG90, ANGLETOFINESHIFT } from '../core/constants';
-import { finecosine, finesine } from '../core/tables';
+import { FRACBITS, FRACUNIT } from '../core/fixed';
+import { ANG45 } from '../core/constants';
 import type { MapThing } from '../wad/mapdata';
 
+import type { MoveMobj, MovePlayerState } from './pmove';
 import { createTiccmd, type Ticcmd } from './ticcmd';
 
 /* ------------------------------------------------------------------ */
-/* Constants (p_local.h / p_mobj.h / d_player.h)                       */
+/* Constants (p_local.h / p_mobj.h / d_player.h / info.c)              */
 /* ------------------------------------------------------------------ */
 
 /** p_local.h:34 `#define VIEWHEIGHT (41*FRACUNIT)`. */
 export const VIEWHEIGHT = 41 * FRACUNIT;
-/** p_local.h:95 `#define ONFLOORZ MININT` — "resolve to actual floor" token. */
+/** p_local.h:95 `#define ONFLOORZ MININT` — "resolve to actual floor"
+ * token. Only ever a constructor argument in vanilla (P_SpawnMobj resolves
+ * it at p_mobj.c:522); M5-06 gInitGame does the same at spawn/level start. */
 export const ONFLOORZ = -2147483648; // MININT
 
 /** p_mobj.h:150 `MF_NOCLIP = 0x1000`. */
 export const MF_NOCLIP = 0x1000;
-/** p_mobj.h:142 `MF_NOGRAVITY = 512` (set alongside MF_NOCLIP per M2-plan
- * §M2-07; inert until z-physics lands — vanilla ties it to P_NoGravity only). */
+/** p_mobj.h:142 `MF_NOGRAVITY = 512`. Vanilla 1.10 never sets this from a
+ * cheat; D012 keeps the M2 cheat-flag sync (CF_NOCLIP also sets
+ * MF_NOGRAVITY) so noclip = identical momentum physics with the checks
+ * skipped and gravity off (M5-plan §1.3). */
 export const MF_NOGRAVITY = 512;
+/** p_mobj.h:135 `MF_JUSTATTACKED = 128` (chainsaw auto-forward in
+ * P_PlayerThink; set nowhere until the M7 weapons). */
+export const MF_JUSTATTACKED = 128;
 
-/** p_user.c:161/164 `cmd->forwardmove*2048` — ticcmd move units → fixed
- * thrust scale used by P_Thrust; the M2-07 noclip fly path reuses the exact
- * constant for its friction-free per-tic integration. */
+/** info.c:1130s mobjinfo[MT_PLAYER].flags (minus MF_NOTDMATCH, a
+ * deathmatch-only bit): MF_SOLID|MF_SHOOTABLE|MF_DROPOFF|MF_PICKUP.
+ * MF_DROPOFF is what lets the player walk off ledges (p_map.c P_TryMove
+ * rule 5, M5-03); MF_PICKUP arms the M7 item touch. */
+export const PLAYER_FLAGS = 0x2 | 0x4 | 0x400 | 0x800;
+/** info.c MT_PLAYER radius/height: 16*FRACUNIT / 56*FRACUNIT. */
+export const PLAYER_RADIUS = 16 * FRACUNIT;
+export const PLAYER_HEIGHT = 56 * FRACUNIT;
+
+/** p_user.c P_MovePlayer `cmd->forwardmove*2048` — ticcmd move units →
+ * fixed thrust scale (p_user.c P_Thrust argument). */
 export const MOVE_THRUST_SCALE = 2048;
 
 /** d_player.h:54-60 `playerstate_t` (PST_LIVE=0, PST_DEAD=1, PST_REBORN=2). */
@@ -46,54 +67,52 @@ export const CF_GODMODE = 2;
 export const CF_NOMOMENTUM = 4;
 
 /* ------------------------------------------------------------------ */
-/* MobjStub — the kinematic slice of mobj_t M2 uses                    */
+/* MobjStub — the player's mobj_t slice (a full MoveMobj)              */
 /* ------------------------------------------------------------------ */
 
-export interface MobjStub {
-  /** fixed */
-  x: number;
-  /** fixed */
-  y: number;
-  /** fixed (ONFLOORZ until P_CalcHeight/physics land in M2-07). */
-  z: number;
-  /** BAM angle, u32-normalized (angle_t is `unsigned`; never `|0`). */
+/**
+ * The vanilla `mobj_t` MT_PLAYER slice, as a plain record. States/thinkers
+ * still arrive with the M7 arena, but every MOVEMENT field p_mobj.c's
+ * P_XYMovement/P_ZMovement touches is here (M5-05's MoveMobj), plus
+ * `reactiontime` (p_user.c teleport lockout) and the self `playerRef`
+ * standing for `mobj_t.player` (pmove reads/writes Player through it —
+ * ONE source of truth for cheats/viewheight/ticcmd mirrors).
+ */
+export interface MobjStub extends MoveMobj {
+  /** mobj_t angle (p_mobj.h:222), BAM, u32-normalized (angle_t is
+   * `unsigned`; never `|0`) — P_MovePlayer integrates it (p_user.c:140). */
   angle: number;
-  /** MF_* bits (p_mobj.h); only MF_NOCLIP is honored in M2. */
-  flags: number;
-  /** fixed momentum — vanilla lives on mobj_t (p_user.c P_Thrust). 0 until M2-07. */
-  momX: number;
-  /** fixed */
-  momY: number;
-  /** fixed — mobj_t momz (p_mobj.h:244); written by P_ZMovement (M5-05),
-   * 0 here (additive M5-03 extension so TryMove-era spatial state lives
-   * on ONE stub — no parallel mobj struct). */
-  momz: number;
-  /** mobj_t floorz (p_mobj.h:234) — written by pTryMove/pTeleportMove on
-   * success (M5-03); z itself stays untouched by those (M5-05 gravity). */
-  floorz: number;
-  /** mobj_t ceilingz — written on successful move (same pin as floorz). */
-  ceilingz: number;
-  /** p_user.c: teleport lockout countdown (P_MovePlayer skip). */
+  /** vanilla `mobj_t.player` — always the owning Player for a player mo. */
+  playerRef: Player;
+  /** p_user.c: teleport lockout countdown (P_MovePlayer skip). MT_PLAYER
+   * mobjinfo reactiontime = 0 (info.c:1114) — only teleports set 18 (M6). */
   reactiontime: number;
 }
 
 /* ------------------------------------------------------------------ */
-/* player_t (d_player.h:83+) — M2 subset                               */
+/* player_t (d_player.h:83+) — M5 slice                                */
 /* ------------------------------------------------------------------ */
 
-export interface Player {
+/**
+ * The mover-relevant player_t. Extends {@link MovePlayerState}: `cheats`,
+ * `viewheight`, `deltaviewheight` are canonical HERE (pmove writes them
+ * through `mo.playerRef` = this object), and `forwardmove`/`sidemove` are
+ * per-tic mirrors of `cmd` — vanilla reads `player->cmd.forwardmove` in
+ * p_mobj.c's stop test; the mirror is refreshed at the top of
+ * {@link pPlayerThink} (puser.ts) every tic, so they are never stale.
+ */
+export interface Player extends MovePlayerState {
   mo: MobjStub;
   /** playerstate_t (PST_*). */
   playerstate: number;
   /** d_player.h: `ticcmd_t cmd` — last command consumed by P_PlayerThink. */
   cmd: Ticcmd;
-  /** fixed — eyes height (P_CalcHeight fills in M2-07; vanilla starts at mo z + viewheight). */
+  /** fixed — eyes height, written by puser.pCalcHeight every think
+   * (p_user.c); spawn value 0 until the first tic (vanilla leaves it
+   * untouched in P_SpawnPlayer; pinned so hashes stay determined). */
   viewz: number;
-  /** fixed — VIEWHEIGHT (d_player.h viewheight). */
-  viewheight: number;
-  /** fixed — bob/squat speed; 0 until M2-07. */
-  deltaviewheight: number;
-  /** fixed — bob accumulator; 0 until M2-07. */
+  /** fixed — bob accumulator (P_CalcHeight, p_user.c):
+   * `FixedMul(momx,momx)+FixedMul(momy,momy) >> 2`, capped MAXBOB. */
   bob: number;
   /** vanilla `int health` (spawn value 100, players[] init in g_game.c:1390s). */
   health: number;
@@ -102,29 +121,38 @@ export interface Player {
 }
 
 export function createPlayer(): Player {
-  return {
+  const p: Player = {
     mo: {
       x: 0,
       y: 0,
       z: ONFLOORZ,
+      radius: PLAYER_RADIUS,
+      height: PLAYER_HEIGHT,
       angle: 0,
-      flags: 0,
-      momX: 0,
-      momY: 0,
+      flags: PLAYER_FLAGS,
+      player: true,
+      linkSlot: -1,
+      momx: 0,
+      momy: 0,
       momz: 0,
       floorz: 0,
       ceilingz: 0,
-      reactiontime: 0
-    },
+      reactiontime: 0,
+      playerRef: null as unknown as Player // back-reference below (mobj_t.player)
+    } as MobjStub,
     playerstate: PST_LIVE,
     cmd: createTiccmd(),
     viewz: 0,
     viewheight: VIEWHEIGHT,
     deltaviewheight: 0,
+    forwardmove: 0,
+    sidemove: 0,
     bob: 0,
     health: 100,
     cheats: 0
   };
+  (p.mo as MobjStub).playerRef = p;
+  return p;
 }
 
 /* ------------------------------------------------------------------ */
@@ -135,7 +163,8 @@ export function createPlayer(): Player {
  * p_mobj.c `P_SpawnPlayer` for a single-player game, minus mobj states,
  * psprites and the ST/HU wakeups:
  *   x/y  = thing->x << FRACBITS, thing->y << FRACBITS   (p_mobj.c: x = ... << FRACBITS)
- *   z    = ONFLOORZ                                     (resolved by P_CalcHeight later)
+ *   z    = ONFLOORZ                                     (resolved to the
+ *          sector floor by gInitGame exactly like P_SpawnMobj, p_mobj.c:522)
  *   angle = ANG45 * (thing->angle / 45)  (p_mobj.c P_SpawnPlayer). thing angle
  *     is signed degrees (R01 §4); C computes `ANG45 * (angle/45)` in `unsigned`
  *     after truncating integer division — reproduced with Math.trunc + imul
@@ -144,96 +173,19 @@ export function createPlayer(): Player {
 export function pSpawnPlayer(p: Player, thing: MapThing): void {
   p.mo.x = (thing.x << FRACBITS) | 0;
   p.mo.y = (thing.y << FRACBITS) | 0;
-  p.mo.z = ONFLOORZ;
+  p.mo.z = ONFLOORZ; // gInitGame resolves it via the spawn subsector (M5-06)
+  p.mo.momx = 0;
+  p.mo.momy = 0;
+  p.mo.momz = 0;
   p.mo.angle = Math.imul(ANG45, Math.trunc(thing.angle / 45)) >>> 0;
   p.playerstate = PST_LIVE;
   p.cmd = createTiccmd();
+  p.forwardmove = 0;
+  p.sidemove = 0;
   p.viewheight = VIEWHEIGHT;
-  // mo->z stays ONFLOORZ until P_CalcHeight (M2-07); viewz pinned at 0 so
-  // the hash is fully determined by spawn + tics.
+  p.deltaviewheight = 0;
+  p.bob = 0;
+  // viewz pinned at 0 until the first P_CalcHeight (p_user.c leaves it
+  // untouched in P_SpawnPlayer; the pin keeps the spawn hash determined).
   p.viewz = 0;
-}
-
-/* ------------------------------------------------------------------ */
-/* P_PlayerThink (p_user.c) — skeleton                                 */
-/* ------------------------------------------------------------------ */
-
-/**
- * p_user.c `P_PlayerThink` for M2: the noclip cheat flag sync (verbatim
- * structure, p_user.c: player->mo->flags |= / &= ~MF_NOCLIP) and the
- * reactiontime-gated `P_MovePlayer` angle integration
- * `mo->angle += (cmd->angleturn << 16)` (p_user.c P_MovePlayer — the `<<16`
- * is exact: angleturn is int16, BAM wraps mod 2^32).
- *
- * M2-07 adds the noclip FLY path (M2-plan §M2-07): with CF_NOCLIP active,
- * position integrates straight from the ticcmd every tic (no momentum, no
- * friction, no collision) — see {@link pFlyNoclip}.
- *
- * NOT done here (deferred, on purpose):
- *  - noclip-OFF movement: vanilla P_Thrust + P_XYMovement/P_TryMove need
- *    blockmap/collision (M4) and the friction physics (M5) — until then a
- *    non-noclip player does NOT translate (documented placeholder);
- *  - P_CalcHeight / sector specials / weapon change / dead player think.
- */
-export function pPlayerThink(p: Player): void {
-  // fixme: do this in the cheat code (p_user.c)
-  if (p.cheats & CF_NOCLIP) p.mo.flags |= MF_NOCLIP | MF_NOGRAVITY;
-  else p.mo.flags &= ~(MF_NOCLIP | MF_NOGRAVITY);
-
-  if (p.playerstate !== PST_LIVE) return; // P_DeathThink: later milestone
-
-  // Reactiontime prevents movement for a bit after a teleport (p_user.c).
-  if (p.mo.reactiontime) p.mo.reactiontime--;
-  else pMovePlayer(p);
-}
-
-/**
- * p_user.c P_MovePlayer — angle part (verbatim) + the M2-07 noclip fly
- * branch. Vanilla integrates `mo->angle` BEFORE thrusting, so the fly step
- * below uses the post-turn angle, matching p_user.c's ordering.
- */
-function pMovePlayer(p: Player): void {
-  const cmd = p.cmd;
-  // vanilla: player->mo->angle += (cmd->angleturn<<16);  (angle_t unsigned)
-  p.mo.angle = angAdd(p.mo.angle, (cmd.angleturn << 16) >>> 0);
-
-  if (p.mo.flags & MF_NOCLIP) pFlyNoclip(p, cmd);
-  // noclip-OFF: P_Thrust + friction + P_TryMove (p_user.c/p_mobj.c/p_map.c)
-  // arrive with collisions (M4) and full physics (M5) — no motion yet.
-}
-
-/**
- * M2-07 fly/noclip subset of the movement (M2-plan §M2-07): straight ticcmd
- * integration with P_Thrust's exact constants but WITHOUT the momentum
- * state (momX/momY stay untouched — no friction, no P_XYMovement, no
- * P_CheckPosition, i.e. no blockmap dependency anywhere).
- *
- * Per tic:
- *   x += FixedMul(forwardmove*2048, finecosine[angle>>19])
- *      + FixedMul(  sidemove*2048, finecosine[(angle-ANG90)>>19])
- *   y += (same with finesine)                               (p_user.c P_Thrust
- *                                                            argument order)
- * `>>19` = ANGLETOFINESHIFT on the *unsigned* angle (>>> in TS); the
- * `angle-ANG90` strafe basis mirrors `P_Thrust (player, mo->angle-ANG90,
- * sidemove*2048)` (p_user.c:164) including the u32 wrap. Position wraps as
- * int32 like C fixed_t addition. z is untouched (ONFLOORZ until
- * P_CalcHeight; noclip flies in the XY plane only in M2).
- */
-export function pFlyNoclip(p: Player, cmd: Ticcmd): void {
-  const fineF = p.mo.angle >>> ANGLETOFINESHIFT; // unsigned shift: 0..8191
-  const fineS = ((p.mo.angle - ANG90) >>> 0) >>> ANGLETOFINESHIFT;
-  let dx = 0;
-  let dy = 0;
-  if (cmd.forwardmove) {
-    const move = cmd.forwardmove * MOVE_THRUST_SCALE;
-    dx += FixedMul(move, finecosine[fineF]!);
-    dy += FixedMul(move, finesine[fineF]!);
-  }
-  if (cmd.sidemove) {
-    const move = cmd.sidemove * MOVE_THRUST_SCALE;
-    dx += FixedMul(move, finecosine[fineS]!);
-    dy += FixedMul(move, finesine[fineS]!);
-  }
-  p.mo.x = (p.mo.x + dx) | 0;
-  p.mo.y = (p.mo.y + dy) | 0;
 }

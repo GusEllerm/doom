@@ -124,10 +124,13 @@ export type PMoveSound = 'oof';
 
 export interface PMoveHooks {
   /** p_mobj.c:167 P_SlideMove(mo) for blocked PLAYERS. M5-04's pslide.ts
-   * registers itself here; the DEFAULT no-op keeps the momentum and the
-   * last accepted position (move aborts this tic, no wall-crumbling) —
-   * deterministic and counted, never silent. */
-  slideMove?: (mo: MoveMobj) => void;
+   * SELF-REGISTERS itself on import (M5-06 wiring); while pslide.ts is not
+   * loaded the DEFAULT no-op keeps the momentum and the last accepted
+   * position (move aborts this tic, no wall-crumbling) — deterministic and
+   * counted, never silent. `world` arrives so the registrant can call
+   * pTryMove (p_mobj.c passes the implicit `level`; explicit-world
+   * convention per M5-02). */
+  slideMove?: (mo: MoveMobj, world: PMapWorld) => void;
   /** p_mobj.c:85-99 P_ExplodeMissile's STATE/SOUND half (deathstate +
    * deathsound). The momentum half (momx=momy=momz=0, MF_MISSILE clear)
    * is pure movement and ALWAYS runs here regardless of registration. */
@@ -247,7 +250,7 @@ export function pXYMovement(world_: PMapWorld, mo: MoveMobj): void {
         // try to slide along it — M5-04 pslide.ts; no-op default (see
         // PMoveHooks.slideMove) keeps pos/momentum, counted.
         pmoveHookCounts.slideMove++;
-        pmoveHooks.slideMove?.(mo);
+        pmoveHooks.slideMove?.(mo, world_);
       } else if (mo.flags & MF_MISSILE) {
         // explode a missile — first the sky hack (p_mobj.c:172-178)
         if (blockedOnSky(world_)) {

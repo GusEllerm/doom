@@ -80,6 +80,7 @@
 import { ANG180, ANG270, ANG90, FRACUNIT } from "../core/constants";import { angAdd, angSub, angToFine, FixedMul } from "../core/fixed";
 import { finecosine, finesine, SlopeDiv, tantoangle } from "../core/tables";
 import { ST_HORIZONTAL, ST_VERTICAL } from "./map";
+import { pmoveHooks } from "./pmove";
 import { MAXSTEP, pTryMove, type Mover, type PMapWorld } from "./pmap";
 import {
   pAproxDistance,
@@ -337,3 +338,13 @@ export function pSlideMove(world_: PMapWorld, mo: SlideMover): void {
     pTryMove(world_, mo, (mo.x + mo.momx) | 0, mo.y);
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* M5-06 caller-seam self-registration (see "Usage contract" header)   */
+/* ------------------------------------------------------------------ */
+
+// p_mobj.c calls P_SlideMove directly from P_XYMovement; this port keeps
+// that as the typed hook slot (M5-05), and importing THIS module is what
+// fulfils the contract — ??= so a test that installed its own probe hook
+// first is never overwritten.
+pmoveHooks.slideMove ??= (mo, world_) => pSlideMove(world_, mo);
