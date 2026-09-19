@@ -44,9 +44,15 @@ import {
 } from './pspec';
 import {
   LINE_SPECIALS, registryManifest, unimplementedSpecial,
-  resetUnimplementedSpecial
+  resetUnimplementedSpecial, SLOWDARK
 } from './specials-table';
 import type { ActionId, ActionSpec } from './specials-table';
+// M6-09: the lights family (EV_LightTurnOn/EV_StartLightStrobing/
+// EV_TurnTagLightsOff + the sector spawners) went LIVE — the coverage
+// assertions for those ids read the family's call counters / live effects
+// instead of the unimplementedSpecial stub log (registry subtable fill).
+import { plightsCalls, resetPlightsCalls } from './plights';
+import type { LightThinker, StrobeThinker } from './plights';
 
 const fx = (u: number): number => (u * FRACUNIT) | 0;
 
@@ -91,6 +97,7 @@ beforeEach(() => {
   resetUnimplementedSpecial();
   resetPspecHelperCounts();
   resetUpdateSpecialsCounts();
+  resetPlightsCalls();
 });
 
 /* ------------------------------------------------------------------ */
@@ -105,7 +112,21 @@ const FN_OF: Record<ActionId, string | null> = {
   verticalDoor: 'evVerticalDoor', lockedDoor: 'evDoLockedDoor', exit: null
 };
 
+const LIVE_EV = new Set(Object.keys(plightsCalls));
+
+/** Per-live-thinker payload census (M6-09): kind codes in arena order. */
+function lightThinkerKinds(state: GameState): number[] {
+  const kinds: number[] = [];
+  for (const t of state.thinkers.entries.values()) {
+    if (t.removed) continue;
+    const p = t as Partial<LightThinker>;
+    if (p.kind !== undefined && p.words) kinds.push(p.words[0]!);
+  }
+  return kinds;
+}
+
 function hits(fn: string, special: number): number {
+  if (LIVE_EV.has(fn)) return plightsCalls[fn as keyof typeof plightsCalls];
   return unimplementedSpecial.entries.filter(
     (e) => e.fn === fn && e.special === special
   ).length;
@@ -132,6 +153,7 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
       const e = LINE_SPECIALS[id];
       if (!e?.cross) continue;
       resetUnimplementedSpecial();
+      resetPlightsCalls();
       s.map.lines.special[line] = id;
       s.exitRequest = 'none';
       s.specialexit = false;
@@ -153,6 +175,7 @@ describe('dispatch coverage — every registered id routes to its stub (plan §M
       const e = LINE_SPECIALS[id];
       if (!e?.use) continue;
       resetUnimplementedSpecial();
+      resetPlightsCalls();
       s.map.lines.special[line] = id;
       s.exitRequest = 'none';
       s.specialexit = false;
@@ -390,7 +413,7 @@ describe('pTryMove spechit path drives the real dispatcher', () => {
 /* ------------------------------------------------------------------ */
 
 describe('P_SpawnSpecials (map setup wiring)', () => {
-  it('sector pass: totalsecret counts 9s; spawner stubs hit; clearTo values exact', () => {
+  it('sector pass: totalsecret counts 9s; clearTo exact; LIGHT spawners LIVE, movers stubbed', () => {
     const s = stateFrom({
       rooms: [
         { x: 0, y: 0, w: 128, h: 128, special: 9 },
@@ -405,14 +428,29 @@ describe('P_SpawnSpecials (map setup wiring)', () => {
     expect(s.totalsecret).toBe(1);
     // live specials after load: 9 stays 9, 4 re-writes 4, others → 0.
     expect(Array.from(s.sectors.special)).toEqual([0, 9, 0, 4, 0, 0, 0]);
-    expect(unimplementedSpecial.bySector[2]).toBe(1);
-    expect(unimplementedSpecial.bySector[4]).toBe(1);
-    expect(unimplementedSpecial.bySector[12]).toBe(1);
-    expect(unimplementedSpecial.bySector[1]).toBe(1);
+    // M6-09 registry subtable fill: sector-light spawners 1/2/4/12 are
+    // LIVE — zero stub hits, one thinker each, spawn effects verifiable.
+    expect(unimplementedSpecial.bySector[1]).toBe(0);
+    expect(unimplementedSpecial.bySector[2]).toBe(0);
+    expect(unimplementedSpecial.bySector[4]).toBe(0);
+    expect(unimplementedSpecial.bySector[12]).toBe(0);
+    // Door spawner 10 is NOT in scope here (M6-05 owns pdoors spawners).
     expect(unimplementedSpecial.bySector[10]).toBe(1);
-    expect(unimplementedSpecial.byFn.get('pSpawnStrobeFlash(35,1)')).toBe(1); // 12 in-sync
-    expect(unimplementedSpecial.byFn.get('pSpawnStrobeFlash(15,0)')).toBe(2); // 2 and 4
     expect(unimplementedSpecial.byFn.get('pSpawnDoorCloseIn30')).toBe(1);
+    // Thinker census in arena order (= ascending sector spawn order):
+    // sectors 2(strobe 2), 3(strobe 4), 4(flash 1), 5(strobe 12 sync).
+    expect(lightThinkerKinds(s)).toEqual([3, 3, 2, 3]);
+    // PRNG stream at load: ONE draw per flash + per NON-sync strobe
+    // ((P_Random()&7)+1); sync specials (12/13/8/17) draw ZERO — plan
+    // acceptance 4: sector 13-style sync strobe = deterministic count 1.
+    expect(s.rng.prndindex).toBe(3);
+    const sync = [...s.thinkers.entries.values()].find(
+      (t) => (t as Partial<StrobeThinker>).sector === 5
+    ) as StrobeThinker;
+    expect(sync.kind).toBe('strobe');
+    expect(sync.words).toEqual([3, 1]); // [kind, count] — count pinned to 1
+    expect(sync.darktime).toBe(SLOWDARK);
+    expect(sync.brighttime).toBe(5);
   });
 
   it('line pass collects 48 (linespeciallist), inits the vanilla lists', () => {
@@ -752,11 +790,16 @@ describe('M6-02 fixture smoke — registry routes the family specials', () => {
 
     // P_SpawnSpecials census on the sector family (sectors 1..12):
     expect(s.totalsecret).toBe(1); // one SECTOR_SECRET room
-    expect(unimplementedSpecial.bySector[2]).toBe(1); // strobe room + hall? (frag)
-    expect(unimplementedSpecial.bySector[12]).toBe(1);
-    expect(unimplementedSpecial.bySector[1]).toBe(1);
-    expect(unimplementedSpecial.bySector[17]).toBe(1);
-    expect(unimplementedSpecial.bySector[4]).toBe(1); // strobe-hurt spawns too
+    // M6-09 fill: light specials 1/2/4/12/17 spawn LIVE thinkers — the
+    // stub-log assertions of M6-03 become live-census assertions.
+    expect(unimplementedSpecial.bySector[2]).toBe(0);
+    expect(unimplementedSpecial.bySector[12]).toBe(0);
+    expect(unimplementedSpecial.bySector[1]).toBe(0);
+    expect(unimplementedSpecial.bySector[17]).toBe(0);
+    expect(unimplementedSpecial.bySector[4]).toBe(0);
+    // sectors 3(strobe 4), 6(fireflicker 17), 7(strobe 2), 8(sync strobe
+    // 12), 9(flash 1) — arena order:
+    expect(lightThinkerKinds(s)).toEqual([3, 1, 3, 3, 2]);
     expect(s.sectors.special[3]).toBe(4); // SECTOR_STROBE_HURT stays 4
     expect(s.sectors.special[2]).toBe(5); // damage-only specials UNTOUCHED
     expect(s.sectors.special[8]).toBe(0); // light-flash cleared at load

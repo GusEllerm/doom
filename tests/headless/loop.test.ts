@@ -116,6 +116,10 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     // the sector-special spawn clears (1/2/3/8/10/12/13/14/17 → 0) and
     // the E1M1 sector-9 totalsecret++ now mutate live state at gInitGame;
     // value 3285949243 → 869939862.
-    expect(h1).toBe(869939862);
+    // RE-BLESSED M6-09 (one-time, reason: 'sector-light specials live') —
+    // the p_lights thinkers now spawn from E1M1's 1/2/3/4/8/12/17 sectors
+    // at load (arena + load-time P_Random draws) and tick live light
+    // levels over the 1000 tics; value 869939862 → 2631099186.
+    expect(h1).toBe(2631099186);
   });
 });
