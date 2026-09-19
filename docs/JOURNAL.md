@@ -169,3 +169,7 @@ Pinned truths (re-verified from source by planner): 1.10 visplanes marked from s
 - M6-02 merged (door/switch/teleport/secret families; WALLFIX+M4FIX byte-stability pinned to pre-change shas). Truth: DOOM1 linedef special@6/tag@8 RAW — no Hexen packing (brief assumption corrected by implementer from R01). Wave 2 dispatched: registry (R05 137-number manifest) + T_MovePlane/crush contract.
 - M6-04 merged: plane-motion contract + crush truth (dmg=20 fixed/tic players; crush=1 kills monsters; door-reserved crush==2 semantics documented for M6-05).
 - M6 wave 3 partial out: doors MERGED (first special alive in-engine), plats+lights running. Queue: 07/08/10/12 as slots free, then 11, then 13 (corpus+E1M1 route).
+
+## 2026-09-17 — M6-09 merged (lights) — PAUSE PENDING behind M6-06
+- Light thinkers live with exact PRNG profiles (flicker 0.25 draws/tic, flash &64 polarity-flip quirk, strobe 0 draws/tic, glow silent). Headless goldens re-blessed ONCE (reason 'sector-light specials live'); render goldens unmoved BECAUSE rdata still reads static md.sectors — live lights invisible to frames until M6-13 wires the renderer's sector source (GAP TRACKED: M6-13).
+- PAUSE #3 requested: after M6-06 (plats, running) merges, stop. Resume queue: M6-07 floors/stairs/donut, M6-08 ceilings/crushers, M6-10 teleports, M6-12 feet-specials+exits (parallelizable per plan), then M6-11 switches/cards, M6-13 corpus+E1M1 route (includes renderer live-sector wiring).
