@@ -20,7 +20,8 @@ import { createPlayer, ONFLOORZ, pSpawnPlayer } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
-import { createThinkerArena, pRunThinkers, pUpdateSpecials } from './ptick';
+import { createThinkerArena, pRunThinkers } from './ptick';
+import { pSpawnSpecials, pUpdateSpecials } from './pspec';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */
@@ -95,6 +96,10 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
     specialexit: false
   };
   mClearRandom(state.rng); // g_game.c:1414
+  // P_SpawnSpecials — 1.10 site: P_SetupLevel → P_SpawnSpecials
+  // (p_setup.c); M6-03 sector-9 totalsecret pass + special-48 line
+  // collection + list inits + family-stub spawn calls (M6-plan §0.3).
+  pSpawnSpecials(state);
   return state;
 }
 
@@ -142,7 +147,7 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
     pZMovement(p.mo);
   }
   pRunThinkers(state.thinkers); // p_tick.c P_RunThinkers (M6-01 arena)
-  pUpdateSpecials(); // p_spec.c button/scroll tick — M6-03 body
+  pUpdateSpecials(state); // p_spec.c button/scroll tick (M6-03 body)
   // P_RespawnSpecials: level-restart respawn queue — no source pre-M9 (no-op).
   state.leveltime++; // p_tick.c P_Ticker tail
 

@@ -35,6 +35,7 @@ import { initLightTables } from '../../src/render/lights';
 import { flatsFromWad, loadRenderWorld } from '../../src/render/rdata';
 import { buildMapSprites, renderFrame } from '../../src/render/renderer';
 import { buildRenderMapView } from '../../src/render/view';
+import { SECTOR_SPECIALS } from '../../src/sim/specials-table';
 
 import { VIEWPOINTS, degToBam, type Viewpoint } from './viewpoints';
 
@@ -103,9 +104,16 @@ describe.skipIf(!hasWad)('M6-01 live-view wiring — E1M1 goldens unmoved', () =
     expect(Array.from(state.sectors.light)).toEqual(
       Array.from(b.sim.sectors.lightLevel)
     );
-    expect(Array.from(state.sectors.special)).toEqual(
-      Array.from(b.sim.sectors.special)
-    );
+    // M6-03: P_SpawnSpecials runs AT LOAD and applies the registry's
+    // spawn-clears (specials 1/2/3/8/10/12/13/14/17 → 0, 4 stays 4); the
+    // static load-time copy still shows the WAD values — the expected
+    // live array is the static one mapped through the registry.
+    const staticSpecial = Array.from(b.sim.sectors.special);
+    const expected = staticSpecial.map((sp) => {
+      const e = sp >= 1 && sp < SECTOR_SPECIALS.length ? SECTOR_SPECIALS[sp] : null;
+      return e?.clearTo !== undefined ? e.clearTo : sp;
+    });
+    expect(Array.from(state.sectors.special)).toEqual(expected);
   });
 
   for (const name of SCENES) {

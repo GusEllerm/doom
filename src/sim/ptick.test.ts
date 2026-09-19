@@ -20,8 +20,9 @@ import { gInitGame, gTicker } from './game';
 import {
   createThinkerArena, pAddThinker, pRemoveThinker, pRunThinkers,
   sectorSpecialData, setSectorSpecialData, thinkerCount,
-  pUpdateSpecials, resetUpdateSpecialsCounts, updateSpecialsCounts
+  resetUpdateSpecialsCounts, updateSpecialsCounts
 } from './ptick';
+import { pUpdateSpecials } from './pspec';
 import {
   createHookSlots, damageSlot, exitSlot, messageSlot, resetHookSlots,
   sfxSlot, HOOK_LOG_CAP
@@ -254,10 +255,11 @@ describe('gTicker P_Ticker order (§3.2)', () => {
     expect(s.specialexit).toBe(false);
   });
 
-  it('pUpdateSpecials is a pure counter today (M6-03 owns the body)', () => {
+  it('pUpdateSpecials body is the M6-03 pspec one (counter kept counting)', () => {
+    const s = freshState();
     resetUpdateSpecialsCounts();
-    pUpdateSpecials();
-    pUpdateSpecials();
+    pUpdateSpecials(s);
+    pUpdateSpecials(s);
     expect(updateSpecialsCounts.calls).toBe(2);
   });
 

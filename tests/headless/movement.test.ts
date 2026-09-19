@@ -352,7 +352,9 @@ describe('1000-tic determinism with noclip movement', () => {
     expect([a.players[0]!.mo.x, a.players[0]!.mo.y]).not.toEqual([-416 << 16, 256 << 16]);
     // golden RE-BLESSED M5-06 (physics replaces D009) then M6-01
     // (one-time, reason: 'M6 world-state fields' — §3.4 sector/globals/arena bytes)
-    expect(h1).toBe(2368943012);
+    // then M6-03 (one-time, reason: 'P_SpawnSpecials at load' — sector-
+    // special spawn clears + totalsecret at gInitGame): 2368943012 → 1563175793.
+    expect(h1).toBe(1563175793);
   });
 });
 

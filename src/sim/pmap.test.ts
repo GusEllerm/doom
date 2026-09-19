@@ -47,7 +47,7 @@ import {
   type Mover,
   type PMapWorld,
 } from './pmap';
-import { pcrossCounts, pcrossHooks, resetPcrossCounts } from './pcross.stub';
+import { pcrossCounts, pcrossHooks, resetPcrossCounts } from './pspec';
 import {
   allocThingSlot,
   buildThingLinks,

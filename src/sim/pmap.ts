@@ -37,7 +37,7 @@ import type { RuntimeMap } from './map';
 import type { BlockMap } from './blockmap';
 import { sectorAtPoint } from './bsp';
 import { bumpValidcount, pBoxOnLineSide, pLineOpening, pPointOnLineSide } from './pmaputl';
-import { pCrossSpecialLineStub } from './pcross.stub';
+import { pCrossSpecialLine } from './pspec';
 import {
   MF_DROPOFF,
   MF_FLOAT,
@@ -417,8 +417,9 @@ export function pCheckPosition(world_: PMapWorld, thing: Mover, x: number, y: nu
  * On success: unset-then-set link move (order pinned for the thinglinks
  * chains, M5-plan §M5-03.4), thing.floorz/ceilingz = tm values, z
  * untouched (P_ZMovement, M5-05), then the spechit crossing loop — back-
- * wards, side-vs-oldside, feeding the counted {@link pCrossSpecialLineStub}
- * (real dispatch M6; the counter is the only gap — the scan side is live).
+ * wards, side-vs-oldside, feeding the real {@link pCrossSpecialLine}
+ * registry dispatch (M6-03 replaced pcross.stub.ts; the counter + hook
+ * keep the stub-era semantics — the scan side is unchanged).
  */
 export function pTryMove(world_: PMapWorld, thing: Mover, x: number, y: number): boolean {
   tm.floatok = false;
@@ -472,7 +473,7 @@ export function pTryMove(world_: PMapWorld, thing: Mover, x: number, y: number):
       const side = pPointOnLineSide(world_.map, x, y, line);
       const oldside = pPointOnLineSide(world_.map, oldx, oldy, line);
       if (side !== oldside && world_.map.lines.special[line]!) {
-        pCrossSpecialLineStub(line, oldside, thing); // ← M6 wires the real dispatch
+        pCrossSpecialLine(world_, line, oldside, thing); // real dispatch (M6-03)
       }
     }
     tm.numspechit = -1; // vanilla loop-exit state (next query resets to 0)

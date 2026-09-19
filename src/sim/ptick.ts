@@ -133,21 +133,17 @@ export function setSectorSpecialData(
 }
 
 /* ------------------------------------------------------------------ */
-/* P_UpdateSpecials (p_spec.c) — M6-01 placeholder                     */
+/* P_UpdateSpecials (p_spec.c) counter holder                          */
 /* ------------------------------------------------------------------ */
 
 /**
- * P_UpdateSpecials: button ticks + special-48 textureoffset scroll arrive
- * with M6-03 (pspec.ts takes this call site over). Counted here so the
- * tick-order test can prove the SLOT fires in the right tic position.
+ * M6-03 moved the BODY to pspec.ts `pUpdateSpecials(state)` (scroll 48 +
+ * button tick); the counter stays HERE so the §3.2 tick-order test keeps
+ * asserting the slot position without importing the specials machinery —
+ * pspec.ts increments it at the top of the real body.
  */
 export const updateSpecialsCounts = { calls: 0 };
 
 export function resetUpdateSpecialsCounts(): void {
   updateSpecialsCounts.calls = 0;
-}
-
-export function pUpdateSpecials(): void {
-  updateSpecialsCounts.calls++;
-  // M6-03: activeplats/ceilings/buttonlist tick + scroll 48 go here.
 }
