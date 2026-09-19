@@ -189,9 +189,7 @@ test.describe('E1M1 key route (M6-13, runtime-derived, scripted replay)', () => 
     const watch = await page.evaluate(() => {
       const st = window.__doom!.sim.getState()!;
       const sec = st.map.lines.sectorFront[421]!;
-      const ceil0 = st.sectors.ceilingZ[sec]!;
-      for (let t = 0; t < 40; t++) st.players[0]!.viewz | 0; // touch state (no-op)
-      return { sec, ceil0 };
+      return { sec, ceil0: st.sectors.ceilingZ[sec]! };
     });
     await page.evaluate(
       ([sx, sy, a]) => window.__doom!.warp(sx, sy, undefined, a),
