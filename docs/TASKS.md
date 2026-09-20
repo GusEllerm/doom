@@ -113,6 +113,6 @@ Future tasks will be added as architects decompose milestones.
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
 | M7-01 | State-table infra + ActionId registry | M7 | M5/M6 | done (merged 78d38d2, 1764 tests) |
-| M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | re-dispatched t2 (agent 4c266782; stubs lost) |
+| M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | done (merged, verified — gun layer live) |
 | M7-02 | mobj runtime + ZMISC + thinglinks fill | M7 | M7-01 | dispatched (agent db78a704) |
 | M7-03..11 | (see docs/design/M7-plan.md) | M7 | waves | planned |
