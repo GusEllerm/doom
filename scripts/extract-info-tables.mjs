@@ -228,8 +228,7 @@ export function parseMobjinfo(infoC, mobjtype) {
 }
 
 /** weaponinfo[] of d_items.c. */
-export function parseWeaponinfo(dItemsC, statenum, ammo) {
-  void statenum;
+export function parseWeaponinfo(dItemsC) {
   const start = dItemsC.indexOf('weaponinfo_t\tweaponinfo[NUMWEAPONS]');
   if (start < 0) throw new Error('parseWeaponinfo: weaponinfo[] not found');
   const block = dItemsC.slice(start, dItemsC.indexOf('\n};', start));
@@ -288,7 +287,7 @@ export function extractTables(mirrorDir) {
     throw new Error(`resolveNamed: unknown symbol '${tok}'`);
   }
   const num = (expr) => evalIntExpr(expr, resolveNamed);
-  const states = parseStates(infoC, statenum).map((r) => ({
+  const parsedStates = parseStates(infoC, statenum).map((r) => ({
     ...r,
     spriteIdx: num(r.sprite),
     frame: num(r.frame),
@@ -298,6 +297,12 @@ export function extractTables(mirrorDir) {
     misc1: num(r.misc1),
     misc2: num(r.misc2),
   }));
+  // ActionId vocabulary = order of FIRST APPEARANCE walking states[] (the
+  // contract src/sim/a_actions.ts documents); NONE (source NULL) is 0.
+  const actionOrder = [];
+  for (const r of parsedStates) if (!actionOrder.includes(r.actionName)) actionOrder.push(r.actionName);
+  const states = parsedStates.map((r) => ({ ...r, actionId: actionOrder.indexOf(r.actionName) }));
+  const actionCounts = actionOrder.map((n) => parsedStates.filter((r) => r.actionName === n).length);
   const mobjinfo = parseMobjinfo(infoC, mobjtype).map((e) => {
     const row = {}
     for (const [k, v] of Object.entries(e.raw)) {
@@ -307,14 +312,14 @@ export function extractTables(mirrorDir) {
     }
     return { name: e.name, ...row }
   });
-  const weaponinfo = parseWeaponinfo(dItemsC, statenum, ammo).map((r) => ({
+  const weaponinfo = parseWeaponinfo(dItemsC).map((r) => ({
     name: r.name,
     ammo: num(r.ammo),
     upState: num(r.upState), downState: num(r.downState), readyState: num(r.readyState),
     atkState: num(r.atkState), flashState: num(r.flashState),
   }));
   return {
-    statenum, mobjtype, spritenum, ammo,
+    statenum, mobjtype, spritenum, ammo, actionOrder, actionCounts,
     sprnames: parseSprnames(infoC),
     states, mobjinfo, weaponinfo,
     numstatenum: statenum.length,
@@ -324,7 +329,7 @@ export function extractTables(mirrorDir) {
 /* Canonical row strings — the single format shared by --digests output and the
  * committed constants in src/wad/info/states.test.ts. */
 export function stateRowString(s) {
-  return [s.sprite, s.frame, s.tics, s.actionName, s.next, s.misc1, s.misc2].join(',');
+  return [s.sprite, s.frame, s.tics, s.actionId, s.next, s.misc1, s.misc2].join(',');
 }
 export function mobjRowString(m, statenum, sprnames) {
   void sprnames;
@@ -381,6 +386,9 @@ function main(argv) {
   console.error(`mobjinfo full digest: ${sha256(t.mobjinfo.map((m) => mobjRowString(m, t.statenum, t.sprnames)))}`);
   console.error(`weaponinfo full digest: ${sha256(t.weaponinfo.map((w) => weaponRowString(w, t.statenum, t.ammo)))}`);
   console.error(`sprnames digest: ${sha256(t.sprnames)}`);
+  console.error(`actions: ${t.actionOrder.length} (${t.actionCounts.reduce((a, b) => a + b, 0)} rows)`);
+  console.error(`action order: ${t.actionOrder.join(',')}`);
+  console.error(`action counts: ${t.actionCounts.join(',')}`);
   console.error('// family census: family,count,digest');
   const rows = familyCensus(t.statenum, t.states).map((f) => `${f.family},${f.count},${f.digest}`);
   process.stdout.write(rows.join('\n') + '\n');

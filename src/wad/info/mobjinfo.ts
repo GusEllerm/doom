@@ -5,6 +5,10 @@
 // M7-06 sfx slot resolves them). Radius/height/speed raw fixed-point ints
 // (n*FRACUNIT evaluated). doomednum→MT_ spawn map = first-match scan order,
 // matching vanilla P_SpawnMapThing's linear search (p_mobj.c:704+, R06 §6).
+// Sound slots keep the SOURCE token: `sfx_*` names, plus the literal string
+// '0' in the 15 slots where info.c writes a bare `0` (C null = no sound;
+// behaviorally sfx_None). The M7-06 sfx slot resolves tokens; '0' maps to
+// silence, and states.test.ts pins the 15-row census.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 

@@ -1704,6 +1704,8 @@ export function frameFullbright(frame: number): boolean {
 
 /** Flat row view (debug/test surface; hot code reads the columns). */
 export interface StateRow {
+  /** state id (== array index == statenum_t value) */
+  id: number
   sprite: number
   frame: number
   tics: number
@@ -1720,6 +1722,7 @@ export function stateAt(i: number): StateRow {
     throw new RangeError(`stateAt: state id ${i} outside 0..${NUMSTATES - 1}`)
   }
   return {
+    id: i,
     sprite: stateSprite[i] as number,
     frame: stateFrame[i] as number,
     tics: stateTics[i] as number,
