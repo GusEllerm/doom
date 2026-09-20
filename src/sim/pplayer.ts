@@ -42,9 +42,9 @@
 //        indices and lastlook is never read for players.
 //  D-t2: P_DropWeapon is a counted hook (its body lives in p_inter.c,
 //        M7-04's file); AM_Stop/ST_Start/HU_Start are counted seams (HUD/
-//        automap state is M9). Armor (armortype/armorpoints) and
-//        I_Tactile have no field/sink in this port's Player slice yet —
-//        M7-04/M10.
+//        automap state is M9). Armor fields exist (M7-04 inventory slice;
+//        zeroed by the reborn memset since M7-05); I_Tactile has no sink
+//        in this port — M10.
 //  D-t3: G_DoReborn's gameaction=ga_level level reload is the game-layer
 //        loop (M7-08); pPlayerReborn is the verbatim clears list and
 //        pSpawnPlayerFromStart reproduces the vanilla reborn SPAWN
@@ -343,6 +343,8 @@ export function pPlayerReborn(p: Player): void {
   pp.powers.fill(0);
   pp.ammo.fill(0);
   pp.weaponowned.fill(0);
+  inv.armorpoints = 0; // memset (d_player.h armor slots live on the
+  inv.armortype = 0; // M7-04 inventory slice — one source, M7-05 access)
   inv.backpack = false; // memset clears backpack — the double-max is LOST
   // on respawn (vanilla memsets, then g_game.c:830 restores maxammo below).
   // restores + g_game.c:820-830 (frags/killcount/itemcount never touched

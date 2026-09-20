@@ -15,7 +15,7 @@ import type { RuntimeMap } from './map';
 import { buildThingLinks } from './thinglinks';
 import { pPlayerThink } from './puser';
 import { pXYMovement, pZMovement } from './pmove';
-import { createPlayer } from './player';
+import { createPlayer, PST_REBORN } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
@@ -66,6 +66,14 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   // the canonical G_PlayerReborn init M7-03 wires (pplayer); until then
   // the pickup layer sees zeroed fields, never undefined.
   initPlayerInventory(player);
+  // M7-05 (g_game.c:1440-1442): "First level load forces PST_REBORN" —
+  // P_SpawnPlayer's PST_REBORN branch (p_mobj.c:656 via pplayer) runs
+  // G_PlayerReborn DURING pSpawnThings below, so the new-game start set is
+  // the verbatim g_game.c:820-830 one (pistol+fists raised, 50 clips,
+  // maxammo table) instead of the attach-time fists placeholder. Values
+  // otherwise match (createPlayer fields == the memset+restore list), so
+  // every blessed hash stays byte-identical (weapon fields are off-hash).
+  player.playerstate = PST_REBORN;
 
   const bm = buildBlockMap(map);
   const links = buildThingLinks(map, bm, { skill });
