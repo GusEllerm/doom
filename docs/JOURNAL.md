@@ -221,3 +221,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - REAL GAP found+fixed by the e2e: PST_REBORN had no mid-level consumer → gTicker reborn pass implemented (D017 in-place deviation; faithful level-restart deferred to M9). M7-03 latch test updated to the consume loop.
 - Gates: 2194 unit + 23 e2e + goldens drift-free. MILESTONES: M1-M7 ✅ (seven of twelve).
 - NEXT: M8 monster AI (states/actions for monsters: sight/sound target, chase, melee/missile, pain, death, resurrection? — plan agent dispatched).
+- Terminal reload #6: M8 planner lost at zero commits (nothing committed = nothing to salvage); re-dispatched with write-early skeleton mandate.
