@@ -118,6 +118,73 @@ export class PaletteLuts {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* R_DrawFuzzColumn — the SHADOW/INVISIBILITY post-process (M7-06)     */
+/* ------------------------------------------------------------------ */
+
+/** r_draw.c:251 `#define FUZZTABLE 50`. */
+export const FUZZTABLE = 50;
+/** r_draw.c:252 `#define FUZZOFF (SCREENWIDTH)` — SOURCE TRUTH: the fuzz
+ * neighbour is one ROW above/below (a vertical smear), NOT left/right; the
+ * vanilla comment ("one column left or right of the current one") is wrong,
+ * the offset table is ±SCREENWIDTH. */
+export const FUZZOFF = RENDER_WIDTH;
+
+/** r_draw.c:254-262 `int fuzzoffset[FUZZTABLE]` — order-exact. */
+export const fuzzoffset: readonly number[] = [
+  FUZZOFF, -FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF,
+  FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF,
+  FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF,
+  FUZZOFF, -FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF,
+  FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF, -FUZZOFF, FUZZOFF,
+  FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF,
+  FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF
+];
+
+/** r_draw.c:265 `int fuzzpos = 0` — a GLOBAL advanced by every fuzz pixel
+ * in the frame (so which neighbour is read depends on the fuzz history of
+ * the whole frame, exactly like vanilla: deterministic for a given frame
+ * sequence, never per-object re-seeded). */
+export const fuzzState = { pos: 0 };
+
+/** Test/reset hook (vanilla never resets it). */
+export function resetFuzzPos(): void {
+  fuzzState.pos = 0;
+}
+
+/**
+ * `R_DrawFuzzColumn` (r_draw.c:283-365) on the INDEXED buffer. Vanilla has NO
+ * translucency and no alpha blend anywhere in 1.10 (`grep -rn "translucent\|"
+ * M_TRANMAP" *.c` = 0 hits): a shadow/invisible thing is drawn by re-reading
+ * the framebuffer pixel ONE ROW up or down and pushing it through COLORMAP
+ * map #6 — `*dest = colormaps[6*256 + dest[fuzzoffset[fuzzpos]]]`. Because
+ * our framebuffer also stores palette indices, this is a one-to-one port
+ * (no compositing stage involved), which is why the MF_SHADOW path never
+ * needed the translucency machinery the brief hypothesised.
+ *
+ * Border adjustments are verbatim (`if (!yl) yl = 1;` / `if (yh == h-1) yh =
+ * h-2;`) — they are what keeps the ±FUZZOFF read inside the buffer.
+ */
+export function drawFuzzColumn(
+  fb: Framebuffer,
+  colormaps: Uint8Array,
+  x: number,
+  yl: number,
+  yh: number
+): void {
+  if (yl === 0) yl = 1; // Adjust borders. Low...
+  if (yh === fb.height - 1) yh = fb.height - 2; // .. and high.
+  let count = yh - yl;
+  if (count < 0) return; // Zero length.
+  let dest = yl * fb.width + x;
+  do {
+    const src = dest + (fuzzoffset[fuzzState.pos] as number);
+    fb.indices[dest] = colormaps[6 * 256 + (fb.indices[src] ?? 0)] ?? 0;
+    if (++fuzzState.pos === FUZZTABLE) fuzzState.pos = 0; // Clamp table lookup
+    dest += fb.width;
+  } while (count--);
+}
+
 /** Indexed 320x200 framebuffer with an RGBA blit scratch. */
 export class Framebuffer {
   readonly width: number;

@@ -45,7 +45,17 @@ import { createPlayer } from '../../src/sim/player';
 import { IRONTICS, INVULNTICS, PW, P_GivePower, resetPickupState } from '../../src/sim/p_inter_pickup';
 import { attachPowerupFields, pPowerThink, paletteBand, type PowerupPlayer } from '../../src/sim/ppalette';
 import { MF_SHADOW } from '../../src/sim/thinglinks';
-import { buildLut, Framebuffer, PaletteLuts } from '../../src/render/framebuffer';
+import {
+  buildLut,
+  drawFuzzColumn,
+  FUZZOFF,
+  fuzzoffset,
+  FUZZTABLE,
+  fuzzState,
+  Framebuffer,
+  PaletteLuts,
+  resetFuzzPos
+} from '../../src/render/framebuffer';
 import { initLightTables, type LightTables } from '../../src/render/lights';
 import { flatsFromWad, loadRenderWorld } from '../../src/render/rdata';
 import { buildMapSprites, renderFrame, type SpriteTables } from '../../src/render/renderer';
@@ -363,6 +373,95 @@ describe('M7-06 C — MF_SHADOW on the local player', () => {
     for (let tic = 0; tic < 400; tic++) pPowerThink(p);
     expect(render(p).indices.length).toBe(plain.indices.length);
     expect(p.mo.flags & MF_SHADOW).toBe(MF_SHADOW);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* C2. The fuzz column: 1.10's ONLY shadow mechanism                   */
+/* ------------------------------------------------------------------ */
+
+describe('M7-06 C2 — R_DrawFuzzColumn (r_draw.c:283-365), no translucency', () => {
+  /** COLORMAP stand-in: 34 rows, row 6 = the fuzz map (here: −40 clamped, so
+   * the smear is visible in the assertions), every other row identity. */
+  function fuzzColormaps(): Uint8Array {
+    const rows = new Uint8Array(34 * 256);
+    for (let k = 0; k < 34; k++) {
+      for (let v = 0; v < 256; v++) rows[k * 256 + v] = v;
+    }
+    for (let v = 0; v < 256; v++) rows[6 * 256 + v] = v < 40 ? 0 : v - 40;
+    return rows;
+  }
+
+  it('reads the framebuffer ONE ROW up/down through colormap 6, in table order', () => {
+    expect(fuzzoffset.length).toBe(FUZZTABLE);
+    expect(FUZZOFF).toBe(320); // ±SCREENWIDTH, i.e. a ROW neighbour
+    const maps = fuzzColormaps();
+    const fb = new Framebuffer();
+    for (let y = 0; y < fb.height; y++) {
+      for (let x = 0; x < fb.width; x++) fb.indices[y * fb.width + x] = (y * 3 + 50) & 255;
+    }
+    resetFuzzPos();
+    const before = fb.indices.slice();
+    drawFuzzColumn(fb, maps, 100, 20, 79);
+    expect(fuzzState.pos, '60 pixels drawn, the table wrapped exactly once')
+      .toBe(60 % FUZZTABLE);
+    // Pixel 1 (table slot 0 = +FUZZOFF): the neighbour row (21) is untouched
+    // when it is read, so the value is exactly maps[6*256 + before[...]].
+    const w = fb.width;
+    expect(fb.indices[20 * w + 100]).toBe(maps[6 * 256 + (before[21 * w + 100] as number)]);
+    // Pixel 2 (slot 1 = −FUZZOFF) reads row 20 — which this SAME pass has
+    // already fuzzed. Vanilla reads the LIVE framebuffer too (r_draw.c:358
+    // indexes `dest`, not a copy), so the fuzz chains downward on an UP
+    // offset: assert that, because a "cleaner" implementation would differ.
+    expect(fb.indices[21 * w + 100]).toBe(maps[6 * 256 + (fb.indices[20 * w + 100] as number)]);
+
+    // Every written pixel is in the row-6 image of the pre-pass values (the
+    // fuzz never invents a colour: it is a copy + a fixed map, no blending),
+    // and most pixels came from a neighbour row (the smear).
+    const image = new Set<number>();
+    for (let v = 0; v < 256; v++) image.add(maps[6 * 256 + v] as number);
+    let smeared = 0;
+    for (let y = 20; y <= 79; y++) {
+      const got = fb.indices[y * w + 100] as number;
+      expect(image.has(got), `y ${y} left the fuzz colormap`).toBe(true);
+      if (got !== (before[y * w + 100] as number)) smeared++;
+    }
+    expect(smeared, 'the visible effect is a vertical smear').toBeGreaterThan(40);
+    // The offsets really are whole-row steps (±SCREENWIDTH, never ±1).
+    expect(new Set(fuzzoffset.map((o) => Math.abs(o) % w))).toEqual(new Set([0]));
+  });
+
+  it('border adjust + zero-length guard are verbatim', () => {
+    const maps = fuzzColormaps();
+    const fb = new Framebuffer();
+    fb.indices.fill(200);
+    resetFuzzPos();
+    const before = fb.indices.slice();
+    drawFuzzColumn(fb, maps, 5, 10, 9); // count < 0 → return
+    expect(sha(fb.indices)).toBe(sha(before));
+    // yl=0 → 1 and yh=199 → 198: the first and last rows are never written.
+    resetFuzzPos();
+    drawFuzzColumn(fb, maps, 5, 0, fb.height - 1);
+    expect(fb.indices[5]).toBe(200);
+    expect(fb.indices[(fb.height - 1) * fb.width + 5]).toBe(200);
+    expect(fb.indices[fb.width + 5]).toBeLessThan(200);
+  });
+
+  it('fuzzpos is a frame-global: the same column fuzzes differently later', () => {
+    const maps = fuzzColormaps();
+    const mk = (): Framebuffer => {
+      const fb = new Framebuffer();
+      fb.indices.fill(128);
+      return fb;
+    };
+    resetFuzzPos();
+    const a = mk();
+    drawFuzzColumn(a, maps, 3, 10, 14);
+    resetFuzzPos();
+    drawFuzzColumn(mk(), maps, 3, 10, 14); // burn the same 6 positions
+    const b = mk();
+    drawFuzzColumn(b, maps, 3, 10, 14); // …then fuzz again from pos 5
+    expect(sha(a.indices)).not.toBe(sha(b.indices));
   });
 });
 
