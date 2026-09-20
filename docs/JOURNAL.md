@@ -227,3 +227,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M8-03 merged: WAD-truth roster — E1M1 hosts 34 zombiemen at skill-3; E1 total 190 hostiles. Roster test is now the census source-of-truth (plan table corrected in-code with cites).
 - M8-01 merged: real P_CheckSight (brute-force 1000-pair parity, sightcounts census, validcount semantics matched). Soundtarget field live; NoiseAlert WRITE site still pending (tests seed it directly) — wiring belongs to A_Look (M8-04).
 - M8-01 merged; M8-04 (AI core) dispatched — noise-alert wiring folded in per journal note. Running: damage module + AI core.
+- Reload #7: M8-04/05 agents lost; salvage from tips (05 core survived, 04 scaffold-only). Two finishers running.
