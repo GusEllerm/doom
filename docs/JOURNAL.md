@@ -223,3 +223,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - NEXT: M8 monster AI (states/actions for monsters: sight/sound target, chase, melee/missile, pain, death, resurrection? — plan agent dispatched).
 - Terminal reload #6: M8 planner lost at zero commits (nothing committed = nothing to salvage); re-dispatched with write-early skeleton mandate.
 - M8 plan merged (13 tasks/5 waves). Wave 1 dispatched: sight tracer (PRNG-free LOS unification), AI fields + damage bridge, monster census (WAD-truth roster test).
+- M8-02 merged. TRUTH: 'corpse friction exemption' plan premise WRONG — p_mobj.c:207 skips P_CheckPosition via PM_OMITPMOM, friction untouched; implementer corrected against source (same discipline as the gameetic&3 and lump-census findings).
