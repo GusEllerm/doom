@@ -390,3 +390,43 @@ function stateTicsOf(st: number): number {
   // local import-free read of the states table tics via mobjinfo spawn
   return st === S.S_ROCKET ? 10 : 0;
 }
+
+/* ================================================================== */
+/* 4. E1M1 world test (plan: rocket-through-door scenario, skipIf WAD)  */
+/* ================================================================== */
+
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const WAD_PATH = fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url));
+const hasWad = existsSync(WAD_PATH);
+
+describe.skipIf(!hasWad)('E1M1 rocket world (freedoom1.wad)', () => {
+  function e1m1(): GameState {
+    const bytes = readFileSync(WAD_PATH);
+    const buf = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    return gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'E1M1')), 2);
+  }
+
+  it('rocket flies and explodes on the start-room wall; double-run exact', () => {
+    const run = (): number => {
+      const s = e1m1();
+      const p = shooter(s);
+      // WEST from the player start — the start room's west wall is ~50
+      // units (rocket = 20 u/tic ⇒ impact in ~3 tics, no LOS-to-sky).
+      (p.mo as unknown as Mobj).angle = 1 << 31; // ANG180
+      pSpawnPlayerMissile(s.mobjs, p.mo as unknown as Mobj, MT.MT_ROCKET);
+      for (let i = 0; i < 20; i++) {
+        pRunThinkers(s.thinkers);
+        s.leveltime++;
+      }
+      expect(s.mobjs.counts.explodeMissile, 'hit the wall').toBe(1);
+      expect(s.hooks.sfx.byId?.get(82)).toBe(1); // sfx_barexp deathsound
+      return hashState(s);
+    };
+    expect(run()).toBe(run());
+  });
+});
