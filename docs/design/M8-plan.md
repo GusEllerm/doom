@@ -59,3 +59,182 @@ Exit (from ROADMAP): full Phase-1 roster from the state tables; wake on sight/so
    - **`soundTraversed` exists in the sector SoA (`map.ts:199`); `soundtarget` does not** — M8-05 adds the field + its `resetOnLevelLoad` clear.
    - **In-tree today**: monster mobjs **already spawn and think** (spawnstate + `tics` desync + `totalkills++` + MF_SOLID blocking — `p_mobj.ts:593/609`), with A_Look/A_Chase dispatching to counted no-ops, so E1M1 currently contains ~27 frozen but solid monsters. M8 turns the actions on; it does not add spawning.
    - DEHACKED fullbright (A-02/D008, D002-is-env-facts) is **M8's task per ROADMAP** (M8-12); until it lands, fullbright frames (32773-style rows: monster fire frames, `S_BRBALL1`) render light-lit.
+
+---
+
+## 1. Task graph and parallel waves
+
+| Wave | Tasks (parallel) | Depends |
+|---|---|---|
+| 1 | M8-01, M8-02, M8-03 | M7 main |
+| 2 | M8-04, M8-05, M8-06 | M8-01, M8-02, M8-03 |
+| 3 | M8-07, M8-08, M8-09, M8-10 | M8-04, M8-05, M8-06 |
+| 4 | M8-11, M8-12, M8-13 | M8-07..10 |
+
+**Disjointness:** M8-01 owns `src/sim/psight.ts` + `src/sim/map.ts` (sector SoA `soundtarget` field) + pradius.ts delegation line; M8-02 owns `src/sim/p_mobj.ts` (fields `movedir`, `movecount`, `damage`, corpse friction rule, skullfly z-bounce) + `src/sim/thinglinks.ts` (MF_* constants) + `hooks.ts` (damageBridge slot signature + `mobjFromSlot` resolver export); M8-03 owns `tests/fixtures/m8Fixtures.ts` + `tests/headless/monster-census.test.ts` + `tests/fixtures/m8Roster.ts`; M8-04 owns `src/sim/p_enemy.ts` + registers `A_Look`/`A_Chase`/`A_FaceTarget` via self-import; M8-05 owns `src/sim/p_inter_damage.ts` + `src/sim/pplayer.ts` (the kill-branch extension) + registers damageBridge via the M8-02 resolver; M8-06 owns `src/sim/pdeath.ts` + registers `A_Pain`/`A_Scream`/`A_XScream`/`A_Fall`; M8-07/08/09 own `src/sim/amon_poss.ts`, `amon_sarg.ts`, `amon_bruiser.ts` respectively (+ their tests), each self-registers its actions; M8-10 owns `src/wad/dehacked.ts` + render fullbright hook; M8-11 owns `tests/headless/monsters.test.ts` + random-sites ledger final reconciliation; M8-12 owns `e2e/monsters.spec.ts` + `src/debug.ts` seams; M8-13 owns L5 motion-strip additions (`tests/render/motion.test.ts` scenarios) + docs/DECISIONS/TASKS/JOURNAL.
+
+---
+
+## 2. Per-task specifications
+
+### M8-01 — Sight tracer + sector sound field
+- **Goal**: move the PRNG-free LOS check from `pradius.ts` (M7-09's `pCheckSight` on `pPathTraverse`) into a dedicated `psight.ts` that implements the exact `p_sight.c:300` algorithm (REJECT via `subsector->sector`, BSP walk from `numnodes-1`, two-sided line z-slope narrowing, `validcount` stamping, `sightcounts[2]` exposed) so A_Look/A_Chase/melee/missile range all share one implementation and the stream ledger is untouched.
+- **Owns**: `src/sim/psight.ts` (+ `psight.test.ts`); **edits** `src/sim/pradius.ts` (one line: `pCheckSight = psight.pCheckSight`) and `src/sim/map.ts` (adds `Int32Array soundtarget` to sector SoA + `resetOnLevelLoad` clear).
+- **Must not touch**: `src/sim/p_enemy.ts`, `p_mobj.ts`, `p_inter_damage.ts`, any action registration.
+- **Source cites**: `p_sight.c:300` (`P_CheckSight`), `:55` (`P_DivlineSide`), `:126` (`P_CrossSubsector`), `:109` (`P_InterceptVector2`), `:159` (`P_CrossBSPNode`); `pradius.ts:117` (the current implementation).
+- **Acceptance**: 1) `psight.test.ts` drives a seeded fixture comparing the new BSP walk against a brute-force per-line reference (1000 random point pairs) — 0 mismatches; 2) the existing splash-LOS tests (`pradius.test.ts`) pass with the delegated implementation (golden re-bless **once**, reason "M8 sight tracer unification"); 3) `sightcounts[0]/[1]` exposed on the returned object for determinism assertions; 4) `soundtarget` field zeroed on level load and written by `P_NoiseAlert` (§0.3) — a unit test floods sound across a door with/without `ML_SOUNDBLOCK` and asserts the sector `soundtarget` equality.
+- **Verify**: `npx vitest run src/sim/psight.test.ts src/sim/pradius.test.ts`
+
+### M8-02 — Mobj AI fields + flags + hook bridge + thinker corpse rules
+- **Goal**: extend the Mobj interface and `p_mobj.ts` thinker with the fields `movedir`, `movecount`, `damage` (from `mobjinfo`), the MF_* flag constants for `MF_JUSTHIT|MF_JUSTATTACKED|MF_INFLOAT|MF_AMBUSH|MF_CORPSE|MF_COUNTSEED` in `thinglinks.ts`, the `MF_CORPSE` friction exemption in `P_XYMovement` (p_mobj.c:207), the `MF_SKULLFLY` z-bounce in `P_ZMovement` (p_mobj.c:246), and the `hooks.ts` `damageBridge` slot signature + `mobjFromSlot` resolver (no import cycles — `hooks.ts` defines the type, `p_mobj.ts` exports the resolver, `p_inter_damage.ts` registers the body). Hash extension: `movedir|movecount|damage` added to the `words[8]` payload (re-bless once, reason "M8 monster fields").
+- **Owns**: `src/sim/p_mobj.ts` (+ `p_mobj.test.ts` for the new fields/rules), `src/sim/thinglinks.ts` (flag constants), `src/sim/hooks.ts` (damageBridge slot type + `registerDamageBridge`/`mobjFromSlot` exports), `src/sim/state.ts` (hash extension — actually in `p_mobj.ts` words).
+- **Must not touch**: `src/sim/p_enemy.ts`, `p_inter_damage.ts`, `pdeath.ts`, `amon_*.ts`, `psight.ts`, `pradius.ts`, `p_pspr.ts`, `map.ts` (except if needed for soundtarget — that's M8-01).
+- **Source cites**: `p_enemy.c:272` (P_Move fields), `:349` (P_TryWalk movecount), `:363` (P_NewChaseDir movedir), `p_mobj.c:207` (MF_CORPSE friction), `:246` (P_ZMovement skullfly z), `:415` (P_MobjThinker order), `p_local.h:61` (BASETHRESHOLD 100), `p_mobj.h` MF_* values.
+- **Acceptance**: 1) `p_mobj.test.ts` asserts the new fields exist, default to `DI_NODIR/0/0`; 2) `MF_CORPSE` friction test: a corpse with `momx > FRACUNIT/4` and `floorz != sector.floorheight` does **not** zero momentum (before A_Fall); 3) skullfly z-bounce: `P_ZMovement` on a `MF_SKULLFLY` mobj with `momz < 0` hitting floor reverses `momz` (and no `sfx_oof` — that's player-only); 4) damageBridge resolver: a unit test registers a body, calls it with valid slots, and the body receives resolved Mobj refs; 5) hash re-bless performed exactly once with recorded reason.
+- **Verify**: `npx vitest run src/sim/p_mobj.test.ts src/sim/hooks.test.ts`
+
+### M8-03 — Monster census fixture + WAD-driven roster test
+- **Goal**: a committed fixture test that enumerates every doomednum in E1M1–E1M9 (using the WAD loader from `mapBuilder.ts`), applies the skill-3 single-player filter (`options & (1<<2)` && `!(options & 0x20)`), classifies via the `DOOMEDNUM_TO_MT` map, and asserts the exact counts from §0.12 (including the "absent in E1" set). The test is the **source of truth** for the roster — it runs in CI and the numbers in §0.12 are the blessed baseline.
+- **Owns**: `tests/fixtures/m8Fixtures.ts` (helpers to load freedoom1.wad skipIf and map THINGS), `tests/fixtures/m8Roster.ts` (expected doomednum→count map for E1M1..E1M9), `tests/headless/monster-census.test.ts`.
+- **Must not touch**: any `src/` file.
+- **Source cites**: §0.12 census table, §0.11 mobjinfo doomednum map, `mapBuilder.ts` (existing THINGS parsing), the 10-byte THINGS record layout (x,y,angle,type,options).
+- **Acceptance**: 1) the test runs on the pinned freedoom1.wad (skipIf) and produces the exact table in §0.12; 2) on a synthetic WAD with hand-crafted E1M1 THINGS, the test counts match the hand counts; 3) zero console output on a clean pass.
+- **Verify**: `npx vitest run tests/headless/monster-census.test.ts`
+
+### M8-04 — AI core: A_Look/A_Chase/P_LookForPlayers/P_Move/P_TryWalk/P_NewChaseDir
+- **Goal**: the complete `p_enemy.c` AI brain for the E1 families (POSS/SPOS/TROO/SARG/SHADOWS/SKULL/BRUISER) — implements `P_LookForPlayers` (§0.2), `A_Look` (§0.2/0.3), `A_Chase` (§0.4), `P_Move/P_TryWalk/P_NewChaseDir` (§0.5), and registers the three action ids (`A_Look`=29, `A_Chase`=30, `A_FaceTarget`=31) via self-import. The `lastlook` ring, `movecount` reload, `MF_JUSTATTACKED`/`MF_JUSTHIT` flag semantics, and the `P_Random` draws in `P_TryWalk` (success), `P_NewChaseDir` (swap+search), `A_Chase` activesound (`<3`) are all reproduced; the `xyspeed`/`yspeed` LUT uses `FixedMul` with the raw 47000 diagonal entry (p_enemy.c:264).
+- **Owns**: `src/sim/p_enemy.ts` (+ `p_enemy.test.ts`).
+- **Consumes**: M8-01 (psight for `P_CheckSight`), M8-02 (Mobj fields + flags + `damage` read), M8-05 (the `damageBridge` for the `MF_JUSTHIT` retarget path? No — retarget is in A_Chase's damage path which doesn't call P_DamageMobj; the retarget lives in A_Chase itself — wait, §0.8 retarget is in `P_DamageMobj`; `A_Chase` only consumes `MF_JUSTHIT` set by damage. M8-05's damage body must set `MF_JUSTHIT`; M8-04's A_Chase reads it.)
+- **Must not touch**: `src/sim/p_mobj.ts`, `p_inter_damage.ts`, `pdeath.ts`, `amon_*.ts`, `hooks.ts`.
+- **Source cites**: `p_enemy.c:272/349/363/499/604/672` (full function bodies); `p_enemy.h:57` MELEERANGE; `p_local.h:58` MISSILERANGE; `p_enemy.c:264` xspeed/yspeed.
+- **Acceptance**: 1) `p_enemy.test.ts` — a seeded fixture: an imp (TROO) in a corridor with a player target; asserts `lastlook` advances ring `(lastlook-1)&3`, A_Look wakes on gunshot (via `psprHooks.noiseAlert` count), A_Chase closes distance: `movecount` reloads on each `P_TryWalk` success, `P_NewChaseDir` draws (`swap` + `search`) on wall collision, activesound fires `P_Random()<3`; 2) the 180° rear gate in `P_LookForPlayers(allaround=false)` is asserted with a player behind an imp at distance > MELEERANGE — target stays null; at distance ≤ MELEERANGE — target acquired; 3) `MF_JUSTATTACKED` clear + `P_NewChaseDir` on a missile tic is traced via the ledger; 4) an ambushed (MF_AMBUSH) imp behind a sound-blocking door wakes **only** when the door opens and the player fires (sound flood + `P_CheckSight` gate).
+- **Verify**: `npx vitest run src/sim/p_enemy.test.ts`
+
+### M8-05 — Damage/kill/infighting module (P_DamageMobj + monster P_KillMobj)
+- **Goal**: the complete `p_inter.c` non-player body: `P_DamageMobj` (§0.8) with thrust kick-away, painChance roll + `MF_JUSTHIT`, retarget/infighting (threshold=100, VILE exemption, source!=target, source type!=VILE, spawnstate→seestate), and `P_KillMobj` for monsters with gib rule (`health < -spawnhealth && xdeathstate`), `tics -= P_Random()&3` clamp, drop table reuse, `MF_COUNTKILL` killcount (player source + non-netgame fallback — the TS already has the latter in `pplayer.ts:443`). The **damageBridge** replaces the seven `damageSlot` call sites (p_shoot, pmap crush, pmissiles, pradius×2, pspec, ptelept) with a body that resolves slot→Mobj via `hooks.mobjFromSlot` and keeps recording into `hooks.damage` — **no call-site edits** (disjointness). The player branch stays in `pplayer.ts` (M8-05 edits `pplayer.ts` to call the shared body for non-player targets instead of the shell).
+- **Owns**: `src/sim/p_inter_damage.ts` (+ `p_inter_damage.test.ts`); **edits** `src/sim/pplayer.ts` (the `pKillMobjPlayer` non-player branch replaced with a call to `p_inter_damage.pKillMobj(thing, source)`).
+- **Consumes**: M8-02 (`mobjFromSlot`, `damageBridge` registration), M8-06 (death state actions must be registered by then — A_Scream/A_XScream/A_Fall).
+- **Must not touch**: `src/sim/p_enemy.ts`, `amon_*.ts`, `pdeath.ts`, `p_mobj.ts` (fields owned by M8-02), `hooks.ts` (slot type owned by M8-02; registration is a function call at import time in `p_inter_damage.ts`).
+- **Source cites**: `p_inter.c:775` (P_DamageMobj), `:668` (P_KillMobj), `:894` (painChance draw), `:911` (retarget/threshold), `:721` (gib tics draw), `:730` (drop table), `p_local.h:61` BASETHRESHOLD.
+- **Acceptance**: 1) `p_inter_damage.test.ts` — a fixture with two imps (TROO) and a player; player shoots imp A → imp A takes damage, painChance roll traced, pain state entered; imp B (missile) hits imp A → imp A retargets to imp B (`target = source`, `threshold = 100`) and its next `A_Chase` chases B (infighting demo); 2) death: damage > spawnhealth ⇒ xdeathstate, `tics` clamp draw recorded in ledger; 3) drop table: POSS death spawns MT_CLIP with MF_DROPPED; 4) killcount: player kill increments `killcount`; monster-on-monster kill increments `players[0].killcount` (non-netgame); 5) the seven call sites still log into `hooks.damage` (ledger counts match).
+- **Verify**: `npx vitest run src/sim/p_inter_damage.test.ts src/sim/pplayer.test.ts`
+
+### M8-06 — Pain/death/corpse action layer (A_Pain/A_Scream/A_XScream/A_Fall)
+- **Goal**: register the four remaining E1-required action ids (25=A_Pain, 33=A_Scream, 28=A_XScream, 27=A_Fall) with their exact vanilla bodies: `A_Pain` = `S_StartSound(painsound)` (no PRNG); `A_Scream` = deathsound variants (podth*→%3, bgdth*→%2, SPID/CYB full volume); `A_XScream` = `sfx_slop`; `A_Fall` = `flags &= ~MF_SOLID`. The sound site ledger (`SFX_SITE_LEDGER` in `psound_stub.ts`) is extended with the new sites (A_Scream per-family row counts, A_XScream, A_Fall — no new PRNG draws in these actions except the deathsound variant selects in A_Scream). Corpse lifecycle assertions: before A_Fall the corpse is `MF_SOLID|MF_CORPSE` (height>>=2), blocks `PIT_CheckThing`; after A_Fall it is `MF_CORPSE` without `MF_SOLID` → passable; `MF_DROPOFF` means monsters don't stomp it; `MF_CORPSE` friction exemption is tested in M8-02.
+- **Owns**: `src/sim/pdeath.ts` (+ `pdeath.test.ts`).
+- **Consumes**: M8-05 (deathstate selection must be alive so `A_Scream` runs); M8-02 (`MF_CORPSE` rules).
+- **Must not touch**: `p_enemy.ts`, `p_inter_damage.ts`, `amon_*.ts`, `p_mobj.ts` (fields owned by M8-02).
+- **Source cites**: `p_enemy.c:1535` (A_Scream), `:1572` (A_XScream), `:1577` (A_Pain), `:1585` (A_Fall), `:668` (P_KillMobj corpse flags + height).
+- **Acceptance**: 1) `pdeath.test.ts` — an imp killed by a shotgun blast: damage > health → painChance path skipped → `P_KillMobj` selects deathstate (xdeath if overkill) → `tics` clamp draw recorded → state chain steps: S_TROO_DIE1 (5 tics) → DIE2 (A_Scream 8 tics) → DIE3 (A_Fall 6 tics) → DIE4/5; assert MF_SOLID cleared exactly on the A_Fall row; 2) xdeath chain: damage < -spawnhealth → S_TROO_XDIE1 (5) → XDIE2 (A_XScream 5) → ... → S_NULL; 3) sound ledger: the new SFX_SITE_LEDGER entries for A_Scream/A_XScream/A_Fall are present and `random-sites.test.ts` passes; 4) a spectre (SHADOWS) death uses `S_SARG_DIE*` rows and `sfx_sgtdth` + `A_Scream`/`A_XScream`/`A_Fall` at the same positions (SHADOWS shares SARG rows).
+- **Verify**: `npx vitest run src/sim/pdeath.test.ts`
+
+### M8-07 — Family A: Zombieman / Shotgun Guy / Imp (hitscan + imp fireball)
+- **Goal**: register the attack actions for POSS/SPOS/TROO and their missile mobj types: `A_PosAttack` (id 32, §0.7), `A_SPosAttack` (34, shared by SPID — but SPID not in E1), `A_TroopAttack` (53, single state for melee+missile), `A_CPosAttack` (51) / `A_CPosRefire` (52) — **dead-code in E1** (no CHAINGUY in §0.12; registered but guarded by `if (false) /* E1-only */` in the test fixture), plus the MT_TROOPSHOT mobj (already in tables, reused via `pSpawnMissile`). The action bodies must match the PRNG draw counts and damage ranges exactly (§0.7).
+- **Owns**: `src/sim/amon_poss.ts` (+ `amon_poss.test.ts`).
+- **Consumes**: M8-04 (A_Chase retarget/MF_JUSTHIT/MF_JUSTATTACKED), M8-05 (damageBridge for A_TroopAttack's melee `P_DamageMobj`), M8-09's MT_TROOPSHOT table entry.
+- **Must not touch**: `p_enemy.ts`, `p_inter_damage.ts`, `pdeath.ts`, `p_mobj.ts`.
+- **Source cites**: `p_enemy.c:802/821/913/845/865` (A_PosAttack, A_SPosAttack, A_TroopAttack, A_CPosAttack, A_CPosRefire); `info.c` rows S_POSS_ATK2/3, S_SPOS_ATK2/3, S_TROO_ATK3, S_CPOS_ATK2-4.
+- **Acceptance**: 1) `amon_poss.test.ts` — an imp vs player at melee range: A_TroopAttack rolls `(P_Random()%8+1)*3` → damage in 3..24; at range > melee but in LOS: A_TroopAttack spawns MT_TROOPSHOT (check `pSpawnMissile` call via damageBridge capture); 2) zombieman: A_PosAttack damage 3/6/9/12/15 traced in ledger; 3) shotgun guy: A_SPosAttack fires 3 pellets, each 3/6/9/12/15, total 9..45 — the `damageBridge` logs three hits; 4) the CHAINGUY actions are registered but the test asserts they are never invoked in an E1 fixture (fixture has no doomednum 65).
+- **Verify**: `npx vitest run src/sim/amon_poss.test.ts`
+
+### M8-08 — Family B: Demon / Spectre / Lost Soul (melee rusher + skull charge)
+- **Goal**: register `A_SargAttack` (id 54, §0.7), `A_SkullAttack` (57), and the `MF_SKULLFLY` + skullfly `PIT_CheckThing` hook. The demon/spectre share the SARG state rows (Spectre = `MF_SHADOW` on SARG rows); `A_SargAttack` is melee-only with damage `((P_Random()%10)+1)*4` (4..40). The lost soul (MT_SKULL, doomednum 3006, 11 in E1M6/7) has `MF_FLOAT|MF_NOGRAVITY`, no `MF_COUNTKILL`, damage 3, and its `A_SkullAttack` enters `MF_SKULLFLY`, sets momentum to `SKULLSPEED`, and `PIT_CheckThing` (p_map.c:276) slams into the first shootable thing: `damage = ((P_Random()%8)+1)*info->damage` (3..24), then clears `MF_SKULLFLY`, zeroes momentum, returns to `spawnstate`. `pmapHooks.skullFlyHit` is registered here.
+- **Owns**: `src/sim/amon_sarg.ts` (+ `amon_sarg.test.ts`).
+- **Consumes**: M8-02 (MF_SKULLFLY z-bounce, skullfly friction exemption in P_XYMovement), M8-05 (damageBridge for the skull slam).
+- **Must not touch**: `p_enemy.ts`, `p_inter_damage.ts`, `pdeath.ts`, `p_mobj.ts`.
+- **Source cites**: `p_enemy.c:935` (A_SargAttack), `:1419` (A_SkullAttack), `p_map.c:276` (PIT_CheckThing skullfly branch), `p_mobj.c:246` (P_ZMovement SKULLFLY z-bounce).
+- **Acceptance**: 1) `amon_sarg.test.ts` — a demon at melee: A_SargAttack damage 4..40; a demon out of range does not attack (no missile state); 2) a lost soul charges: A_SkullAttack sets `MF_SKULLFLY`, mom = SKULLSPEED; collision with player in `pitCheckThing` → damage 3..24, skullfly cleared, momentum zeroed, state = spawnstate (idle circling); 3) spectre = demon + MF_SHADOW (render fuzz exists; no action diff); 4) ledger: skullfly slam draw (`P_Random()%8`) recorded.
+- **Verify**: `npx vitest run src/sim/amon_sarg.test.ts`
+
+### M8-09 — Family C: Cacodemon / Baron of Hell / Boss death (floaters + A_BossDeath)
+- **Goal**: register `A_HeadAttack` (55), `A_BruisAttack` (56, used by both MT_BRUISER/baron and MT_KNIGHT/hell-knight), `A_BossDeath` (50), plus the floating logic (MF_FLOAT|MF_NOGRAVITY in M8-02) and the MT_HEADSHOT / MT_BRUISERSHOT missile bodies (reuse pSpawnMissile). The baron (MT_BRUISER, doomednum 3003, E1M8 ×4) triggers `A_BossDeath` on its death chain (`S_BOSS_DIE7`): when **all** same-type bosses are dead on episode 1 map 8, `EV_DoFloor(tag 666, lowerFloorToLowest)` runs (M6's floor engine). **No cacodemon (MT_HEAD 3005) in E1** (§0.12) — actions registered but guarded by `if (false) /* E1-only */` in the test.
+- **Owns**: `src/sim/amon_bruiser.ts` (+ `amon_bruiser.test.ts`).
+- **Consumes**: M8-02 (float hover + landing), M8-05 (damageBridge for melee/missile), M8-06 (death actions).
+- **Must not touch**: `p_enemy.ts`, `p_inter_damage.ts`, `pdeath.ts`, `p_mobj.ts`.
+- **Source cites**: `p_enemy.c:950` (A_HeadAttack), `:979` (A_BruisAttack), `:1609` (A_BossDeath), `p_sight.c` is not used — float logic in `P_ZMovement`.
+- **Acceptance**: 1) `amon_bruiser.test.ts` — a baron at melee: A_BruisAttack damage 10..80; out of range: spawns MT_BRUISERSHOT; 2) four barons in an E1M8 fixture: killing the last one triggers `EV_DoFloor(tag 666, lowerFloorToLowest)` — the floor state changes (golden re-bless M6 floor tests? no, new M8 test asserts the floor call); 3) the cacodemon actions are registered but a test with an E2 fixture (doomednum 3005 present) exercises them; 4) A_BossDeath on SPIDER/CYBORG is registered but E1-only test asserts no-op for those types on map 8.
+- **Verify**: `npx vitest run src/sim/amon_bruiser.test.ts`
+
+### M8-10 — DEHACKED fullbright (A-02 / D008 cross-cut)
+- **Goal**: parse a DEHACKED lump (if present in the IWAD) for "Change thing states" entries that modify the `fullbright` bit (0x8000 on frame values) and wire the result into the `states.ts` table build hook. Freedoom Phase 1 ships a DEHACKED lump; if absent the hook is a no-op. The fullbright flag affects render: a sprite with `frame & 0x8000` selects the inverse colormap (or the fullbright palette path — whichever the renderer expects; M3's `state().render.hom == 0` will catch regressions). This task owns the parser and the table-build integration, not the renderer (which already reads `frame & 0x8000`).
+- **Owns**: `src/wad/dehacked.ts` (+ `dehacked.test.ts`); **edits** `src/wad/info/states.ts` build to apply the fullbright overrides (single hook insertion).
+- **Must not touch**: `src/render/**`, `src/sim/**` (except if the states build is in `src/sim` — it's in `src/wad/info/states.ts`, so OK).
+- **Source cites**: D008 / A-02 (DEHACKED fullbright); `info.c` rows with `32773` etc. (fullbright = 0x8000 on frame); R12 (Freedoom parity).
+- **Acceptance**: 1) `dehacked.test.ts` — a synthetic DEHACKED that sets fullbright on S_POSS_ATK2 frame 5 → the built `states.ts` has `frame = 32773` (0x8000|5) and the monster's fire frame renders inverse (L3 golden diff); 2) the freedoom1.wad DEHACKED is parsed (skipIf) and at least one fullbright override is applied (count asserted); 3) `npm run check` green (L1 transcription test validates the states table includes the overrides).
+- **Verify**: `npx vitest run src/wad/dehacked.test.ts`
+
+### M8-11 — L2 per-family suites + PRNG stream pins + random-sites ledger reconciliation
+- **Goal**: the evidence milestone — a headless test suite (`tests/headless/monsters.test.ts`) that runs each family in a seeded fixture and asserts: (a) the `pRandom` draw counts and indices for A_Look/A_Chase/P_TryWalk/P_NewChaseDir/melee/missile/pain/death match the ledger; (b) damage ranges per attack are within the exact formula bounds (for multi-draw attacks, the min/max of the formula is asserted, not a single hash — the ledger pins the draw *indices* so the exact outcome is derivable); (c) shared-stream determinism: the same fixture at two thinker loads (doors moving vs idle) produces damage hashes that differ **only** by the ledger-explained interleaving (M7-10 §1.2 rule); (d) the `random-sites.ts` ledger is updated in this task's commit with the final line counts (the `random-sites.test.ts` gate ensures every module's call-site count matches the ledger).
+- **Owns**: `tests/headless/monsters.test.ts`; **edits** `src/sim/random-sites.ts` (one-line append per module — the file is the one shared ledger M8 allows; tasks append in their own commits, final reconciliation here).
+- **Must not touch**: `src/sim/p_enemy.ts`, `amon_*.ts`, `p_inter_damage.ts`, `pdeath.ts` (only reads).
+- **Source cites**: ARCH §3.3/§5.2 (single P_Random stream); M7-09 random-sites.ts; §0.2-0.8 draw sites.
+- **Acceptance**: 1) `monsters.test.ts` runs 8 fixtures (one per family: POSS/SPOS/TROO/SARG/SKULL/BRUISER/HEAD/DEMO) and prints the draw-index trace vs the ledger; 2) a 2000-tic E1M1 run with mixed AI + player fire is seeded and double-run — hashes equal; 3) `random-sites.test.ts` passes (call-site counts = ledger).
+- **Verify**: `npx vitest run tests/headless/monsters.test.ts src/sim/random-sites.test.ts`
+
+### M8-12 — L4 e2e live monsters + debug seams
+- **Goal**: real-key e2e on a live E1M1 / fixture: (a) gunshot wakes an imp in the next room (A_Look via sector soundtarget → A_Chase → target acquired); (b) player fires, imp sees, closes distance (movement logs visible in debug state), lands a melee hit (player health drops, palette flash) — the `state().player.health` and `state().mobjs[...].target` assertions; (c) kill the imp → killcount increments (intermission counter visible in debug), corpse becomes walkable after A_Fall tic; (d) infighting demo: a barrel explodes next to two imps → one retargets the other (state target swap). Debug API additions: `sim.stepTics(n)` (already exists), `sim.warp(map, skill)`, `sim.giveWeapon(slot)`, `sim.killPlayer()` (M7), plus **`state().mobjs`** exposing `type, health, state, target, movedir, movecount, flags` for the live monsters.
+- **Owns**: `e2e/monsters.spec.ts`; **edits** `src/debug.ts` + `src/debug/types.ts` (new `mobjs` array on state).
+- **Must not touch**: any `src/sim/**` files.
+- **Source cites**: ARCH §6 L4 criteria; M7-11 e2e pattern; §0.2/0.4/0.8 for the wake/chase/damage/infight logic.
+- **Acceptance**: 1) `e2e/monsters.spec.ts` passes with zero console errors; 2) `state().mobjs` shows the waking imp's `target` transition from `null` to `player.mo` at the exact tic of the gunshot; 3) killcount increments on the E1M1 live run (read via debug API after each kill); 4) `npm run e2e -- e2e/monsters.spec.ts` green.
+- **Verify**: `npm run e2e -- e2e/monsters.spec.ts`
+
+### M8-13 — L5 motion strips + exit sweep + docs
+- **Goal**: the visual gate (D016): add three motion-strip scenarios to `tests/render/motion.test.ts` (invoked via `scripts/motion-strip.mjs --reason`): (1) **chase cornering** — an imp chases the player around a pillar (P_NewChaseDir random search draws visible in the per-frame stats); (2) **pain → death** — a demon takes a shotgun blast, enters pain state, then dies (xdeath overkill variant); (3) **infight** — two imps in a room, one shoots the other → retarget + damage exchange. The strips are reviewed by human eyes (D016) and the PNGs + meta.json are committed. Exit sweep: update `docs/DECISIONS.md` with any D-0xx decisions from M8, `docs/TASKS.md` with the completed task links, `docs/JOURNAL.md` with the milestone narrative; ensure `npm run check && npm run e2e && goldens --check` passes on integrated main.
+- **Owns**: `tests/render/motion.test.ts` (scenario additions only — the script and writer are M5-10's); `docs/DECISIONS.md` (append), `docs/TASKS.md` (append), `docs/JOURNAL.md` (append).
+- **Must not touch**: `src/**` (except if a strip requires a one-line debug flag — document it).
+- **Source cites**: D016 (human-eyes visual gate), M5-10 motion-strip.mjs, ROADMAP M8 exit.
+- **Acceptance**: 1) `node scripts/motion-strip.mjs --reason "M8 L5: chase cornering / pain-death / infight"` generates three strip PNGs + meta.json; 2) the review (D016) records "no visual anomalies" (subjective, but the gate is the reviewer's sign-off); 3) `npm run check && npm run e2e && goldens --check` on the integrated branch is green; 4) DECISIONS/TASKS/JOURNAL updated with D-0xx numbers.
+- **Verify**: `npm run check && npm run e2e && goldens --check`
+
+---
+
+## 3. Deviations, deferred hooks, and open decisions
+
+- **D-0xx (draft, M8-10 files)**: fullbright selection lives in the `states.ts` table build (DEHACKED parser → override); the renderer already reads `frame & 0x8000`; the hook is a single `applyDehackedFullbright(states: State[], dehacked: DehackedLump)` call at build time. If no DEHACKED lump (synthetic WAD test), the hook is a no-op.
+- **D-0yy (draft, M8-05)**: the retarget/infighting rule **does not** retarget when the source is a VILE (p_inter.c:911 `source->type != MT_VILE`). The VILE is Doom-2-only; registered but the test asserts it never fires in E1. If a future milestone adds VILE, the exemption must be revisited.
+- **D-0zz (draft, M8-02/05)**: `P_DamageMobj` is the *only* place where `MF_JUSTHIT` is set, and `P_CheckMissileRange` is the *only* consumer. `A_Chase` reads `MF_JUSTATTACKED` (set by `A_Chase` itself when a missile fires). No other flags are touched by the damage path. If a future milestone adds `MF_JUSTATTACK` (a typo in the brief) — it does not exist in 1.10.
+- **Deferred to M9/M10+**: (a) **Pain Elemental / lost-soul spawn** (`A_PainShootSkull`, `A_PainAttack`, `A_PainDie`) — no MT_PAIN in E1/E2/E3 (§0.12) ⇒ fixture-only; (b) **VILE / FATSO / SKEL / KEEN / SSWV / BRAIN** families — zero presence in Phase 1 ⇒ fixture-only; (c) **Boss death E2M8 (Cyberdemon) / E3M8 (Spider)** / E4M6/M8 — M9 game flow will handle the level-exit triggers; (d) **Monster respawn / nightmare mode** (`P_NightmareRespawn`, `respawnmonsters` CVAR) — M11 persistence; (e) **DEHACKED thing property edits beyond fullbright** — M12 stretch; (f) **Ambush semantics with MF_AMBUSH + soundtarget** — already implemented; the only nuance is the `P_LookForPlayers` cap of 2 players per call (the vanilla `c++==2` bail) which interacts with SP lastlook; documented in M8-04 test.
+- **Open decision**: should `A_BossDeath`'s `EV_DoFloor(tag 666, lowerFloorToLowest)` be tested here (M8) or deferred to M9's level-exit integration? The A_BossDeath action is registered in M8-09; the floor move is M6's domain. This plan registers the action; the **floor state change** is asserted in `amon_bruiser.test.ts` (the floor call fires and the floor's `move` flag is set). M9 will own the `G_ExitLevel` wiring.
+
+---
+
+## 4. Exit criteria (milestone-level, objectively checkable)
+
+1. **`npm run check` green**: every family suite + `monster-census.test.ts` + `psight.test.ts` + `p_inter_damage.test.ts` + `pdeath.test.ts` + `random-sites.test.ts`; L1 transcription tests for the full states table (1834 rows, action id spot vectors vs R07 dumps) and mobjinfo (62 rows, doomednum + painChance + flags spot checks).
+2. **L2 per-family goldens**: each of the 8 E1 families (POSS, SPOS, TROO, SARG, SPECTRE, SKULL, BRUISER, BARREL) has a headless fixture asserting damage ranges, draw-index traces vs ledger, and state-chain lengths; the infighting arena (two imps + barrel) asserts retarget + threshold=100.
+3. **L3 viewpoint diffs**: death-state chains (A_Scream → A_Fall → corpse) for each family at a fixed camera; palette flash on pain/hit captured via `ppalette.ts` band math; HOM=0 on all frames.
+4. **L4 e2e real keys**: `e2e/monsters.spec.ts` — gunshot wakes monster, chase closes, melee lands, killcount++, corpse walkable after A_Fall tic, infight demo with retarget.
+5. **L5 motion strips**: chase-cornering, pain→death, infight strips generated, human-reviewed (D016), meta.json committed.
+6. **Determinism marathon WITH monsters**: a 2000-tic seeded E1M1 run double-runs equal (hash); a 1000-tic golden re-blessed once (reason recorded: "M8 monsters live"); the PRNG ledger matches exactly.
+7. **Corpse movement correctness** (D017-adjacent): before A_Fall the corpse is `MF_SOLID|MF_CORPSE` and blocks `PIT_CheckThing`; after A_Fall it is passable; `MF_CORPSE` friction exemption works on ledges; monsters never stomp (`PIT_StompThing` gate) — all asserted in `pdeath.test.ts` + `p_inter_damage.test.ts`.
+8. **Infighting demo**: the infighting arena fixture (two imps, one shoots the other) shows `target` swap + `threshold=100` via debug API in e2e.
+9. **Docs updated**: DECISIONS.md (+ D-0xx), TASKS.md (task links), JOURNAL.md (milestone narrative).
+10. **Final verification**: `npm run check && npm run e2e && goldens --check` green on integrated main; no console errors.
+
+---
+
+## 5. Final report (one-liners per wave + top source-truth surprises)
+
+| Wave | Tasks | One-liner |
+|---|---|---|
+| 1 | M8-01 M8-02 M8-03 | Sight tracer + sector soundtarget; mobj AI fields + flags + damageBridge; monster census fixture.
+| 2 | M8-04 M8-05 M8-06 | AI core (A_Look/A_Chase + chase movement); damage/kill/infight with bridge; pain/death/corpse actions.
+| 3 | M8-07 M8-08 M8-09 M8-10 | Family A (zombie/shotguy/imp); Family B (demon/spectre/lost soul); Family C (baron/caco/boss death); DEHACKED fullbright.
+| 4 | M8-11 M8-12 M8-13 | L2 per-family suites + PRNG pins; L4 e2e live monsters; L5 motion strips + exit sweep + docs.
+
+**Top source-truth surprises this pass**:
+1. **`P_NoiseAlert` has exactly ONE call site in 1.10 (`p_pspr.c:256` P_FireWeapon)** — monster death/see sounds do not wake others; sound alert = gunfire only.
+2. **No gib/gore mobjs in 1.10** — `MT_GIBS`/`MT_GOREBODY` absent; "gibbing" = xdeath state chain + `tics -= P_Random()&3` draw; blood spawns only from hitscan (PTR_ShootTraverse), **never** from melee/missile/radius damage.
+3. **Freedoom Phase 1 E1 has NO cacodemons (MT_HEAD 3005) and NO knights/cyber/spider/vile** — the E1-critical roster is POSS/SPOS/TROO/SARG/SPECTRE/SKULL/BRUISER/BARREL only; cacos first appear E2M1.
+4. **MT_SKULL (lost soul) lacks `MF_COUNTKILL`** — lost souls never increment `killcount`/`totalkills`; the 11 placed in E1M6/7 are invisible to the kill tally.
+5. **`A_Look` threshold is zeroed EVERY TIC** (`threshold = 0` at entry) — not just on spawn; any damage wakes instantly.
+6. **`P_LookForPlayers` examines at most 2 live players per call** (`c++==2 || lastlook==stop` bail) — a single-player game checks the same player slot up to 3 times per tic.
+7. **`A_Chase` reverts to `spawnstate` if it loses its target** — a monster that loses LOS and `P_LookForPlayers` fails goes back to standing still, not wandering.
+8. **`P_CheckMissileRange` consumes `MF_JUSTHIT` (set by `P_DamageMobj`) and returns `true` immediately** — the "justrun" idea in the brief was wrong; it's "just-hit-fight-back".
+9. **Monster missile range uses `dist >>= 16` (map units) after subtracting 64/128·FRACUNIT** — the `P_Random() < dist` gate is in *map units*, not fixed-point; this is why `P_AproxDistance` result is shifted right.
+10. **`A_FaceTarget` jitters `(R−R)<<21` ONLY when the TARGET has `MF_SHADOW`** — spectres shooting spectres, or shooting an invisible player; normal attacks have no face jitter.
+
+---
+
+*End of M8 Plan.*
