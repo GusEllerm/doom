@@ -246,7 +246,7 @@ function ptrSlideTraverse(in_: Intercept): boolean {
     if (pPointOnLineSide(w.map, mo.x, mo.y, line)) return true; // don't hit the back side
     blocked = true;
   } else {
-    const op = pLineOpening(w.map, line);
+    const op = pLineOpening(w.map, line, w.sectors);
     blocked =
       ((op.openrange | 0) < mo.height || // doesn't fit
         ((op.opentop - mo.z) | 0) < mo.height || // mobj is too high
