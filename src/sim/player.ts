@@ -143,6 +143,24 @@ export interface Player extends MovePlayerState {
    * (PD_* ids, pswitch.ts/pdoors.ts); the M9 HUD reads/clears it; the
    * messageSlot log is the observable channel meanwhile. */
   message: string;
+  /** d_player.h `int damagecount` — red flash, decremented by
+   * P_DeathThink/P_CalcHeight paths (M7-03, p_user.c:210-225); written by
+   * the P_DamageMobj player branch (pplayer.ts). NOT hashed (M7-06 bless). */
+  damagecount: number;
+  /** d_player.h `int bonuscount` — pickup bonus flash (M7-04 pickups
+   * write it; the counter/clear path is the HUD's, M9). */
+  bonuscount: number;
+  /** d_player.h `mobj_t *attacker` — death-cam turn target (P_DeathThink,
+   * p_user.c:204-228). The `attacker != player->mo` identity compare
+   * works because the player's mobj object is the same reference. */
+  attacker: MoveMobj | null;
+  /** d_player.h `int killcount` (P_KillMobj; intermission M7-08). */
+  killcount: number;
+  /** d_player.h `int itemcount` (M7-04 pickups write; M7-08 reads). */
+  itemcount: number;
+  /** d_player.h `int frags[MAXPLAYERS]` (P_KillMobj self/frag counting;
+   * preserved across G_PlayerReborn). */
+  frags: Int32Array;
 }
 
 export function createPlayer(): Player {
@@ -177,7 +195,13 @@ export function createPlayer(): Player {
     cheats: 0,
     cards: new Int32Array(NUMCARDS),
     usedown: false,
-    message: ''
+    message: '',
+    damagecount: 0,
+    bonuscount: 0,
+    attacker: null,
+    killcount: 0,
+    itemcount: 0,
+    frags: new Int32Array(4)
   };
   (p.mo as MobjStub).playerRef = p;
   return p;

@@ -186,7 +186,9 @@ describe('ZMISC mover — puff/blood (acceptance 2)', () => {
     expect(m.z).toBeGreaterThan(z0); // it rose
     expect(s.pmap.links.linked[m.linkSlot]).toBe(0);
     pRunThinkers(s.thinkers); // lazy unlink
-    expect(thinkerCount(s.thinkers)).toBe(0);
+    // M7-03: the fixture's PLAYER mobj thinker persists (arena lives);
+    // the puff's own thinker is unlinked.
+    expect(thinkerCount(s.thinkers)).toBe(1);
   });
 
   it('puff melee variant: attackrange == MELEERANGE ⇒ S_PUFF3 (no wall spark)', () => {
@@ -399,7 +401,7 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
     expect(s.pmap.links.thing[0]).toBe(1); // thing record indices (0 = player start)
     expect(spawned[1]!.type).toBe(MT.MT_TROOP);
     expect(spawned[0]!.angle).toBe(0x40000000 >>> 0); // 90° → ANG45 * (90/45)
-    expect(s.mobjs.mobjs.length).toBe(3); // nothing else spawned
+    expect(s.mobjs.mobjs.length).toBe(4); // +1 = the player mobj (M7-03)
   });
 
   it('MTF_AMBUSH sets MF_AMBUSH (grid mirror too); skill bits filter', () => {
@@ -481,10 +483,10 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
         }
         return n;
       };
-      expect(rt.mobjs.length).toBe(countFor(2));
+      expect(rt.mobjs.length).toBe(countFor(2) + 1); // +1 = player mobj (M7-03)
       for (const skill of [0, 1, 2, 3, 4] as Skill[]) {
         const g = e1m1(skill);
-        expect(g.mobjs.mobjs.length, `skill ${skill}`).toBe(countFor(skill));
+        expect(g.mobjs.mobjs.length, `skill ${skill}`).toBe(countFor(skill) + 1); // player
       }
       // monotone matrix sanity: baby ⊇ easy ⊇ normal ⊇ nightmare spawns… bits differ,
       // only assert the pinned normal count is in range and stable across double boot
@@ -603,9 +605,9 @@ describe('mobj thinkers in the M6-01 arena', () => {
     pRunThinkers(s.thinkers);
     expect(spawnedDuring).not.toBeUndefined();
     // mid-run the new thinker sat in `pending`, not in the live count…
-    expect(duringRun).toBe(1); // only the spawner itself was live
+    expect(duringRun).toBe(2); // spawner + player mobj (M7-03)
     // …and after the merge it is live but UNticked this tic (tics untouched):
-    expect(thinkerCount(s.thinkers)).toBe(2);
+    expect(thinkerCount(s.thinkers)).toBe(3); // + player (M7-03)
     expect(spawnedDuring!.tics).toBe(stateAt(mobjinfo[MT.MT_PUFF]!.spawnState).tics);
   });
 

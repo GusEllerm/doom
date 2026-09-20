@@ -41,6 +41,9 @@ import { angAdd, FixedMul } from '../core/fixed';
 import { finecosine, finesine } from '../core/tables';
 
 import { sectorAtPoint } from './bsp';
+import { asMobj, pSetMobjState } from './p_mobj';
+import { pMovePsprites, type PsprPlayer } from './p_pspr';
+import { S } from '../wad/info/states';
 import type { PMapWorld } from './pmap';
 import './pslide'; // M5-06: loads pslide's self-registration of pmoveHooks.slideMove
 import { boundSpecialsWorld, feetCounts, pPlayerInSpecialSector } from './pspec';
@@ -90,6 +93,14 @@ export function resetPuserHookCounts(): void {
   puserHookCounts.playerInSpecialSector = 0;
   puserHookCounts.deathThink = 0;
 }
+
+/** M7-03 typed seams pplayer.ts registers (import-cycle rule: pplayer
+ * imports puser, never the reverse — the registrations live in pplayer). */
+export const puserHooks: {
+  /** p_user.c:180-232 `P_DeathThink(player)` — called instead of the
+   * counted no-op while `playerstate === PST_DEAD`. */
+  deathThink?: (p: Player, leveltime: number) => void;
+} = {};
 
 /* ------------------------------------------------------------------ */
 /* P_Thrust — p_user.c:57-68                                            */
@@ -195,12 +206,18 @@ export function pMovePlayer(p: Player): void {
     pThrust(p, (p.mo.angle - ANG90) >>> 0, (cmd.sidemove * MOVE_THRUST_SCALE) | 0);
   }
 
-  if ((cmd.forwardmove || cmd.sidemove) /* && mo->state == &states[S_PLAY] */) {
-    // P_SetMobjState(mo, S_PLAY_RUN1) — the state arena is M7; the check
-    // would fire on the standing state only, so the port cannot know it:
-    // counted here on EVERY moving tic (deviation noted; bob/viewheight
-    // are state-blind, so physics is unaffected).
-    puserHookCounts.setMobjStateRun++;
+  if (cmd.forwardmove || cmd.sidemove) {
+    // P_SetMobjState(mo, S_PLAY_RUN1) gated on the STANDING state
+    // (`player->mo->state == &states[S_PLAY]`, p_user.c:159-163). M7-03:
+    // real state test + real set through the M7-02 machine. The MobjStub
+    // path (no-runtime harnesses) keeps the counted call-site
+    // approximation (fires on every moving tic — deviation pinned above).
+    const mo = asMobj(p.mo);
+    if (!mo) puserHookCounts.setMobjStateRun++;
+    else if (mo.state === S.S_PLAY) {
+      puserHookCounts.setMobjStateRun++;
+      pSetMobjState(mo, S.S_PLAY_RUN1);
+    }
   }
 }
 
@@ -241,9 +258,12 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
   }
 
   if (p.playerstate === PST_DEAD) {
-    // P_DeathThink (p_user.c:180-239): viewheight-to-floor fall, look-at-
-    // killer turn, reborn-on-use — all need states/psprites (M7).
+    // P_DeathThink (p_user.c:180-232): viewheight-to-floor fall,
+    // look-at-killer ANG5 turn, damagecount fade, BT_USE → PST_REBORN —
+    // M7-03 registers the body from pplayer.ts (the counter keeps the
+    // legacy observability either way).
     puserHookCounts.deathThink++;
+    puserHooks.deathThink?.(p, leveltime);
     return;
   }
 
@@ -285,6 +305,16 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
     p.usedown = false;
   }
 
-  // BT_CHANGE weapon select, P_MovePsprites, powerup counters: no
-  // subjects yet (M7) — intentionally absent, not faked.
+  // BT_CHANGE weapon select / powerup counters: no subjects yet (M7-05+)
+  // — intentionally absent, not faked.
+
+  // P_MovePsprites (p_user.c:381) — M7-03 wiring of the M7-01 p_pspr
+  // machine: the gun/flash psprites spawned by P_SpawnPlayer →
+  // P_SetupPsprites tick every LIVE tic (the PST_DEAD path ticks its own
+  // copy inside P_DeathThink, p_user.c:186). Players without the attached
+  // psprite fields (unit-world stubs) skip — attach is p_pspr's
+  // attachPsprFields, called from pplayer's level bind/spawn.
+  if ((p as Partial<PsprPlayer>).psprites !== undefined) {
+    pMovePsprites(p as PsprPlayer, leveltime);
+  }
 }

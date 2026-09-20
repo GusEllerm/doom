@@ -157,7 +157,7 @@ export function hashState(s: GameState): number {
   // Arena words: live count + per live thinker (id, wordCount, words).
   let arenaWords = 1;
   for (const t of s.thinkers.entries.values()) {
-    if (!t.removed) arenaWords += 2 + t.hashWords.length;
+    if (!t.removed && !t.excludeFromHash) arenaWords += 2 + t.hashWords.length;
   }
   const buf = new ArrayBuffer(
     (8 + s.players.length * playerWords + s.sectors.count * 4 + arenaWords) * 4
@@ -204,7 +204,7 @@ export function hashState(s: GameState): number {
   o += 4; // reserved for the live count
   let live = 0;
   for (const t of s.thinkers.entries.values()) {
-    if (t.removed) continue;
+    if (t.removed || t.excludeFromHash) continue; // M7-03: player mobj dedup
     live++;
     dv.setInt32(o, t.id | 0, true); o += 4;
     dv.setInt32(o, t.hashWords.length | 0, true); o += 4;

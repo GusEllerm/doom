@@ -132,6 +132,11 @@ export interface Mobj extends MoveMobj {
   reactionTime: number;
   /** P_Random()%MAXPLAYERS at spawn (p_mobj.c:508) — consumes the PRNG! */
   lastLook: number;
+  /** mobj_t threshold (p_mobj.h) — M7-03 added it for P_DamageMobj's
+   * generic retarget branch (runs for player mobjs too, p_inter.c:907-
+   * 913); monsters (A_Chase decrement / M7-07) share the field. Not in
+   * the §3.4 words (8 words stay blessed). */
+  threshold: number;
   target?: Mobj;
   spawnpoint: SpawnPoint | null;
   /** P_RemoveMobj done (the thinker sentinel is ptick's; this is the
@@ -158,8 +163,15 @@ export interface MobjRuntime {
 
   /* vanilla globals with observable state */
   deathmatchStarts: SpawnPoint[]; // deathmatchstarts[MAXDEATHMATCHSTARTS=10]
-  /** playerstarts[4] records (P_SpawnPlayer is M7-03) */
+  /** playerstarts[4] records; M7-03 additionally SPAWNS through them (the
+   * P_SpawnPlayer call sits at the thing's THINGS-lump position, keeping
+   * the thinker-arena insertion order of vanilla P_LoadThings). */
   playerStarts: (SpawnPoint | null)[];
+  /** M7-03 seam: pplayer.ts registers the real P_SpawnPlayer here
+   * (pSpawnMapThing's doomednum-1..4 branch calls it AFTER capturing the
+   * record, vanilla's `if (!deathmatch) P_SpawnPlayer (mthing);`). Left
+   * unset (standalone p_mobj tests) the capture-only behavior stands. */
+  playerSpawnFn?: (rt: MobjRuntime, start: SpawnPoint) => void;
   readonly itemQue: SpawnPoint[]; // itemrespawnque[ITEMQUESIZE]
   readonly itemQueTime: number[]; // itemrespawntime[ITEMQUESIZE]
   iquehead: number;
@@ -240,6 +252,7 @@ export function pSpawnMobj(
   z: number,
   type: number,
   slot = -1,
+  opts: { skipLastLookRandom?: boolean; thinkerId?: number } = {},
 ): Mobj {
   const info = mobjinfo[type]!;
   const links = rt.state.pmap.links;
@@ -272,13 +285,18 @@ export function pSpawnMobj(
     // p_mobj.c:505 "if (gameskill != sk_nightmare)" — Skill 4 = nightmare
     reactionTime: rt.state.skill !== 4 ? info.reactionTime : 0,
     lastLook: 0,
+    threshold: 0,
     spawnpoint: null,
     removed: false,
     words: [0, 0, 0, 0, 0, 0, 0, 0],
     thinker: null as unknown as Thinker,
   };
   // p_mobj.c:508 — EVERY spawn draws one P_Random (stream parity!).
-  m.lastLook = pRandom(rt.state.rng) % MAXPLAYERS;
+  // M7-03 exception (documented deviation): the PLAYER spawn skips the
+  // draw — the M5-era port never drew for the player stub and the blessed
+  // feel/headless hashes pin the rng indices; lastlook is never read for
+  // players, so the skip is behavior-free (pplayer.ts P_SpawnPlayer).
+  if (!opts.skipLastLookRandom) m.lastLook = pRandom(rt.state.rng) % MAXPLAYERS;
 
   // P_SetThingPosition (p_maputl.c:395): static slots are already linked;
   // dynamic slots link now (MF_NOBLOCKMAP slots stay inert).
@@ -294,7 +312,7 @@ export function pSpawnMobj(
   else m.z = z;
   links.z[s] = m.z;
 
-  m.thinker = pAddThinker(rt.state.thinkers, () => pMobjThinker(m));
+  m.thinker = pAddThinker(rt.state.thinkers, () => pMobjThinker(m), opts.thinkerId);
   m.thinker.hashWords = m.words;
   syncMobj(m);
   rt.mobjs.push(m);
@@ -462,7 +480,14 @@ export function pMobjThinker(m: Mobj): void {
     pXYMovement(rt.state.pmap, m);
     if (m.removed) return; // mobj was removed (sky-hack missile etc.)
   }
-  if (m.z !== m.floorz || m.momz !== 0) {
+  // D-t4 (M7-03): the PLAYER mobj keeps the M5-06-era UNCONDITIONAL
+  // P_ZMovement call — the blessed feel/headless hashes pin it (its
+  // only observable: in ceiling < 56 spots the every-tic ceiling clip
+  // parks z at ceilingz-height, where vanilla's
+  // `if (z != floorz || momz)` guard skips P_ZMovement entirely).
+  // Behavior elsewhere is identical (the call is a no-op on a resting
+  // mobj). Revisit with the M7-06 blessed hash update.
+  if (m.z !== m.floorz || m.momz !== 0 || m.playerRef !== undefined) {
     pZMovement(m);
     if (m.removed) return;
   }
@@ -520,7 +545,12 @@ export function pSpawnMapThing(rt: MobjRuntime, t: MapThingRec): Mobj | undefine
     return undefined;
   }
   if (t.type <= 4) {
-    rt.playerStarts[t.type - 1] = asSpawnPoint(t); // P_SpawnPlayer: M7-03
+    rt.playerStarts[t.type - 1] = asSpawnPoint(t);
+    // p_mobj.c:730-734: `playerstarts[type-1] = *mthing;` then
+    // `if (!deathmatch) P_SpawnPlayer (mthing);` — M7-03 registers the
+    // real spawn (playerSpawnFn) from pplayer.ts; the arena-insertion
+    // position matches vanilla's P_LoadThings order exactly.
+    if (rt.playerSpawnFn && !rt.deathmatch) rt.playerSpawnFn(rt, rt.playerStarts[t.type - 1]!);
     return undefined;
   }
   if (!rt.netgame && (t.options & MTF_NOTSINGLEPLAYER) !== 0) return undefined;
@@ -583,6 +613,9 @@ export function pSpawnThings(rt: MobjRuntime): void {
     }
     if (rec.type <= 4) {
       rt.playerStarts[rec.type - 1] = rec;
+      // p_mobj.c:730-734 (the inlined P_SpawnMapThing this pass mirrors):
+      // `if (!deathmatch) P_SpawnPlayer (mthing);` — M7-03 playerSpawnFn.
+      if (rt.playerSpawnFn) rt.playerSpawnFn(rt, rec);
       continue;
     }
     if (!netgame && (rec.options & MTF_NOTSINGLEPLAYER) !== 0) continue;
@@ -720,9 +753,17 @@ export function registerPmoveAdapters(): void {
   };
   pmoveHooks.setMobjState = (mo, which) => {
     const m = asMobj(mo);
-    if (!m) return; // MobjStub player: M7-03 territory, counter-only
+    if (!m) return; // MobjStub player: counter-only (pmove's own counts)
     if (which === 'spawnstate') pSetMobjState(m, mobjinfo[m.type]!.spawnState);
     else if (which === 'deathstate') pSetMobjState(m, mobjinfo[m.type]!.deathState);
-    // 'play' = the S_PLAY RUN→stand revert: player-only, never a plain mobj
+    else if (which === 'play') {
+      // p_mobj.c:230 P_XYMovement's stop branch — the walking-frame
+      // revert `if ((mobj->state - &states[S_PLAY_RUN1]) < 4) P_SetMobjState
+      // (mobj, S_PLAY);` — M7-03: real state window test (player mobjs
+      // only; the call site already gates on mo->player).
+      if (m.playerRef !== undefined && m.state - S.S_PLAY_RUN1 < 4) {
+        pSetMobjState(m, S.S_PLAY);
+      }
+    }
   };
 }
