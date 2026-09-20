@@ -38,10 +38,9 @@ import {
   bindPsprWorld,
   resetPsprHooks,
   resetPsprHookCounts,
-  psprHookCounts,
 } from './p_pspr';
 import { bindShootWorld, registerShootPsprHooks, resetShootGlobals } from './p_shoot';
-import { pmoveHookCounts, resetPmoveHookCounts } from './pmove';
+import { resetPmoveHookCounts } from './pmove';
 import { pmapHookCounts, resetPmapHookCounts } from './pmap';
 import { pSpawnMissile, pSpawnPlayerMissile, registerMissileHooks } from './pmissiles';
 
@@ -87,6 +86,10 @@ function tick(s: GameState, n: number): void {
   }
 }
 
+/** The player's mover is a REAL Mobj from M7-03 (typed MobjStub in the
+ * Player record — the runtime object is the arena mobj). */
+const pmo = (p: { mo: object }): Mobj => p.mo as unknown as Mobj;
+
 const momX = (type: number, angle: number): number =>
   FixedMul(mobjinfo[type]!.speed, finecosine[angle >>> 9]!);
 const momY = (type: number, angle: number): number =>
@@ -113,7 +116,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
   it('spawn AT source xy (1.10 has NO forward offset), z + 4*8*FRACUNIT', () => {
     const s = range();
     const p = shooter(s);
-    const src = p.mo as Mobj;
+    const src = pmo(p);
     const before = s.rng.prndindex;
     pSpawnPlayerMissile(s.mobjs, src, MT.MT_ROCKET);
 
@@ -137,7 +140,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
   it('mom = speed·(cos,sin) from the tables, momz = FixedMul(speed, 0)', () => {
     const s = range();
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     const r = of(s, MT.MT_ROCKET)[0]!;
     expect(r.momx).toBe(momX(MT.MT_ROCKET, 0)); // 20*FRACUNIT·finecosine[0]
     expect(r.momy).toBe(momY(MT.MT_ROCKET, 0)); // table quirk: finesine[0]=25
@@ -147,7 +150,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
   it('straight flight: mom added every tic, no friction, no gravity drift', () => {
     const s = range();
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     const r = of(s, MT.MT_ROCKET)[0]!;
     const x0 = r.x;
     const z0 = r.z;
@@ -162,7 +165,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
   it('P_CheckMissileSpawn: tics −= P_Random()&3 clamped to ≥1', () => {
     const s = range();
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     const r = of(s, MT.MT_ROCKET)[0]!;
     // Stream position `before+1` was the tics draw (index 0 = lastlook):
     // reconstruct from the table without assuming its value.
@@ -181,7 +184,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
     });
     const p = shooter(s);
     resetPmoveHookCounts();
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     // Pre-stepped 10 units into/through the wall line ⇒ P_TryMove fails ⇒
     // P_ExplodeMissile immediately (no sky: solid one-sided border).
     expect(s.mobjs.counts.explodeMissile).toBe(1);
@@ -193,7 +196,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
   it('sfx slot ids: launch draws sfx_rlaunc (14) at the missile origin', () => {
     const s = range();
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     const r = of(s, MT.MT_ROCKET)[0]!;
     expect(s.hooks.sfx.byId?.get(14)).toBe(1);
     // S_StartSound runs at the pSpawnMobj site — BEFORE the CheckMissile-
@@ -202,11 +205,11 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
 
     const t = range();
     const q = shooter(t);
-    pSpawnPlayerMissile(t.mobjs, q.mo as Mobj, MT.MT_PLASMA);
+    pSpawnPlayerMissile(t.mobjs, q.mo as unknown as Mobj, MT.MT_PLASMA);
     expect(t.hooks.sfx.byId?.get(8)).toBe(1); // sfx_plasma
     const u = range();
     const w = shooter(u);
-    pSpawnPlayerMissile(u.mobjs, w.mo as Mobj, MT.MT_BFG);
+    pSpawnPlayerMissile(u.mobjs, w.mo as unknown as Mobj, MT.MT_BFG);
     expect(u.hooks.sfx.count).toBe(0); // MT_BFG seesound = sfx_None ('0')
   });
 });
@@ -218,7 +221,7 @@ describe('P_SpawnPlayerMissile (p_mobj.c:935, R08 §3.6)', () => {
 describe('P_SpawnMissile (p_mobj.c:889)', () => {
   it('mom vector aims at dest; momz = dz / (dist/speed); one lastlook draw', () => {
     const s = range();
-    const src = shooter(s).mo as Mobj;
+    const src = shooter(s).mo as unknown as Mobj;
     const dest = pSpawnMobj(s.mobjs, fx(328), src.y, src.z, MT.MT_POSSESSED);
     const before = s.rng.prndindex;
     const th = pSpawnMissile(s.mobjs, src, dest, MT.MT_HEADSHOT);
@@ -235,7 +238,7 @@ describe('P_SpawnMissile (p_mobj.c:889)', () => {
 
   it('MF_SHADOW dest: 2 EXTRA jitter draws, angle ≠ direct', () => {
     const s = range();
-    const src = shooter(s).mo as Mobj;
+    const src = shooter(s).mo as unknown as Mobj;
     const dest = pSpawnMobj(s.mobjs, fx(328), src.y, src.z, MT.MT_POSSESSED);
     dest.flags = (dest.flags | MF.MF_SHADOW) | 0;
     const before = s.rng.prndindex;
@@ -251,21 +254,11 @@ describe('P_SpawnMissile (p_mobj.c:889)', () => {
 /* ================================================================== */
 
 describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
-  /** Fire a player rocket straight east at a dummy; returns after the hit. */
-  function shootInto(type: number, x: number): { s: GameState; r: Mobj } {
-    const s = range([{ x, y: 128, angle: 0, type }]);
-    const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
-    const r = of(s, MT.MT_ROCKET)[0]!;
-    tick(s, 20);
-    return { s, r };
-  }
-
-  it('direct hit damage = (P_Random()%8+1)*20 under the seeded stream', () => {
+    it('direct hit damage = (P_Random()%8+1)*20 under the seeded stream', () => {
     const s = range([{ x: 328, y: 128, angle: 0, type: 3004 }]); // Zombieman
     const p = shooter(s);
     const before = s.rng.prndindex;
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     tick(s, 12);
     const direct = s.hooks.damage.entries[0];
     expect(direct, 'one direct-hit damage event').toBeDefined();
@@ -273,7 +266,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
     // PIT_CheckThing damage draw (before+3) — P_Random PRE-increments.
     const hitDraw = RNDTABLE[(before + 3) & 255]!;
     expect(direct!.amount).toBe(((hitDraw % 8) + 1) * mobjinfo[MT.MT_ROCKET]!.damage);
-    expect(direct!.source).toBe((p.mo as Mobj).linkSlot); // tmthing->target
+    expect(direct!.source).toBe(pmo(p).linkSlot); // tmthing->target
     expect(s.hooks.damage.count).toBeGreaterThanOrEqual(1);
     expect(pmapHookCounts.missileHit).toBe(1);
   });
@@ -284,7 +277,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
     const seen = new Set<number>();
     for (let round = 0; round < 40; round++) {
       const before = s.rng.prndindex;
-      pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+      pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
       tick(s, 3); // hit lands within a few tics at 20 units/tic
       // recompute directly from the stream: hit draw at before+3
       // (spawn lastlook, spawn tics, then the PIT damage draw):
@@ -300,7 +293,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
   it('over/under passes: high missile (spatially impossible here) via z poke', () => {
     const s = range([{ x: 328, y: 128, angle: 0, type: 3004 }]);
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     const r = of(s, MT.MT_ROCKET)[0]!;
     r.z = fx(64); // above the 56-tall dummy's top at floor 0
     r.momz = 0;
@@ -318,7 +311,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
       things: [{ x: 512, y: 256, angle: 180, type: 1 }], // facing WEST
     });
     const p = shooter(s);
-    const src = p.mo as Mobj;
+    const src = pmo(p);
     src.x = fx(640); // stand east of the start, still facing west
     pSpawnPlayerMissile(s.mobjs, src, MT.MT_ROCKET);
     tick(s, 30);
@@ -350,7 +343,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
     // rule only skips when shooter.type == victim.type).
     const s = range([{ x: 328, y: 128, angle: 0, type: 3001 }]); // baron
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     tick(s, 12);
     expect(s.hooks.damage.count).toBeGreaterThanOrEqual(1);
   });
@@ -358,7 +351,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
   it('explosion after the hit: S_EXPLODE1 state + sfx_barexp (82) deathsound', () => {
     const s = range([{ x: 328, y: 128, angle: 0, type: 3004 }]);
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     tick(s, 12);
     const r = s.mobjs.mobjs.find((m) => m.type === MT.MT_ROCKET)!;
     expect(r.removed || r.state >= S.S_EXPLODE1).toBeTruthy();
@@ -370,7 +363,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
     const run = (): string => {
       const s = range([{ x: 328, y: 128, angle: 0, type: 3004 }]);
       const p = shooter(s);
-      pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+      pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
       tick(s, 25);
       return `${hashState(s)}|${JSON.stringify(s.hooks.damage.entries)}|${s.rng.prndindex}`;
     };
@@ -383,7 +376,7 @@ describe('missile thing hits (PIT_CheckThing, R07 §9.1)', () => {
       things: [{ x: 128, y: 128, angle: 90, type: 1 }],
     });
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     const r = of(s, MT.MT_ROCKET)[0]!;
     expect(r.angle).toBe(ANG90);
     tick(s, 4);

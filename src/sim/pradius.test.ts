@@ -18,7 +18,7 @@ import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBu
 import { gInitGame } from './game';
 import { hashState, type GameState } from './state';
 import { RNDTABLE } from './prng';
-import { mobjinfo, MT } from '../wad/info/mobjinfo';
+import { MT } from '../wad/info/mobjinfo';
 import { S, stateAction } from '../wad/info/states';
 
 import { MISSILERANGE, attackRange, pSpawnMobj, resetMobjHookCounts, type Mobj } from './p_mobj';
@@ -67,7 +67,8 @@ function twinRooms(extra: RectMapSpec['things'] = []): GameState {
 }
 
 const live = (s: GameState): Mobj[] => s.mobjs.mobjs.filter((m) => !m.removed);
-const of = (s: GameState, t: number): Mobj[] => live(s).filter((m) => m.type === t);
+void live;
+const pmo = (p: { mo: object }): Mobj => p.mo as unknown as Mobj;
 
 function shooter(s: GameState): ReturnType<typeof attachPsprFields> {
   bindShootWorld(s);
@@ -112,7 +113,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
       things: [{ x: 128, y: 128, angle: 0, type: 1 }, ...extra],
     });
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     tick(s, Math.ceil((roomW - 128 - 10) / 20) + 4);
     return s;
   }
@@ -130,7 +131,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     const e = dmgEvents(s).find((ev) => ev.thing === victim.linkSlot);
     expect(e, 'splash event for the victim').toBeDefined();
     expect(e!.amount).toBe(want);
-    expect(e!.source).toBe((s.players[0]!.mo as Mobj).linkSlot); // bombsource
+    expect(e!.source).toBe((s.players[0]!.mo as unknown as Mobj).linkSlot); // bombsource
   });
 
   it('wall-BLOCKED victim in range takes 0 (LOS, plan acceptance 3)', () => {
@@ -149,7 +150,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
       ],
     });
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     tick(s, 12);
     const victim = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!;
     expect(
@@ -181,7 +182,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
   it('self-splash: 1.10 rockets CAN damage the shooter (rocket-jump truth)', () => {
     // Shooter 24 units from the impact ⇒ dist 0 ⇒ full 128.
     const s = rocketIntoWall(152, []);
-    const player = s.players[0]!.mo as Mobj;
+    const player = s.players[0]!.mo as unknown as Mobj;
     const e = dmgEvents(s).find((ev) => ev.thing === player.linkSlot);
     expect(e, 'P_RadiusAttack has NO source exclusion').toBeDefined();
     expect(e!.amount).toBeGreaterThan(100);
@@ -208,7 +209,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
       ],
     });
     const p = shooter(s);
-    pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_PLASMA);
+    pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_PLASMA);
     tick(s, 10);
     expect(s.mobjs.counts.explodeMissile).toBe(1);
     expect(dmgEvents(s).length, 'wall impact does no damage at all').toBe(0);
@@ -254,8 +255,8 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     pRadiusAttack(s.mobjs, spot, null, 128);
     expect(s.rng.prndindex).toBe(before); // P_RadiusAttack draws NOTHING
     const e = dmgEvents(s)[0];
-    expect(e.amount).toBe(128); // center visit: dist 0
-    expect(e.source).toBe(null); // bombsource NULL (environmental)
+    expect(e!.amount).toBe(128); // center visit: dist 0
+    expect(e!.source).toBe(null); // bombsource NULL (environmental)
   });
 
   it('double-run: splash scenario hash + logs identical', () => {
@@ -265,7 +266,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
         { x: 530, y: 200, angle: 0, type: 3004 },
       ]);
       const p = shooter(s);
-      pSpawnPlayerMissile(s.mobjs, p.mo as Mobj, MT.MT_ROCKET);
+      pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
       tick(s, 60);
       return `${hashState(s)}|${JSON.stringify(s.hooks.damage.entries)}|${s.rng.prndindex}`;
     };
@@ -280,14 +281,14 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
 describe('A_BFGSpray (p_pspr.c:781, S_BFGLAND3)', () => {
   /** BFG mobj NORTH-bound from the player, exploded deterministically
    * via pExplodeMissile (no flight ⇒ no flight draws before the spray). */
-  function sprayFixture(extras: RectMapSpec['things']) {
+  function sprayFixture(extras: RectMapSpec['things'] = []) {
     const s = boot({
       rooms: [{ x: 0, y: 0, w: 1024, h: 1024, lightLevel: 160 }],
       things: [{ x: 512, y: 128, angle: 90, type: 1 }, ...extras],
     });
     const p = shooter(s);
     const bfg = pSpawnMobj(s.mobjs, fx(512), fx(300), 0, MT.MT_BFG);
-    bfg.target = p.mo as Mobj;
+    bfg.target = pmo(p);
     bfg.angle = ANG90_LOCAL; // spray arc centered due NORTH
     return { s, p, bfg };
   }
@@ -346,3 +347,4 @@ describe('A_BFGSpray (p_pspr.c:781, S_BFGLAND3)', () => {
 function stateActionOf(i: number): number {
   return stateAction[i]!;
 }
+
