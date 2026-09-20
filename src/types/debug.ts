@@ -58,6 +58,15 @@ export interface DebugStateLive {
      * card, yellow card, red card, blue skull, yellow skull, red skull);
      * 0/1 per slot, debug giveCard until the M7 pickups (D013(f)). */
     cards: number[];
+    /** M7-11c (direct): d_player.h readyweapon (WP_* enum). Live once the
+     * inventory fields attach (initPlayerInventory / G_PlayerReborn). */
+    readyweapon: number;
+    /** d_player.h pendingweapon (wp_no_change = -1? uses P_AMMO_ enum values;
+     * see p_ammo.ts) */
+    pendingweapon: number;
+    /** psprites[NUMPSPRITES] state numbers (slot 0 = weapon, 1 = flash)
+     * for the weapon-raise/fire e2e assertions (p_pspr.ts PsprFields). */
+    pspr: { slot: number; state: number; sx: number; sy: number }[];
   };
   sectors: { count: number };
   thinkers: { count: number };
@@ -115,6 +124,13 @@ export interface SimDebugApi {
    * the resulting 6-slot array. Throws RangeError on a bad index.
    */
   giveCard(index: number): number[];
+  /** P_GiveWeapon(player, weapon, dropped=false) debug channel (M7-11c):
+   * the scripted e2e needs weapons without routing item mobjs onto the
+   * player; real pickups remain the gameplay path. */
+  giveWeapon(weapon: number): boolean;
+  /** P_KillPlayer debug channel (M7-11c): scripted death without a
+   * damage source; respawn flows through the BT_USE latch. */
+  killPlayer(): 'ok';
   /** Run exactly n tics (G_Ticker path, §3.2) with the given input snapshot
    * (or the sticky setInput override, else empty); returns hashState(). */
   runTics(tics: number, input?: Partial<GameInput> | null): number;
