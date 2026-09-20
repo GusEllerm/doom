@@ -133,7 +133,7 @@ Future tasks will be added as architects decompose milestones.
 | M8-plan | Monster AI milestone plan | M8 | M7 | done (merged) |
 | M8-01 | Sight tracer + soundtarget | M8 | M7 | dispatched (agent 4daaaf88) |
 | M8-02 | Mobj AI fields + damage bridge | M8 | M7 | done (merged, verified) |
-| M8-03 | Monster census fixture | M8 | — | dispatched (agent a28fef22) |
+| M8-03 | Monster census fixture | M8 | — | done (merged, verified) |
 | M8-04..13 | (see docs/design/M8-plan.md) | M8 | waves | planned |
 
 | M8-05 | Damage/kill/infighting module | M8 | M8-02 | dispatched (agent 476c8b9d) |
