@@ -263,13 +263,13 @@ export function installPsprSfxSlot(h: HookSlots, getTic: () => number): void {
 export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   'p_inter_pickup.ts': 2, // p_inter.c:194 (sfx_wpnup inside P_GiveWeapon) + :660 tail
   'p_pspr.ts': 10, // the ten S_StartSound(player->mo, …) lines of p_pspr.c
-  'pceilng.ts': 1, // crusher-stop sfx_stnmov
-  'pdoors.ts': 2, // doorSound() body + the locked-use oof (p_doors.c ×6)
+  'pceilng.ts': 1, // ceilSound() body — sfx_stnmov 22 / sfx_pstop 19
+  'pdoors.ts': 2, // doorSound() body (20/21/88/89) + the locked-use oof
   'pfloor.ts': 1, // floor move/stop helper body
   'pplats.ts': 1, // platSound() body (p_plats.c has 9 S_StartSound lines)
-  'pspec.ts': 1, // crossed-switch tail (p_spec.c:107)
+  'pspec.ts': 1, // crossed-switch tail, sfx_swtchn (p_spec.c:107)
   'pswitch.ts': 3, // swtchn / swtchx / the locked-use oof
-  'ptelept.ts': 1 // sfx_telept (p_mobj.c:872)
+  'ptelept.ts': 1 // sfx_telept, origin = the player (p_mobj.c:872)
 };
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
