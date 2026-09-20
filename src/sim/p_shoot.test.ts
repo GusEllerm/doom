@@ -199,9 +199,12 @@ describe('P_AimLineAttack — autoaim cone (p_map.c:812-905, 1020-1053)', () => 
   it('passes OVER a non-MF_SHOOTABLE thing and keeps going', () => {
     const s = range([{ x: 256, y: 128, angle: 0, type: 2014 }]); // medikit
     const p = shooter(s);
-    expect(live(s)).toHaveLength(1); // the shooter's own mobj is not in the roster
-    expect(live(s)[0]!.flags & MF_SPECIAL).not.toBe(0);
-    expect(live(s)[0]!.flags & MF_SHOOTABLE).toBe(0);
+    // M7-03: the player IS a live mobj now — exclude it from the fixture
+    // roster (pre-M7-03 this assertion counted only spawned things).
+    const fixtures = live(s).filter((m) => m.type !== MT.MT_PLAYER);
+    expect(fixtures).toHaveLength(1); // the shooter's own mobj is not in the roster
+    expect(fixtures[0]!.flags & MF_SPECIAL).not.toBe(0);
+    expect(fixtures[0]!.flags & MF_SHOOTABLE).toBe(0);
     expect(pAimLineAttack(p.mo, p.mo.angle, MISSILERANGE)).toBe(0);
     expect(linetarget.active).toBe(false);
     // The follow-up shot puffs on the FAR wall (512 − 4): the item did not
@@ -420,7 +423,8 @@ describe('PTR_ShootTraverse — hit resolution (p_map.c:910-1013)', () => {
     });
     const p = shooter(s);
     pLineAttack(p.mo, p.mo.angle, fx(8), 0, 5); // ends in mid-air
-    expect(live(s)).toHaveLength(0);
+    // (M7-03) the player mobj is always live — the shot itself must spawn nothing
+    expect(live(s).filter((m) => m.type !== MT.MT_PLAYER)).toHaveLength(0);
   });
 });
 
