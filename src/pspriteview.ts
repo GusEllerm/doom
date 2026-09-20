@@ -27,6 +27,7 @@
 import { sectorAtPoint } from './sim/bsp';
 import type { RuntimeMap } from './sim/map';
 import { stateFrame, stateSprite } from './wad/info/states';
+import { sprnames } from './wad/info/sprnames';
 import type { PspriteFrameInput } from './render/renderer';
 import type { PspriteView } from './render/psprites';
 
@@ -46,11 +47,38 @@ export interface PsprViewPlayer {
   readonly powers?: readonly number[];
 }
 
-/** Resolve one frame's psprite bundle (vanilla psp loop order = array
- * order: weapon then flash, NUMPSPRITES rows). */
+/**
+ * THE SPRITE-NUMBER TRAP this seam exists to defuse (M7-11 root-cause fix).
+ * `stateSprite[]` carries the info.h `spritenum_t` — the index INTO
+ * `sprnames[]` — because vanilla's `R_InitSprites(sprnames)` orders
+ * `sprites[]` by exactly that list (r_things.c:186-239). This port's
+ * {@link InstalledSprites} is built from the WAD lump CENSUS instead
+ * (rthings.ts header: "vanilla orders sprites[] by the sprnames[] list;
+ * the census orders by first lump seen"), where the same number means a
+ * DIFFERENT sprite — index 3 is SPOS (the possessed soldier) there, not
+ * PISG. Feeding the raw table number to `lookupFrame` therefore drew one
+ * small monster sprite at the gun's screen position for EVERY weapon
+ * (the M7-10 visual-gate finding); the states table itself is faithful
+ * (all 967 rows verified row-by-row against the mirror, misc1/misc2
+ * included — the 1.10 weapon rows really are `0,0`, the psprite sx/sy
+ * come from A_WeaponReady/A_Raise, never from the table). So the number
+ * crosses the boundary BY NAME, exactly like `buildMapSprites` resolves
+ * thing sprites (`sprites.indexOf.get(name4)`); a 4CC the WAD has no
+ * lumps for draws nothing (vanilla's I_Error case, same rule as the
+ * static roster's `skipped.missingSprite`).
+ *
+ * `SpriteIndex` is the structural minimum this seam needs (the
+ * 4CC → spriteNum map `InstalledSprites.indexOf` already is), so the
+ * name-resolution contract is unit-testable without a WAD.
+ */
+export interface SpriteIndex {
+  readonly indexOf: ReadonlyMap<string, number>;
+}
+
 export function buildPspriteFrameInput(
   map: RuntimeMap,
-  player: PsprViewPlayer
+  player: PsprViewPlayer,
+  sprites: SpriteIndex
 ): PspriteFrameInput {
   const views: (PspriteView | null)[] = [];
   for (const psp of player.psprites ?? []) {
@@ -58,8 +86,14 @@ export function buildPspriteFrameInput(
       views.push(null); // S_NULL ⇒ inactive (never drawn)
       continue;
     }
+    const name4 = sprnames[stateSprite[psp.state]!];
+    const spriteNum = name4 === undefined ? undefined : sprites.indexOf.get(name4);
+    if (spriteNum === undefined) {
+      views.push(null); // no lumps for this 4CC in this WAD
+      continue;
+    }
     views.push({
-      sprite: stateSprite[psp.state]!,
+      sprite: spriteNum,
       frame: stateFrame[psp.state]!,
       sx: psp.sx,
       sy: psp.sy,

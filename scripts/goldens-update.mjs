@@ -77,13 +77,16 @@ const SETS = {
     // tests/weapons/visual.test.ts — M7 firing-range fixture maps (no
     // graphics) rendered with the freedoom sprite/patch tables, live-sim
     // psprite rows through the src/pspriteview.ts seam (gun raised +
-    // muzzle flash), plus one labelled montage contact sheet enumerating
-    // every weapon/flash sprite frame from the 967-state table. WAD-GATED
+    // muzzle flash), plus ONE labelled contact sheet that TILES the
+    // scene frames themselves (M7-11 montage rework: 3 columns x 5 rows,
+    // each 320x200 scene nearest-neighbour x2 with a 5x7-font label band;
+    // the M7-10 version enumerated state-table sprite frames instead and
+    // proved nothing about the rendered frame). WAD-GATED
     // (skipIf no wad, like the E1M1 wall scenes): without a wad the set
     // dumps nothing and committed goldens stay untouched.
     testFile: join('tests', 'weapons', 'visual.test.ts'),
     pipeline:
-      'M7FIX weapon range -> gInitGame + give/weaponKey/attack script (live sim tics) -> renderFrame x2 (world + psprite pass via pspriteview seam; byte-equal) + montage (state-table-enumerated weapon/flash frames, 5x7 labels) -> sha256(indices), hom + overflow counters asserted 0'
+      'M7FIX weapon range -> gInitGame + give/weaponKey/attack script (live sim tics) -> renderFrame x2 (world + psprite pass via pspriteview seam; byte-equal) + montage (scene frames tiled 3x5 at 2x, 2x 5x7 labels) -> sha256(indices), hom + overflow counters asserted 0'
   }
 };
 
