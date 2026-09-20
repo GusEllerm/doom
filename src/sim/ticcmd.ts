@@ -95,6 +95,15 @@ export interface GameInput {
   /** Use button (key_use). */
   use: boolean;
   /**
+   * Weapon-slot keys '1'..'8 (g_game.c:341-347, M7-05): the pressed
+   * weapon KEY (0 = fist slot … 7 = chainsaw slot; vanilla loop bound is
+   * NUMWEAPONS-1 = 8, the supershotgun has no slot key). First match wins
+   * (vanilla `break`). Undefined/-1 = no weapon key. Encoded below as
+   * `BT_CHANGE | slot<<BT_WEAPONSHIFT`; the switch itself runs in
+   * P_PlayerThink (p_ammo.ts). 1.10 has NO next/prev cycling (R08 §5.1).
+   */
+  weaponKey?: number;
+  /**
    * Mouse X channel — vanilla `int mousex` (g_game.c:190): the sensitivity-
    * SCALED delta (G_Responder's `data2*(mouseSensitivity+5)/10`, applied at
    * the platform translation seam per A-07) accumulated since the last tic.
@@ -177,6 +186,13 @@ export function gBuildTiccmd(input: GameInput, turn: TurnheldState): Ticcmd {
 
   if (input.attack) cmd.buttons |= BT_ATTACK;
   if (input.use) cmd.buttons |= BT_USE;
+
+  // for choice of weapons (g_game.c:341-347) — first slot key wins:
+  //   for (i = 0; i < NUMWEAPONS-1; i++)
+  //     if (gamekeydown['1' + i]) { cmd->buttons |= BT_CHANGE | i<<BT_WEAPONSHIFT; break; }
+  if (input.weaponKey !== undefined && input.weaponKey >= 0) {
+    cmd.buttons |= BT_CHANGE | (input.weaponKey << BT_WEAPONSHIFT);
+  }
 
   // Mouse channels — g_game.c:403-410, positioned EXACTLY between the key
   // accumulation and the clamp (add-then-clamp order pinned: mouse-y joins

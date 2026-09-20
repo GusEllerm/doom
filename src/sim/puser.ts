@@ -48,7 +48,7 @@ import type { PMapWorld } from './pmap';
 import './pslide'; // M5-06: loads pslide's self-registration of pmoveHooks.slideMove
 import { boundSpecialsWorld, feetCounts, pPlayerInSpecialSector } from './pspec';
 import { pUseLines } from './pswitch';
-import { BT_USE } from './ticcmd';
+import { BT_CHANGE, BT_USE } from './ticcmd';
 import {
   CF_NOMOMENTUM,
   CF_NOCLIP,
@@ -85,13 +85,16 @@ export const puserHookCounts = {
    * pspec.feetCounts.unbound). */
   playerInSpecialSector: 0,
   /** p_user.c:266 P_DeathThink (M7+). */
-  deathThink: 0
+  deathThink: 0,
+  /** p_user.c:291 `if (cmd->buttons & BT_CHANGE)` evaluations (M7-05). */
+  weaponChange: 0
 };
 
 export function resetPuserHookCounts(): void {
   puserHookCounts.setMobjStateRun = 0;
   puserHookCounts.playerInSpecialSector = 0;
   puserHookCounts.deathThink = 0;
+  puserHookCounts.weaponChange = 0;
 }
 
 /** M7-03 typed seams pplayer.ts registers (import-cycle rule: pplayer
@@ -100,6 +103,10 @@ export const puserHooks: {
   /** p_user.c:180-232 `P_DeathThink(player)` — called instead of the
    * counted no-op while `playerstate === PST_DEAD`. */
   deathThink?: (p: Player, leveltime: number) => void;
+  /** p_user.c:291-323 BT_CHANGE weapon-switch block — p_ammo.ts registers
+   * (M7-05). Called with `p.cmd.buttons & BT_CHANGE` set; the switch itself
+   * only writes `pendingweapon`, the raise/lower machine defers the swap. */
+  weaponChange?: (p: Player) => void;
 } = {};
 
 /* ------------------------------------------------------------------ */
@@ -293,6 +300,17 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
     feetCounts.unbound++;
   }
 
+  // Check for weapon change — p_user.c:291-323 (M7-05, verbatim placement:
+  // AFTER P_PlayerInSpecialSector, BEFORE the use block). The body (slot
+  // decode + fist→chainsaw / commercial shotgun→supershotgun upgrades +
+  // shareware plasma/BFG gate) lives in p_ammo.ts's pWeaponChange; there is
+  // no next/prev cycling in 1.10 (R08 §5.1 — slot keys are the only switch
+  // input).
+  if (p.cmd.buttons & BT_CHANGE) {
+    puserHookCounts.weaponChange++;
+    puserHooks.weaponChange?.(p);
+  }
+
   // check for use — p_user.c:320-330 (M6-11). One P_UseLines per PRESS:
   // `usedown` latches while the button is held ("Do not repeatedly use
   // a line past the first time in the tics, 'event'", p_user.c:318).
@@ -305,8 +323,8 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
     p.usedown = false;
   }
 
-  // BT_CHANGE weapon select / powerup counters: no subjects yet (M7-05+)
-  // — intentionally absent, not faked.
+  // powerup counters (p_user.c:336-360): no subjects yet — the parallel
+  // powerups task registers them; intentionally absent, not faked.
 
   // P_MovePsprites (p_user.c:381) — M7-03 wiring of the M7-01 p_pspr
   // machine: the gun/flash psprites spawned by P_SpawnPlayer →

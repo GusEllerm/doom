@@ -379,8 +379,11 @@ export const psprGlobals = {
   bulletslope: 0,
   /** gamemode gate of the P_CheckAmmo ladder (doomstat.h `gamemode`;
    * Freedoom Phase 1 / doom1 ≈ registered=1; commercial=2 arms the SSG
-   * rung — plan §6.5 keeps supershotgun dead-coded outside Doom-2). */
-  gamemode: 1,
+   * rung — plan §6.5 keeps supershotgun dead-coded outside Doom-2).
+   * M7-05: the authoritative p_ammo.ts ladder and the p_user.ts switch
+   * block read THIS variable — one gamemode source for both gates
+   * (setAmmoGamemode in p_ammo.ts is the named setter). */
+  gamemode: 1 as 0 | 1 | 2,
 };
 
 /** One call per replacement-sensitive site, for the registration asserts
