@@ -150,7 +150,7 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
   // player entry ticks only the mobj STATE (pplayer.ts); vanilla's
   // strict single-list order (movers before the post-P_SetupLevel player
   // thinker) is DOCUMENTED as intentionally not matched here — keeping
-  // the blessed hashes outranks it (docs/dev/m7-03-report).
+  // the blessed hashes outranks it (docs/reports/M7-03-implementer.md).
   for (const p of state.players) {
     pPlayerThink(state.pmap, p, state.leveltime);
     pXYMovement(state.pmap, p.mo); // momentum set by P_MovePlayer above
