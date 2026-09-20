@@ -7,8 +7,8 @@
     "m6-crusher": {
       "kind": "mechanics",
       "script": "FIXMAP crusher (corridor | antechamber | tagged hall c128) -> warp (48,128,0deg) -> walk fwd <=45 tics, cross W1 fastCrushAndRaise trigger @x256 -> STOP in antechamber, hall ceiling crushes down (8/tic) and climbs (2/tic) in view (SC caption) -> 8 frames t=0..105",
-      "reason": "M6 door-through evidence",
-      "updatedAt": "2026-09-19",
+      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+      "updatedAt": "2026-09-20",
       "png": "m6-crusher.png",
       "width": 1310,
       "height": 442,
@@ -70,46 +70,51 @@
         },
         {
           "tic": 75,
-          "xU": 24825225,
-          "yU": 8396319,
-          "zU": 0,
-          "viewzU": 2686454,
+          "xU": 24745587,
+          "yU": 8396309,
+          "zU": -655360,
+          "viewzU": 1617398,
           "statU": 3014656,
-          "frameSha": "eaf8d7b9619a7828c5d272a02b5b6d6783bcababf40d652f7b54595c14f85d68"
+          "frameSha": "184e222bd3af6bc8db79d4f68de91b484a5982b0a6327b198011f5f4a3c9755b"
         },
         {
           "tic": 90,
-          "xU": 24952511,
-          "yU": 8396319,
-          "zU": 0,
-          "viewzU": 2686985,
+          "xU": 24745587,
+          "yU": 8396309,
+          "zU": -2621440,
+          "viewzU": -1146871,
           "statU": 1048576,
-          "frameSha": "814405788eb8039cd8a3b921e7f35b599cb098396c4f5e462a228d53d6f9c837"
+          "frameSha": "2ad418e194a7a4e44cdecab1a7cccae8ad32c46562658d5db88b74e400bd5a12"
         },
         {
           "tic": 105,
-          "xU": 24952511,
-          "yU": 8396319,
-          "zU": 0,
-          "viewzU": 2686976,
+          "xU": 24745587,
+          "yU": 8396309,
+          "zU": -1966080,
+          "viewzU": -753664,
           "statU": 1835008,
-          "frameSha": "7452df9f475181493477f32bcb50d60a312ba782746184ded3d1dfc81082f42f"
+          "frameSha": "4e125a73b554fd234986fd2f75dfff26fb2d15fb250a2ea1d5d405590fd0fd5b"
         }
       ],
-      "indexSha256": "62d88c865446375f146c365c54202407c6e0608e67d2c070d4487d2bd15a98c2",
+      "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e",
       "history": [
         {
           "reason": "M6 door-through evidence",
           "at": "2026-09-19",
           "indexSha256": "62d88c865446375f146c365c54202407c6e0608e67d2c070d4487d2bd15a98c2"
+        },
+        {
+          "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+          "at": "2026-09-20",
+          "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e"
         }
       ]
     },
     "m6-lift-through": {
       "kind": "mechanics",
       "script": "FIXMAP lift (corridor | tagged plat f0, sump f-24) -> warp (48,128,0deg) -> walk fwd until x≥520 (cross W1 plat trigger @x512 ~tic 63), momentum-stop ON the shaft -> floor -24 under the rider, PLATWAIT 105, raise -> player RIDES the special (SF/Z captions) -> 8 frames t=0/30/60/80/120/160/190/215",
-      "reason": "M6 door-through evidence",
-      "updatedAt": "2026-09-19",
+      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+      "updatedAt": "2026-09-20",
       "png": "m6-lift-through.png",
       "width": 1310,
       "height": 442,
@@ -203,14 +208,19 @@
           "reason": "M6 door-through evidence",
           "at": "2026-09-19",
           "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
+        },
+        {
+          "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+          "at": "2026-09-20",
+          "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
         }
       ]
     },
     "m6-light-paint": {
       "kind": "mechanics",
       "script": "FIXMAP light (corridor | tagged room light 40) -> warp (48,128,0deg) -> walk fwd <=105 tics, cross W1 lightOn(255) trigger @x512 (~tic 66) -> tagged light SoA 40→255, room ahead repaints at full brightness (SL caption) -> 8 frames t=0..105",
-      "reason": "M6 door-through evidence",
-      "updatedAt": "2026-09-19",
+      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+      "updatedAt": "2026-09-20",
       "png": "m6-light-paint.png",
       "width": 1310,
       "height": 442,
@@ -304,6 +314,112 @@
           "reason": "M6 door-through evidence",
           "at": "2026-09-19",
           "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
+        },
+        {
+          "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+          "at": "2026-09-20",
+          "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
+        }
+      ]
+    },
+    "m6-door-through": {
+      "kind": "mechanics",
+      "script": "FIXMAP door (corridor | trigger edge x448 | tagged slab c0 | hall beyond, ring c128) -> warp (48,128,0deg) -> walk fwd, cross W1 doorRaise trigger @x448 (~tic 55, EV_DoDoor normal LIVE) -> slab SoA 0→124 @2/tic (topheight 128−4), player blocked at the closed slab then walks THROUGH (>56 headroom ~tic 84) -> 8 frames t=0..150 (VDOORWAIT 150 keeps it open)",
+      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+      "updatedAt": "2026-09-20",
+      "png": "m6-door-through.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        30,
+        55,
+        75,
+        90,
+        110,
+        130,
+        150
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 3145728,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 0,
+          "frameSha": "2f9c6fce25431f0026f1f560b6f2a34156242f565f5d97d82f81baabd5afe8a9"
+        },
+        {
+          "tic": 30,
+          "xU": 14525550,
+          "yU": 8392721,
+          "zU": 0,
+          "viewzU": 2851177,
+          "statU": 0,
+          "frameSha": "7c3353366550490ef5416e816894ce225608ad87290e1fafa4ebc93f5ef6e15a"
+        },
+        {
+          "tic": 55,
+          "xU": 27926579,
+          "yU": 8397531,
+          "zU": 0,
+          "viewzU": 2192464,
+          "statU": 0,
+          "frameSha": "4f7988030a00d082fe445e00a2ac5dab502300ff1b80e8592dd569867b60ef74"
+        },
+        {
+          "tic": 75,
+          "xU": 32504202,
+          "yU": 8400493,
+          "zU": 0,
+          "viewzU": 2682276,
+          "statU": 2359296,
+          "frameSha": "5ba371eef9abac63ce23c344df0e60a7a96ad51bd1b42679cd0a2e2fa467689e"
+        },
+        {
+          "tic": 90,
+          "xU": 33182688,
+          "yU": 8402605,
+          "zU": 0,
+          "viewzU": 2716831,
+          "statU": 4325376,
+          "frameSha": "ea4ef36b7b929daf5e0f61516d20a7cafea76a3b12bfc40793ea206f8c4bee37"
+        },
+        {
+          "tic": 110,
+          "xU": 41328581,
+          "yU": 8406255,
+          "zU": 0,
+          "viewzU": 2856367,
+          "statU": 6946816,
+          "frameSha": "c280197f178e71663cda92c738b995534398eaf55d7df314cb76f5f6f9948853"
+        },
+        {
+          "tic": 130,
+          "xU": 51863276,
+          "yU": 8410115,
+          "zU": 0,
+          "viewzU": 2878096,
+          "statU": 8126464,
+          "frameSha": "b4eb7974d5f290015e72ea7517d151b520af65e8c91326e5f18c42b54cf34e49"
+        },
+        {
+          "tic": 150,
+          "xU": 53475639,
+          "yU": 8412171,
+          "zU": 0,
+          "viewzU": 2688841,
+          "statU": 8126464,
+          "frameSha": "7a95d4670bbe55ed3473150e9068eed2424d76e291630f6acd686207d97e059d"
+        }
+      ],
+      "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e",
+      "history": [
+        {
+          "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
+          "at": "2026-09-20",
+          "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e"
         }
       ]
     }

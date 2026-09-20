@@ -41,7 +41,7 @@ import {
 import { gInitGame, gTicker, TICS_PER_SECOND } from './sim/game';
 import { buildMapFromData } from './sim/map';
 import type { GameState } from './sim/state';
-import { attachRenderDebug, attachMouseInjection, debugApi, debugSim, installDebugApi } from './debug';
+import { attachRenderDebug, attachMouseInjection, attachPopInput, debugApi, debugSim, installDebugApi } from './debug';
 import { blitToCanvas, buildLut, Framebuffer } from './render/framebuffer';
 import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
 import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
@@ -224,6 +224,19 @@ attachMouseInjection((dx, dy) => {
   mouseInput.setLocked(true);
   mouseInput.motion(dx, dy);
   mouseInput.setLocked(was);
+});
+
+// M6-13 finding 3 seam: __doom.popInput() — drain the D_ProcessEvents
+// queue (stepTic's once-per-tic half, main.ts eventQueue) and the raw
+// mouse accumulator, returning what was dropped. e2e phases that drive
+// sim.runTics under pause(true) call it between phases so queued events
+// never flood the first live tics after pause(false).
+attachPopInput(() => {
+  const events = eventQueue.length;
+  eventQueue.length = 0;
+  const mouse = mouseInput.pending();
+  mouseInput.sample(); // drain the accumulator (consumed-once; discarded)
+  return { events, mouse };
 });
 
 /* ------------------------------------------------------------------ */

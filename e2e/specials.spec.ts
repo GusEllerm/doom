@@ -185,27 +185,39 @@ test.describe('E1M1 key route (M6-13, runtime-derived, scripted replay)', () => 
     });
     const msgs = await messageCounts(page);
     expect(msgs[ROUTE.door.message] ?? 0, 'lock passed: no refusal with the card').toBe(0);
-    // watch the door sector, then drive forward through it
+    // watch the door sector, then drive forward through it. M6-05b:
+    // EV_VerticalDoor moves the line's BACK sector (p_doors.c side = 0 —
+    // `sides[line->sidenum[side^1]].sector`), so BOTH sides are watched;
+    // a mover on either one counts as opened.
     const watch = await page.evaluate(() => {
       const st = window.__doom!.sim.getState()!;
-      const sec = st.map.lines.sectorFront[421]!;
-      return { sec, ceil0: st.sectors.ceilingZ[sec]! };
+      const secF = st.map.lines.sectorFront[421]!;
+      const secB = st.map.lines.sectorBack[421] ?? -1;
+      return {
+        secF, secB,
+        ceil0F: st.sectors.ceilingZ[secF]!,
+        ceil0B: secB >= 0 ? st.sectors.ceilingZ[secB]! : 0
+      };
     });
     await page.evaluate(
       ([sx, sy, a]) => window.__doom!.warp(sx, sy, undefined, a),
       [x * F, y * F, angleDeg] as const
     );
     const moved = await page.evaluate(
-      ([sx, sy, a, sec]) => {
+      ([sx, sy, a, secF, secB]) => {
         const sim = window.__doom!.sim;
         sim.warp(sx, sy, undefined, a);
         for (let t = 0; t < 60; t++) sim.runTics(1, { forward: true });
         const st = sim.getState()!;
-        return { y: st.players[0]!.mo.y, ceil: st.sectors.ceilingZ[sec]! };
+        return {
+          y: st.players[0]!.mo.y,
+          ceilF: st.sectors.ceilingZ[secF]!,
+          ceilB: secB >= 0 ? st.sectors.ceilingZ[secB]! : 0
+        };
       },
-      [x * F, y * F, angleDeg, watch.sec] as const
+      [x * F, y * F, angleDeg, watch.secF, watch.secB] as const
     );
-    const opened = moved.ceil > watch.ceil0;
+    const opened = moved.ceilF > watch.ceil0F || moved.ceilB > watch.ceil0B;
     if (opened) {
       // door body live (M6-05 re-landed): the player must have crossed
       expect(moved.y, 'traversed to side 1').toBeGreaterThanOrEqual(ROUTE.door.y1 * F);

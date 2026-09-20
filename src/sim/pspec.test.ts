@@ -27,7 +27,7 @@ import type { Mover } from './pmap';
 import { PLAYER_FLAGS } from './player';
 import { MF_MISSILE, MF_SOLID } from './thinglinks';
 import type { GameState } from './state';
-import { resetUpdateSpecialsCounts, updateSpecialsCounts } from './ptick';
+import { pRemoveThinker, resetUpdateSpecialsCounts, sectorSpecialData, setSectorSpecialData, updateSpecialsCounts } from './ptick';
 import { resetHookSlots } from './hooks';
 import { ML_TWOSIDED } from './pspec-helpers';
 
@@ -45,8 +45,9 @@ import {
 } from './pspec';
 import {
   LINE_SPECIALS, registryManifest, unimplementedSpecial,
-  resetUnimplementedSpecial, SLOWDARK
+  resetUnimplementedSpecial, SLOWDARK, VL
 } from './specials-table';
+import { evDoDoor } from './pdoors';
 import { pswitchCounts, resetPswitchCounts } from './pswitch';
 import type { ActionId, ActionSpec } from './specials-table';
 // M6-09: the lights family (EV_LightTurnOn/EV_StartLightStrobing/
@@ -95,6 +96,19 @@ function anyTwoSidedLine(s: GameState): number {
     if ((L.flags[i]! & ML_TWOSIDED) !== 0 && L.sectorBack[i]! >= 0) return i;
   }
   throw new Error('no two-sided line');
+}
+
+/** M6-05b: the door family is LIVE — movers spawned by these dispatch
+ * tests hold specialdata (the refuse-while-moving gate) and would poison
+ * the NEXT assertion on the shared state; drop them between tests. */
+function clearMovers(s: GameState): void {
+  for (let i = 0; i < s.sectors.count; i++) {
+    const t = sectorSpecialData(s.sectors, i);
+    if (t !== null) {
+      pRemoveThinker(t);
+      setSectorSpecialData(s.sectors, i, null);
+    }
+  }
 }
 
 beforeEach(() => {
@@ -149,9 +163,11 @@ const LIVE_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>([
   // M6-07: floors/stairs/donut live (pfloor.ts).
   'floor', 'stairs', 'donut',
   // M6-11: EV_DoLockedDoor live (card/skull check + PD_*O refusal);
-  // 99/133–137 are covered by pswitch.test.ts. (verticalDoor/door STAY
-  // stubred — M6-05's bodies never landed; ledger follow-up.)
-  'lockedDoor'
+  // 99/133–137 are covered by pswitch.test.ts.
+  'lockedDoor',
+  // M6-05b: EV_DoDoor/EV_VerticalDoor LIVE (pdoors.ts) — door semantics
+  // pinned by pdoors.test.ts, per-id scenarios by the M6-13 corpus.
+  'door', 'verticalDoor'
 ]);
 const allLive = (acts: readonly ActionSpec[]): boolean =>
   acts.every((a) => LIVE_ACTIONS.has(a.action));
@@ -282,29 +298,42 @@ describe('cross dispatch semantics', () => {
   const s = stateFrom(TWO_ROOMS);
   const line = anyTwoSidedLine(s);
 
-  it('W1 2: fires once, clears; second crossing dispatches but hits nothing', () => {
+  it('W1 2: fires once, clears; second crossing hits nothing (LIVE body)', () => {
     bindSpecialsWorld(s);
+    clearMovers(s);
+    const before = s.thinkers.nextId;
     s.map.lines.special[line] = 2;
     pCrossSpecialLine(s.pmap, line, 0, PLAYER);
     expect(s.map.lines.special[line]).toBe(0);
-    expect(hits('evDoDoor', 2)).toBe(1);
+    expect(s.thinkers.nextId, 'live EV_DoDoor(close)').toBeGreaterThan(before);
+    expect(hits('evDoDoor', 2), 'LIVE body — no stub').toBe(0);
     pCrossSpecialLine(s.pmap, line, 1, PLAYER); // special now 0
     expect(pcrossCounts.crossSpecialLine).toBe(2);
-    expect(hits('evDoDoor', 0)).toBe(0);
-    expect(hits('evDoDoor', 2)).toBe(1);
+    expect(s.thinkers.nextId, 'cleared W1 line dispatches nothing')
+      .toBe(s.thinkers.nextId);
+    clearMovers(s);
   });
 
-  it('GR 90: keeps firing across repeated crossings', () => {
+  it('GR 90: keeps its special across repeated crossings (LIVE body)', () => {
     bindSpecialsWorld(s);
+    clearMovers(s);
+    const before = s.thinkers.nextId;
     s.map.lines.special[line] = 90;
     pCrossSpecialLine(s.pmap, line, 0, PLAYER);
+    const afterFirst = s.thinkers.nextId;
+    expect(afterFirst, 'first crossing spawns (tag-0 hits both rooms)')
+      .toBeGreaterThan(before);
     pCrossSpecialLine(s.pmap, line, 1, PLAYER);
     expect(s.map.lines.special[line]).toBe(90);
-    expect(hits('evDoDoor', 90)).toBe(2);
+    expect(s.thinkers.nextId, 'second REFUSES while the movers run')
+      .toBe(afterFirst);
+    expect(hits('evDoDoor', 90), 'LIVE body — no stub').toBe(0);
+    clearMovers(s);
   });
 
   it('non-player: missile movers never fire; ok-list only; players unaffected', () => {
     bindSpecialsWorld(s);
+    clearMovers(s);
     const missile: Mover = { ...monster(), flags: MF_SOLID | MF_MISSILE };
     s.map.lines.special[line] = 90;
     pCrossSpecialLine(s.pmap, line, 0, missile);
@@ -314,8 +343,12 @@ describe('cross dispatch semantics', () => {
     resetUnimplementedSpecial();
     pCrossSpecialLine(s.pmap, line, 0, missile);
     expect(unimplementedSpecial.count).toBe(0);
+    const before4 = s.thinkers.nextId;
     pCrossSpecialLine(s.pmap, line, 0, monster());
-    expect(hits('evDoDoor', 4)).toBe(1);
+    expect(s.thinkers.nextId, 'LIVE body spawns for monsters too')
+      .toBeGreaterThan(before4);
+    expect(hits('evDoDoor', 4), 'LIVE body — no stub').toBe(0);
+    clearMovers(s);
   });
 
   it('125: player crossing is a harmless no-op (keeps special); monster fires+clears', () => {
@@ -387,17 +420,26 @@ describe('cross dispatch semantics', () => {
     s.map.lines.special[line] = 0;
   });
 
-  it('S1 with a stubbed (failed) action leaves the switch armed', () => {
+  it('S1 with a REFUSED action (sector already moving) leaves the switch armed', () => {
+    // The faithful failed-action flow on the LIVE body: the stub era is
+    // gone — rtn=0 now comes from the specialdata-refuse `continue`
+    // (p_doors.c), never from a stub recorder.
     bindSpecialsWorld(s);
+    clearMovers(s);
     s.map.lines.special[line] = 29; // S1 EV_DoDoor + gateSwitch 0
+    evDoDoor(s, line, VL.open);     // pre-arm the tagged sector(s)
+    resetUnimplementedSpecial();
+    resetPswitchCounts();
     pUseSpecialLine(s, PLAYER, line, 0);
     expect(s.map.lines.special[line]).toBe(29);
-    expect(hits('evDoDoor', 29)).toBe(1);
-    expect(hits('pChangeSwitchTexture', 29)).toBe(0);
+    expect(unimplementedSpecial.count, 'LIVE body — no stub').toBe(0);
+    expect(pswitchCounts.changeSwitchTexture, 'action false ⇒ no swap').toBe(0);
+    clearMovers(s);
   });
 
   it('cross 40 runs BOTH actions (live ceiling M6-08, then floor stub)', () => {
     bindSpecialsWorld(s);
+    clearMovers(s); // door-family leftovers refuse while moving (M6-05b)
     s.map.lines.special[line] = 40;
     // BOTH halves are LIVE now (M6-07 floor + M6-08 ceiling): the
     // BOTH-actions truth is real routing with zero stub records and
@@ -437,18 +479,24 @@ describe('pTryMove spechit path drives the real dispatcher', () => {
     expect(line).toBeGreaterThan(-1);
     resetUnimplementedSpecial();
     bindSpecialsWorld(s);
+    const beforeCross = s.thinkers.nextId;
     const mo: Mover = {
       x: fx(240), y: fx(64), z: 0, radius: fx(16), height: fx(56),
       flags: PLAYER_FLAGS, player: true
     };
     expect(pTryMove(s.pmap, mo, fx(268), fx(64))).toBe(true);
     expect(pcrossCounts.crossSpecialLine).toBe(1);
-    expect(hits('evDoDoor', 2)).toBe(1);
+    expect(s.thinkers.nextId, 'LIVE EV_DoDoor(close) — mover spawned')
+      .toBeGreaterThan(beforeCross);
+    expect(hits('evDoDoor', 2), 'LIVE body — no stub').toBe(0);
     expect(s.map.lines.special[line]).toBe(0);
     // walk back and over again: no spechit dispatch (special cleared)
+    const afterFirst = s.thinkers.nextId;
     expect(pTryMove(s.pmap, mo, fx(244), fx(64))).toBe(true);
     expect(pTryMove(s.pmap, mo, fx(268), fx(64))).toBe(true);
-    expect(hits('evDoDoor', 2)).toBe(1);
+    expect(s.thinkers.nextId, 'cleared line: re-cross spawns nothing')
+      .toBe(afterFirst);
+    expect(hits('evDoDoor', 2)).toBe(0);
     expect(pspecCounts.unboundDispatch).toBe(0);
   });
 
@@ -519,9 +567,10 @@ describe('P_SpawnSpecials (map setup wiring)', () => {
     expect(unimplementedSpecial.bySector[2]).toBe(0);
     expect(unimplementedSpecial.bySector[4]).toBe(0);
     expect(unimplementedSpecial.bySector[12]).toBe(0);
-    // Door spawner 10 is NOT in scope here (M6-05 owns pdoors spawners).
-    expect(unimplementedSpecial.bySector[10]).toBe(1);
-    expect(unimplementedSpecial.byFn.get('pSpawnDoorCloseIn30')).toBe(1);
+    // M6-05b: door spawner 10 is LIVE too (pdoors.ts body) — zero stub
+    // hits; the thinker payload is asserted in pdoors.test.ts.
+    expect(unimplementedSpecial.bySector[10]).toBe(0);
+    expect(unimplementedSpecial.byFn.get('pSpawnDoorCloseIn30')).toBeUndefined();
     // Thinker census in arena order (= ascending sector spawn order):
     // sectors 2(strobe 2), 3(strobe 4), 4(flash 1), 5(strobe 12 sync).
     expect(lightThinkerKinds(s)).toEqual([3, 3, 2, 3]);
@@ -835,27 +884,35 @@ describe('M6-02 fixture smoke — registry routes the family specials', () => {
   it('M6DOOR: use-lines route manual/locked → EV_VerticalDoor, SR 63 → EV_DoDoor', () => {
     const s = stateFromNamed(M6_SCENES.door, 'M6DOOR');
     bindSpecialsWorld(s);
+    const beforeManual = s.thinkers.nextId;
     expect(pUseSpecialLine(s, PLAYER, lineWithSpecial(s, 1), 0)).toBe(true);
-    expect(hits('evVerticalDoor', 1)).toBe(1);
+    expect(s.thinkers.nextId, 'manual 1 → LIVE EV_VerticalDoor').toBeGreaterThan(beforeManual);
+    expect(unimplementedSpecial.byFn.get('evVerticalDoor'), 'no stub').toBeUndefined();
     const l63 = lineWithSpecial(s, 63);
+    const before63 = s.thinkers.nextId;
+    resetPswitchCounts();
     expect(pUseSpecialLine(s, PLAYER, l63, 0)).toBe(true);
-    expect(hits('evDoDoor', 63)).toBe(1);
-    expect(pswitchCounts.changeSwitchTexture).toBe(0); // action failed ⇒ armed
+    // M6-05b FLIP: SR 63's action now returns TRUE → the gated
+    // P_ChangeSwitchTexture(line,1) runs (SR keeps the special).
+    expect(s.thinkers.nextId, 'SR 63 → LIVE EV_DoDoor').toBeGreaterThan(before63);
+    expect(pswitchCounts.changeSwitchTexture, 'action true ⇒ swap').toBe(1);
     expect(s.map.lines.special[l63]).toBe(63);
     // Locked manual 26 (M6-11): the REAL card check refuses BEFORE the
-    // (still-stubbed, M6-05-pending) door body — p_doors.c:368-380: no
-    // body hit, message PD_BLUEK + sfx_oof, special stays armed.
+    // door body — p_doors.c: no body effect, message PD_BLUEK + sfx_oof,
+    // special stays armed (unchanged by the M6-05b flip).
     resetPswitchCounts();
     const l26 = lineWithSpecial(s, 26);
+    const before26 = s.thinkers.nextId;
     expect(pUseSpecialLine(s, s.players[0]!.mo, l26, 0)).toBe(true);
-    expect(hits('evVerticalDoor', 26)).toBe(0);
+    expect(s.thinkers.nextId, 'refusal never reaches the body').toBe(before26);
     expect(s.hooks.message.byId?.get('PD_BLUEK')).toBe(1);
     expect(s.hooks.sfx.byId?.get(34)).toBe(1); // sfx_oof (sounds.h 34)
     expect(s.map.lines.special[l26]).toBe(26);
     // W1 cross 4 (monster-allowed): fires for monsters and clears.
     const l4 = lineWithSpecial(s, 4);
+    const before4 = s.thinkers.nextId;
     pCrossSpecialLine(s.pmap, l4, 0, monster());
-    expect(hits('evDoDoor', 4)).toBe(1);
+    expect(s.thinkers.nextId, 'W1 4 monster: LIVE spawn').toBeGreaterThan(before4);
     expect(s.map.lines.special[l4]).toBe(0);
   });
 
@@ -864,9 +921,13 @@ describe('M6-02 fixture smoke — registry routes the family specials', () => {
     bindSpecialsWorld(s);
     // (spawn stub hits already recorded by gInitGame after the beforeEach reset)
     const l90 = lineWithSpecial(s, 90);
+    const before90 = s.thinkers.nextId;
     pCrossSpecialLine(s.pmap, l90, 0, PLAYER);
     pCrossSpecialLine(s.pmap, l90, 1, PLAYER);
-    expect(hits('evDoDoor', 90)).toBe(2);
+    // M6-05b FLIP: the GR 90 body is LIVE — first crossing spawns, the
+    // second REFUSES while the mover runs (no stubs either way).
+    expect(s.thinkers.nextId, 'GR 90 live spawn').toBeGreaterThan(before90);
+    expect(unimplementedSpecial.byFn.get('evDoDoor'), 'no stub').toBeUndefined();
     expect(s.map.lines.special[l90]).toBe(90);
     const l19 = lineWithSpecial(s, 19);
     const thinkersBefore19 = s.thinkers.nextId;
