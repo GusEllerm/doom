@@ -110,9 +110,10 @@ export const DEFAULT_THING_INFO: ReadonlyMap<number, ThingInfo> = new Map(
   }),
 );
 
-/** Vanilla spawn skill bit (p_mobj.c:737-745): baby=1, nightmare=4, else 1<<(skill-1). */
+/** Vanilla spawn skill bit (p_mobj.c:737-745): baby(sk_baby=0)→1, baby-as-1
+ * alias too, nightmare=4, else 1<<(skill-1). */
 export function skillBit(skill: number): number {
-  return skill === 1 ? 1 : skill >= 4 ? 4 : 1 << (skill - 1);
+  return skill === 0 || skill === 1 ? 1 : skill >= 4 ? 4 : 1 << (skill - 1);
 }
 
 /** MTF_* option bits (R01 §4 / p_mobj.c:740,792): bit 16 = "not in single
