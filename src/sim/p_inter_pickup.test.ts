@@ -4,19 +4,33 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import {
   P_GiveAmmo, P_GiveWeapon, P_GiveBody, P_GiveArmor, P_GiveCard, P_GivePower,
-  P_TouchSpecialThingHook, registerPickupHook, resetPickupState,
+  P_TouchSpecialThingHook, registerPickupHook, resetPickupState, doomednumToSprite,
   setGamemode, setNetgame, setGameskill, setDeathmatch, setPickupSoundHook,
-  MAXHEALTH, BONUSADD, PW, IT, SFX, GOT,
-  AMMO, WP, SPR, NUMPOWERS, NUMAMMO, NUMWEAPONS, NUMCARDS,
+  BONUSADD, PW, IT, SFX, GOT,
+  AMMO, WP, NUMCARDS,
   INVULNTICS, INVISTICS, INFRATICS, IRONTICS
 } from './p_inter_pickup';
-import { initPlayerInventory } from './p_inter_inventory';
+import { initPlayerInventory, type PickupPlayer } from './p_inter_inventory';
 import { createPlayer } from './player';
 import { FRACUNIT } from '../core/constants';
 import { MF_SPECIAL, MF_DROPPED, MF_PICKUP, MF_COUNTITEM } from './thinglinks';
+import { mobjinfo, DOOMEDNUM_TO_MT } from '../wad/info/mobjinfo';
+import { stateSprite } from '../wad/info/states';
+import { pmapHooks, pCheckPosition, pmapHookCounts, resetPmapHookCounts } from './pmap';
+import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
+import { gInitGame } from './game';
+import { buildMapFromData, mapThingAt } from './map';
+import { loadMap } from '../wad/mapdata';
+import { WadFile } from '../wad/wadfile';
+
+const WAD_PATH = fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url));
+const hasWad = existsSync(WAD_PATH);
 
 // Test fixture: create a minimal world/links structure for hook testing
 function createTestWorld() {
@@ -42,19 +56,18 @@ function createTestWorld() {
   return { links };
 }
 
-function createTestPlayer() {
-  const p = createPlayer();
-  initPlayerInventory(p);
+function createTestPlayer(): PickupPlayer {
+  const p = initPlayerInventory(createPlayer());
   p.health = 100;
-  p.mo.health = 100;
+  (p.mo as unknown as { health?: number }).health = 100;
   p.mo.z = 0;
   p.mo.height = 56 * FRACUNIT;
   p.mo.linkSlot = 1; // toucher slot
   return p;
 }
 
-function createTestMover(player: ReturnType<typeof createPlayer>) {
-  return player.mo as any; // Mover with playerRef
+function createTestMover(player: PickupPlayer): PickupPlayer['mo'] {
+  return player.mo; // Mover with playerRef (MobjStub extends MoveMobj)
 }
 
 function setupItemSlot(world: ReturnType<typeof createTestWorld>, slot: number, doomednum: number, z = 0, flags = MF_SPECIAL) {
@@ -68,17 +81,17 @@ function setupItemSlot(world: ReturnType<typeof createTestWorld>, slot: number, 
 }
 
 describe('M7-04 Pickups + Inventory', () => {
-  let player: ReturnType<typeof createTestPlayer>;
+  let player: PickupPlayer;
   let toucher: ReturnType<typeof createTestMover>;
   let world: ReturnType<typeof createTestWorld>;
-  let soundHook: ReturnType<typeof vi.fn>;
+  let soundHook: Mock<(sound: string) => void>;
 
   beforeEach(() => {
     resetPickupState();
     player = createTestPlayer();
     toucher = createTestMover(player);
     world = createTestWorld();
-    soundHook = vi.fn();
+    soundHook = vi.fn<(sound: string) => void>();
     setPickupSoundHook(soundHook);
     registerPickupHook();
   });
@@ -199,6 +212,16 @@ describe('M7-04 Pickups + Inventory', () => {
       expect(player.ammo[AMMO.am_shell]).toBe(18); // +8
     });
 
+    it('netgame deathmatch=2: placed weapon falls through to normal rules', () => {
+      // vanilla gate is (deathmatch != 2): dm2 must NOT take the "leave
+      // guns lying around" branch — the placed weapon is consumed.
+      setNetgame(true);
+      setDeathmatch(2);
+      expect(P_GiveWeapon(player, WP.wp_plasma, false)).toBe(true);
+      expect(player.weaponowned[WP.wp_plasma]).toBe(1);
+      expect(player.ammo[AMMO.am_cell]).toBe(40); // found weapon = 2 cell loads
+    });
+
     it('netgame: placed weapon stays, gives ammo only once', () => {
       setNetgame(true);
       expect(P_GiveWeapon(player, WP.wp_shotgun, false)).toBe(false); // weapon stays
@@ -247,7 +270,7 @@ describe('M7-04 Pickups + Inventory', () => {
     it('updates mo.health', () => {
       player.health = 50;
       P_GiveBody(player, 25);
-      expect(player.mo.health).toBe(75);
+      expect((player.mo as unknown as { health?: number }).health).toBe(75);
     });
   });
 
@@ -358,6 +381,7 @@ describe('M7-04 Pickups + Inventory', () => {
     it('refreshes timer on duplicate powerup (vanilla behavior)', () => {
       P_GivePower(player, PW.pw_invulnerability);
       const firstTimer = player.powers[PW.pw_invulnerability];
+      expect(firstTimer).toBe(INVULNTICS);
       expect(P_GivePower(player, PW.pw_invulnerability)).toBe(true); // refreshes
       expect(player.powers[PW.pw_invulnerability]).toBe(INVULNTICS); // reset to full
     });
@@ -420,8 +444,8 @@ describe('M7-04 Pickups + Inventory', () => {
     it('RSKU (red skull) SP -> GOTREDSKULL + removed', testPickup(38, GOT.GOTREDSKULL, SFX.sfx_itemup));
 
     // Medikits
-    it('STIM (stimpack) -> GOTSTIM + itemup', testPickup(2011, GOT.GOTSTIM, SFX.sfx_itemup, p => { p.health = 50; p.mo.health = 50; }));
-    it('MEDI (medikit) -> GOTMEDIKIT + itemup', testPickup(2012, GOT.GOTMEDIKIT, SFX.sfx_itemup, p => { p.health = 50; p.mo.health = 50; }));
+    it('STIM (stimpack) -> GOTSTIM + itemup', testPickup(2011, GOT.GOTSTIM, SFX.sfx_itemup, p => { p.health = 50; (p.mo as unknown as { health?: number }).health = 50; }));
+    it('MEDI (medikit) -> GOTMEDIKIT + itemup', testPickup(2012, GOT.GOTMEDIKIT, SFX.sfx_itemup, p => { p.health = 50; (p.mo as unknown as { health?: number }).health = 50; }));
     it('MEDI (medikit) health<25 -> GOTMEDINEED', () => {
       player.health = 10;
       setupItemSlot(world, 2, 2013); // Note: MEDI doomednum? Check mobjinfo
@@ -442,6 +466,17 @@ describe('M7-04 Pickups + Inventory', () => {
     it('PINS (invisibility) -> GOTINVIS + getpow', testPickup(2024, GOT.GOTINVIS, SFX.sfx_getpow));
     it('SUIT (rad suit) -> GOTSUIT + getpow', testPickup(2025, GOT.GOTSUIT, SFX.sfx_getpow));
     it('PMAP (allmap) -> GOTMAP + getpow', testPickup(2026, GOT.GOTMAP, SFX.sfx_getpow));
+
+    it('BKEY in netgame -> given but left in map (p_inter.c card branch)', () => {
+      setNetgame(true);
+      setupItemSlot(world, 2, 5); // BKEY
+      P_TouchSpecialThingHook(2, toucher, world);
+      expect(player.cards[IT.it_bluecard]).toBe(1); // P_GiveCard ran
+      expect(world.links.linked[2]).toBe(1); // `return` before the tail: stays
+      // P_GiveCard ASSIGNS bonuscount = BONUSADD; the +=6 tail never runs
+      // (contrast SP, where the tail adds and the player flashes 12)
+      expect(player.bonuscount).toBe(BONUSADD);
+    });
     it('PVIS (light amp) -> GOTVISOR + getpow', testPickup(2045, GOT.GOTVISOR, SFX.sfx_getpow));
 
     // Ammo
@@ -460,6 +495,13 @@ describe('M7-04 Pickups + Inventory', () => {
       expect(player.backpack).toBe(true);
       expect(player.maxammo[AMMO.am_clip]).toBe(400); // doubled from 200
       expect(player.maxammo[AMMO.am_shell]).toBe(100); // doubled from 50
+      // once-semantics (p_inter.c: `if (!player->backpack)` guard): a
+      // second backpack must NOT double the caps again, only give ammo
+      setupItemSlot(world, 3, 8);
+      P_TouchSpecialThingHook(3, toucher, world);
+      expect(player.maxammo[AMMO.am_clip]).toBe(400); // unchanged
+      expect(player.ammo[AMMO.am_clip]).toBe(20); // 10 + one clip load
+      expect(world.links.linked[3]).toBe(0); // BPAK always consumed
     });
 
     // Weapons
@@ -478,7 +520,6 @@ describe('M7-04 Pickups + Inventory', () => {
   describe('MF_DROPPED items', () => {
     it('dropped clip gives half ammo (5)', () => {
       setupItemSlot(world, 2, 2007, 0, MF_SPECIAL | MF_DROPPED);
-      console.log('flags:', world.links.flags[2], 'MF_DROPPED:', MF_DROPPED, 'AND:', world.links.flags[2] & MF_DROPPED);
       P_TouchSpecialThingHook(2, toucher, world);
       expect(player.ammo[AMMO.am_clip]).toBe(5);
     });
@@ -519,9 +560,10 @@ describe('M7-04 Pickups + Inventory', () => {
 
     it('medikit at full health -> item stays', () => {
       player.health = 100;
-      // Need MEDI doomednum - use a placeholder
-      setupItemSlot(world, 2, 9999); // placeholder
-      // This test needs the correct doomednum for MEDI
+      setupItemSlot(world, 2, 2012); // MEDI (info.c MT_MISC11)
+      P_TouchSpecialThingHook(2, toucher, world);
+      expect(world.links.linked[2]).toBe(1); // P_GiveBody false ⇒ no pickup
+      expect(player.message).toBe('');
     });
 
     it('green armor at 100% armor -> item stays', () => {
@@ -603,13 +645,13 @@ describe('M7-04 Pickups + Inventory', () => {
   describe('MF_COUNTITEM', () => {
     it('health bonus has MF_COUNTITEM -> itemcount++', () => {
       // BON1 (health bonus) has MF_COUNTITEM flag (8388609 = MF_SPECIAL | MF_COUNTITEM)
-      setupItemSlot(world, 2, 2014, 0, MF_SPECIAL | 0x800000); // MF_COUNTITEM
+      setupItemSlot(world, 2, 2014, 0, MF_SPECIAL | MF_COUNTITEM);
       P_TouchSpecialThingHook(2, toucher, world);
       expect(player.itemcount).toBe(1);
     });
 
     it('armor bonus has MF_COUNTITEM -> itemcount++', () => {
-      setupItemSlot(world, 2, 2015, 0, MF_SPECIAL | 0x800000);
+      setupItemSlot(world, 2, 2015, 0, MF_SPECIAL | MF_COUNTITEM);
       P_TouchSpecialThingHook(2, toucher, world);
       expect(player.itemcount).toBe(1);
     });
@@ -630,47 +672,139 @@ describe('M7-04 Pickups + Inventory', () => {
   // E1M1 census - every MF_SPECIAL maps to handled sprite
   // ================================================================
   describe('E1M1 MF_SPECIAL census (skipIf)', () => {
+    // Truth = the data: every mobjinfo row carrying MF_SPECIAL must map to
+    // the sprite of its spawnState (info.c sprites column via states.ts).
+    // 36 rows in info.c — a drift in either direction (extra/missing
+    // MF_SPECIAL bit, wrong sprite) fails here, not silently in-game.
     it('all pickup doomednums in mobjinfo have a sprite mapping', () => {
-      // This test verifies the doomednumToSprite mapping covers all MF_SPECIAL items
-      const pickupDoomednums = [
-        2018, 2019, 2014, 2015, 5, 13, 6, 39, 38, 40, 2011, 2012,
-        2013, 2022, 2023, 2024, 2025, 2026, 2045, 83,
-        2007, 2048, 2010, 2046, 2047, 17, 2008, 2049, 8,
-        2006, 2002, 2005, 2003, 2004, 2001, 82
-      ];
-      for (const dn of pickupDoomednums) {
-        // Import the internal function or test via hook
-        // For now just verify the mapping exists by checking no throw
-        const sprite = (require('./p_inter_pickup') as any).doomednumToSprite?.(dn) ?? -1;
-        if (sprite === -1) {
-          console.warn(`No sprite mapping for doomednum ${dn}`);
-        }
-        // In the real test we'd verify each has a handler
+      const specials = mobjinfo.filter((m) => (m.flags & MF_SPECIAL) !== 0);
+      expect(specials.length).toBe(36); // linuxdoom-1.10 info.c MF_SPECIAL census
+      for (const m of specials) {
+        expect(
+          doomednumToSprite(m.doomednum),
+          `doomednum ${m.doomednum} has no sprite mapping`,
+        ).toBeGreaterThanOrEqual(0);
+        expect(
+          doomednumToSprite(m.doomednum),
+          `doomednum ${m.doomednum}: mapping disagrees with spawnState data`,
+        ).toBe(stateSprite[m.spawnState]);
       }
     });
-  });
 
-  // ================================================================
-  // Pickup order = PIT traversal order (determinism)
-  // ================================================================
-  describe('Pickup order determinism', () => {
-    it('multiple items in same block: dynamic chain first, then static CSR', () => {
-      // This is tested by the thinglinks iterator order
-      // The hook is called in PIT_CheckThing traversal order
-      // which is dynamic-chain-first, then static CSR (reverse THINGS order)
-      expect(true).toBe(true); // placeholder - requires full sim integration
+    it.skipIf(!hasWad)('E1M1: every MF_SPECIAL thing maps to a handled sprite', () => {
+      const buf = readFileSync(WAD_PATH).buffer.slice(0) as ArrayBuffer;
+      const map = buildMapFromData(loadMap(WadFile.parse(buf), 'E1M1'));
+      let specials = 0;
+      for (let i = 0; i < map.numThings; i++) {
+        const t = mapThingAt(map, i)!;
+        const mt = DOOMEDNUM_TO_MT.get(t.type);
+        if (mt === undefined) continue;
+        if ((mobjinfo[mt]!.flags & MF_SPECIAL) === 0) continue;
+        specials++;
+        expect(
+          doomednumToSprite(t.type),
+          `E1M1 thing type ${t.type} (MF_SPECIAL) unreachable by the sprite switch`,
+        ).toBeGreaterThanOrEqual(0);
+      }
+      // Sweep truth (freedoom1 E1M1): 123 MF_SPECIAL THINGS raw (all must
+      // map — the loop above), 78 spawned after the solo/skill-2 filter
+      // (asserted on the live boot below). The plan's "60" predates the
+      // data census — the data is the arbiter, not the plan number.
+      expect(specials).toBe(123);
+
+      // The mapping must also cover the LIVE world, not just the raw
+      // table: boot the level and every spawned MF_SPECIAL mobj's own
+      // spawnState sprite must agree with the doomednum table (this is
+      // the identity game.ts wires through setSpecialSpriteLookup).
+      const st = gInitGame(map, 2);
+      let live = 0;
+      for (const m of st.mobjs.mobjs) {
+        if (m.removed || (m.flags & MF_SPECIAL) === 0) continue;
+        live++;
+        expect(stateSprite[m.state]).toBe(doomednumToSprite(m.spawnpoint!.type));
+      }
+      expect(live).toBe(78);
     });
   });
 });
 
 // ================================================================
-// Integration: registerPickupHook + pmap.pitCheckThing
+// Integration: registerPickupHook + pmap PIT_CheckThing path
+// (production wiring: gInitGame registers the hook + resolves the
+// sprite/remover seams against the level's mobj runtime)
 // ================================================================
+function bootFixtureRoom(things: RectMapSpec['things']): ReturnType<typeof gInitGame> {
+  const spec: RectMapSpec = {
+    rooms: [{ x: 0, y: 0, w: 512, h: 512, lightLevel: 200 }],
+    things: [{ x: 32, y: 32, angle: 0, type: 1 }, ...(things ?? [])],
+  };
+  const bytes = buildFixtureMapWad(spec, 'FIXMAP');
+  const buf = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+  return gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP')));
+}
+
 describe('M7-04 integration: pmap hook wiring', () => {
-  it('hook is callable and receives correct args', () => {
+  beforeEach(() => {
     resetPickupState();
+    resetPmapHookCounts();
+  });
+
+  it('hook is callable and receives correct args', () => {
     registerPickupHook();
-    const hooks = require('./pmap').pmapHooks;
-    expect(typeof hooks.touchSpecialThing).toBe('function');
+    expect(typeof pmapHooks.touchSpecialThing).toBe('function');
+    // Re-register is idempotent (chain-preserving, ptelept idiom) — no
+    // double-dispatch: one touch must produce exactly one hook call.
+    registerPickupHook();
+    const st = bootFixtureRoom([{ x: 96, y: 32, angle: 0, type: 2018 }]);
+    resetPmapHookCounts();
+    pCheckPosition(st.pmap, st.players[0]!.mo, 96 * FRACUNIT, 32 * FRACUNIT);
+    expect(pmapHookCounts.touchSpecialThing).toBe(1);
+    const item = st.mobjs.mobjs.find((m) => m.spawnpoint?.type === 2018)!;
+    expect(item.removed).toBe(true); // exactly one dispatch reached the seam
+  });
+
+  it('PIT path: player walking onto an ARM1 changes the world', () => {
+    registerPickupHook();
+    const st = bootFixtureRoom([{ x: 96, y: 32, angle: 0, type: 2018 }]);
+    const p = initPlayerInventory(st.players[0]!);
+    expect(p.mo.flags & MF_PICKUP).not.toBe(0); // player flags carry MF_PICKUP (info.c)
+    const item = st.mobjs.mobjs.find((m) => m.spawnpoint?.type === 2018)!;
+    expect(item).toBeDefined();
+    resetPmapHookCounts();
+
+    pCheckPosition(st.pmap, p.mo, 96 * FRACUNIT, 32 * FRACUNIT);
+
+    expect(pmapHookCounts.touchSpecialThing).toBeGreaterThan(0);
+    expect(p.armorpoints).toBe(100); // P_GiveArmor(1) ran with the REAL player
+    expect(p.armortype).toBe(1);
+    expect(p.message).toBe(GOT.GOTARMOR);
+    expect(p.bonuscount).toBe(BONUSADD);
+    expect(item.removed).toBe(true); // seam → p_mobj.pRemoveMobj
+    expect(st.pmap.links.linked[item.linkSlot]).toBe(0);
+  });
+
+  it('two items in one cell: static CSR order (reverse THINGS) decides', () => {
+    registerPickupHook();
+    // THINGS order [ARM1, ARM2] → static iteration is REVERSE (M7-02 CSR):
+    // ARM2 resolves first (armorpoints 200/type 2), then ARM1's
+    // P_GiveArmor(1) FAILS against it → ARM1 stays in the map.
+    const st = bootFixtureRoom([
+      { x: 96, y: 32, angle: 0, type: 2018 },
+      { x: 96, y: 32, angle: 0, type: 2019 },
+    ]);
+    const p = initPlayerInventory(st.players[0]!);
+    const arm1 = st.mobjs.mobjs.find((m) => m.spawnpoint?.type === 2018)!;
+    const arm2 = st.mobjs.mobjs.find((m) => m.spawnpoint?.type === 2019)!;
+
+    pCheckPosition(st.pmap, p.mo, 96 * FRACUNIT, 32 * FRACUNIT);
+
+    expect(arm2.removed).toBe(true); // visited first
+    expect(arm1.removed).toBe(false); // give-false ⇒ stays put
+    expect(p.armorpoints).toBe(200);
+    expect(p.armortype).toBe(2);
+    expect(p.message).toBe(GOT.GOTMEGA); // ARM1 never overwrote the message
   });
 });
