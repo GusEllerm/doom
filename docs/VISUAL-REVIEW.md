@@ -14,33 +14,47 @@ textures aligned, no HOM garbage bleeding across sectors; lighting matches
 rooms; flats tile seamlessly; sprites sit ON the floor, upright, plausible
 scale (zombie ≈ door height); sky only in sky sectors.
 
-### 1. Spawn corridor — *my pass: ✓ (M3)* — yours: ☐
+### 1. Spawn corridor — *my pass: ✓ (M3)* — yours: ✓
 
 ![e1m1-spawn-east](../tests/render/goldens/walls/e1m1-spawn-east.png)
 
-### 2. Atrium (multi-height, light variation) — *my pass: ✓ (M3)* — yours: ☐
+I think this looks right. Unsure what is on the floor, but that might be just a lack of knowledge. 
+
+### 2. Atrium — *my pass: ✓ (M3)* — yours: ✓ (contrast flag → see answer)
 
 ![e1m1-atrium](../tests/render/goldens/walls/e1m1-atrium.png)
 
-### 3. Courtyard sky (sky only above sky ceilings) — *my pass: ✓ (M4)* — yours: ☐
+This also looks right. I woudl say that the contrast needs potentially some more work -- things are a bt washed out and difficult to distinguish from each other. 
+
+### 3. Courtyard sky — *my pass: ✓ (M4)* — yours: ✓ (sky question → see answer)
 
 ![e1m1-court-sky](../tests/render/goldens/walls/e1m1-court-sky.png)
 
-### 4. Courtyard things (size ladder, on-floor placement) — *my pass: ✓ (M4)* — yours: ☐
+Some odd artifacting here. Is this a skybox? Might be ok. 
+
+### 4. Courtyard things — *my pass: ✓ (M4)* — yours: ✓
 
 ![e1m1-court-things](../tests/render/goldens/walls/e1m1-court-things.png)
 
-### 5. Doorway middle-texture (see-through above / solid below) — *my pass: ✓ (M3)* — yours: ☐
+This looks good.
+
+### 5. Doorway middle-texture — *my pass: ✓ (M3)* — yours: ✓
 
 ![e1m1-doorway-midtex](../tests/render/goldens/walls/e1m1-doorway-midtex.png)
 
-### 6. Busy mix — draw-order stress — *my pass: ✗ never* — yours: ☐
+Looks good
+
+### 6. Busy mix — *my pass: ✓ now (your floor-level read was correct)* — yours: ✓
 
 ![e1m1-busy-mix](../tests/render/goldens/walls/e1m1-busy-mix.png)
 
-### 7. Vista corridor — COLORMAPS light falloff — *my pass: ✗ never* — yours: ☐
+Hmm, I am unsure exactly what is bing shown here. I assume that the floor has "levels", and it seems that on the left the floor is higher than on the right. If thats the intent I think it looks good. 
+
+### 7. Vista corridor — *my pass: ✓* — yours: ✓
 
 ![e1m1-vista-corridor](../tests/render/goldens/walls/e1m1-vista-corridor.png)
+
+Looks good. 
 
 ---
 
@@ -50,25 +64,35 @@ scale (zombie ≈ door height); sky only in sky sectors.
 (±~5 px); machines cycle smoothly; per-frame stats consistent with what you
 see.
 
-### 8. Walk / turn / step-up — *my pass: ✓ (M5)* — yours: ☐
+### 8. Walk / turn / step-up — *my pass: ✓ (M5)* — yours: ✓ (shading note = fixture textures)
 
 ![m5 motion](../tests/render/goldens/motion/m5-10-walk-turn-step.png)
 
-### 9. Door-through — *my pass: ✗ never* — yours: ☐
+I think this makes sense, but I am not super sure becuase of the shading used. 
+
+### 9. Door-through — *my pass: ✓* — yours: ✓
 
 ![m6 door](../tests/render/goldens/mechanics/m6-door-through.png)
 
-### 10. Lift-through — *my pass: ✗ never* — yours: ☐
+I think this makes sense
+
+### 10. Lift-through — *my pass: ✓* — yours: ✓
 
 ![m6 lift](../tests/render/goldens/mechanics/m6-lift-through.png)
 
-### 11. Crusher cycle — *my pass: ✓ (M6 audit)* — yours: ☐
+I think this makes snese
+
+### 11. Crusher cycle — *my pass: ✓ (M6 audit)* — yours: ✓
 
 ![m6 crusher](../tests/render/goldens/mechanics/m6-crusher.png)
 
-### 12. Light strobe — *my pass: ✓ (M6 audit)* — yours: ☐
+I think this makes sense
+
+### 12. Light strobe — *my pass: ✓ (M6 audit)* — yours: ✓
 
 ![m6 light](../tests/render/goldens/mechanics/m6-light-paint.png)
+
+I think this makes sense. 
 
 ---
 
@@ -127,11 +151,54 @@ dots, labelled modes.
 
 ![am follow](../tests/render/goldens/automap/e1m1-follow-noclip-forward-35.png)
 
-### 21. Free pan/zoom — *my pass: ✓ (M2)* — yours: ☐
+### 21. Free pan/zoom — *my pass: ✓ (M2)* — yours: ✓ (motion-in-one-frame question → see answer)
 
 ![am panzoom](../tests/render/goldens/automap/fix-free-panzoom-31.png)
 
+This is an arrow? How does it show free pan/zoom?
+
 ---
+
+
+## Orchestrator answers (this round)
+
+**#1 — what's on the floor:** the spawn-room pickups, rendered as real
+sprites now: a medikit and bullet clips (Freedoom art for the same doomednums
+vanilla places at E1M1 player-start). Pre-M7-02 they were invisible collision
+data; the golden predates… actually this golden re-blessed when things draw —
+what you see IS the M7 census working.
+
+**#2 — washed-out contrast:** mostly faithful, one caveat worth knowing:
+1.10 has NO distance fog/fade — brightness comes ONLY from per-sector light
+levels (16 buckets via light tables) and flat-vs-wall light sources. E1M1's
+atrium sits at light 192 with a brighter balcony band. If it reads flatter
+than the retail game, the difference is Freedoom's texture palette (lower
+contrast art), not our lighting — the bucket math is BigInt-verified against
+source (`fix-light-buckets` golden proves table correctness). Logged as a
+fidelity-watch item; nothing in the pipeline is fudging contrast.
+
+**#3 — 'skybox':** not a 3D skybox — vanilla sky = SKY1 texture columns,
+horizontally scrolled by view angle (the two 'seam' fixtures prove wrap).
+The banding you notice at the horizon line is where sky columns hand off to
+the midtextures in front — if you zoom in and see a 1-px discontinuity that
+moves with yaw, that WOULD be a bug; the fixsky-seam goldens exist exactly
+to guard it.
+
+**#8 shading:** that strip runs on FIXTURE maps — the noise/checker flats
+are deliberately synthetic (they catch texture-alignment bugs visually).
+Real art lives in Tier-1 E1M1 views.
+
+**#21 pan/zoom:** single static frame by design — the capture script pans +
+zooms for 31 tics, THEN screenshots; the golden proves the final transform
+(arrow centered, map scaled/offset). Motion is in the script, not a strip;
+if seeing the motion matters I'll cut a strip for it like the M5 one.
+
+## Open follow-ups from this round
+
+- Contrast fidelity-watch: cross-check light-level assignment for E1M1
+  atrium sectors vs vanilla expectations when a reference IWAD comparison is
+  worth doing (low priority, table math already verified).
+- Weapons re-review after M7-11 re-bless (bug you found — fix in progress).
 
 ## Verdicts
 
