@@ -214,8 +214,13 @@ export function sStartSound(
  * slot. Installed by the game bootstrap; reset by resetPickupHooks().
  * `origin = NULL` verbatim (p_inter.c:655 S_StartSound(NULL, sound)).
  */
-export function installPickupSfxBridge(h: HookSlots, getTic: () => number): void {
-  setPickupSoundHook((token: string) => {
+export function installPickupSfxBridge(
+  h: HookSlots,
+  getTic: () => number
+): (token: string) => void {
+  const emit = (token: string): void => {
     sStartSound(h, resolveSfxId(token), null, getTic());
-  });
+  };
+  setPickupSoundHook(emit);
+  return emit;
 }
