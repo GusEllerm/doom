@@ -21,7 +21,10 @@ import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
-import { createMobjRuntime, pRespawnSpecials, pSpawnThings } from './p_mobj';
+import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from './p_mobj';
+import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
+import { initPlayerInventory } from './p_inter_inventory';
+import { stateSprite } from '../wad/info/states';
 import { pSpawnSpecials, pUpdateSpecials } from './pspec';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
@@ -57,6 +60,12 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   }
   const player = createPlayer();
   pSpawnPlayer(player, start);
+  // M7-04: d_player.h inventory fields (ammo/maxammo/armor/…) must exist
+  // before the first touch can reach P_Give*. Guarded attach — defers to
+  // the canonical G_PlayerReborn init the moment M7-03 wires it (puser/
+  // createPlayer); until then the pickup layer sees zeroed fields, never
+  // undefined.
+  initPlayerInventory(player);
 
   const bm = buildBlockMap(map);
   const links = buildThingLinks(map, bm, { skill });
@@ -100,6 +109,22 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
     mobjs: null as unknown as GameState['mobjs']
   };
   state.mobjs = createMobjRuntime(state);
+  // M7-04 pickups: fill the M5-02 PIT_CheckThing touch slot against THIS
+  // level's mobj runtime. ThingLinks carries no sprite/thinker reference,
+  // so the p_inter sprite switch and the P_RemoveMobj tail resolve through
+  // the two seams (lazy: they read rt.slotMobjs at touch time).
+  registerPickupHook();
+  const mobjRt = state.mobjs;
+  setSpecialSpriteLookup((slot) => {
+    const m = mobjRt.slotMobjs.get(slot);
+    return m && !m.removed ? stateSprite[m.state]! : -1;
+  });
+  setSpecialRemover((slot) => {
+    const m = mobjRt.slotMobjs.get(slot);
+    if (!m || m.removed) return false;
+    pRemoveMobj(m);
+    return true;
+  });
   mClearRandom(state.rng); // g_game.c:1414
   // M7-02 thing spawn pass — 1.10 site: P_SetupLevel → P_LoadThings →
   // P_SpawnMapThing (p_setup.c:346) BEFORE P_SpawnSpecials, in THINGS

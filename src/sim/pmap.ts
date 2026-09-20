@@ -233,6 +233,11 @@ export const tm = {
 /** active world for the PIT visitors (vanilla's implicit `level` globals). */
 let world: PMapWorld | null = null;
 
+/** Get the current active world (for M7 pickup hook). */
+export function getPmapWorld(): PMapWorld | null {
+  return world;
+}
+
 /** validcount threading: same counter domain as p_maputl (M5-01 note). */
 const scan: { valid: Int32Array; stamp: number } = { valid: new Int32Array(0), stamp: 0 };
 
