@@ -274,7 +274,11 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   // M7-09 (pmissiles.ts): the two `S_StartSound(th, seesound)` missile
   // spawn sites (p_mobj.c:899/966) + the P_ExplodeMissile deathsound
   // bridge body for the p_mobj.c:103 site (mobjHooks.startSound).
-  'pmissiles.ts': 3
+  'pmissiles.ts': 3,
+  // M8-04 (p_enemy.ts): A_Look seeyou full-volume NULL + origin emits
+  // (p_enemy.c:650-656) + A_Chase melee attacksound (:727) + activesound
+  // (:773). Four direct hook calls.
+  'p_enemy.ts': 4
 };
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
