@@ -119,3 +119,5 @@ Future tasks will be added as architects decompose milestones.
 | M7-03 | Player states, pain/death, reborn | M7 | M7-01/02 | done (merged, verified — third time lucky) |
 | M7-04 | Pickups + inventory | M7 | M7-02 | done (merged, verified) |
 | M7-08 | Hitscan aim/attack/traverse | M7 | M7-02/07 | finisher (agent 605ef527; traverse core committed) |
+| M7-05 | Ammo economy + weapon switching | M7 | M7-02/03/04 | dispatched (agent 98462a18) |
+| M7-06 | Powerup render effects + palettes | M7 | M7-02/04 | dispatched (agent 0a7b0933) |
