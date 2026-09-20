@@ -200,3 +200,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - Security note D015: injection-shaped string found in mirror content — data-only policy reaffirmed.
 - Running: psprite t2, mobj runtime. Next M7 waves: player states + pickups once mobj lands.
 - M7-07 merged: psprite machine complete; gun LAYER built but DEFAULT OFF (frames byte-unchanged by design) — visible gun arrives with M7-08 live-data wiring. weaponinfo truth resolved (table at p_pspr.c:30, not info.c); 69/69 prndindex deltas; A_ReFire 100%-consume quirk pinned; ammo via slots until M7-05.
+- M7-02 merged (211-mobj census). M7 wave 2/3 dispatched: playerstates/pickups/hitscan. Monsters now stand solid in E1M1 (silent until M8 AI).
