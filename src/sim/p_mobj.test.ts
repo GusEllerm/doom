@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { FRACUNIT } from '../core/constants';
+import { FixedMul } from '../core/fixed';
 import { loadMap } from '../wad/mapdata';
 import { WadFile } from '../wad/wadfile';
 import { mobjinfo, MT, MF, DOOMEDNUM_TO_MT } from '../wad/info/mobjinfo';
@@ -35,13 +36,29 @@ import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBu
 import { gInitGame, runHeadless } from './game';
 import { hashState, type GameState, type Skill } from './state';
 import { pAddThinker, pRunThinkers, thinkerCount } from './ptick';
-import { pXYMovement } from './pmove';
+import { pXYMovement, pZMovement } from './pmove';
 import { pTryMove } from './pmap';
 import { pPathTraverse, pInterceptVector, PT_ADDTHINGS, type Intercept } from './pmaputl';
 import { pointOnDivlineSide } from './bsp';
 import { sectorAtPoint } from './bsp';
-import { skillBit, MF_SPECIAL, MF_MISSILE, MTF_AMBUSH } from './thinglinks';
 import {
+  skillBit,
+  MF_SPECIAL,
+  MF_MISSILE,
+  MTF_AMBUSH,
+  MF_AMBUSH,
+  MF_JUSTHIT,
+  MF_JUSTATTACKED,
+  MF_CORPSE,
+  MF_INFLOAT,
+  MF_SKULLFLY,
+} from './thinglinks';
+import { mobjFromSlot as hooksMobjFromSlot } from './hooks';
+import {
+  DI_NODIR,
+  mobjFromSlot,
+  pSetMobjFlags,
+  syncMobj,
   pExplodeMissile,
   pRemoveMobj,
   pRespawnSpecials,
@@ -630,5 +647,112 @@ describe('mobj thinkers in the M6-01 arena', () => {
     const inv = pSpawnMobj(s.mobjs, 200 << 16, 200 << 16, ONFLOORZ, MT.MT_INV);
     pRemoveMobj(inv);
     expect(s.mobjs.iquehead).toBe(1);
+  });
+});
+
+/* ================================================================== */
+/* M8-02 — AI fields, flags, corpse friction, skullfly z-bounce        */
+/* ================================================================== */
+
+/** A[0..128] floor 0 | pit B[128..256] floor −8 (the pmove.test edge, now
+ * booted through gInitGame so real mobjs live on it). */
+const pitRoom: RectMapSpec = {
+  rooms: [
+    { x: 0, y: 0, w: 128, h: 128 },
+    { x: 128, y: 0, w: 128, h: 128, floorHeight: -8 },
+  ],
+  things: [{ x: 32, y: 32, angle: 0, type: 1 }],
+};
+
+function bootPit(): GameState {
+  const bytes = buildFixtureMapWad(pitRoom, 'FIXMAP');
+  const buf = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+  return gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP')), 2);
+}
+
+/** Dynamic-slot POSS parked at x=140 — box [120.5..160.5] straddles the
+ * step linedef at x=128 ⇒ P_TryMove republishes floorz = 0 (room-A edge)
+ * while the SUBSECTOR is the pit (floor −8): the p_mobj.c:207 "halfway
+ * off a step" state (same construction as pmove.test's mover, M5-05). */
+function edgePoss(s: GameState, extraFlags: number, yUnits = 64): Mobj {
+  const m = pSpawnMobj(s.mobjs, (140 << 16) | 0, (yUnits << 16) | 0, 0, MT.MT_POSSESSED);
+  m.z = 0; // z is a raw arg here (not ONFLOORZ): pit-floor spawn lifted to the step
+  pSetMobjFlags(m, m.flags | extraFlags);
+  m.momx = FRACUNIT;
+  return m;
+}
+
+describe('M8-02 — AI fields + flags + hash word (M8-plan §M8-02)', () => {
+  it('acceptance 1: movedir/movecount/damage exist, default DI_NODIR/0/mobjinfo-row', () => {
+    expect(DI_NODIR).toBe(8); // p_enemy.c:50-64 dirtype_t DI_NODIR
+    const s = bootFixture([{ x: 200, y: 200, angle: 0, type: 2035 }]);
+    const barrel = liveMobjs(s.mobjs).find((m) => m.type === MT.MT_BARREL)!;
+    expect(barrel.movedir).toBe(DI_NODIR);
+    expect(barrel.movecount).toBe(0);
+    expect(barrel.damage).toBe(mobjinfo[MT.MT_BARREL]!.damage); // 0
+    const skull = pSpawnMobj(s.mobjs, 300 << 16, 300 << 16, ONFLOORZ, MT.MT_SKULL);
+    expect(skull.movedir).toBe(DI_NODIR);
+    expect(skull.movecount).toBe(0);
+    expect(skull.damage).toBe(3); // info.c MT_SKULL damage row (§0.11)
+    // 9th §3.4 word: movedir|movecount|damage, refreshed by syncMobj
+    expect(skull.words.length).toBe(9);
+    expect(skull.words[8]).toBe((DI_NODIR | 0 | 3) | 0);
+    skull.movedir = 2;
+    skull.movecount = 5;
+    syncMobj(skull);
+    expect(skull.words[8]).toBe((2 | 5 | 3) | 0);
+  });
+
+  it('M8-02 MF_* constants carry the exact p_mobj.h values', () => {
+    expect([MF_AMBUSH, MF_JUSTHIT, MF_JUSTATTACKED, MF_CORPSE, MF_INFLOAT]).toEqual([
+      32, 64, 128, 0x100000, 0x200000,
+    ]);
+    // parity with the mobjinfo.ts MF table (single source of truth)
+    expect(MF.MF_AMBUSH).toBe(MF_AMBUSH);
+    expect(MF.MF_JUSTHIT).toBe(MF_JUSTHIT);
+    expect(MF.MF_JUSTATTACKED).toBe(MF_JUSTATTACKED);
+    expect(MF.MF_CORPSE).toBe(MF_CORPSE);
+    expect(MF.MF_INFLOAT).toBe(MF_INFLOAT);
+  });
+
+  it('acceptance 2: MF_CORPSE friction exemption — a corpse halfway off a step keeps sliding', () => {
+    const s = bootPit();
+    const corpse = edgePoss(s, MF_CORPSE, 48);
+    pXYMovement(s.pmap, corpse);
+    // move happened; floorz republished to the step (0) while the subsector
+    // floor is −8 ⇒ p_mobj.c:207-220 returns BEFORE stop/friction
+    expect(corpse.momx).toBe(FRACUNIT);
+    expect(corpse.floorz).toBe(0);
+    // control: identical state WITHOUT MF_CORPSE takes the friction
+    // (own lane: the corpse mobj still sits at y=64 and would BLOCK it)
+    const ctrl = edgePoss(s, 0, 96);
+    pXYMovement(s.pmap, ctrl);
+    expect(ctrl.momx).toBe(FixedMul(FRACUNIT, 0xe800)); // FRICTION decay
+  });
+
+  it('acceptance 3: MF_SKULLFLY z-bounce in P_ZMovement (p_mobj.c:246 floor hit)', () => {
+    const s = bootFixture([]);
+    const skull = pSpawnMobj(s.mobjs, 200 << 16, 200 << 16, ONFLOORZ, MT.MT_POSSESSED);
+    pSetMobjFlags(skull, skull.flags | MF_SKULLFLY);
+    skull.momz = -(2 * FRACUNIT);
+    pZMovement(skull);
+    expect(skull.momz).toBe(2 * FRACUNIT); // reversed, NOT zeroed (bounce)
+    expect(skull.z).toBe(skull.floorz); // z still clipped to the floor
+    // control without the flag: the floor hit swallows the momentum
+    const plain = pSpawnMobj(s.mobjs, 200 << 16, 200 << 16, ONFLOORZ, MT.MT_POSSESSED);
+    plain.momz = -(2 * FRACUNIT);
+    pZMovement(plain);
+    expect(plain.momz).toBe(0);
+  });
+
+  it('acceptance 4a: createMobjRuntime registers the slot→mobj resolver on the hook slots', () => {
+    const s = bootFixture([{ x: 200, y: 200, angle: 0, type: 2035 }]);
+    const barrel = liveMobjs(s.mobjs).find((m) => m.type === MT.MT_BARREL)!;
+    expect(mobjFromSlot(s.mobjs, barrel.linkSlot)).toBe(barrel);
+    expect(hooksMobjFromSlot(s.hooks, barrel.linkSlot)).toBe(barrel);
+    expect(mobjFromSlot(s.mobjs, 9999)).toBeUndefined();
   });
 });
