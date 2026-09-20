@@ -79,6 +79,18 @@ export const MF_NOBLOOD = 0x80000;
 /** p_mobj.h:169/174 MF_COUNTKILL / MF_COUNTITEM. */
 export const MF_COUNTKILL = 0x400000;
 export const MF_COUNTITEM = 0x800000;
+/** p_mobj.h:129 "Not to be activated by sound, deaf monster" (MTF_AMBUSH
+ * sets it at spawn, p_mobj.c:792; A_Look gates the P_CheckSight on it). */
+export const MF_AMBUSH = 32;
+/** p_mobj.h:131/133 "Will try to attack right back" / "Will take at least
+ * one step before attacking" (P_DamageMobj pain / A_Chase + A_ReFire). */
+export const MF_JUSTHIT = 64;
+export const MF_JUSTATTACKED = 128;
+/** p_mobj.h:173/176 corpse slide + "don't auto float to target's height"
+ * (P_KillMobj sets MF_CORPSE; P_XYMovement:207 friction exemption and
+ * P_Move's float adjustment set MF_INFLOAT). */
+export const MF_CORPSE = 0x100000;
+export const MF_INFLOAT = 0x200000;
 /** p_mobj.h:177 skull in flight. */
 export const MF_SKULLFLY = 0x1000000;
 

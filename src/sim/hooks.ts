@@ -81,6 +81,56 @@ export interface HookSlots {
   sfx: SlotLog<SfxEvent>;
   message: SlotLog<MessageEvent>;
   exit: SlotLog<ExitEvent>;
+  /** M8-02 damage-bridge wiring (NOT an event log — resetHookSlots never
+   * clears it; fresh per level because gInitGame builds fresh slots). */
+  bridge: DamageBridgeSlots;
+}
+
+/* ------------------------------------------------------------------ */
+/* Damage bridge (M8-02, M8-plan §M8-02/§0.13)                          */
+/* ------------------------------------------------------------------ */
+
+/** Structural stand-in for the mobj runtime's live object — typed here so
+ * hooks.ts keeps importing NOTHING (A-06); p_mobj.ts's resolver satisfies
+ * it (Mobj.isMobj). */
+export interface MobjRef {
+  readonly isMobj: true;
+}
+
+/** ThingLinks slot → live mobj (undefined when the slot has no mobj bound:
+ * unmapped decor slots, freed slots). Registered by p_mobj.ts on every
+ * runtime create (createMobjRuntime wires it to rt.slotMobjs). */
+export type MobjResolverFn = (slot: number) => MobjRef | undefined;
+
+/** p_inter.c `P_DamageMobj(target, inflictor, source, damage)` — the real
+ * body (M8-05 registers it here) receives RESOLVED mobj refs; the record
+ * into h.damage above stays the L2 event log (M8-plan §0.13: no call-site
+ * churn in the seven damageSlot call sites). source resolves to undefined
+ * for world damage (crushers, damage floors, null source). */
+export type DamageBridgeFn = (
+  target: MobjRef,
+  amount: number,
+  source: MobjRef | undefined,
+  tic: number,
+) => void;
+
+export interface DamageBridgeSlots {
+  mobjFromSlot?: MobjResolverFn;
+  damageBridge?: DamageBridgeFn;
+}
+
+/** Register (or with null, clear) the P_DamageMobj body. The dispatch
+ * below only fires while BOTH the body and the slot resolver are present,
+ * so pre-M8-05 behavior (record-only) is bit-identical. */
+export function registerDamageBridge(h: HookSlots, fn: DamageBridgeFn | null): void {
+  h.bridge.damageBridge = fn ?? undefined;
+}
+
+/** Resolve a damageSlot slot id to its live mobj (undefined when nothing
+ * is bound or no resolver is registered). The M8-05 bridge body uses this
+ * for inflictor/source slots the signature does not pre-resolve. */
+export function mobjFromSlot(h: HookSlots, slot: number): MobjRef | undefined {
+  return h.bridge.mobjFromSlot?.(slot);
 }
 
 export function createHookSlots(): HookSlots {
@@ -88,7 +138,8 @@ export function createHookSlots(): HookSlots {
     damage: { count: 0, entries: [] },
     sfx: { count: 0, entries: [], byId: new Map() },
     message: { count: 0, entries: [], byId: new Map() },
-    exit: { count: 0, entries: [] }
+    exit: { count: 0, entries: [] },
+    bridge: {}
   };
 }
 
@@ -118,6 +169,22 @@ export function damageSlot(
   h: HookSlots, thing: number, amount: number, source: number | null, tic: number
 ): void {
   record(h.damage, { thing, amount, source, tic });
+  // M8-02 bridge: record FIRST (the L2 log never depends on the bridge),
+  // then dispatch to the P_DamageMobj body when one is registered AND the
+  // target slot resolves to a live mobj (unresolved slots — plain decor
+  // under a crusher — stay record-only, exactly the pre-M8 behavior).
+  const body = h.bridge.damageBridge;
+  if (body !== undefined) {
+    const target = h.bridge.mobjFromSlot?.(thing);
+    if (target !== undefined) {
+      body(
+        target,
+        amount,
+        source === null ? undefined : h.bridge.mobjFromSlot?.(source),
+        tic,
+      );
+    }
+  }
 }
 
 /** S_StartSound stand-in (M10 audio replaces the body). */

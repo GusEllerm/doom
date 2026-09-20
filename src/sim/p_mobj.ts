@@ -24,7 +24,8 @@
 // ARCH §3.5.5). Static-slot mobjs (decor/items) never move in M7.
 //
 // HASHING: each live mobj contributes ARCHITECTURE §3.4's words
-// [x, y, z, stateId, tics, flags, health, targetIndex] through its
+// [x, y, z, stateId, tics, flags, health, targetIndex, movedir|movecount|damage]
+// (9th word M8-02, re-bless reason "M8 monster fields") through its
 // thinker's hashWords (arena order) — hashState needed no new field. The
 // words are refreshed at spawn and at every thinker pass; grid slots own
 // x/y/z for slot-bound mobjs so crusher writes stay visible.
@@ -62,6 +63,7 @@ import {
 import { pAddThinker, pRemoveThinker, type Thinker } from './ptick';
 import { pRandom } from './prng';
 import type { GameState, LiveSectors } from './state';
+import type { MobjRef } from './hooks';
 
 /* ------------------------------------------------------------------ */
 /* Constants (p_mobj.c / p_local.h)                                     */
@@ -74,6 +76,13 @@ export const ONCEILINGZ = 2147483647;
 /** p_mobj.c:660 ITEMQUESIZE / MAXPLAYERS. */
 export const ITEMQUESIZE = 128;
 export const MAXPLAYERS = 4;
+
+/** p_enemy.c:50-64 dirtype_t DI_NODIR = 8 (the enum lives with
+ * P_NewChaseDir, M8-04's file — the mobj field default is pinned HERE so
+ * no M8-02 file needs p_enemy). Vanilla Z_Malloc leaves a spawned
+ * movedir/movecount undefined; the port pins DI_NODIR/0 (M8-plan §M8-02
+ * acceptance 1) — behavior-identical pre-M8-04, nothing reads them yet. */
+export const DI_NODIR = 8;
 
 /** p_inter.c:47-48 MELEERANGE/MISSILERANGE — `attackrange` lives HERE until
  * p_inter.ts (M7-04) takes ownership; P_SpawnPuff's melee test reads it. */
@@ -130,6 +139,19 @@ export interface Mobj extends MoveMobj {
   health: number;
   /** mobjinfo reactiontime (skipped on sk_nightmare, p_mobj.c:505) */
   reactionTime: number;
+  /** p_mobj.h:258 `int movedir; // 0-7` — chase-direction LUT index
+   * (P_Move/P_NewChaseDir, M8-04). Spawn default DI_NODIR (deviation
+   * note: vanilla leaves it uninitialized). */
+  movedir: number;
+  /** p_mobj.h:259 `int movecount; // when 0, select a new dir` — the
+   * zig-zag timer (A_Chase decrement / P_TryWalk reload, M8-04) and the
+   * nightmare-respawn counter (p_mobj.c:459). */
+  movecount: number;
+  /** mobjinfo damage row copied at spawn (mobjinfo_t has no mobj_t twin
+   * in 1.10 — the port mirrors the row: A_Skullflight/A_SkullAttack
+   * reads `info->damage`, §0.7; A_Chase's missile gate reads
+   * `actor->movecount`). */
+  damage: number;
   /** P_Random()%MAXPLAYERS at spawn (p_mobj.c:508) — consumes the PRNG! */
   lastLook: number;
   /** mobj_t threshold (p_mobj.h) — M7-03 added it for P_DamageMobj's
@@ -144,7 +166,7 @@ export interface Mobj extends MoveMobj {
    * potential removal). */
   removed: boolean;
   thinker: Thinker;
-  /** [x, y, z, state, tics, flags, health, targetIndex] — §3.4 */
+  /** [x, y, z, state, tics, flags, health, targetIndex, movedir|movecount|damage] — §3.4 (9th word M8-02) */
   words: number[];
 }
 
@@ -229,7 +251,24 @@ export function createMobjRuntime(state: GameState): MobjRuntime {
     },
   };
   registerPmoveAdapters();
+  // M8-02 damage-bridge resolver: register the slot → mobj view of THIS
+  // runtime on the state's hook slots (hooks.ts owns the type; the real
+  // P_DamageMobj BODY — M8-05's registerDamageBridge — resolves through
+  // it, and damageSlot's dispatch below does too). Structural on purpose
+  // (MobjRef): no import cycle, hooks.ts stays import-free.
+  state.hooks.bridge.mobjFromSlot = (slot: number): MobjRef | undefined =>
+    rt.slotMobjs.get(slot) as MobjRef | undefined;
   return rt;
+}
+
+/** ThingLinks slot → the live Mobj bound to it (undefined when nothing is
+ * bound — unmapped decor slots / removed statics keep no entry after
+ * removal is NOT true: removed mobjs stay in the map, matching vanilla's
+ * freed-pointer-until-realloc semantics; callers check .removed).
+ * The hooks.ts bridge resolver and the M8-05 damage body resolve through
+ * this single function (M8-plan §M8-02: p_mobj exports the resolver). */
+export function mobjFromSlot(rt: MobjRuntime, slot: number): Mobj | undefined {
+  return rt.slotMobjs.get(slot);
 }
 
 /* ------------------------------------------------------------------ */
@@ -286,9 +325,14 @@ export function pSpawnMobj(
     reactionTime: rt.state.skill !== 4 ? info.reactionTime : 0,
     lastLook: 0,
     threshold: 0,
+    // p_mobj.h:258-259 AI movement fields (M8-02; defaults per §M8-02
+    // acceptance 1) + the mobjinfo damage row (§0.7 A_SkullAttack).
+    movedir: DI_NODIR,
+    movecount: 0,
+    damage: info.damage,
     spawnpoint: null,
     removed: false,
-    words: [0, 0, 0, 0, 0, 0, 0, 0],
+    words: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     thinker: null as unknown as Thinker,
   };
   // p_mobj.c:508 — EVERY spawn draws one P_Random (stream parity!).
@@ -483,6 +527,9 @@ export function syncMobj(m: Mobj): void {
   w[5] = s >= 0 ? links.flags[s]! : m.flags;
   w[6] = m.health;
   w[7] = m.target !== undefined && !m.target.removed ? m.target.thinker.id : 0;
+  // M8-02 9th word (ARCH §3.4 extension, re-bless reason "M8 monster
+  // fields"): the AI movement trio packed as a bitmask.
+  w[8] = (m.movedir | m.movecount | m.damage) | 0;
 }
 
 /* ------------------------------------------------------------------ */
