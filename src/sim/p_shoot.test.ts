@@ -43,8 +43,8 @@ import { loadMap } from '../wad/mapdata';
 import { WadFile } from '../wad/wadfile';
 import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
 import { gInitGame } from './game';
-import { hashState, type GameState } from './state';
-import { RNDTABLE, mClearRandom, pRandom } from './prng';
+import { hashState, type GameState, type Skill } from './state';
+import { RNDTABLE, mClearRandom } from './prng';
 import { MT } from '../wad/info/mobjinfo';
 import { S } from '../wad/info/states';
 
@@ -108,7 +108,7 @@ const fx = (n: number): number => (n * FRACUNIT) | 0;
  * FixedMul(attackrange, frac) from an intercept-vector frac). */
 const UNIT = FRACUNIT;
 
-function boot(spec: RectMapSpec, skill = 2): GameState {
+function boot(spec: RectMapSpec, skill: Skill = 2): GameState {
   const bytes = buildFixtureMapWad(spec, 'FIXMAP');
   const buf = bytes.buffer.slice(
     bytes.byteOffset,
@@ -136,7 +136,7 @@ function slotOf(s: GameState, t: number): number {
 /** Bind the shoot world AND the pspr world (one shared rng), return shooter. */
 function shooter(s: GameState): PsprPlayer {
   bindShootWorld(s);
-  const p = attachPsprFields(s.players[0]);
+  const p = attachPsprFields(s.players[0]!);
   bindPsprWorld({ rng: s.rng, leveltime: s.leveltime });
   return p;
 }
@@ -812,7 +812,7 @@ describe('weapon fire streams (p_pspr.c spread + p_mobj.c impact draws)', () => 
   });
 
   it('A_Punch turns the player to face the target (R_PointToAngle2)', () => {
-    const { s, p } = gun(WP_FIST, [{ x: 160, y: 145, angle: 0, type: 3004 }]);
+    const { p } = gun(WP_FIST, [{ x: 160, y: 145, angle: 0, type: 3004 }]);
     const before = p.mo.angle;
     aPunch(p, psp(p));
     expect(psprHookCounts.pointToAngle2).toBeGreaterThan(0);

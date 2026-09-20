@@ -557,27 +557,29 @@ const NO_TARGET: AttackResult = { hit: false, x: 0, y: 0 };
  * intentionally stays p_pspr.c's probe shell (p_pspr.c owns P_BulletSlope);
  * it probes OUR aimLineAttack, so the 1/2/3 probe counts are exact. */
 export function registerShootPsprHooks(): void {
-registerPsprHook('aimLineAttack', (p: PsprPlayer, angle: number, range: number): AimResult => {
-  psprHookCounts.aimLineAttack++;
-  if (!bound) return NO_HIT;
-  const slope = pAimLineAttack(p.mo, angle, range);
-  return { slope, hit: linetarget.active };
-});
+  registerPsprHook(
+    'aimLineAttack',
+    (p: PsprPlayer, angle: number, range: number): AimResult => {
+      psprHookCounts.aimLineAttack++;
+      if (!bound) return NO_HIT;
+      return { slope: pAimLineAttack(p.mo, angle, range), hit: linetarget.active };
+    },
+  );
 
-registerPsprHook(
-  'lineAttack',
-  (p: PsprPlayer, angle: number, range: number, slope: number, damage: number): AttackResult => {
-    psprHookCounts.lineAttack++;
-    if (!bound) return NO_TARGET;
-    pLineAttack(p.mo, angle, range, slope, damage);
-    return { hit: linetarget.active, x: linetarget.x, y: linetarget.y };
-  },
-);
+  registerPsprHook(
+    'lineAttack',
+    (p: PsprPlayer, angle: number, range: number, slope: number, damage: number): AttackResult => {
+      psprHookCounts.lineAttack++;
+      if (!bound) return NO_TARGET;
+      pLineAttack(p.mo, angle, range, slope, damage);
+      return { hit: linetarget.active, x: linetarget.x, y: linetarget.y };
+    },
+  );
 
-registerPsprHook('pointToAngle2', (x1, y1, x2, y2) => {
-  psprHookCounts.pointToAngle2++;
-  return rPointToAngle2(x1, y1, x2, y2);
-});
+  registerPsprHook('pointToAngle2', (x1: number, y1: number, x2: number, y2: number) => {
+    psprHookCounts.pointToAngle2++;
+    return rPointToAngle2(x1, y1, x2, y2);
+  });
 }
 
 registerShootPsprHooks();
