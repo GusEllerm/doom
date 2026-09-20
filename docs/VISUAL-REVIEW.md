@@ -1,89 +1,145 @@
 # Visual Review Board
 
-Images that exist to be judged by human eyes (D016 gate). Open any with
-`open -a Preview <path>` or double-click. Verdicts: paste back file paths +
-"pass / fail + what looks wrong" — I log them in the table below.
+Human-eye gate (D016). Images embedded below — preview pane (VS Code /
+GitHub / any markdown preview) shows them inline; the `![...]()` targets are
+repo-relative so they also resolve from the repo root. Verdict format at the
+bottom. Paths absolute: `/Users/gusellerm/Projects/doom/docs/VISUAL-REVIEW.md`
 
-Base dir: `/Users/gusellerm/Projects/doom/`
+---
 
 ## Tier 1 — E1M1 real-world views (highest signal)
 
-Criteria: correct perspective (verticals converge to eye height, no
-stair-stepping wall joins); textures aligned to walls, no HOM (no garbage
-bleeding across sectors); lighting matches room brightness; floor/ceiling
-flats tile without seams; sprites stand ON the floor, upright, correctly
-scaled (a zombie ≈ door-height, not postage-stamp or giant); sky only where
-sky sectors exist.
+**Criteria:** perspective converges to eye height, no stair-step wall joins;
+textures aligned, no HOM garbage bleeding across sectors; lighting matches
+rooms; flats tile seamlessly; sprites sit ON the floor, upright, plausible
+scale (zombie ≈ door height); sky only in sky sectors.
 
-| # | File | What to check | My pass | Your pass |
-|---|------|---------------|---------|-----------|
-| 1 | `tests/render/goldens/walls/e1m1-spawn-east.png` | spawn corridor: techwalls aligned, no gaps | ✓ (M3) | |
-| 2 | `tests/render/goldens/walls/e1m1-atrium.png` | multi-height atrium + light variation | ✓ (M3) | |
-| 3 | `tests/render/goldens/walls/e1m1-court-sky.png` | sky ONLY above sky-ceiling sectors; horizon clean | ✓ (M4) | |
-| 4 | `tests/render/goldens/walls/e1m1-court-things.png` | items/barrels/monsters on ground, size ladder plausible | ✓ (M4) | |
-| 5 | `tests/render/goldens/walls/e1m1-doorway-midtex.png` | middle-texture doorway: see-through above, solid below | ✓ (M3) | |
-| 6 | `tests/render/goldens/walls/e1m1-busy-mix.png` | dense scene stress: no overlaps/flicker artifacts | ✗ never eyeballed | |
-| 7 | `tests/render/goldens/walls/e1m1-vista-corridor.png` | long-corridor light falloff (COLORMAPS darkening) | ✗ | |
+### 1. Spawn corridor — *my pass: ✓ (M3)* — yours: ☐
 
-## Tier 2 — motion & mechanics strips (temporal behavior)
+![e1m1-spawn-east](../tests/render/goldens/walls/e1m1-spawn-east.png)
 
-Criteria: read left→right as time; motion should feel DOOM (accel not
-teleport; bob gentle ±~5px; machines cycle smoothly); labels/stats in-frame.
+### 2. Atrium (multi-height, light variation) — *my pass: ✓ (M3)* — yours: ☐
 
-| # | File | What to check | My pass | Your pass |
-|---|------|---------------|---------|-----------|
-| 8 | `tests/render/goldens/motion/m5-10-walk-turn-step.png` | walk accel, bob wave, step-up squat on 24-unit ledge | ✓ (M5) | |
-| 9 | `tests/render/goldens/mechanics/m6-door-through.png` | door rises → player passes → door shuts | ✗ (added at M6-05b, unreviewed) | |
-| 10 | `tests/render/goldens/mechanics/m6-lift-through.png` | lift floor carries rider smoothly | ✗ | |
-| 11 | `tests/render/goldens/mechanics/m6-crusher.png` | ceiling crush cycle, damage window visible | ✓ (M6 audit) | |
-| 12 | `tests/render/goldens/mechanics/m6-light-paint.png` | strobe on/off duty cycle readable frame-to-frame | ✓ (M6 audit) | |
+![e1m1-atrium](../tests/render/goldens/walls/e1m1-atrium.png)
 
-## Tier 3 — weapons (BEING REBLESSED — do not review yet)
+### 3. Courtyard sky (sky only above sky ceilings) — *my pass: ✓ (M4)* — yours: ☐
 
-M7-11 is fixing wrong sprites/positions (the "same blob centered" bug you
-found). When the fix merges: `montage.png` must tile the 15 scene views
-bottom-anchored (gun occupies bottom ~⅓, slightly right of center), and
-every weapon visually distinct.
+![e1m1-court-sky](../tests/render/goldens/walls/e1m1-court-sky.png)
 
-| # | File | Status |
-|---|------|--------|
-| 13 | `tests/render/goldens/weapons/montage.png` | BROKEN (monster sprites) — rework in progress |
-| 14 | `tests/render/goldens/weapons/wpn-*.png` (15 files) | captured broken render — re-bless pending, then review round |
+### 4. Courtyard things (size ladder, on-floor placement) — *my pass: ✓ (M4)* — yours: ☐
 
-## Tier 4 — fixture geometry (sanity only; noise textures are intentional)
+![e1m1-court-things](../tests/render/goldens/walls/e1m1-court-things.png)
 
-Fix textures/flats are generated test patterns, NOT game art. Judge
-geometry/alignment only: wall joins watertight, panning offsets visible,
-masked fences see-through-correct, sky room sky-correct.
+### 5. Doorway middle-texture (see-through above / solid below) — *my pass: ✓ (M3)* — yours: ☐
 
-| # | File | What to check |
-|---|------|---------------|
-| 15 | `tests/render/goldens/walls/fix-a-n.png` … `fix-d-w.png` (12 files) | box-room joins, no slivers |
-| 16 | `tests/render/goldens/walls/fixmask-back.png` / `fixmask-fence.png` | masked draw |
-| 17 | `tests/render/goldens/walls/fixsky-room.png` / `fixsky-seam.png` | sky seam continuity |
-| 18 | `tests/render/goldens/walls/fixpan-panned.png` / `fixpan-rowskip.png` | texture alignment per offsets |
+![e1m1-doorway-midtex](../tests/render/goldens/walls/e1m1-doorway-midtex.png)
+
+### 6. Busy mix — draw-order stress — *my pass: ✗ never* — yours: ☐
+
+![e1m1-busy-mix](../tests/render/goldens/walls/e1m1-busy-mix.png)
+
+### 7. Vista corridor — COLORMAPS light falloff — *my pass: ✗ never* — yours: ☐
+
+![e1m1-vista-corridor](../tests/render/goldens/walls/e1m1-vista-corridor.png)
+
+---
+
+## Tier 2 — motion & mechanics strips (temporal)
+
+**Criteria:** read left→right as time; acceleration not teleport; bob gentle
+(±~5 px); machines cycle smoothly; per-frame stats consistent with what you
+see.
+
+### 8. Walk / turn / step-up — *my pass: ✓ (M5)* — yours: ☐
+
+![m5 motion](../tests/render/goldens/motion/m5-10-walk-turn-step.png)
+
+### 9. Door-through — *my pass: ✗ never* — yours: ☐
+
+![m6 door](../tests/render/goldens/mechanics/m6-door-through.png)
+
+### 10. Lift-through — *my pass: ✗ never* — yours: ☐
+
+![m6 lift](../tests/render/goldens/mechanics/m6-lift-through.png)
+
+### 11. Crusher cycle — *my pass: ✓ (M6 audit)* — yours: ☐
+
+![m6 crusher](../tests/render/goldens/mechanics/m6-crusher.png)
+
+### 12. Light strobe — *my pass: ✓ (M6 audit)* — yours: ☐
+
+![m6 light](../tests/render/goldens/mechanics/m6-light-paint.png)
+
+---
+
+## Tier 3 — weapons ⚠ PARKED — do not review yet
+
+The "same blob centered" bug you found is being fixed + re-blessed (M7-11).
+When the fix merges, check: montage tiles the 15 scenes; gun bottom-anchored
+(bottom ~⅓, slightly right of center); every weapon visually distinct.
+
+![montage (currently broken — monster-sprite census)](../tests/render/goldens/weapons/montage.png)
+
+Sample scene (also currently broken):
+
+![wpn pistol raise](../tests/render/goldens/weapons/wpn-pistol-raise.png)
+
+---
+
+## Tier 4 — fixture geometry (sanity only; noise textures intentional)
+
+Fix textures are generated test patterns, **not game art** — judge geometry
+only: watertight joins, panning per offsets, masked fences see-through, sky
+continuity.
+
+### 15. Box-room joins (12-view family) — yours: ☐
+
+![fix a-n](../tests/render/goldens/walls/fix-a-n.png)
+![fix b-s](../tests/render/goldens/walls/fix-b-s.png)
+
+### 16. Masked draw — yours: ☐
+
+![mask back](../tests/render/goldens/walls/fixmask-back.png)
+![mask fence](../tests/render/goldens/walls/fixmask-fence.png)
+
+### 17. Sky room/seam — yours: ☐
+
+![sky room](../tests/render/goldens/walls/fixsky-room.png)
+![sky seam](../tests/render/goldens/walls/fixsky-seam.png)
+
+### 18. Texture panning alignment — yours: ☐
+
+![pan panned](../tests/render/goldens/walls/fixpan-panned.png)
+![pan rowskip](../tests/render/goldens/walls/fixpan-rowskip.png)
+
+---
 
 ## Automap
 
-Criteria: one-colored line work, player arrow + triangle trail, things as
-dots (M3 features); free/pan/zoom modes as labelled.
+**Criteria:** one-colored line work, player arrow + trail triangle, thing
+dots, labelled modes.
 
-| # | File | My pass | Your pass |
-|---|------|---------|-----------|
-| 19 | `tests/render/goldens/automap/e1m1-spawn-tab-20tics.png` | ✓ (M2) | |
-| 20 | `tests/render/goldens/automap/e1m1-follow-noclip-forward-35.png` | ✓ (M2) | |
-| 21 | `tests/render/goldens/automap/fix-free-panzoom-31.png` | ✓ (M2) | |
+### 19. Spawn + 20 tics — *my pass: ✓ (M2)* — yours: ☐
 
-## Live browser shots (regenerable, not goldens)
+![am spawn](../tests/render/goldens/automap/e1m1-spawn-tab-20tics.png)
 
-Not stored in-repo. I regenerate on request (walk script + screenshot,
-zero-console-error asserted). Useful for "does it FEEL right" checks:
-walking feel, firing, menu-less boot look. Ask and I'll attach paths
-(`/tmp/visual-*.png`).
+### 20. Follow noclip run — *my pass: ✓ (M2)* — yours: ☐
 
-## Logging format
+![am follow](../tests/render/goldens/automap/e1m1-follow-noclip-forward-35.png)
 
-Reply like: `#6 fail — garbage wedge bottom-left` or
-`tests/render/goldens/walls/e1m1-busy-mix.png: looks off, sprites float`.
-Each fail becomes a tracked investigation; findings beat goldens — the
-goldens get re-blessed only with a source-explained cause.
+### 21. Free pan/zoom — *my pass: ✓ (M2)* — yours: ☐
+
+![am panzoom](../tests/render/goldens/automap/fix-free-panzoom-31.png)
+
+---
+
+## Verdicts
+
+Reply anything like:
+
+- `#6 fail — wedge of garbage bottom-left`
+- `court-things: barrels float`
+- `#9 pass`
+
+Each fail becomes a tracked investigation; **findings beat goldens** —
+re-bless only with a source-explained cause.
