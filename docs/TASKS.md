@@ -126,3 +126,13 @@ Future tasks will be added as architects decompose milestones.
 | M7-11 | L4 e2e + exit sweep | M7 | M7-10 | fix merged (visual gate PASS); remainder finisher (agent 24f7f0ee) |
 | M7-11c | Remainder executed directly (restart-loss avoidance) | M7 | M7-11 | done (merged, verified) |
 | M8-plan | Monster-AI milestone plan | M8 | M7 | re-dispatched t2 (agent 75b35130; prior died at zero commits) |
+## M8 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M8-plan | Monster AI milestone plan | M8 | M7 | done (merged) |
+| M8-01 | Sight tracer + soundtarget | M8 | M7 | dispatched (agent 4daaaf88) |
+| M8-02 | Mobj AI fields + damage bridge | M8 | M7 | dispatched (agent abe0f26b) |
+| M8-03 | Monster census fixture | M8 | — | dispatched (agent a28fef22) |
+| M8-04..13 | (see docs/design/M8-plan.md) | M8 | waves | planned |
+

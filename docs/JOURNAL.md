@@ -222,3 +222,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - Gates: 2194 unit + 23 e2e + goldens drift-free. MILESTONES: M1-M7 ✅ (seven of twelve).
 - NEXT: M8 monster AI (states/actions for monsters: sight/sound target, chase, melee/missile, pain, death, resurrection? — plan agent dispatched).
 - Terminal reload #6: M8 planner lost at zero commits (nothing committed = nothing to salvage); re-dispatched with write-early skeleton mandate.
+- M8 plan merged (13 tasks/5 waves). Wave 1 dispatched: sight tracer (PRNG-free LOS unification), AI fields + damage bridge, monster census (WAD-truth roster test).
