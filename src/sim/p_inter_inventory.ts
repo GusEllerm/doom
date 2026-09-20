@@ -54,13 +54,16 @@ export interface InventoryFields {
 export type PickupPlayer = Player & InventoryFields;
 
 /**
- * In-place field attach (idempotent), mirroring p_pspr.attachPsprFields.
- * Defaults here are bare-struct zeros + fists-only; the CANONICAL spawn
- * init is G_PlayerReborn (M7-03 createPlayer: fists + pistol + 50 clips —
- * R08 §10). Callers that want the reborn state use attachPsprFields.
+ * In-place field attach (guarded/idempotent, mirroring
+ * p_pspr.attachPsprFields). Defaults are bare-struct zeros + fists-only.
+ * The CANONICAL spawn init is G_PlayerReborn (M7-03 createPlayer: fists +
+ * pistol + 50 clips — R08 §10); this attach exists so the pickup code is
+ * crash-safe the moment a touch can happen, and DEFERS (the guard) once
+ * M7-03/attachPsprFields initialize the fields themselves.
  */
 export function initPlayerInventory(p: Player): PickupPlayer {
   const q = p as unknown as PickupPlayer;
+  if (q.ammo !== undefined) return q; // M7-03 init already ran — defer
   q.ammo = new Int32Array(NUMAMMO);
   q.maxammo = new Int32Array([200, 50, 300, 50]); // clip, shell, cell, misl (p_inter.c:33)
   q.weaponowned = new Int32Array(NUMWEAPONS);

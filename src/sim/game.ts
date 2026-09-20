@@ -23,6 +23,7 @@ import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
 import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from './p_mobj';
 import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
+import { initPlayerInventory } from './p_inter_inventory';
 import { stateSprite } from '../wad/info/states';
 import { pSpawnSpecials, pUpdateSpecials } from './pspec';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
@@ -59,6 +60,12 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   }
   const player = createPlayer();
   pSpawnPlayer(player, start);
+  // M7-04: d_player.h inventory fields (ammo/maxammo/armor/…) must exist
+  // before the first touch can reach P_Give*. Guarded attach — defers to
+  // the canonical G_PlayerReborn init the moment M7-03 wires it (puser/
+  // createPlayer); until then the pickup layer sees zeroed fields, never
+  // undefined.
+  initPlayerInventory(player);
 
   const bm = buildBlockMap(map);
   const links = buildThingLinks(map, bm, { skill });
