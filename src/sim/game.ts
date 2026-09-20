@@ -22,6 +22,7 @@ import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
 import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from './p_mobj';
 import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
+import { registerAmmoHooks } from './p_ammo';
 import { initPlayerInventory } from './p_inter_inventory';
 import { stateSprite } from '../wad/info/states';
 import { bindPplayerLevel } from './pplayer';
@@ -100,6 +101,9 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   // so the p_inter sprite switch and the P_RemoveMobj tail resolve through
   // the two seams (lazy: they read rt.slotMobjs at touch time).
   registerPickupHook();
+  // M7-05: authoritative P_CheckAmmo ladder (p_pspr `checkAmmo` seam) +
+  // the BT_CHANGE weapon-switch block (puser `weaponChange` seam).
+  registerAmmoHooks();
   const mobjRt = state.mobjs;
   setSpecialSpriteLookup((slot) => {
     const m = mobjRt.slotMobjs.get(slot);

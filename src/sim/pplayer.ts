@@ -90,6 +90,9 @@ import {
   type PsprPlayer
 } from './p_pspr';
 import { pCalcHeight, puserGlobals, puserHooks } from './puser';
+import { MAXAMMO } from './p_ammo'; // M7-05: g_game.c:830 maxammo table
+import { initPlayerInventory, type PickupPlayer } from './p_inter_inventory';
+import { NUMAMMO } from '../wad/info/weaponinfo';
 import { pointToAngleOrigin } from './pslide';
 import { ACT, registerAction } from './a_actions';
 import {
@@ -306,8 +309,8 @@ export function pSpawnPlayerFromStart(rt: MobjRuntime, p: Player, start: SpawnPo
  *
  * memset mapping (every field of this port's Player slice, ONE source):
  * secretcount lives game-level (state.secretcount — untouched; the
- * per-player count joins the M7-08 intermission), maxammo has no field
- * yet (M7-05 ammo economy — flagged), `p->mo` is NOT touched: vanilla
+ * per-player count joins the M7-08 intermission), maxammo resets from the
+ * p_inter.c:33 table (M7-05), `p->mo` is NOT touched: vanilla
  * memsets it to NULL and P_SpawnPlayer immediately assigns the new mobj
  * — same here via the caller chain, and the OLD mobj keeps its
  * playerRef -> p, reproducing vanilla's dying-corpse back-pointer quirk.
@@ -315,7 +318,11 @@ export function pSpawnPlayerFromStart(rt: MobjRuntime, p: Player, start: SpawnPo
 export function pPlayerReborn(p: Player): void {
   pplayerHookCounts.playerReborn++;
 
-  const pp = attachPsprFields(p);
+  // initPlayerInventory FIRST (idempotent): guarantees the d_player.h
+  // inventory slice (maxammo/backpack) exists before the reset below;
+  // attachPsprFields then fills the pspr-side fields if still absent.
+  const pp = attachPsprFields(initPlayerInventory(p));
+  const inv = p as unknown as PickupPlayer & PsprPlayer;
   // "memset(p, 0, sizeof(*p))":
   p.viewz = 0;
   p.viewheight = 0; // memset value; P_SpawnPlayer re-sets VIEWHEIGHT
@@ -336,6 +343,8 @@ export function pPlayerReborn(p: Player): void {
   pp.powers.fill(0);
   pp.ammo.fill(0);
   pp.weaponowned.fill(0);
+  inv.backpack = false; // memset clears backpack — the double-max is LOST
+  // on respawn (vanilla memsets, then g_game.c:830 restores maxammo below).
   // restores + g_game.c:820-830 (frags/killcount/itemcount never touched
   // above = preserved ✓; secretcount preserved at game level):
   p.usedown = true;
@@ -346,7 +355,9 @@ export function pPlayerReborn(p: Player): void {
   pp.weaponowned[WP_FIST] = 1;
   pp.weaponowned[WP_PISTOL] = 1;
   pp.ammo[AM_CLIP] = 50;
-  // (maxammo[i] = maxammo[i]: no field yet — M7-05.)
+  // g_game.c:830 `for (i=0 ; i<NUMAMMO ; i++) p->maxammo[i] = maxammo[i];`
+  // (p_inter.c:33 table — M7-05; the ammo field itself is zeroed above).
+  for (let i = 0; i < NUMAMMO; i++) inv.maxammo[i] = MAXAMMO[i]!;
 }
 
 /* ------------------------------------------------------------------ */
