@@ -64,6 +64,7 @@ export const MF_NOGRAVITY = 512;
 /** p_mobj.h:140-142 movement flags: MF_DROPOFF 0x400, MF_PICKUP 0x800, MF_NOCLIP 0x1000. */
 export const MF_DROPOFF = 0x400;
 export const MF_PICKUP = 0x800;
+export const MF_DROPPED = 0x20000;
 export const MF_NOCLIP = 0x1000;
 /** p_mobj.h:150 MF_MISSILE. */
 export const MF_MISSILE = 0x10000;
