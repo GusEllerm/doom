@@ -37,6 +37,9 @@ import { bindShootWorld } from './p_shoot';
 // A_Explode/A_BFGSpray); side-effect imports, nothing to call per level.
 import './pmissiles';
 import './pradius';
+// M8-04: the monster AI core self-registers A_Look/A_Chase/A_FaceTarget +
+// the p_pspr.c:256 P_NoiseAlert body at module load (same pattern).
+import './p_enemy';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */

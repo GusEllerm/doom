@@ -19,6 +19,10 @@ import { fileURLToPath } from 'node:url';
 /** Per-module `pRandom(` CALL-OCCURRENCE counts (occurrences, not lines:
  * `(P_Random()-P_Random())<<18` = 2). prng.ts is the definition, skipped. */
 export const RANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
+  // M8-04 AI core: TryWalk reload, NewChaseDir swap+search, A_Look seesound
+  // posit/bgsit (2 sites), A_Chase activesound, A_FaceTarget shadow(2),
+  // P_CheckMissileRange dice.
+  'p_enemy.ts': 9, // M8-04 p_enemy.c draws
   'p_mobj.ts': 9, // spawn lastlook, explode tics, mapthing tics, puff(3), blood(3)
   'p_pspr.ts': 15, // punch 1, saw 3, plasma flash 1, gunshot 3, shotgun(3), ssgun(6)
   'plights.ts': 5, // M6 light flashers (P_Random & …)
