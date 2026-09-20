@@ -8,19 +8,22 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { TICRATE } from '../core/constants';
+import { ANG45, TICRATE } from '../core/constants';
 
 import { buildBlockMap } from './blockmap';
 import type { RuntimeMap } from './map';
 import { buildThingLinks } from './thinglinks';
 import { pPlayerThink } from './puser';
 import { pXYMovement, pZMovement } from './pmove';
-import { createPlayer, PST_REBORN } from './player';
+import { createPlayer, PST_REBORN, type Player } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
-import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from './p_mobj';
+import { asMobj, createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSetMobjState, pSpawnThings } from './p_mobj';
+import { pTeleportMove } from './pmap';
+import { pPlayerReborn } from './pplayer';
+import { MT, mobjinfo } from '../wad/info/mobjinfo';
 import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
 import { registerAmmoHooks } from './p_ammo';
 import { initPlayerInventory } from './p_inter_inventory';
@@ -183,7 +186,16 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
  * here so the headless loop cannot forget it.
  */
 export function gTicker(state: GameState, input: GameInput = emptyInput()): void {
-  // 1-2: reborn / gameaction drains — empty skeletons, see header.
+  // 1: reborn pass (g_game.c:629-640) — M7-11c. D017 DEVIATION: vanilla
+  // G_DoReborn restarts the LEVEL (P_SetupLevel — every mobj/item
+  // respawns). This port reborns the PLAYER in place (world persists);
+  // the faithful full-restart wiring belongs to M9's level-transition
+  // work (gameaction/G_DoReborn proper). Pinning test: e2e death test +
+  // tests/sim m7exit guard.
+  for (const p of state.players) {
+    if (p.playerstate === PST_REBORN) gDoRebornInPlace(state, p);
+  }
+  // 2: gameaction drain — empty skeleton, see header.
 
   // 3: G_BuildTiccmd → players[0].cmd (consoleplayer).
   const cmd = gBuildTiccmd(input, state);
@@ -222,6 +234,33 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
   state.leveltime++; // p_tick.c P_Ticker tail
 
   state.gametic++; // d_main.c tic loop tail
+}
+
+/**
+ * M7-11c in-place player reborn (see D017 deviation note at the gTicker
+ * reborn pass). Reuses the SAME player mobj (no new spawn, no thinker
+ * churn): G_PlayerReborn clears via pPlayerReborn, then the mobj is
+ * resurrected at the 1-player start — mobjinfo spawn state/flags/health,
+ * angle re-encoded from the start thing (p_mobj.c:665 rule), momentum
+ * zeroed, position via the live P_TeleportMove (relink + floorz refresh).
+ */
+function gDoRebornInPlace(state: GameState, p: Player): void {
+  pPlayerReborn(p); // p_mobj.c:656-657 G_PlayerReborn (sets PST_LIVE)
+  const start = state.map.playerStarts[0];
+  const m = asMobj(p.mo);
+  if (start && m) {
+    const info = mobjinfo[MT.MT_PLAYER]!;
+    pSetMobjState(m, info.spawnState);
+    m.flags = info.flags;
+    m.health = p.health;
+    p.mo.momx = 0;
+    p.mo.momy = 0;
+    p.mo.momz = 0;
+    pTeleportMove(state.pmap, p.mo, (start.x << 16) | 0, (start.y << 16) | 0);
+    p.mo.z = p.mo.floorz; // ONFLOORZ resolve (p_mobj.c:522 idiom)
+    p.mo.angle = Math.imul(ANG45, Math.trunc(start.angle / 45)) >>> 0;
+    m.angle = p.mo.angle;
+  }
 }
 
 /* ------------------------------------------------------------------ */

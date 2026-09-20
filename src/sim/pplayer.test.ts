@@ -338,11 +338,17 @@ describe('M7-03 P_DeathThink (p_user.c:180-232)', () => {
     expect(P(s).damagecount).toBe(0); // faced the killer -> faded
   });
 
-  it('BT_USE while dead latches PST_REBORN', () => {
+  it('BT_USE while dead latches PST_REBORN; the ticker consumes it (M7-11c)', () => {
     const s = boot();
     pKillPlayer(P(s));
+    // latch happens INSIDE P_DeathThink (p_user.c:225) during a tic —
+    // with the reborn pass live, the NEXT gTicker step consumes it
+    // (g_game.c:629-640), so the observable end-state is PST_LIVE again
+    // with G_PlayerReborn counted.
     step(s, 5, { ...emptyInput(), use: true });
-    expect(P(s).playerstate).toBe(PST_REBORN);
+    expect(P(s).playerstate).toBe(PST_LIVE);
+    expect(P(s).health).toBe(100);
+    expect(pplayerHookCounts.playerReborn).toBeGreaterThanOrEqual(1);
   });
 
   it('the hook is registered: pPlayerThink dead branch runs the body', () => {

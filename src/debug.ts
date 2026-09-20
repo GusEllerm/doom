@@ -27,6 +27,11 @@ import {
   NUMCARDS
 } from './sim/player';
 import { hashState, type GameState } from './sim/state';
+import { thinkerCount } from './sim/ptick';
+import { type InventoryFields, type PickupPlayer } from './sim/p_inter_inventory';
+import { P_GiveWeapon } from './sim/p_inter_pickup';
+import { pPlayerDamage } from './sim/pplayer';
+import type { PsprFields } from './sim/p_pspr';
 import { emptyInput, type GameInput } from './sim/ticcmd';
 import type {
   CaptureResult,
@@ -154,6 +159,10 @@ function setNoclipOnPlayer(state: GameState, enabled: boolean): boolean {
 
 function liveSnapshot(state: GameState): DebugStateLive {
   const p = state.players[0]!;
+  // M7 attaches these field packs in place (initPlayerInventory /
+  // attachPsprFields) — read them structurally, never assume attach.
+  const inv = p as Partial<InventoryFields>;
+  const psprF = p as Partial<PsprFields>;
   return {
     ready: true,
     gametic: state.gametic,
@@ -170,18 +179,31 @@ function liveSnapshot(state: GameState): DebugStateLive {
       bob: p.bob,
       angleDeg: bamToDeg(p.mo.angle),
       health: p.health,
-      // G9-pinned defaults (subsystems land post-M2, see types/debug.ts):
-      armor: 0,
-      ammo: [],
-      weapons: 0,
-      powerups: {},
+      // M7-11c (direct): G9-era pinned defaults REPLACED by live fields —
+      // the inventory/pspr attaches (initPlayerInventory, attachPsprFields,
+      // G_PlayerReborn) populate them; before any attach they read zero.
+      armor: inv.armorpoints ?? 0,
+      ammo: inv.ammo ? Array.from(inv.ammo) : [],
+      weapons: inv.weaponowned
+        ? inv.weaponowned.reduce((acc: number, v: number, i: number) => acc | (v << i), 0)
+        : 0,
+      powerups: inv.powers
+        ? Object.fromEntries(Array.from<number>(inv.powers).map((v, i) => [`p${i}`, v]))
+        : {},
       onGroundSector: -1,
       noclip: (p.cheats & CF_NOCLIP) !== 0,
       // M6-11: live card inventory (IT_* slot order; giveCard until M7).
-      cards: Array.from(p.cards)
+      cards: Array.from(p.cards),
+      readyweapon: inv.readyweapon ?? 0,
+      pendingweapon: inv.pendingweapon ?? 0,
+      pspr: psprF.psprites
+        ? psprF.psprites.map((s, slot) => ({ slot, state: s.state, sx: s.sx, sy: s.sy }))
+        : []
     },
     sectors: { count: state.map.sectors.count },
-    thinkers: { count: 0 },
+    // live arena census (M7-11c: G9-era pinned 0 replaced — the -1 the
+    // reviewer spotted originated here).
+    thinkers: { count: thinkerCount(state.thinkers) },
     // M3-07/M4-07: live renderer counters (−1 only pre-boot / pre-attach).
     // Shaped explicitly: the render source carries more (solidsegDrops),
     // state().render documents exactly hom + the four overflow caps.
@@ -209,6 +231,20 @@ export const debugSim: SimDebugApi = {
   },
   getNoclip(): boolean {
     return ((requireState().players[0]?.cheats ?? 0) & CF_NOCLIP) !== 0;
+  },
+  killPlayer(): 'ok' {
+    // Death-by-damage debug channel (M7-11c): P_DamageMobj with a lethal
+    // hit — the vanilla-faithful route (P_KillMobj alone only decrements
+    // health; every real death arrives through the damage entry point).
+    const state = requireState();
+    pPlayerDamage(state.players[0]!.mo as never, null, null, 1000);
+    return 'ok';
+  },
+  giveWeapon(weapon: number): boolean {
+    // P_GiveWeapon debug channel (M7-11c): scripted weapon tests without
+    // routing item mobjs; real gameplay uses P_TouchSpecialThing.
+    const state = requireState();
+    return P_GiveWeapon(state.players[0] as unknown as PickupPlayer, weapon, false);
   },
   giveCard(index: number): number[] {
     // P_GiveCard debug channel (D013(f), M6-plan §0.6/§M6-11): M7's real
