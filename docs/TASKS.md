@@ -136,3 +136,4 @@ Future tasks will be added as architects decompose milestones.
 | M8-03 | Monster census fixture | M8 | — | dispatched (agent a28fef22) |
 | M8-04..13 | (see docs/design/M8-plan.md) | M8 | waves | planned |
 
+| M8-05 | Damage/kill/infighting module | M8 | M8-02 | dispatched (agent 476c8b9d) |
