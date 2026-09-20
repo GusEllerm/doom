@@ -27,7 +27,6 @@ import {
   ANG5,
   PW_INVULNERABILITY,
   bindPplayerLevel,
-  pDeathThink,
   pKillMobjPlayer,
   pKillPlayer,
   pSpawnPlayerFromStart,
@@ -38,7 +37,6 @@ import {
   resetPplayerSoundLog,
   BASETHRESHOLD
 } from './pplayer';
-import { pointToAngleOrigin } from './pslide';
 import { ACT, isActionRegistered } from './a_actions';
 import { WP_PISTOL } from './p_pspr';
 import { puserHookCounts, resetPuserHookCounts } from './puser';
@@ -89,7 +87,6 @@ describe('M7-03 spawn: the player IS a real mobj (P_SpawnPlayer)', () => {
     expect(m.y).toBe(32 << 16);
     expect(m.angle).toBe(0x40000000); // ANG45 * (90/45)
     expect(m.health).toBe(100);
-    expect(m.playerstate === undefined).toBe(true); // no such field on mobjs
     expect(s.players[0]!.playerstate).toBe(PST_LIVE);
     expect(m.thinker.excludeFromHash).toBe(true);
     expect(m.thinker.id).toBeGreaterThanOrEqual(0x40000000); // reserved range

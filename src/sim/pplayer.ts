@@ -63,7 +63,7 @@ import { FixedMul } from '../core/fixed';
 import { finecosine, finesine } from '../core/tables';
 
 import { mobjinfo, MF, MF_TRANSSHIFT, MT } from '../wad/info/mobjinfo';
-import { S } from '../wad/info/states';
+import { S, stateNext } from '../wad/info/states';
 
 import { sectorAtPoint } from './bsp';
 import { pRandom } from './prng';
@@ -71,6 +71,7 @@ import {
   asMobj,
   pSetMobjState,
   pSpawnMobj,
+  syncMobj,
   type Mobj,
   type MobjRuntime,
   type SpawnPoint
@@ -247,6 +248,26 @@ export function pSpawnPlayerFromStart(rt: MobjRuntime, p: Player, start: SpawnPo
 
   // Hash dedup: players[] serializes this mobj's mover fields (state.ts).
   m.thinker.excludeFromHash = true;
+
+  // M7-03 PHASE PIN: the player's arena entry ticks the mobj STATE only.
+  // The movement half (P_XYMovement/P_ZMovement) ran THIS tic already,
+  // pre-run, from game.ts's P_Ticker player loop — the blessed M5 tick
+  // phase, which additionally makes specials crossed by the player's
+  // movement (door/crusher movers) direct-insert while the arena is not
+  // running, i.e. tick them in the SAME tic, exactly like M5/M6 did
+  // (M6-13 strips pin it). Momentum is zero by run time, so the
+  // P_MobjThinker XY guard would skip anyway, but its D-t4 unconditional
+  // playerRef P_ZMovement would re-run post-movers — wrong phase — so
+  // the entry gets a state-only body instead.
+  m.thinker.fn = () => {
+    if (m.removed) return;
+    m.rt.counts.thinkerTic++;
+    if (m.tics !== -1) {
+      m.tics = (m.tics - 1) | 0;
+      if (m.tics === 0 && !pSetMobjState(m, stateNext[m.state]!)) return; // freed itself
+    }
+    syncMobj(m);
+  };
 
   p.mo = m as unknown as MobjStub;
   p.playerstate = PST_LIVE;

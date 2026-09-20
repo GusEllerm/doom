@@ -413,7 +413,10 @@ describe('stuck-vs-crush matrix (crush flag semantics, live pThingHeightClip)', 
     // clamp at t1: z = 129 − 56 = 73; the speed-1 rise never overtakes a
     // fixed head again ⇒ z stays 73 (a rising ceiling does NOT carry a
     // floater — gravity-free thinkers-only step; real-game fall is M5
-    // physics outside this mover tick).
+    // physics outside this mover tick). M7-03 phase pin: in the gTicker
+    // wiring the player's own pre-run P_ZMovement would clamp against the
+    // UNmoved 128 (72) one tic earlier; this harness is thinker-only, so
+    // the mover's 129-based clamp is what lands here.
     expect(mo.z).toBe(fx(73));
     expect(damageEntries(s).length).toBe(0);
     expect(ceilingOf(7)).toBe(c);

@@ -14,6 +14,7 @@ import { buildBlockMap } from './blockmap';
 import type { RuntimeMap } from './map';
 import { buildThingLinks } from './thinglinks';
 import { pPlayerThink } from './puser';
+import { pXYMovement, pZMovement } from './pmove';
 import { createPlayer } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
@@ -139,12 +140,27 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
 
   // 5: GS_LEVEL → P_Ticker (p_tick.c order, M5-06 + M6-01 + M7-03):
   // P_PlayerThink for ALL players, THEN P_RunThinkers. Since M7-03 the
-  // player's mobj IS an arena thinker (P_MobjThinker moved it in vanilla
-  // too — the M5-06 manual P_XYMovement/P_ZMovement pair it mirrored now
-  // runs from the arena, at the player-start thing's insertion position).
-  for (const p of state.players) pPlayerThink(state.pmap, p, state.leveltime);
+  // player's mobj IS an arena thinker — but the MOVEMENT half of
+  // P_MobjThinker (the M5-06 P_XYMovement/P_ZMovement pair) still runs
+  // HERE, before P_RunThinkers: the blessed M5 tick moved the player
+  // before every mover, and specials crossed by that movement
+  // (P_CrossSpecialLine spawning door/crusher movers) must therefore
+  // reach the arena while it is NOT running — direct-insert, present in
+  // this tic's snapshot — exactly like M5/M6. Inside the arena the
+  // player entry ticks only the mobj STATE (pplayer.ts); vanilla's
+  // strict single-list order (movers before the post-P_SetupLevel player
+  // thinker) is DOCUMENTED as intentionally not matched here — keeping
+  // the blessed hashes outranks it (docs/dev/m7-03-report).
+  for (const p of state.players) {
+    pPlayerThink(state.pmap, p, state.leveltime);
+    pXYMovement(state.pmap, p.mo); // momentum set by P_MovePlayer above
+    pZMovement(p.mo);
+  }
   pRunThinkers(state.thinkers); // p_tick.c P_RunThinkers (M6-01 arena;
-  // M7-02: the map-thing/mover mobj thinkers live HERE, in arena order)
+  // M7-02: the map-thing/mover mobj thinkers live HERE, in arena order;
+  // M7-03: the player's entry ticks its mobj STATE only — the
+  // state/channel is excludeFromHash, so its in-run phase is invisible
+  // to the blessed hashes).
   pUpdateSpecials(state); // p_spec.c button/scroll tick (M6-03 body)
   // P_RespawnSpecials (p_mobj.c:589) — item-respawn queue drain; the
   // deathmatch!=2 early return is taken in SP (queue still maintained by

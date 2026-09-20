@@ -535,7 +535,12 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
       let dm = 0;
       for (let i = 0; i < s.map.numThings; i++) if (mapThingAt(s.map, i).type === 11) dm++;
       expect(rt.deathmatchStarts.length).toBe(Math.min(dm, 10));
-      for (const m of liveMobjs(rt)) expect(m.type).not.toBe(MT.MT_PLAYER);
+      // M7-03: exactly ONE MT_PLAYER mobj in the roster — the player's
+      // own (P_SpawnPlayer via the player-start thing, spawnpoint null:
+      // it is NOT a thing spawn); no doomednum ever maps to MT_PLAYER.
+      const playerMobjs = liveMobjs(rt).filter((m) => m.type === MT.MT_PLAYER);
+      expect(playerMobjs.length).toBe(1);
+      expect(playerMobjs[0]!.spawnpoint).toBeNull();
     });
 
     it('double-run E1M1 with mobjs: identical hash, mobj words hashed (§3.4)', () => {
