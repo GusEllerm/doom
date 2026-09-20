@@ -268,15 +268,24 @@ function absBig(v: number): bigint {
   return b < 0n ? -b : b;
 }
 
-/** Double-run determinism helper: hash after identical scripts. */
+/** Double-run determinism helper: identical script ⇒ identical hash.
+ * The pair runs STRICTLY SEQUENTIALLY (boot→run→boot→run): the sim keeps
+ * module-level scan scratch (the linetarget singleton in p_shoot.ts and
+ * the switch world bindings), so two GameStates must not interleave tick
+ * loops in one process — the established convention of every L2 suite is
+ * ONE live state at a time. Sequential boot+run pairs were verified to
+ * hash byte-identically run after run (the shared-stream order test in
+ * tests/weapons/stream.test.ts depends on this being pair-serial). */
 export function doubleRunHash(
   spec: RectMapSpec,
   tics: number,
   at: (tic: number) => Partial<GameInput> | undefined
 ): { hashA: number; hashB: number; a: GameState; b: GameState } {
   const a = boot(spec);
-  const b = boot(spec);
   run(a, tics, at);
+  const hashA = hashState(a);
+  const b = boot(spec);
   run(b, tics, at);
-  return { hashA: hashState(a), hashB: hashState(b), a, b };
+  const hashB = hashState(b);
+  return { hashA, hashB, a, b };
 }

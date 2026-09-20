@@ -98,7 +98,15 @@ export function streamArenaSpec(opts: { flicker?: boolean } = {}): RectMapSpec {
       { x: 192, y: 512, w: 64, h: 64, floorHeight: 0, ceilingHeight: 0,
         lightLevel: 160, tag: STREAM_TAG_DOOR },
       // 2 OUTER ROOM — clip + teleportman, tag 666 (the teleport target).
-      { x: 192, y: 576, w: 64, h: 256, lightLevel: 160, tag: STREAM_TAG_TELE }
+      { x: 192, y: 576, w: 64, h: 256, lightLevel: 160, tag: STREAM_TAG_TELE },
+      // 3/4 SOLID FLANKERS beside the door sector. Without them the door
+      // sector's east/west faces are VOID (default sector ceiling −128),
+      // P_FindLowestCeilingSurrounding returns −128 and T_VerticalDoor
+      // "opens" the door by 2 units and re-waits at 0 — a closed door
+      // that can never open. Flankers give the corridor a real ±128
+      // surrounding like every vanilla door.
+      { x: 128, y: 512, w: 64, h: 64, lightLevel: 96 },
+      { x: 256, y: 512, w: 64, h: 64, lightLevel: 96 }
     ],
     // The A/B gap line IS the door's use line: regular door (1), tag 665.
     doors: [
