@@ -51,17 +51,10 @@
 import { ANGLETOFINESHIFT, FRACBITS, FRACUNIT } from '../core/constants';
 import { FixedDiv, FixedMul } from '../core/fixed';
 import { finecosine, finesine } from '../core/tables';
-import type { PrngState } from './prng';
-
-import type { RuntimeMap } from './map';
-import type { BlockMap } from './blockmap';
-import type { LiveSectors } from './state';
-import type { HookSlots } from './hooks';
 import { damageSlot } from './hooks';
 import { pPathTraverse, pLineOpening, pathTrace, opening, PT_ADDLINES, PT_ADDTHINGS, type Intercept } from './pmaputl';
-import type { ThingLinks } from './thinglinks';
 import { MF_SHOOTABLE, MF_NOBLOOD } from './thinglinks';
-import type { Mover } from './pmap';
+import type { Mover, PMapWorld } from './pmap';
 import { SKYFLATNAME } from './pmove';
 import { attackRange, pSpawnBlood, pSpawnPuff, type MobjRuntime } from './p_mobj';
 import { pShootSpecialLine } from './pspec';
@@ -80,16 +73,19 @@ import {
 /* The bound level (vanilla: "the current level's sectors/lines")        */
 /* ------------------------------------------------------------------ */
 
-/** Structural GameState slice (constructor back-references excluded). */
-export interface ShootWorld {
-  readonly map: RuntimeMap;
-  readonly bm: BlockMap;
-  readonly links: ThingLinks;
-  readonly sectors: LiveSectors;
-  readonly rng: PrngState;
-  readonly hooks: HookSlots;
+/**
+ * The bound level = the ONE GameState (constructor back-references
+ * excluded). Extending {@link SpecWorld} rather than re-listing map/sectors/
+ * thinkers/hooks/rng/leveltime is deliberate: `P_ShootSpecialLine` runs the
+ * M6 dispatch tables against the SAME level object (thinker arena, live
+ * sector SoA, hook slots), so the cross-referencing cast the earlier draft
+ * needed disappears — the traverser hands pspec the level it already holds.
+ * `pmap` is M7-02's clipping world (blockmap + ThingLinks grid) — CONSUMED
+ * here, never edited (plan §M7-08 "pmaputl thing-intercept consumer").
+ */
+export interface ShootWorld extends SpecWorld {
+  readonly pmap: PMapWorld;
   readonly mobjs: MobjRuntime;
-  leveltime: number;
 }
 
 let bound: ShootWorld | null = null;
@@ -195,13 +191,13 @@ export function resetShootGlobals(): void {
  * owns z for static slots; syncMobj keeps dynamic slots current —
  * p_mobj.ts rule). */
 function thingFlags(slot: number): number {
-  return bound!.links.flags[slot]!;
+  return bound!.pmap.links.flags[slot]!;
 }
 function thingZ(slot: number): number {
-  return bound!.links.z[slot]!;
+  return bound!.pmap.links.z[slot]!;
 }
 function thingHeight(slot: number): number {
-  return bound!.links.height[slot]!;
+  return bound!.pmap.links.height[slot]!;
 }
 
 /* ------------------------------------------------------------------ */
@@ -295,8 +291,8 @@ export function ptrAimTraverse(in_: Intercept): boolean {
   aimslopeG.value = ((thingtopslope + thingbottomslope) / 2) | 0;
   linetarget.active = true;
   linetarget.slot = th;
-  linetarget.x = w.links.x[th]!;
-  linetarget.y = w.links.y[th]!;
+  linetarget.x = w.pmap.links.x[th]!;
+  linetarget.y = w.pmap.links.y[th]!;
 
   return false; // don't go any farther
 }
@@ -326,7 +322,7 @@ export function ptrShootTraverse(in_: Intercept): boolean {
     if (L.special[line] !== 0) {
       // P_ShootSpecialLine (shootthing = the MOVER; the player branch
       // gates on `thing.player`, pspec.ts).
-      pShootSpecialLine(w as unknown as SpecWorld, shootThing!, line);
+      pShootSpecialLine(w, shootThing!, line);
     }
 
     if ((L.flags[line]! & ML_TWOSIDED_FLAG) === 0) {
@@ -472,14 +468,14 @@ export function pAimLineAttack(t1: Mover, angle: number, distance: number): numb
 
   pPathTraverse(
     w.map,
-    w.bm,
+    w.pmap.bm,
     t1.x,
     t1.y,
     x2,
     y2,
     PT_ADDLINES | PT_ADDTHINGS,
     ptrAimTraverse,
-    w.links,
+    w.pmap.links,
   );
 
   if (linetarget.active) return aimslopeG.value;
@@ -520,14 +516,14 @@ export function pLineAttack(
 
   pPathTraverse(
     w.map,
-    w.bm,
+    w.pmap.bm,
     t1.x,
     t1.y,
     x2,
     y2,
     PT_ADDLINES | PT_ADDTHINGS,
     ptrShootTraverse,
-    w.links,
+    w.pmap.links,
   );
 }
 
