@@ -137,3 +137,4 @@ Future tasks will be added as architects decompose milestones.
 | M8-04..13 | (see docs/design/M8-plan.md) | M8 | waves | planned |
 
 | M8-05 | Damage/kill/infighting module | M8 | M8-02 | dispatched (agent 476c8b9d) |
+| M8-04 | AI core (A_Look/A_Chase/P_Move) | M8 | M8-01/02 | dispatched (agent cd743f4d) |
