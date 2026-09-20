@@ -108,6 +108,8 @@ import { patch2x2, synthFlat, synthPnames, synthTexture1 } from './smallWads';
 export const ML_TWOSIDED = 0x004;
 /** ML_SECRET (R01 §5): automap-solid; monsters never use the line (R05 §1.2). */
 export const ML_SECRET = 0x020;
+/** ML_SOUNDBLOCK (R05/p_enemy.c P_RecursiveSound sound-blocked hop). */
+export const ML_SOUNDBLOCK = 0x002;
 /** MAPBLOCKSIZE: 128 map units per blockmap block (R01 §13). */
 export const BLOCK_SIZE = 128;
 /** Blockmap origin inset below the minimum vertex (task NOTE). */
@@ -189,6 +191,8 @@ export interface DoorGapSpec {
   readonly tag?: number; // default 0
   /** true ⇒ ML_SECRET flag on the line (M6-02; default false ⇒ byte-identical). */
   readonly secret?: boolean;
+  /** M8-01: true ⇒ ML_SOUNDBLOCK on the line (default false ⇒ byte-identical). */
+  readonly soundBlock?: boolean;
 }
 
 /**
@@ -210,6 +214,8 @@ export interface LineTriggerSpec {
   /** Side-0 mid-texture marker (switch/door name); default none. */
   readonly texture?: string;
   readonly secret?: boolean; // default false
+  /** M8-01: true ⇒ ML_SOUNDBLOCK on the line (default false ⇒ byte-identical). */
+  readonly soundBlock?: boolean; // default false
 }
 
 export interface ThingSpec {
@@ -600,12 +606,13 @@ function compileSpec(spec: RectMapSpec): CompiledSpec {
           front.mid = trig.spec.texture;
         }
         const secretLine = (door?.spec.secret ?? false) || (trig?.spec.secret ?? false);
+        const soundBlockLine = (door?.spec.soundBlock ?? false) || (trig?.spec.soundBlock ?? false);
         lines.push({
           x1: v1x,
           y1: v1y,
           x2: v2x,
           y2: v2y,
-          flags: ML_TWOSIDED | (secretLine ? ML_SECRET : 0),
+          flags: ML_TWOSIDED | (secretLine ? ML_SECRET : 0) | (soundBlockLine ? ML_SOUNDBLOCK : 0),
           special: door
             ? door.spec.special ?? DEFAULT_DOOR_SPECIAL
             : trig?.spec.special ?? 0,

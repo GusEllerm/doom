@@ -14,17 +14,11 @@
 // away (32<<32 ≡ 0 mod 2^32), so the scanned half-width is exactly
 // `damage` map units (computed with the wrap preserved: `* 65536 | 0`).
 //
-// P_CheckSight PORT DEVIATION (documented, result-equivalent): 1.10 runs
-// reject-table trivial-reject → P_CrossBSPNode/P_CrossSubsector. This port
-// keeps the reject check and the EXACT cone-narrowing math of
-// P_CrossSubsector but walks the segment with the M5-01 blockmap
-// pathTrace (PT_ADDLINES, validcount-deduped) instead of the BSP — the
-// crossed-line SET for a segment is identical, so the boolean result is
-// identical; the `sightcounts[2]` stat is not reproduced (not observable
-// here). Cone init is verbatim 1.10: sightzstart = t1->z + height −
-// height/4, topslope/bottomslope START as raw z-DELTAS and narrow via
-// FixedDiv(opening − sightzstart, frac) (the 1.10 units quirk, p_sight.c
-// :135-244, kept exact).
+// P_CheckSight (M8-01): the LOS probe now lives in psight.ts — the exact
+// p_sight.c:300 BSP walk (P_CrossBSPNode/P_CrossSubsector, REJECT via the
+// subsector sector indices, sightcounts[2] exposed). This file keeps only
+// the one-line delegation below so the splash LOS and every later
+// A_Look/A_Chase/range consumer share ONE implementation.
 //
 // Vanilla-globals rule: bombspot/bombsource/bombdamage and the sight
 // globals are module-level (one radius attack / one LOS in flight, like
@@ -33,115 +27,20 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { ANG90, FRACBITS, FRACUNIT } from '../core/constants';
-import { FixedDiv } from '../core/fixed';
 import { MF, MT } from '../wad/info/mobjinfo';
 
 import { ACT, registerAction } from './a_actions';
-import { sectorAtPoint } from './bsp';
 import { damageSlot } from './hooks';
 import { MAPBLOCKSHIFT } from './blockmap';
 import { type Mobj, pSpawnMobj, type MobjRuntime } from './p_mobj';
 import { linetarget, pAimLineAttack } from './p_shoot';
-import {
-  opening,
-  pLineOpening,
-  pPathTraverse,
-  PT_ADDLINES,
-  type Intercept,
-} from './pmaputl';
 import { pRandom } from './prng';
-import { ML_TWOSIDED } from './pspec-helpers';
+// M8-01 delegation: P_CheckSight is psight.ts (see header); re-exported so
+// existing consumers keep working.
+import { pCheckSight } from './psight';
 import { thingLinksIterator } from './thinglinks';
 
-/* ------------------------------------------------------------------ */
-/* P_CheckSight — p_sight.c (ported traversal, see header)              */
-/* ------------------------------------------------------------------ */
-
-/** The `mobj_t` slice the LOS reads (an Mobj, or a ThingLinks-grid view). */
-export interface SightPoint {
-  x: number;
-  y: number;
-  z: number;
-  height: number;
-}
-
-/** p_sight.c:39-45 file globals. */
-const sight = {
-  zstart: 0,
-  topslope: 0,
-  bottomslope: 0,
-  map: null as null | Parameters<typeof pLineOpening>[0],
-  live: null as null | Parameters<typeof pLineOpening>[2],
-  x2: 0,
-  y2: 0,
-};
-
-/** PitSeesLine/P_CrossSubsector line logic, verbatim math (p_sight.c:
- * 165-244): !ML_TWOSIDED ⇒ block; equal floors+ceilings ⇒ pass; closed
- * opening ⇒ block; else narrow the cone, collapse ⇒ block. */
-function ptrSeesLine(in_: Intercept): boolean {
-  if (!in_.isLine) return true; // PT_ADDLINES only — no thing intercepts
-  const line = in_.line;
-  const map = sight.map!;
-  if ((map.lines.flags[line]! & ML_TWOSIDED) === 0) return false; // stop
-
-  pLineOpening(map, line, sight.live);
-  const f = map.lines.sectorFront[line]!;
-  const b = map.lines.sectorBack[line]!;
-  const S = sight.live ? { f: sight.live.floorZ[f]!, fb: sight.live.floorZ[b]!, c: sight.live.ceilingZ[f]!, cb: sight.live.ceilingZ[b]! }
-    : { f: map.sectors.floorHeight[f]!, fb: map.sectors.floorHeight[b]!, c: map.sectors.ceilingHeight[f]!, cb: map.sectors.ceilingHeight[b]! };
-
-  // no wall to block sight with?
-  if (S.f === S.fb && S.c === S.cb) return true; // continue
-
-  // possible occluder
-  if (opening.openbottom >= opening.opentop) return false; // closed door
-
-  if (S.f !== S.fb) {
-    const slope = FixedDiv((opening.openbottom - sight.zstart) | 0, in_.frac);
-    if (slope > sight.bottomslope) sight.bottomslope = slope;
-  }
-  if (S.c !== S.cb) {
-    const slope = FixedDiv((opening.opentop - sight.zstart) | 0, in_.frac);
-    if (slope < sight.topslope) sight.topslope = slope;
-  }
-  if (sight.topslope <= sight.bottomslope) return false; // stop
-  return true;
-}
-
-/**
- * `P_CheckSight(t1, t2)` (p_sight.c:299-350): reject-matrix trivial
- * rejection (sector indices via the BSP point lookup), then the LOS cone
- * walk. TRUE = a direct path exists.
- */
-export function pCheckSight(rt: MobjRuntime, t1: SightPoint, t2: SightPoint): boolean {
-  const st = rt.state;
-  const numSectors = st.sectors.count;
-
-  const s1 = sectorAtPoint(st.map, t1.x, t1.y);
-  const s2 = sectorAtPoint(st.map, t2.x, t2.y);
-  const pnum = s1 * numSectors + s2;
-  if ((st.map.reject[pnum >> 3]! & (1 << (pnum & 7))) !== 0) return false; // sightcounts[0]
-
-  sight.zstart = (t1.z + t1.height - (t1.height >> 2)) | 0;
-  sight.topslope = ((t2.z + t2.height) - sight.zstart) | 0;
-  sight.bottomslope = (t2.z - sight.zstart) | 0;
-  sight.map = st.map;
-  sight.live = st.sectors;
-  sight.x2 = t2.x;
-  sight.y2 = t2.y;
-
-  return pPathTraverse(
-    st.map,
-    st.pmap.bm,
-    t1.x,
-    t1.y,
-    t2.x,
-    t2.y,
-    PT_ADDLINES,
-    ptrSeesLine,
-  );
-}
+export { pCheckSight, type SightPoint } from './psight';
 
 /* ------------------------------------------------------------------ */
 /* P_RadiusAttack / PIT_RadiusAttack — p_map.c:1160-1245 verbatim       */

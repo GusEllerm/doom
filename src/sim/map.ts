@@ -197,6 +197,13 @@ export interface SectorArrays {
   readonly blockBoxBottom: Int32Array;
   /** validcount-domain stamp for sound traversal; 0 at setup. */
   readonly soundTraversed: Int32Array;
+  /** M8-01 sector_t soundtarget (p_enemy.c:140): ThingLinks slot id of the
+   * mobj that noise-alerted this sector; {@link psight} SOUND_TARGET_NONE
+   * (−1) = the vanilla NULL mobj_t*. Filled with the sentinel at every level
+   * build (fresh RuntimeMap per warp ⇒ the vanilla P_SpawnMapThing-time
+   * “zeroed at load” semantics); written through the psight
+   * setSectorSoundTarget seam when P_NoiseAlert lands (M8-04). */
+  readonly soundTarget: Int32Array;
   /** validcount-domain stamp for P_ChangeSector etc.; 0 at setup. */
   readonly valid: Int32Array;
 }
@@ -265,6 +272,10 @@ export interface RuntimeMap {
   readonly numSegs: number;
   readonly segSectorFront: Int32Array;
   readonly segSectorBack: Int32Array;
+  /** M8-01: seg → linedef index (SEGS record field; minisegs are refused at
+   * build). Needed by the p_sight.c:126 P_CrossSubsector line dedup /
+   * ML_TWOSIDED / geometry reads. */
+  readonly segLine: Int32Array;
 
   /** Raw THINGS records; view with {@link thingAt} (wad) / {@link mapThingAt}. */
   readonly things: Uint8Array;
@@ -490,6 +501,7 @@ export function buildMapFromData(md: MapData): RuntimeMap {
   const numSegs = md.segs.length;
   const segFront = new Int32Array(numSegs);
   const segBack = new Int32Array(numSegs);
+  const segLine = new Int32Array(numSegs);
   for (let i = 0; i < numSegs; i++) {
     const seg = md.segs[i]!;
     if (seg.line < 0) {
@@ -507,6 +519,7 @@ export function buildMapFromData(md: MapData): RuntimeMap {
         `map ${md.name}: SEGS[${i}] references ${seg.side === 0 ? 'missing' : 'second'} sidenum (-1) of linedef ${seg.line}`,
       );
     }
+    segLine[i] = seg.line;
     segFront[i] = md.sideDefs[sideNum]!.sector;
     // Fidelity note: vanilla picks the seg backsector from the ML_TWOSIDED
     // flag (P_LoadSegs); we key off the −1 sidenum sentinel, which is what
@@ -672,6 +685,7 @@ export function buildMapFromData(md: MapData): RuntimeMap {
       blockBoxTop: sBlock.t,
       blockBoxBottom: sBlock.b,
       soundTraversed: new Int32Array(numSectors),
+      soundTarget: new Int32Array(numSectors).fill(-1),
       valid: new Int32Array(numSectors),
     },
     nodes: {
@@ -696,6 +710,7 @@ export function buildMapFromData(md: MapData): RuntimeMap {
     numSegs,
     segSectorFront: segFront,
     segSectorBack: segBack,
+    segLine,
     things: md.things,
     numThings,
     playerStarts,
