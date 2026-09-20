@@ -116,6 +116,6 @@ Future tasks will be added as architects decompose milestones.
 | M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | done (merged, verified — gun layer live) |
 | M7-02 | mobj runtime + ZMISC + thinglinks fill | M7 | M7-01 | done (merged, verified) |
 | M7-03..11 | (see docs/design/M7-plan.md) | M7 | waves | planned |
-| M7-03 | Player states, pain/death, reborn | M7 | M7-01/02 | dispatched (agent 82308cb1) |
-| M7-04 | Pickups + inventory | M7 | M7-02 | dispatched (agent cafbddeb) |
-| M7-08 | Hitscan aim/attack/traverse | M7 | M7-02/07 | dispatched (agent b9bac1e2) |
+| M7-03 | Player states, pain/death, reborn | M7 | M7-01/02 | re-dispatched t2 (agent 09f8f579; stubs lost) |
+| M7-04 | Pickups + inventory | M7 | M7-02 | re-dispatched t2 (agent 6488c80c; stubs lost) |
+| M7-08 | Hitscan aim/attack/traverse | M7 | M7-02/07 | salvage t2 (agent 38200d08; traversal core committed) |
