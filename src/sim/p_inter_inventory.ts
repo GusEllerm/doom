@@ -1,76 +1,84 @@
-// sim/p_inter_inventory.ts — additive inventory fields for Player (M7-04/M7-03 seam).
-// Declaration merging adds the d_player.h inventory fields to the Player interface
-// owned by M7-03 (pplayer.ts / player.ts). M7-03's createPlayer() initializes them.
-// This module provides only the TypeScript surface; runtime initialization lives in M7-03.
+// sim/p_inter_inventory.ts — d_player.h inventory fields for the pickup
+// layer (M7-04). Follows the p_pspr.ts (M7-07) precedent: Player (owned by
+// player.ts; field init owned by M7-03's createPlayer/G_PlayerReborn) does
+// not carry the inventory fields yet, so the pickup code narrows through an
+// INTERSECTION type + an idempotent attach helper. Declaration merging was
+// tried first and rejected: it forces the fields onto every Player literal
+// (player.ts createPlayer) and collides with p_pspr's PsprFields types
+// (weaponowned Uint8Array vs Int32Array ⇒ `never` intersections in
+// p_pspr/puser/psectorspecial).
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import type { Player } from './player';
-import { NUMAMMO, NUMWEAPONS, NUMCARDS } from '../wad/info/weaponinfo';
-import { NUMPOWERS } from './p_inter_pickup';
+import { NUMAMMO, NUMWEAPONS } from '../wad/info/weaponinfo';
+import { NUMPOWERS } from './p_pspr';
 
-declare module './player' {
-  interface Player {
-    // Ammo / max ammo (d_player.h: int ammo[NUMAMMO], maxammo[NUMAMMO])
-    ammo: Int32Array;
-    maxammo: Int32Array;
-
-    // Weapon ownership (d_player.h: boolean weaponowned[NUMWEAPONS])
-    weaponowned: Uint8Array;
-
-    // Ready / pending weapon (d_player.h: weapontype_t readyweapon, pendingweapon)
-    readyweapon: number;
-    pendingweapon: number;
-
-    // Powerup timers (d_player.h: int powers[NUMPOWERS])
-    powers: Int32Array;
-
-    // Armor (d_player.h: int armorpoints, armortype)
-    armorpoints: number;
-    armortype: number;
-
-    // Backpack flag (d_player.h: boolean backpack)
-    backpack: boolean;
-
-    // Bonus / count fields (d_player.h: int bonuscount, itemcount, secretcount, killcount)
-    bonuscount: number;
-    itemcount: number;
-    secretcount: number;
-    killcount: number;
-
-    // Attack/refire state (d_player.h: boolean attackdown; int refire)
-    attackdown: boolean;
-    refire: number;
-
-    // Render effects (d_player.h: int extralight, fixedcolormap)
-    extralight: number;
-    fixedcolormap: number;
-
-    // Attacker reference (d_player.h: player_t* attacker)
-    attacker: Player | null;
-  }
+/** d_player.h player_t inventory slice (the fields p_inter.c reads/writes).
+ * Field names/types match PsprFields (p_pspr.ts) where they overlap, so
+ * `PickupPlayer & PsprPlayer` stays well-typed for the M7-05/M7-07 bridge. */
+export interface InventoryFields {
+  /** d_player.h: int ammo[NUMAMMO], maxammo[NUMAMMO] */
+  ammo: Int32Array;
+  maxammo: Int32Array;
+  /** d_player.h: boolean weaponowned[NUMWEAPONS] (Int32Array per PsprFields) */
+  weaponowned: Int32Array;
+  /** d_player.h: weapontype_t readyweapon, pendingweapon */
+  readyweapon: number;
+  pendingweapon: number;
+  /** d_player.h: int powers[NUMPOWERS] */
+  powers: Int32Array;
+  /** d_player.h: int armorpoints, armortype */
+  armorpoints: number;
+  armortype: number;
+  /** d_player.h: boolean backpack */
+  backpack: boolean;
+  /** d_player.h: int bonuscount, itemcount, secretcount, killcount (M9 HUD
+   * stat counters land here; intermission consumes them) */
+  bonuscount: number;
+  itemcount: number;
+  secretcount: number;
+  killcount: number;
+  /** d_player.h: boolean attackdown; int refire */
+  attackdown: boolean;
+  refire: number;
+  /** d_player.h: int extralight, fixedcolormap */
+  extralight: number;
+  fixedcolormap: number;
+  /** d_player.h: player_t* attacker */
+  attacker: Player | null;
 }
 
-// Runtime initialization helper — called by M7-03 createPlayer().
-// Kept here so the field list stays in one place.
-export function initPlayerInventory(p: Player): void {
-  p.ammo = new Int32Array(NUMAMMO);
-  p.maxammo = new Int32Array([200, 50, 300, 50]); // clip, shell, cell, misl
-  p.weaponowned = new Uint8Array(NUMWEAPONS);
-  p.weaponowned[0] = 1; // fist always owned
-  p.readyweapon = 0; // wp_fist
-  p.pendingweapon = 0; // wp_fist
-  p.powers = new Int32Array(NUMPOWERS);
-  p.armorpoints = 0;
-  p.armortype = 0;
-  p.backpack = false;
-  p.bonuscount = 0;
-  p.itemcount = 0;
-  p.secretcount = 0;
-  p.killcount = 0;
-  p.attackdown = false;
-  p.refire = 0;
-  p.extralight = 0;
-  p.fixedcolormap = 0;
-  p.attacker = null;
+/** Player + inventory fields — the shape every P_Give* / P_TouchSpecialThing
+ * entry point takes. */
+export type PickupPlayer = Player & InventoryFields;
+
+/**
+ * In-place field attach (idempotent), mirroring p_pspr.attachPsprFields.
+ * Defaults here are bare-struct zeros + fists-only; the CANONICAL spawn
+ * init is G_PlayerReborn (M7-03 createPlayer: fists + pistol + 50 clips —
+ * R08 §10). Callers that want the reborn state use attachPsprFields.
+ */
+export function initPlayerInventory(p: Player): PickupPlayer {
+  const q = p as unknown as PickupPlayer;
+  q.ammo = new Int32Array(NUMAMMO);
+  q.maxammo = new Int32Array([200, 50, 300, 50]); // clip, shell, cell, misl (p_inter.c:33)
+  q.weaponowned = new Int32Array(NUMWEAPONS);
+  q.weaponowned[0] = 1; // fist always owned
+  q.readyweapon = 0; // wp_fist
+  q.pendingweapon = 0; // wp_fist
+  q.powers = new Int32Array(NUMPOWERS);
+  q.armorpoints = 0;
+  q.armortype = 0;
+  q.backpack = false;
+  q.bonuscount = 0;
+  q.itemcount = 0;
+  q.secretcount = 0;
+  q.killcount = 0;
+  q.attackdown = false;
+  q.refire = 0;
+  q.extralight = 0;
+  q.fixedcolormap = 0;
+  q.attacker = null;
+  return q;
 }

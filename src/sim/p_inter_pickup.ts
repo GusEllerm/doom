@@ -7,19 +7,24 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { FRACUNIT } from '../core/constants';
-import { MF_DROPPED, MF_PICKUP, MF_SPECIAL, MF_COUNTITEM } from './thinglinks';
+import { MF_DROPPED, MF_COUNTITEM, thingUnsetPosition, type ThingLinks } from './thinglinks';
 export { MF_DROPPED, MF_PICKUP, MF_SPECIAL, MF_COUNTITEM } from './thinglinks';
-import type { Player } from './player';
-import type { Mover } from './pmove';
-import { WP, AMMO, NUMAMMO, NUMWEAPONS, weaponinfo } from '../wad/info/weaponinfo';
+import { WP, AMMO, NUMAMMO, weaponinfo } from '../wad/info/weaponinfo';
 import { SPR } from '../wad/info/sprnames';
-import { IT_BLUECARD, IT_YELLOWCARD, IT_REDCARD, IT_BLUESKULL, IT_YELLOWSKULL, IT_REDSKULL, NUMCARDS } from './player';
 
 // Re-export for tests and consumers
 export { WP, AMMO, NUMAMMO, NUMWEAPONS, weaponinfo } from '../wad/info/weaponinfo';
 export { SPR } from '../wad/info/sprnames';
 export { NUMCARDS } from './player';
-import { pmapHooks, getPmapWorld } from './pmap';
+import { pmapHooks, getPmapWorld, type Mover } from './pmap';
+import type { PickupPlayer } from './p_inter_inventory';
+
+/** vanilla `player->mo->health` sync — MobjStub carries no health field
+ * yet (player.ts owns it; M7-03 folds it in); the optional write is a
+ * faithful no-op until the field lands. */
+function syncMoHealth(p: PickupPlayer): void {
+  (p.mo as unknown as { health?: number }).health = p.health;
+}
 
 /* ------------------------------------------------------------------ */
 /* Constants (doomdef.h / p_local.h / info.c)                          */
@@ -122,10 +127,14 @@ let netgame = false;
 export function setNetgame(n: boolean): void { netgame = n; }
 export function getNetgame(): boolean { return netgame; }
 
-/** Deathmatch flag (p_inter.c deathmatch) — affects weapon pickup ammo. */
-let deathmatch = false;
-export function setDeathmatch(d: boolean): void { deathmatch = d; }
-export function getDeathmatch(): boolean { return deathmatch; }
+/** Deathmatch mode (p_inter.c deathmatch) — vanilla is an int (0/1/2):
+ * P_GiveWeapon's netgame gate is `deathmatch != 2`, so dm==2 (monsters on)
+ * must be distinguishable from dm==1. Booleans map true⇒1. */
+let deathmatch = 0;
+export function setDeathmatch(d: boolean | number): void {
+  deathmatch = typeof d === 'boolean' ? (d ? 1 : 0) : d;
+}
+export function getDeathmatch(): number { return deathmatch; }
 
 /** Skill level (sk_baby/sk_easy/sk_medium/sk_hard/sk_nightmare) — affects ammo doubling. */
 let gameskill = 2; // sk_medium default
@@ -133,7 +142,7 @@ export function setGameskill(s: number): void { gameskill = s; }
 export function getGameskill(): number { return gameskill; }
 
 /** clipammo per ammo type (p_inter.c clipammo[NUMAMMO] = {10,4,20,1}) */
-const CLIPAMMO = [10, 4, 20, 1];
+const CLIPAMMO: Int32Array = new Int32Array([10, 4, 20, 1]);
 
 /* ------------------------------------------------------------------ */
 /* P_GiveAmmo — p_inter.c:36-84                                        */
@@ -143,17 +152,17 @@ const CLIPAMMO = [10, 4, 20, 1];
  * Give ammo to player. Returns false if player already at max ammo.
  * @param num Number of clip loads (0 = half clip). Doubled on baby/nightmare.
  */
-export function P_GiveAmmo(player: Player, ammo: number, num: number): boolean {
+export function P_GiveAmmo(player: PickupPlayer, ammo: number, num: number): boolean {
   if (ammo === AMMO.am_noammo) return false;
   if (ammo < 0 || ammo >= NUMAMMO) throw new Error(`P_GiveAmmo: bad type ${ammo}`);
 
-  if (player.ammo[ammo] === player.maxammo[ammo]) return false;
+  if (player.ammo[ammo]! === player.maxammo[ammo]!) return false;
 
   let amount: number;
   if (num !== 0) {
-    amount = num * CLIPAMMO[ammo];
+    amount = num * CLIPAMMO[ammo]!;
   } else {
-    amount = CLIPAMMO[ammo] / 2;
+    amount = CLIPAMMO[ammo]! / 2;
   }
 
   // Double ammo on baby / nightmare (p_inter.c:56-61)
@@ -161,10 +170,10 @@ export function P_GiveAmmo(player: Player, ammo: number, num: number): boolean {
     amount <<= 1;
   }
 
-  const oldammo = player.ammo[ammo];
-  player.ammo[ammo] += amount;
-  if (player.ammo[ammo] > player.maxammo[ammo]) {
-    player.ammo[ammo] = player.maxammo[ammo];
+  const oldammo = player.ammo[ammo]!;
+  player.ammo[ammo] = (player.ammo[ammo]! + amount) | 0;
+  if (player.ammo[ammo]! > player.maxammo[ammo]!) {
+    player.ammo[ammo] = player.maxammo[ammo]!;
   }
 
   // If we had zero ammo before, auto-switch weapon preference (p_inter.c:68-83)
@@ -204,27 +213,30 @@ export function P_GiveAmmo(player: Player, ammo: number, num: number): boolean {
  * Give weapon to player. Returns false if nothing given (already owned in netgame).
  * @param dropped true if weapon has MF_DROPPED flag (half ammo, netgame rules).
  */
-export function P_GiveWeapon(player: Player, weapon: number, dropped: boolean): boolean {
+export function P_GiveWeapon(player: PickupPlayer, weapon: number, dropped: boolean): boolean {
   // Netgame / deathmatch rules for placed (non-dropped) weapons (p_inter.c:94-113)
-  // netgame && (deathmatch != 2) && !dropped
-  if (netgame && !deathmatch && !dropped) {
+  // vanilla: if (netgame && (deathmatch != 2) && !dropped)
+  if (netgame && deathmatch !== 2 && !dropped) {
     if (player.weaponowned[weapon]) return false;
     player.bonuscount += BONUSADD;
     player.weaponowned[weapon] = 1;
-    // Deathmatch gives 5 clips, else 2 clips
-    if (deathmatch) {
-      P_GiveAmmo(player, weaponinfo[weapon].ammo, 5);
+    // Deathmatch gives 5 clips, else 2 clips (p_inter.c:103-107)
+    if (deathmatch !== 0) {
+      P_GiveAmmo(player, weaponinfo[weapon]!.ammo, 5);
     } else {
-      P_GiveAmmo(player, weaponinfo[weapon].ammo, 2);
+      P_GiveAmmo(player, weaponinfo[weapon]!.ammo, 2);
     }
     player.pendingweapon = weapon;
+    // vanilla plays sfx_wpnup INSIDE this branch (p_inter.c:110-111) — the
+    // caller's common sound tail never runs because this path returns false.
+    if (pickupSoundHook) pickupSoundHook(SFX.sfx_wpnup);
     return false; // weapon stays in map in netgame (vanilla behavior)
   }
 
   let gaveammo = false;
-  if (weaponinfo[weapon].ammo !== AMMO.am_noammo) {
+  if (weaponinfo[weapon]!.ammo !== AMMO.am_noammo) {
     // Dropped weapon = 1 clip, found weapon = 2 clips (p_inter.c:115-121)
-    gaveammo = P_GiveAmmo(player, weaponinfo[weapon].ammo, dropped ? 1 : 2);
+    gaveammo = P_GiveAmmo(player, weaponinfo[weapon]!.ammo, dropped ? 1 : 2);
   }
 
   let gaveweapon = false;
@@ -242,11 +254,11 @@ export function P_GiveWeapon(player: Player, weapon: number, dropped: boolean): 
 /* ------------------------------------------------------------------ */
 
 /** Give health to player. Returns false if already at MAXHEALTH. */
-export function P_GiveBody(player: Player, num: number): boolean {
+export function P_GiveBody(player: PickupPlayer, num: number): boolean {
   if (player.health >= MAXHEALTH) return false;
   player.health += num;
   if (player.health > MAXHEALTH) player.health = MAXHEALTH;
-  player.mo.health = player.health;
+  syncMoHealth(player);
   return true;
 }
 
@@ -258,7 +270,7 @@ export function P_GiveBody(player: Player, num: number): boolean {
  * Give armor to player. armortype: 1 = green (100%), 2 = blue (200%).
  * Returns false if current armor is >= new armor.
  */
-export function P_GiveArmor(player: Player, armortype: number): boolean {
+export function P_GiveArmor(player: PickupPlayer, armortype: number): boolean {
   const hits = armortype * 100;
   if (player.armorpoints >= hits) return false;
   player.armortype = armortype;
@@ -271,7 +283,7 @@ export function P_GiveArmor(player: Player, armortype: number): boolean {
 /* ------------------------------------------------------------------ */
 
 /** Give key card/skull to player. */
-export function P_GiveCard(player: Player, card: number): void {
+export function P_GiveCard(player: PickupPlayer, card: number): void {
   if (player.cards[card]) return;
   player.bonuscount = BONUSADD;
   player.cards[card] = 1;
@@ -285,7 +297,7 @@ export function P_GiveCard(player: Player, card: number): void {
  * Give powerup to player. Returns false if already have it (except strength).
  * Sets powerup timer and side effects (MF_SHADOW for invisibility, etc.).
  */
-export function P_GivePower(player: Player, power: number): boolean {
+export function P_GivePower(player: PickupPlayer, power: number): boolean {
   if (power === PW.pw_invulnerability) {
     player.powers[power] = INVULNTICS;
     return true;
@@ -321,61 +333,20 @@ export function P_GivePower(player: Player, power: number): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/* P_TouchSpecialThing — p_inter.c:226-368                             */
+/* P_TouchSpecialThing — p_inter.c:226-368 (implemented below as the   */
+/* hook-integrated P_TouchSpecialThingHook; ThingLinks carries no       */
+/* sprite field, so identification is doomednum-derived with a          */
+/* runtime-state lookup seam for dynamic (dropped) mobjs — see seams)   */
 /* ------------------------------------------------------------------ */
 
 /**
- * Main pickup dispatcher. Called when a player (MF_PICKUP mover) touches
- * an MF_SPECIAL thing. Identifies item by sprite (special->sprite),
- * applies give rules, sets message/sound, removes mobj.
- *
- * @param specialSlot ThingLinks slot of the item (MF_SPECIAL)
- * @param toucherSlot ThingLinks slot of the toucher (player, MF_PICKUP)
- * @param world PMapWorld for accessing thing data and removing mobjs
+ * doomednum → sprite mapping: every MF_SPECIAL mobjinfo row's spawnState
+ * resolved through states.ts stateSprite (info.c sprites-column truth).
+ * Covers PLACED map things (static slots carry their doomednum). Dynamic
+ * mobjs (dropped weapons, doomednum 0 there) resolve via the
+ * {@link setSpecialSpriteLookup} seam first; -1 = no mapping.
  */
-export function P_TouchSpecialThing(
-  specialSlot: number,
-  toucherSlot: number,
-  world: { links: { x: Int32Array; y: Int32Array; z: Int32Array; height: Int32Array; flags: Int32Array; doomednum: Int32Array; sprite?: Int32Array } }
-): boolean {
-  // Reach test: delta > toucher->height || delta < -8*FRACUNIT (p_inter.c:235-239)
-  const delta = world.links.z[specialSlot]! - world.links.z[toucherSlot]!;
-  const toucherHeight = world.links.height[toucherSlot]!;
-  if (delta > toucherHeight || delta < -8 * FRACUNIT) {
-    return false; // out of reach
-  }
-
-  // Dead toucher bail (p_inter.c:247-249)
-  // The toucher's health is in the mover's health field, but thinglinks doesn't store it.
-  // In the sim, player health is in Player.health. We need the Player object.
-  // For now, we assume the caller has verified the toucher is alive.
-  // TODO: The hook receives Mover objects; we need to get Player from Mover.
-
-  // Since the pmap hook passes (slot, toucher: Mover), we need to adapt.
-  // This function is the low-level version taking slots; the hook wrapper
-  // will extract the Player from the toucher Mover.
-
-  // Identify by sprite (p_inter.c:256 switch)
-  // thinglinks stores doomednum; we need a doomednum→sprite map.
-  // For now, we need the mobjinfo sprite. We'll use a sprite lookup table.
-  const doomednum = world.links.doomednum[specialSlot]!;
-  const sprite = doomednumToSprite(doomednum);
-  if (sprite === -1) return false; // unknown
-
-  let sound = SFX.sfx_itemup;
-  let pickedUp = false;
-  let message = '';
-
-  // We need the Player object. The hook wrapper will call a version with Player.
-  // This low-level version is kept for potential direct calls.
-  // The real implementation is in P_TouchSpecialThingWithPlayer below.
-
-  // Placeholder - the actual logic is in the Player-taking version
-  return false;
-}
-
-/** doomednum → sprite mapping (from mobjinfo.ts spawnState → stateSprite → sprnames). */
-function doomednumToSprite(doomednum: number): number {
+export function doomednumToSprite(doomednum: number): number {
   // Mapping derived from the project's mobjinfo.ts spawnState → stateSprite.
   // Sprite numbers match SPR constants (e.g., SPR.ARM1 = 55).
   switch (doomednum) {
@@ -432,7 +403,12 @@ export function P_TouchSpecialThingHook(
   toucher: Mover,
   world: { links: { x: Int32Array; y: Int32Array; z: Int32Array; height: Int32Array; flags: Int32Array; doomednum: Int32Array } }
 ): void {
-  const player = toucher.playerRef;
+  // The mover's playerRef is the C `mobj_t.player` pointer; the pickup
+  // layer needs the d_player.h inventory slice (PickupPlayer intersection,
+  // p_inter_inventory.ts).
+  const player = (toucher as { playerRef?: unknown }).playerRef as
+    | PickupPlayer
+    | undefined;
   if (!player) return; // not a player
 
   // Reach test
@@ -445,12 +421,14 @@ export function P_TouchSpecialThingHook(
   // Dead toucher bail
   if (player.health <= 0) return;
 
-  const doomednum = world.links.doomednum[specialSlot]!;
-  const sprite = doomednumToSprite(doomednum);
-  if (sprite === -1) return;
+  // Identify by sprite (p_inter.c:256). Runtime-state lookup first (the
+  // honest sprite of any mobj, dropped or placed); doomednum table as the
+  // static-thing fallback.
+  let sprite = specialSpriteLookup ? specialSpriteLookup(specialSlot) : -1;
+  if (sprite < 0) sprite = doomednumToSprite(world.links.doomednum[specialSlot]!);
+  if (sprite < 0) return;
 
-  let sound = SFX.sfx_itemup;
-  let pickedUp = false;
+  let sound: string = SFX.sfx_itemup;
   let message = '';
 
   // Identify by sprite (verbatim from p_inter.c:256)
@@ -469,7 +447,7 @@ export function P_TouchSpecialThingHook(
     case SPR.BON1: // Health bonus
       player.health++;
       if (player.health > 200) player.health = 200;
-      player.mo.health = player.health;
+      syncMoHealth(player);
       message = GOT.GOTHTHBONUS;
       break;
     case SPR.BON2: // Armor bonus
@@ -481,14 +459,14 @@ export function P_TouchSpecialThingHook(
     case SPR.SOUL: // Soul sphere
       player.health += 100;
       if (player.health > 200) player.health = 200;
-      player.mo.health = player.health;
+      syncMoHealth(player);
       message = GOT.GOTSUPER;
       sound = SFX.sfx_getpow;
       break;
     case SPR.MEGA: // Megasphere (commercial only)
       if (gamemode !== 'commercial') return;
       player.health = 200;
-      player.mo.health = player.health;
+      syncMoHealth(player);
       P_GiveArmor(player, 2);
       message = GOT.GOTMSPHERE;
       sound = SFX.sfx_getpow;
@@ -609,7 +587,7 @@ export function P_TouchSpecialThingHook(
     case SPR.BPAK:
       if (!player.backpack) {
         for (let i = 0; i < NUMAMMO; i++) {
-          player.maxammo[i] *= 2;
+          player.maxammo[i] = (player.maxammo[i]! * 2) | 0;
         }
         player.backpack = true;
       }
@@ -666,21 +644,21 @@ export function P_TouchSpecialThingHook(
     player.itemcount++;
   }
 
-  // Remove the mobj
-  // P_RemoveMobj is in p_mobj.ts; we'll call a removal function
-  // For now, mark as unlinked. The actual removal is done by the caller
-  // or we need to import P_RemoveMobj. We'll do it here by unlinking.
-  // TODO: Import P_RemoveMobj from p_mobj.ts and call it.
-  // For now, just unlink from thinglinks.
-  thingUnsetPosition(world.links, specialSlot);
-  world.links.linked[specialSlot] = 0;
+  // Remove the mobj (p_inter.c tail P_RemoveMobj). The game wiring sets
+  // specialRemover to p_mobj.pRemoveMobj (thinker-arena free + item-respawn
+  // queue + unlink); with no seam wired, the link-only fallback keeps the
+  // item out of every blockmap query (the only thing PIT visitors read).
+  if (specialRemover) {
+    specialRemover(specialSlot);
+  } else {
+    thingUnsetPosition(world.links as unknown as ThingLinks, specialSlot);
+  }
 
   player.bonuscount += BONUSADD;
   player.message = message;
 
-  // Sound enqueue (M10 will implement actual audio; for now track via hook)
-  // S_StartSound(NULL, sound) for consoleplayer
-  // We'll use a callback hook for sound
+  // S_StartSound(NULL, sound) for the consoleplayer (p_inter.c tail; M10
+  // replaces the enqueue with real audio).
   if (pickupSoundHook) pickupSoundHook(sound);
 }
 
@@ -691,41 +669,40 @@ export function setPickupSoundHook(fn: (sound: string) => void): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* thinglinks helpers (local copies to avoid circular deps)           */
+/* Runtime seams (wired by the game bootstrap; unit tests inject       */
+/* fakes). ThingLinks slots carry no sprite/thinker reference, so the   */
+/* p_mobj runtime resolves both through these slots.                    */
 /* ------------------------------------------------------------------ */
 
-import { blockIndexOf } from './blockmap';
+/** slot → sprite number of the live mobj in that slot (−1 = none/unknown).
+ * The game wiring resolves rt.slotMobjs → stateSprite[m.state]; this is
+ * what makes dynamic dropped items (links doomednum 0) identifiable. */
+let specialSpriteLookup: ((slot: number) => number) | null = null;
+export function setSpecialSpriteLookup(fn: ((slot: number) => number) | null): void {
+  specialSpriteLookup = fn;
+}
 
-function thingUnsetPosition(links: typeof world.links, slot: number): void {
-  if (links.flags[slot]! & 16) return; // MF_NOBLOCKMAP
-  if (slot < (links as any).staticCount) {
-    (links as any).linked[slot] = 0;
-    return;
-  }
-  if (!(links as any).linked[slot]) return;
-  const cx = blockIndexOf(links.x[slot]! - links.bm.originX);
-  const cy = blockIndexOf(links.y[slot]! - links.bm.originY);
-  const p = (links as any).prev[slot]!;
-  const n = (links as any).next[slot]!;
-  if (n !== -1) (links as any).prev[n] = p;
-  if (p !== -1) (links as any).next[p] = n;
-  else if (cx >= 0 && cy >= 0 && cx < links.bm.width && cy < links.bm.height) {
-    (links as any).cellHead[cy * links.bm.width + cx] = n;
-  }
-  (links as any).prev[slot] = -1;
-  (links as any).next[slot] = -1;
-  (links as any).linked[slot] = 0;
+/** slot → P_RemoveMobj (p_mobj.ts). Returns true when a mobj was removed.
+ * The game wiring resolves rt.slotMobjs → pRemoveMobj. */
+let specialRemover: ((slot: number) => boolean) | null = null;
+export function setSpecialRemover(fn: ((slot: number) => boolean) | null): void {
+  specialRemover = fn;
 }
 
 /* ------------------------------------------------------------------ */
 /* Wire the M5 callback slot                                          */
 /* ------------------------------------------------------------------ */
 
-// The pmap hook is registered by the sim initialization (gInitGame or similar).
-// We expose a registration function that wires the hook to call
-// P_TouchSpecialThingHook with the current pmap world.
+// Chain-preserving, first-call-only install on the M5-02 slot (ptelept
+// idiom): the wrapper resolves the active pmap world per call, so it is
+// level-independent.
+let pickupHookInstalled = false;
 export function registerPickupHook(): void {
-  pmapHooks.touchSpecialThing = (slot: number, toucher: Mover) => {
+  if (pickupHookInstalled) return;
+  pickupHookInstalled = true;
+  const prior = pmapHooks.touchSpecialThing;
+  pmapHooks.touchSpecialThing = (slot: number, toucher: Mover): void => {
+    prior?.(slot, toucher);
     const world = getPmapWorld();
     if (world) {
       P_TouchSpecialThingHook(slot, toucher, world);
@@ -740,7 +717,9 @@ export function registerPickupHook(): void {
 export function resetPickupState(): void {
   gamemode = 'registered';
   netgame = false;
-  deathmatch = false;
+  deathmatch = 0;
   gameskill = 2;
   pickupSoundHook = null;
+  specialSpriteLookup = null;
+  specialRemover = null;
 }
