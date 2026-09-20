@@ -226,6 +226,28 @@ export function rederiveMissileHit(
  * dist = max(0, (chebyshevDelta − targetRadius) >> 16) (C arithmetic
  * shift — floor), then damage = bombDamage − dist when in LOS; dist ≥
  * bombDamage ⇒ no event. Fixed-point exact through BigInt. */
+/** P_RadiusAttack damage re-derivation from EXACT fixed-point deltas:
+ * dist = (P_AproxDistance(dx,dy) − radius) >> 16, damage = bomb − dist
+ * (BigInt throughout — floor semantics of C `>>` on the non-negative
+ * post-subtraction value, matching pradius.ts). */
+export function rederiveSplashFixed(
+  bombDamage: number,
+  dxFixed: number,
+  dyFixed: number,
+  radiusFixed: number
+): number | null {
+  let dx = BigInt(dxFixed);
+  let dy = BigInt(dyFixed);
+  if (dx < 0n) dx = -dx;
+  if (dy < 0n) dy = -dy;
+  // P_AproxDistance = dx + dy − (min >> 1) (pmaputl.ts:151-156)
+  const aproxBig = dx + dy - ((dx < dy ? dx : dy) >> 1n);
+  let dist = (aproxBig - BigInt(radiusFixed)) >> 16n;
+  if (dist < 0n) dist = 0n;
+  if (dist >= BigInt(bombDamage)) return null;
+  return bombDamage - Number(dist);
+}
+
 export function rederiveSplash(
   bombDamage: number,
   dxUnits: number,

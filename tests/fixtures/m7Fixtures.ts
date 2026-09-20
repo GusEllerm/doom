@@ -53,7 +53,7 @@ export const STREAM_TAG_DOOR = 665;
 export const STREAM_TAG_TELE = 666;
 
 export interface DummySpec {
-  readonly x: number;
+  readonly x?: number; // default 256 (128 units down the eye line)
   readonly y?: number;
   readonly type?: number; // default barrel
 }
