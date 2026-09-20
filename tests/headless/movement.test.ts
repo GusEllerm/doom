@@ -357,7 +357,10 @@ describe('1000-tic determinism with noclip movement', () => {
     // then M6-09 (one-time, reason: 'sector-light specials live' — E1M1
     // light thinkers spawn at load, draw P_Random and tick live lights):
     // 1563175793 → 1350827061.
-    expect(h1).toBe(1350827061);
+    // then M7-02 (one-time, reason: 'mobjs in world state' — E1M1 map-thing
+    // thinker payloads in the arena + load-time P_Random draws):
+    // 1350827061 → 1954854581.
+    expect(h1).toBe(1954854581);
   });
 });
 

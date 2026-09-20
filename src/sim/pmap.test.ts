@@ -644,7 +644,11 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 P_CheckPosition vs brute force', ()
 
   // Pinned from this port against the committed freedoom1.wad (2026-07):
   // 1000 mulberry32(0x5eed) points in the E1M1 bbox, blocked verdicts.
-  const GOLDEN_BLOCKED = 121;
+  // M7-02 re-bless 121 → 156 (reason: 'map things spawn (M7-02)' — the
+  // grid now holds the FULL doomednum roster: MF_SOLID decorations/barrels
+  // block where before only the M5 barrel stub did; brute force moved with
+  // it, verdicts still match on all 1000 points).
+  const GOLDEN_BLOCKED = 156;
 
   it('1000 seeded points: verdict + floorz/ceilingz match the brute reference', () => {
     const r = sweep(e1m1(), 0x5eed);

@@ -489,7 +489,10 @@ describe('feel-10 noclip momentum parity (D012)', () => {
 describe('feel-11 solid thing blocks (barrel)', () => {
   it('non-noclip: flush under the 102 boundary forever; noclip walks through', () => {
     const { h, s } = scripted(BARREL, 40, () => fwd);
-    expect(h).toBe(1942444525);
+    // M7-02 re-bless 1942444525 → 3533663931: mobjs in world state — the
+    // barrel is now a live mobj thinker in the arena (payload words + the
+    // spawn-time P_Random draw). Positions/momentum below UNCHANGED.
+    expect(h).toBe(3533663931);
     const p = s.players[0]!;
     expect(p.mo.x).toBe(6348970);
     expect(p.mo.x).toBeLessThan(102 * FRACUNIT); // bbox right edge < 128−10 ⇒ |dx|<26 never met
@@ -501,7 +504,10 @@ describe('feel-11 solid thing blocks (barrel)', () => {
     const n2 = bootFeel(BARREL);
     setNoclip(n2, true);
     expect(runHeadless(n2, 40, () => fwd)).toBe(hn);
-    expect(hn).toBe(436575480);
+    // M7-02 re-bless 436575480 → 641724918: mobjs in world state (same
+    // reason as the pinned branch above; the walk-through path itself is
+    // byte-identical — x below unchanged).
+    expect(hn).toBe(641724918);
     expect(n.players[0]!.mo.x).toBe(20862794); // past the barrel, past the room
   });
 });
