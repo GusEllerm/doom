@@ -25,7 +25,8 @@ export const RANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
   'pmap.ts': 4, // crusher blood momentum draws (M5/M6 pre-drawn)
   'pmissiles.ts': 4, // CheckMissileSpawn tics, shadow jitter(2), direct-hit dice
   'pplats.ts': 1, // M6 plat go/stop jitter
-  'pplayer.ts': 3, // explode-tics (player? no: death-state tics), thrust &1, painchance
+  'pplayer.ts': 2, // thrust &1, painchance (M8-05: death-state tics clamp moved to p_inter_damage.ts)
+  'p_inter_damage.ts': 3, // M8-05: thrust &1, painchance, kill tics clamp
   'pradius.ts': 1, // A_BFGSpray 15-dice LOOP (15 draws per hit ray!)
   'pspec.ts': 1, // M6 damage-floor 1/5 bypass
 };
