@@ -21,6 +21,7 @@ import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
+import { createMobjRuntime, pRespawnSpecials, pSpawnThings } from './p_mobj';
 import { pSpawnSpecials, pUpdateSpecials } from './pspec';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
@@ -93,9 +94,20 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
     exitRequest: 'none',
     totalsecret: 0, // P_SpawnSpecials sector-9 pass (M6-03) counts this
     secretcount: 0,
-    specialexit: false
+    specialexit: false,
+    // M7-02: placeholder replaced immediately below (the runtime
+    // back-references the state; never observable in between).
+    mobjs: null as unknown as GameState['mobjs']
   };
+  state.mobjs = createMobjRuntime(state);
   mClearRandom(state.rng); // g_game.c:1414
+  // M7-02 thing spawn pass — 1.10 site: P_SetupLevel → P_LoadThings →
+  // P_SpawnMapThing (p_setup.c:346) BEFORE P_SpawnSpecials, in THINGS
+  // order, AFTER M_ClearRandom (so the per-mobj P_Random() draws —
+  // lastlook + the spawn-tics jitter — sit exactly where vanilla's do).
+  // The thinker arena order rule follows: map-thing mobjs first, specials
+  // after (p_mobj.ts header). deathmatch starts are captured here too.
+  pSpawnThings(state.mobjs);
   // P_SpawnSpecials — 1.10 site: P_SetupLevel → P_SpawnSpecials
   // (p_setup.c); M6-03 sector-9 totalsecret pass + special-48 line
   // collection + list inits + family-stub spawn calls (M6-plan §0.3).
@@ -146,9 +158,13 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
     pXYMovement(state.pmap, p.mo);
     pZMovement(p.mo);
   }
-  pRunThinkers(state.thinkers); // p_tick.c P_RunThinkers (M6-01 arena)
+  pRunThinkers(state.thinkers); // p_tick.c P_RunThinkers (M6-01 arena;
+  // M7-02: the map-thing/mover mobj thinkers live HERE, in arena order)
   pUpdateSpecials(state); // p_spec.c button/scroll tick (M6-03 body)
-  // P_RespawnSpecials: level-restart respawn queue — no source pre-M9 (no-op).
+  // P_RespawnSpecials (p_mobj.c:589) — item-respawn queue drain; the
+  // deathmatch!=2 early return is taken in SP (queue still maintained by
+  // P_RemoveMobj, p_mobj.pRespawnSpecials).
+  pRespawnSpecials(state.mobjs);
   state.leveltime++; // p_tick.c P_Ticker tail
 
   state.gametic++; // d_main.c tic loop tail
