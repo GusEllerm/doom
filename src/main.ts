@@ -46,6 +46,7 @@ import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
 import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
 import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
+import { buildPspriteFrameInput } from './pspriteview';
 import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
 import { buildRenderMapView, type RenderMapView } from './render/view';
 import { initLightTables, type LightTables } from './render/lights';
@@ -166,6 +167,10 @@ function render(): void {
     tables: boot.tables,
     sprites: boot.sprites,
     automap: { state: am, map: state.map, player: state.players[0]! },
+    // M7-10: the live psprite layer (gun + muzzle flash over the world,
+    // r_things.c R_DrawPlayerSprites) — resolved from the live sim rows
+    // through the src/pspriteview.ts seam (same one the goldens use).
+    psprites: buildPspriteFrameInput(state.map, state.players[0]!),
   };
   renderFrame(deps);
   // ST_doPaletteStuff half (st_stuff.c:1000-1050): the band is a sim value,
