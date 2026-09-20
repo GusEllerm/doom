@@ -42,6 +42,12 @@
 //    "M8-05", but the body IS the p_enemy.c:159 function this task owns —
 //    it is wired HERE (deviation note per brief); M8-05 keeps only the
 //    damageBridge + p_kill side.
+//  - ENABLE: this module registers at IMPORT (self-import idiom) but
+//    game.ts does NOT import it yet — a LOS-visible punching-bag zombie
+//    in the M7-era suites wakes on its first A_Look tic and reorders the
+//    pinned draw streams (§0.5 R1). The production flip + corpus
+//    re-derivation is M8-11's (plan §M8-11 acceptance 2 is literally the
+//    enabled-E1M1 run); the note lives at the game.ts import site.
 //  - Monster door-opening: P_Move walks tm.spechit DESCENDING on a failed
 //    move calling pUseSpecialLine(actor, ld, 0); the ML_BLOCKMONSTERS /
 //    monsterUseOk gates are already inside pspec.ts (M6-03) — wired here.
@@ -50,7 +56,7 @@
 // 1 + search 1, A_Look seesound 2, A_Chase activesound 1, A_FaceTarget
 // shadow 2, P_CheckMissileRange 1 → 9 `pRandom(` occurrences.
 // SFX ledger (psound_stub SFX_SITE_LEDGER): A_Look 2 (full-volume NULL +
-// origin), A_Chase attacksound 1 + activesound 1 → 4 `sfxSlot(`.
+// origin), A_Chase attacksound 1 + activesound 1 → 4 direct hook calls.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -259,8 +265,39 @@ export function pMove(actor: Mobj): boolean {
  *  Import-injected lazily to keep the module graph acyclic-free: pmap.ts
  *  does NOT import p_enemy, so the direct import is safe at module eval. */
 import { pTryMove } from './pmap';
+import { allocThingSlot, thingUnsetPosition } from './thinglinks';
 function pTryMoveShim(actor: Mobj, x: number, y: number): boolean {
+  promoteMoverSlot(actor); // port bridge, see below
   return pTryMove(actor.rt.state.pmap, actor, x, y);
+}
+
+/**
+ * PORT BRIDGE (thinglinks.ts header's own “needs slot promotion —
+ * documented follow-up”, now due): load-time THINGS spawn into STATIC grid
+ * slots (slot i ↔ spawn #i) because decor never moves — vanilla has no
+ * such split, every mobj is one heap block in the cell chains. A static-
+ * slot monster taking its FIRST chase step is therefore promoted ONCE to
+ * a dynamic mover slot: the static CSR membership is unlinked (linked=0 ⇒
+ * iterations skip it), its collision flags are cleared so nothing can
+ * still resolve the old pair, and slotMobjs rebinds the live mobj to the
+ * new slot. The roster/thinker ids and hash words are untouched — the
+ * promotion itself moves no hashed bytes (the same 9 words ride the new
+ * slot at the same coords). Deliberately NOT done at spawn: idle (never-
+ * chasing) monsters keep their static identity, which is also what keeps
+ * the pre-M8 goldens' grids byte-identical.
+ */
+function promoteMoverSlot(m: Mobj): void {
+  const links = m.rt.state.pmap.links;
+  if (m.linkSlot >= links.staticCount) return;
+  const old = m.linkSlot;
+  thingUnsetPosition(links, old);
+  links.flags[old] = 0;
+  const s = allocThingSlot(links, m.radius, m.height, m.flags);
+  links.doomednum[s] = links.doomednum[old]!;
+  links.z[s] = m.z;
+  m.linkSlot = s;
+  m.rt.slotMobjs.delete(old);
+  m.rt.slotMobjs.set(s, m);
 }
 
 /* ------------------------------------------------------------------ */
