@@ -613,9 +613,16 @@ describe('P_UseLines ray (p_map.c:1090-1160)', () => {
     warp(s, 250, 128, 0);
     resetPswitchCounts();
     const use = { ...emptyInput(), use: true };
-    for (let i = 0; i < 5; i++) gTicker(s, use); // HELD for 5 tics
-    expect(pswitchCounts.useLines, 'one ray while held').toBe(1);
-    expect(pspecCounts.useSpecialLine).toBe(1);
+    // M7-05 (G_PlayerReborn, g_game.c:822 `usedown = attackdown = true;
+    // don't do anything immediately` — now live via the forced-PST_REBORN
+    // new game): a button HELD SINCE SPAWN is "down last tic" and gets NO
+    // ray until a real release+press cycle happens.
+    for (let i = 0; i < 5; i++) gTicker(s, use); // HELD since spawn: 5 tics
+    expect(pswitchCounts.useLines, 'spawn usedown latch: no ray while held').toBe(0);
+    expect(pspecCounts.useSpecialLine).toBe(0);
+    gTicker(s, emptyInput()); // release
+    for (let i = 0; i < 3; i++) gTicker(s, use); // first real PRESS
+    expect(pswitchCounts.useLines, 'first press fires').toBe(1);
     gTicker(s, emptyInput()); // release
     for (let i = 0; i < 3; i++) gTicker(s, use); // press again
     expect(pswitchCounts.useLines, 'second press fires again').toBe(2);
