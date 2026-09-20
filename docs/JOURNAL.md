@@ -215,3 +215,9 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - Visual review board added: docs/VISUAL-REVIEW.md (human-eye tier list; weapons parked pending M7-11 psprite fix).
 - Visual board round 1 (human reviewer): 11 verdicts logged (all pass), questions answered in-doc; contrast fidelity-watch banked; weapons re-review queued after M7-11.
 - Recovered lost M7-11 agent: its fix commit survived — ROOT CAUSE of the wrong-weapon-sprite bug: stateSprite holds info.h spritenum (sprnames order) but InstalledSprites is WAD-lump-CENSUS ordered -> every gun resolved to a monster sprite. 967 states rows audited row-by-row (clean). All weapon goldens re-blessed; MY visual gate: pistol+chaingun DISTINCT and bottom-anchored = PASS. Remainder (e2e+exit guards+strip) finisher running.
+
+## 2026-09-23 — 🏁 M7 COMPLETE (weapons & combat) — direct-execution finish
+- Session restarts had killed three agent waves on the small M7 remainder, so this last mile ran DIRECTLY (lower loss-variance): weapon e2e (4 tests: fire/ammo/psprite-states, chaingun-switch distinct-sprite regression, death→respawn, dry-ladder), m7exit guards (9), debug seams (giveWeapon/killPlayer, live ammo/weapons/readyweapon/pspr/thinkers exposure — the reviewer-spotted -1 bug now fully fixed).
+- REAL GAP found+fixed by the e2e: PST_REBORN had no mid-level consumer → gTicker reborn pass implemented (D017 in-place deviation; faithful level-restart deferred to M9). M7-03 latch test updated to the consume loop.
+- Gates: 2194 unit + 23 e2e + goldens drift-free. MILESTONES: M1-M7 ✅ (seven of twelve).
+- NEXT: M8 monster AI (states/actions for monsters: sight/sound target, chase, melee/missile, pain, death, resurrection? — plan agent dispatched).
