@@ -492,7 +492,10 @@ describe('feel-11 solid thing blocks (barrel)', () => {
     // M7-02 re-bless 1942444525 → 3533663931: mobjs in world state — the
     // barrel is now a live mobj thinker in the arena (payload words + the
     // spawn-time P_Random draw). Positions/momentum below UNCHANGED.
-    expect(h).toBe(3533663931);
+    // RE-BLESSED M8-02 (one-time, reason: 'M8 monster fields') — 9th mobj
+    // hash word movedir|movecount|damage joins the barrel's payload; the
+    // positions/momentum below stay UNCHANGED. 3533663931 → 3504184626.
+    expect(h).toBe(3504184626);
     const p = s.players[0]!;
     expect(p.mo.x).toBe(6348970);
     expect(p.mo.x).toBeLessThan(102 * FRACUNIT); // bbox right edge < 128−10 ⇒ |dx|<26 never met
@@ -506,8 +509,9 @@ describe('feel-11 solid thing blocks (barrel)', () => {
     expect(runHeadless(n2, 40, () => fwd)).toBe(hn);
     // M7-02 re-bless 436575480 → 641724918: mobjs in world state (same
     // reason as the pinned branch above; the walk-through path itself is
-    // byte-identical — x below unchanged).
-    expect(hn).toBe(641724918);
+    // byte-identical — x below unchanged). M8-02 re-bless (reason
+    // 'M8 monster fields', 9th mobj hash word): 641724918 → 4290262959.
+    expect(hn).toBe(4290262959);
     expect(n.players[0]!.mo.x).toBe(20862794); // past the barrel, past the room
   });
 });

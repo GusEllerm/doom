@@ -360,7 +360,10 @@ describe('1000-tic determinism with noclip movement', () => {
     // then M7-02 (one-time, reason: 'mobjs in world state' — E1M1 map-thing
     // thinker payloads in the arena + load-time P_Random draws):
     // 1350827061 → 1954854581.
-    expect(h1).toBe(1954854581);
+    // then M8-02 (one-time, reason: 'M8 monster fields' — 9th mobj hash
+    // word movedir|movecount|damage in the arena payloads):
+    // 1954854581 → 2361268992.
+    expect(h1).toBe(2361268992);
   });
 });
 

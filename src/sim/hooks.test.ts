@@ -107,7 +107,7 @@ describe('damageBridge slots (M8-02 acceptance 4, pure)', () => {
 function bootFixture(things: RectMapSpec['things']): GameState {
   const spec: RectMapSpec = {
     rooms: [{ x: 0, y: 0, w: 512, h: 512, lightLevel: 200 }],
-    things: [{ x: 32, y: 32, angle: 0, type: 1 }, ...things],
+    things: [{ x: 32, y: 32, angle: 0, type: 1 }, ...(things ?? [])],
   };
   const bytes = buildFixtureMapWad(spec, 'FIXMAP');
   const buf = bytes.buffer.slice(

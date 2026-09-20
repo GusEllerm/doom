@@ -123,6 +123,9 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     // M7-02 re-bless 2631099186 → 726751958: mobjs in world state — the
     // arena now carries E1M1's map-thing thinkers (payload words) and the
     // spawn pass consumes P_Random (lastlook + spawn-tics jitter).
-    expect(h1).toBe(726751958);
+    // RE-BLESSED M8-02 (one-time, reason: 'M8 monster fields') — the 9th
+    // mobj hash word (movedir|movecount|damage, p_mobj.syncMobj) joins
+    // every live mobj's §3.4 payload; value 726751958 → 1617141227.
+    expect(h1).toBe(1617141227);
   });
 });
