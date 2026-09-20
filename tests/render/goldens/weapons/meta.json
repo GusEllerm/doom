@@ -6,12 +6,12 @@
   "scenes": {
     "montage": {
       "kind": "montage",
-      "script": "state-table-enumerated weapon/flash frames, 5x7 labels, fullbright row",
-      "width": 352,
-      "height": 864,
-      "indexSha256": "3d58a86486c66c8be730d225ea91a25f86d67964b09b9240b573e9e24a67e05e",
+      "script": "scene-frame contact sheet: 14 scenes tiled 3x5, 2x nearest-neighbour, 2x 5x7 labels",
+      "width": 1920,
+      "height": 2080,
+      "indexSha256": "b1ccc9b842f9371148f41baa87f41ae35b54f126324aed36ee13b7b619dd15d7",
       "png": "montage.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -28,6 +28,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "3d58a86486c66c8be730d225ea91a25f86d67964b09b9240b573e9e24a67e05e"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "b1ccc9b842f9371148f41baa87f41ae35b54f126324aed36ee13b7b619dd15d7"
         }
       ]
     },
@@ -37,9 +42,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "6f611772425a3244884ef3b6ccea2b7d4c2edee32dd6d77bd22ccf7c68210a38",
+      "indexSha256": "b4b2ae3208954580abdcdf442513965762b3a04546a435ebc8986d27a98b3c39",
       "png": "wpn-bfg-flash.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -56,6 +61,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "6f611772425a3244884ef3b6ccea2b7d4c2edee32dd6d77bd22ccf7c68210a38"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "b4b2ae3208954580abdcdf442513965762b3a04546a435ebc8986d27a98b3c39"
         }
       ]
     },
@@ -65,9 +75,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "e70b33410af1715f6c93c62d13e301ce68579e8e2392098ef86b675c97d451ba",
+      "indexSha256": "afb375454de4b8a7551238cf3615a0a3e7cc9c0093bc77ae39f9abe195a659a8",
       "png": "wpn-bfg-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -84,6 +94,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "e70b33410af1715f6c93c62d13e301ce68579e8e2392098ef86b675c97d451ba"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "afb375454de4b8a7551238cf3615a0a3e7cc9c0093bc77ae39f9abe195a659a8"
         }
       ]
     },
@@ -93,9 +108,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "0bc8eb8386bc723184ddf90aabf36932b148724a714e94cea76fabd7ab13115b",
+      "indexSha256": "c3d5c2a22e7fc87400f2f472e57f6822d587c4326bd9ce3d5f0bf057e0f72c46",
       "png": "wpn-chaingun-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -112,6 +127,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "0bc8eb8386bc723184ddf90aabf36932b148724a714e94cea76fabd7ab13115b"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "c3d5c2a22e7fc87400f2f472e57f6822d587c4326bd9ce3d5f0bf057e0f72c46"
         }
       ]
     },
@@ -121,9 +141,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "b80fbb8f6e440531d978a2b0af621c4c26b183d6fc539c003446dc150aae3156",
+      "indexSha256": "d29ee0d0e79e3b5d80d52ec26dfdfae51857b574d87a59b5f615e597d7555e76",
       "png": "wpn-chaingun-spin.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -140,6 +160,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "b80fbb8f6e440531d978a2b0af621c4c26b183d6fc539c003446dc150aae3156"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "d29ee0d0e79e3b5d80d52ec26dfdfae51857b574d87a59b5f615e597d7555e76"
         }
       ]
     },
@@ -149,9 +174,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "5b572484dc7496e5de32ca4d2dc00bd35166d671667234f24819c28784f98c55",
+      "indexSha256": "0d808495a8417e9c36b250ffd88f96b21db4c171841b7cae5ac073a784d8d8a5",
       "png": "wpn-fist-punch.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -168,6 +193,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "5b572484dc7496e5de32ca4d2dc00bd35166d671667234f24819c28784f98c55"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "0d808495a8417e9c36b250ffd88f96b21db4c171841b7cae5ac073a784d8d8a5"
         }
       ]
     },
@@ -177,9 +207,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "e80dac84cf2cdb2e94f5a87693313fef2a22695d167bf220161ad6ee53557bc1",
+      "indexSha256": "44c63f0d3c3d890f157dc0493b944c231c8e95f39a5c5fdad2017a3862c3ff25",
       "png": "wpn-fist-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -196,6 +226,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "e80dac84cf2cdb2e94f5a87693313fef2a22695d167bf220161ad6ee53557bc1"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "44c63f0d3c3d890f157dc0493b944c231c8e95f39a5c5fdad2017a3862c3ff25"
         }
       ]
     },
@@ -205,9 +240,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b",
+      "indexSha256": "76181f6ac3168d5753c36c5da6a4637ef8ec09c6a5e7c15f90d22b244fecae06",
       "png": "wpn-missile-flash.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -224,6 +259,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "76181f6ac3168d5753c36c5da6a4637ef8ec09c6a5e7c15f90d22b244fecae06"
         }
       ]
     },
@@ -233,9 +273,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "e0275c6100339de6bc0fe0c0b36294d5562951bcdf2815732ab2089b033b0cdc",
+      "indexSha256": "b00a4ab9c7e74fa636d77bd815c2cb06c547e4c275016d70b14d3bee1c09bdca",
       "png": "wpn-missile-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -252,6 +292,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "e0275c6100339de6bc0fe0c0b36294d5562951bcdf2815732ab2089b033b0cdc"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "b00a4ab9c7e74fa636d77bd815c2cb06c547e4c275016d70b14d3bee1c09bdca"
         }
       ]
     },
@@ -261,9 +306,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b",
+      "indexSha256": "76181f6ac3168d5753c36c5da6a4637ef8ec09c6a5e7c15f90d22b244fecae06",
       "png": "wpn-pistol-flash.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -280,6 +325,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "76181f6ac3168d5753c36c5da6a4637ef8ec09c6a5e7c15f90d22b244fecae06"
         }
       ]
     },
@@ -289,9 +339,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "8c2bf749ecf354222a0c4603986fe3d1cb5c2c7305d0c19c1b505795b06cd808",
+      "indexSha256": "ae21fff363fe478b7474a6dd6ce6fb1a82c6565e1139592b8822b27d4f6b9ce4",
       "png": "wpn-pistol-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -308,6 +358,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "8c2bf749ecf354222a0c4603986fe3d1cb5c2c7305d0c19c1b505795b06cd808"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "ae21fff363fe478b7474a6dd6ce6fb1a82c6565e1139592b8822b27d4f6b9ce4"
         }
       ]
     },
@@ -317,9 +372,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "7ab4c6f35598d4294eeb43f17dac85a40fd42c661abfb07ae899b6a845045020",
+      "indexSha256": "4f206940c7ce95a8995718ef40f94d13d619cf1f1e6f1ebb8ceb15c61874bd76",
       "png": "wpn-plasma-flash.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -336,6 +391,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "7ab4c6f35598d4294eeb43f17dac85a40fd42c661abfb07ae899b6a845045020"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "4f206940c7ce95a8995718ef40f94d13d619cf1f1e6f1ebb8ceb15c61874bd76"
         }
       ]
     },
@@ -345,9 +405,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "446fe4f87fb9c2cb682085f820d87ab06a8bd7ba91b30fe582323ded1f1c0727",
+      "indexSha256": "8236f2f4b76fdc463683bd55e206d17d1a038d05b0bd9f4735f4746448f2ecef",
       "png": "wpn-plasma-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -364,6 +424,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "446fe4f87fb9c2cb682085f820d87ab06a8bd7ba91b30fe582323ded1f1c0727"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "8236f2f4b76fdc463683bd55e206d17d1a038d05b0bd9f4735f4746448f2ecef"
         }
       ]
     },
@@ -373,9 +438,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "c0009f57051790607eb34b89c2706da570a2a1522a26a9a77f15a4d390b55b1d",
+      "indexSha256": "9a1a9c39dc0a57503ef9a3975e7cb31524376dc059df2a483408b32b972e8e18",
       "png": "wpn-shotgun-flash.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -392,6 +457,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "c0009f57051790607eb34b89c2706da570a2a1522a26a9a77f15a4d390b55b1d"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "9a1a9c39dc0a57503ef9a3975e7cb31524376dc059df2a483408b32b972e8e18"
         }
       ]
     },
@@ -401,9 +471,9 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "e10b0aa2a87aef37e1748353e2bc8a1bd6dd6942a299a1bfb83f1a8aa0a9bb53",
+      "indexSha256": "c803f812a6345cb0c3864880b2d9e8d5833430620e077488ba22f1683d060b2f",
       "png": "wpn-shotgun-raise.png",
-      "reason": "M7-10 weapon visual pack",
+      "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
       "updatedAt": "2026-09-20",
       "history": [
         {
@@ -420,6 +490,11 @@
           "reason": "M7-10 weapon visual pack",
           "at": "2026-09-20",
           "indexSha256": "e10b0aa2a87aef37e1748353e2bc8a1bd6dd6942a299a1bfb83f1a8aa0a9bb53"
+        },
+        {
+          "reason": "weapon psprite state coords fixed / root cause: states-table spritenum is an sprnames index, not the census index -> resolved by 4CC in the pspriteview seam; montage reworked to tile the scene frames (3x5 @2x)",
+          "at": "2026-09-20",
+          "indexSha256": "c803f812a6345cb0c3864880b2d9e8d5833430620e077488ba22f1683d060b2f"
         }
       ]
     }

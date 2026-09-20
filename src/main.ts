@@ -170,7 +170,7 @@ function render(): void {
     // M7-10: the live psprite layer (gun + muzzle flash over the world,
     // r_things.c R_DrawPlayerSprites) — resolved from the live sim rows
     // through the src/pspriteview.ts seam (same one the goldens use).
-    psprites: buildPspriteFrameInput(state.map, state.players[0]!),
+    psprites: buildPspriteFrameInput(state.map, state.players[0]!, boot.sprites.sprites),
   };
   renderFrame(deps);
   // ST_doPaletteStuff half (st_stuff.c:1000-1050): the band is a sim value,

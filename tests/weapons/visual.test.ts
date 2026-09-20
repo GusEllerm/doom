@@ -261,7 +261,7 @@ function frameDeps(s: GameState, b: Bundle, fb: Framebuffer, withGun: boolean) {
     player: s.players[0]!,
     tables: b.tables,
     sprites: b.sprites,
-    ...(withGun ? { psprites: buildPspriteFrameInput(s.map, s.players[0]!) } : {})
+    ...(withGun ? { psprites: buildPspriteFrameInput(s.map, s.players[0]!, b.sprites.sprites) } : {})
   };
 }
 
@@ -291,17 +291,34 @@ interface MetaFile {
   scenes?: Record<string, { indexSha256?: string }>;
 }
 
+/**
+ * Scene frame, MEMOIZED by scene name. The montage tiles exactly these
+ * buffers (M7-11 montage rework), and `reach()` boots a FRESH sim per
+ * scene, so caching cannot perturb a scene the per-scene case rendered
+ * first — the bytes are the same function of the same script either way.
+ */
+const sceneCache = new Map<string, { bytes: Uint8Array; captured: string; width: number; height: number }>();
+
+function sceneFrame(scene: Scene): { bytes: Uint8Array; captured: string; width: number; height: number } {
+  const hit = sceneCache.get(scene.name);
+  if (hit !== undefined) return hit;
+  const { s, captured } = reach(scene);
+  const { fb, bytesA, bytesB } = renderSim(s, true);
+  expect(sha256Of(bytesA), `${scene.name}: same state rendered twice must be byte-identical`).toBe(
+    sha256Of(bytesB)
+  );
+  const got = { bytes: new Uint8Array(fb.indices), captured, width: fb.width, height: fb.height };
+  sceneCache.set(scene.name, got);
+  return got;
+}
+
 function goldenCase(scene: Scene): void {
   it(`${scene.name}: raised/flash psprite golden (double-render identical, sha vs meta)`, () => {
-    const { s, captured } = reach(scene);
-    const { fb, bytesA, bytesB } = renderSim(s, true);
-    expect(sha256Of(bytesA), `${scene.name}: same state rendered twice must be byte-identical`).toBe(
-      sha256Of(bytesB)
-    );
-    const sha = sha256Of(fb.indices);
+    const { bytes: buf, captured, width, height } = sceneFrame(scene);
+    const sha = sha256Of(buf);
     if (DUMP_DIR !== null) {
       const b = bundle_();
-      writeFileSync(`${DUMP_DIR}/${scene.name}.bin`, fb.indices);
+      writeFileSync(`${DUMP_DIR}/${scene.name}.bin`, buf);
       writeFileSync(
         `${DUMP_DIR}/${scene.name}.json`,
         JSON.stringify(
@@ -309,8 +326,8 @@ function goldenCase(scene: Scene): void {
             name: scene.name,
             kind: 'weapon-script',
             script: `${captured} — gInitGame→give→weaponKey→(attack)→capture`,
-            width: fb.width,
-            height: fb.height,
+            width,
+            height,
             indexSha256: sha,
             hom: 0,
             paletteRgb: b.paletteRgb
@@ -426,64 +443,96 @@ function weaponFrameRoster(): { sprite: number; frame: number }[] {
   return pairs;
 }
 
-const TILE_W = 88;
-const TILE_H = 72;
-const MONT_COLS = 4;
+/**
+ * THE CONTACT SHEET (M7-11 montage rework).
+ *
+ * The M7-10 generator enumerated (sprite, frame) pairs off the state table
+ * and drew each patch in its own little cell — a sprite-sheet of the
+ * WEAPON ART, which proves nothing about the rendered frame and, worse,
+ * inherited the sprite-numbering bug this task found (the states-table
+ * spritenum is an `sprnames[]` index, while the renderer's InstalledSprites
+ * is WAD-census ordered — see src/pspriteview.ts). So the montage now
+ * tiles THE ACTUAL SCENE FRAMES: 3 columns × 5 rows, each 320×200 scene
+ * nearest-neighbour ×2 into a 640×400 cell with a 16 px label band (the
+ * scene's own name in the 2×-scaled 5×7 font), and one title cell in the
+ * free slot. Every tile therefore IS a blessed scene — the same cached
+ * buffer the per-scene golden dumps — and the tile-provenance assert below
+ * compares cell against source byte for byte.
+ */
+const MONT_COLS = 3;
+const MONT_SCALE = 2;
+const MONT_LABEL_H = 16;
+const MONT_TITLE = 'M7 WEAPON PACK 14 SCENES 2X';
 
-/** Contact sheet: tiles on black, fullbright (colormap row 0 — the same
- * ladder rung a FF_FULLBRIGHT psprite frame uses), 5×7 label per tile. */
-function buildMontage(): { buf: Uint8Array; width: number; height: number; tiles: number } {
-  const b = bundle_();
-  const roster = weaponFrameRoster();
-  const rows = Math.max(1, Math.ceil(roster.length / MONT_COLS));
-  const width = MONT_COLS * TILE_W;
-  const height = rows * TILE_H;
-  const buf = new Uint8Array(width * height); // 0 = black void
-  let tiles = 0;
-  roster.forEach((f, i) => {
-    const gf = lookupFrame(b.sprites.sprites, f.sprite, f.frame);
-    if (gf < 0) return;
-    const lump = frameLump(b.sprites.sprites, gf, 0);
-    if (lump < 0) return; // no mirror art for this frame (e.g. dead-coded)
-    const patch = b.sprites.patches.get(lump);
-    if (patch === undefined || patch.width === 0) return;
-    const tx = (i % MONT_COLS) * TILE_W;
-    const ty = Math.floor(i / MONT_COLS) * TILE_H;
-    tiles += 1;
-    // Label band (12 px, sprite drawn from ty+12): the 6-char lump-style
-    // name (4CC + frame letter + rot0/skew0) printed HORIZONAL, 5×7 font.
-    const paint = (glyph: readonly number[], x0: number, y0: number): void => {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 5; c++) {
-          if ((glyph[r]! & (1 << (4 - c))) === 0) continue;
-          const x = x0 + c;
-          const y = y0 + r;
-          if (x < 0 || x >= width || y < 0 || y >= height) continue;
-          buf[y * width + x] = 255; // white
+/** 2×-scale a 5×7 glyph (10×14 px, 12 px advance). */
+function paintText(buf: Uint8Array, width: number, height: number, text: string, x0: number, y0: number): void {
+  for (let ch = 0; ch < text.length; ch++) {
+    const glyph = FONT[text[ch]!.toUpperCase()];
+    if (glyph === undefined) continue;
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < 5; c++) {
+        if ((glyph[r]! & (1 << (4 - c))) === 0) continue;
+        for (let dy = 0; dy < MONT_SCALE; dy++) {
+          for (let dx = 0; dx < MONT_SCALE; dx++) {
+            const x = x0 + ch * 6 * MONT_SCALE + c * MONT_SCALE + dx;
+            const y = y0 + r * MONT_SCALE + dy;
+            if (x < 0 || x >= width || y < 0 || y >= height) continue;
+            buf[y * width + x] = 255; // white
+          }
         }
       }
-    };
-    const label = `${sprnames[f.sprite] ?? '????'}${String.fromCharCode(65 + f.frame)}0`;
-    for (let ch = 0; ch < label.length; ch++) {
-      const glyph = FONT[label[ch] ?? ''];
-      if (glyph !== undefined) paint(glyph, tx + 2 + ch * 6, ty + 2);
     }
-    const x0 = tx + ((TILE_W - patch.width) >> 1);
-    const y0 = ty + 12 + ((TILE_H - 12 - patch.height) >> 1);
-    for (let c = 0; c < patch.width; c++) {
-      const x = x0 + c;
-      if (x < 0 || x >= width) continue;
-      const col = patch.columns[c]!;
-      for (let r = 0; r < patch.height; r++) {
-        const src = col[r]!;
-        if (src === 0) continue;
-        const y = y0 + r;
-        if (y < 0 || y >= height) continue;
-        buf[y * width + x] = b.colormaps[src]!; // colormap row 0 = fullbright
+  }
+}
+
+function buildMontage(): {
+  buf: Uint8Array;
+  width: number;
+  height: number;
+  tiles: number;
+  cells: { name: string; x: number; y: number; w: number; h: number }[];
+} {
+  const first = sceneFrame(SCENES[0]!);
+  const cellW = first.width * MONT_SCALE;
+  const cellH = first.height * MONT_SCALE;
+  const tileH = cellH + MONT_LABEL_H;
+  const cellsNeeded = SCENES.length + 1; // + the title cell
+  const rows = Math.ceil(cellsNeeded / MONT_COLS);
+  const width = MONT_COLS * cellW;
+  const height = rows * tileH;
+  const buf = new Uint8Array(width * height); // 0 = black gutter
+  const cells: { name: string; x: number; y: number; w: number; h: number }[] = [];
+  SCENES.forEach((scene, i) => {
+    const src = sceneFrame(scene);
+    const tx = (i % MONT_COLS) * cellW;
+    const ty = Math.floor(i / MONT_COLS) * tileH;
+    paintText(buf, width, height, scene.name.replace(/^wpn-/, '').replace(/-/g, ' '), tx + 4, ty + 1);
+    for (let y = 0; y < src.height; y++) {
+      for (let x = 0; x < src.width; x++) {
+        const v = src.bytes[y * src.width + x]!;
+        if (v === 0) continue;
+        const px = tx + x * MONT_SCALE;
+        const py = ty + MONT_LABEL_H + y * MONT_SCALE;
+        for (let dy = 0; dy < MONT_SCALE; dy++) {
+          const row = (py + dy) * width;
+          buf[row + px] = v;
+          buf[row + px + 1] = v;
+        }
       }
     }
+    cells.push({ name: scene.name, x: tx, y: ty + MONT_LABEL_H, w: cellW, h: cellH });
   });
-  return { buf, width, height, tiles };
+  // Title cell: the free slot after the last scene.
+  const ti = SCENES.length;
+  paintText(
+    buf,
+    width,
+    height,
+    MONT_TITLE,
+    (ti % MONT_COLS) * cellW + 8,
+    Math.floor(ti / MONT_COLS) * tileH + MONT_LABEL_H + cellH / 2 - 7
+  );
+  return { buf, width, height, tiles: cells.length, cells };
 }
 
 /* ------------------------------------------------------------------ */
@@ -493,12 +542,31 @@ function buildMontage(): { buf: Uint8Array; width: number; height: number; tiles
 describe.skipIf(!hasWad)('M7-10 weapon visual pack (goldens/weapons)', () => {
   for (const scene of SCENES) goldenCase(scene);
 
-  it('montage: labelled contact sheet of every weapon/flash frame', () => {
-    const { buf, width, height, tiles } = buildMontage();
-    expect(tiles, 'contact sheet must tile real mirror frames').toBeGreaterThanOrEqual(15);
+  it('montage: labelled contact sheet TILING the scene frames (3x5, 2x)', () => {
+    const { buf, width, height, tiles, cells } = buildMontage();
+    expect(tiles, 'one tile per scene').toBe(SCENES.length);
     let painted = 0;
     for (const v of buf) if (v !== 0) painted += 1;
     expect(painted, 'montage must not be blank').toBeGreaterThan(2000);
+    // PROVENANCE: every cell IS the blessed scene, upscaled ×2 (cell
+    // [2x,2y] equals the scene byte; the 2×2 block is solid). This is the
+    // M7-11 montage rework guard — no cell may come from anywhere else.
+    for (const cell of cells) {
+      const scene = SCENES.find((sc) => sc.name === cell.name)!;
+      const src = sceneFrame(scene);
+      for (let y = 0; y < src.height; y += 2) {
+        for (let x = 0; x < src.width; x += 2) {
+          const v = src.bytes[y * src.width + x]!;
+          const px = cell.x + x * MONT_SCALE;
+          const py = cell.y + y * MONT_SCALE;
+          expect(buf[py * width + px], `${scene.name} cell (${x},${y})`).toBe(v);
+          if (v !== 0) {
+            expect(buf[py * width + px + 1], `${scene.name} cell (${x},${y})+1`).toBe(v);
+            expect(buf[(py + 1) * width + px], `${scene.name} cell (${x},${y})+row`).toBe(v);
+          }
+        }
+      }
+    }
     const sha = sha256Of(buf);
     if (DUMP_DIR !== null) {
       const b = bundle_();
@@ -509,7 +577,7 @@ describe.skipIf(!hasWad)('M7-10 weapon visual pack (goldens/weapons)', () => {
           {
             name: 'montage',
             kind: 'montage',
-            script: 'state-table-enumerated weapon/flash frames, 5x7 labels, fullbright row',
+            script: `scene-frame contact sheet: ${SCENES.length} scenes tiled 3x5, 2x nearest-neighbour, 2x 5x7 labels`,
             width,
             height,
             indexSha256: sha,
@@ -553,7 +621,51 @@ describe.skipIf(!hasWad)('M7-10 weapon visual pack (goldens/weapons)', () => {
       }
     }
   });
+
+  it('regression (M7-11): every weapon raises to WEAPONTOP and resolves to its OWN sprite', () => {
+    // The M7-10 finding was one small sprite at screen center for ALL
+    // weapons. Two independent causes had to be excluded/removed:
+    //  (a) the states table — verified row-by-row against the mirror; the
+    //      1.10 weapon rows carry misc1/misc2 = 0, so sx/sy come from
+    //      A_WeaponReady (sx = FRACUNIT + bob·cos) and A_Raise (sy
+    //      clamped to WEAPONTOP = 32·FRACUNIT), never from the table; and
+    //  (b) the SPRITE NUMBER — stateSprite is an sprnames index while
+    //      InstalledSprites is census-ordered, so the seam must resolve by
+    //      4CC (src/pspriteview.ts). Both halves are asserted here: the
+    //      raised-row pin, and a DISTINCT resolved sprite per weapon.
+    const b = bundle_();
+    const seen = new Map<string, number>();
+    for (const scene of SCENES) {
+      const { s } = reach({ ...scene, mode: 'raise' });
+      const p = s.players[0] as unknown as PsprLike;
+      const psp = p.psprites![0]!;
+      expect(psp.sy, `${scene.name}: raised psprite must sit at WEAPONTOP`).toBe(WEAPONTOP);
+      const views = buildPspriteFrameInput(s.map, s.players[0]!, b.sprites.sprites).views;
+      const v = views[0];
+      expect(v, `${scene.name}: raised psprite must resolve to a drawable view`).not.toBeNull();
+      const name4 = b.sprites.sprites.name4[v!.sprite]!;
+      expect(name4, `${scene.name}: resolved sprite 4CC`).toBe(sprnames[stateSprite[psp.state]!]);
+      // the lump actually drawn is the weapon's own art
+      const gf = lookupFrame(b.sprites.sprites, v!.sprite, v!.frame & FF_FRAMEMASK);
+      expect(gf, `${scene.name}: sprite/frame must exist in the WAD table`).toBeGreaterThanOrEqual(0);
+      expect(frameLump(b.sprites.sprites, gf, 0), `${scene.name}: frame has no lump`).toBeGreaterThanOrEqual(0);
+      const fam = scene.name.replace(/^wpn-/, '').replace(/-(raise|flash|punch|spin)$/, '');
+      const prev = seen.get(fam);
+      if (prev !== undefined) expect(name4, `${fam}: one sprite per family`).toBe(sprnames[stateSprite[psp.state]!]!);
+      seen.set(fam, v!.sprite);
+    }
+    // Distinctness: pistol vs chaingun (the report's named pair) and every
+    // family must land on a different sprite number.
+    const nums = new Set(seen.values());
+    expect(nums.size, `distinct sprites (${[...seen].map(([k, v2]) => `${k}=${v2}`).join(' ')})`).toBe(seen.size);
+  });
 });
+
+/** Minimal shape of the raised psprite row (structural; the sim Player
+ * carries it once attachPsprFields has run). */
+interface PsprLike {
+  psprites?: readonly { state: number; sx: number; sy: number }[];
+}
 
 /** Bundle-less guard (runs with no wad): the roster needs tables only. */
 describe('M7-10 visual-pack roster (wad-free)', () => {
