@@ -120,6 +120,9 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     // the p_lights thinkers now spawn from E1M1's 1/2/3/4/8/12/17 sectors
     // at load (arena + load-time P_Random draws) and tick live light
     // levels over the 1000 tics; value 869939862 → 2631099186.
-    expect(h1).toBe(2631099186);
+    // M7-02 re-bless 2631099186 → 726751958: mobjs in world state — the
+    // arena now carries E1M1's map-thing thinkers (payload words) and the
+    // spawn pass consumes P_Random (lastlook + spawn-tics jitter).
+    expect(h1).toBe(726751958);
   });
 });

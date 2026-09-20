@@ -13,29 +13,40 @@
 // THINGS order, so iterating a block's chain yields things in REVERSE
 // THINGS order (prepend semantics) — replicated exactly here.
 //
-// This sim has no mobjs/thinkers yet (M7/M8 roster), so the grid is built
-// two ways (documented deviation, same observable contents):
+// This sim builds the grid two ways (documented deviation, same observable
+// contents):
 //   - static: the THINGS list filtered through a doomednum→{@link ThingInfo}
 //     table, CSR-packed per block once at map load (vanilla spawns the
 //     decorations as static mobjs; positions never change, so a CSR array
-//     replaces their per-spawn prepend, iteration order identical);
+//     replaces their per-spawn prepend, iteration order identical). M7-02
+//     FILLED the deferred fields: the info table is now the FULL mobjinfo[]
+//     slice (every spawnable doomednum — items, monsters, decor — with the
+//     exact MF_* bits incl. MF_NOBLOCKMAP/MF_SPECIAL), the P_SpawnMapThing
+//     solo bit (options & 16, `!netgame`) joined the filter, and
+//     {@link ThingLinks.thing} records the source THINGS index per static
+//     slot so p_mobj.pSpawnThings binds slot↔mobj 1:1 in spawn order.
 //   - dynamic: vanilla-shaped bprev/bnext chains for movers — the player
-//     now, real mobjs later — with {@link thingSetPosition}/
+//     and every spawned mobj (puffs/blood/missiles; MF_NOBLOCKMAP map
+//     things get an inert dynamic slot) — with {@link thingSetPosition}/
 //     {@link thingUnsetPosition} mirroring p_maputl.c:347-449 control flow.
 //
 // Sector thinglist links (P_SetThingPosition's MF_NOSECTOR branch) are NOT
 // built: their only consumers are P_NoiseAlert/P_ChangeSector/PIT_DamageThings
-// (M6/M8). Determinism rule (ARCHITECTURE §3.5.5 / M5-plan §M5-02.3): unlink
-// + link never re-inserts static entries, so per-block iteration order is
-// invariant across mover movement.
+// (M6/M8 — the crush path iterates the block grid instead). Determinism rule
+// (ARCHITECTURE §3.5.5 / M5-plan §M5-02.3): unlink + link never re-inserts
+// static entries, so per-block iteration order is invariant across mover
+// movement. Static-slot mobjs never move (vanilla-true for decor/items in
+// M7); moving a static-slot mobj (monster chase, M8) needs slot promotion —
+// documented follow-up; mover mobjs spawn into DYNAMIC slots and P_TryMove
+// relinks them every accepted move.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { FRACUNIT } from '../core/constants';
 import { blockIndexOf } from './blockmap';
 import type { BlockMap } from './blockmap';
 import { mapThingAt, type RuntimeMap } from './map';
 import { sectorAtPoint } from './bsp';
+import { mobjinfo, DOOMEDNUM_TO_MT } from '../wad/info/mobjinfo';
 
 /* ------------------------------------------------------------------ */
 /* MF_* flags — p_mobj.h:117-200 enum, verbatim values                  */
@@ -83,26 +94,32 @@ export interface ThingInfo {
   readonly flags: number;
 }
 
-const fx = (units: number): number => (units * FRACUNIT) | 0;
-
 /**
- * doomednum → spawn info, M5-02 subset. Barrel = info.c:1888-1911
- * (doomednum 2035, r 10, h 42, MF_SOLID|MF_SHOOTABLE|MF_NOBLOOD — note:
- * 1.10 barrels do NOT carry MF_COUNTKILL). Start doomednums (≤4, 11) are
- * never spawned as mobjs (p_mobj.c:713-731) and are absent by construction;
- * teleport/deathmatch starts (14/87) are mobjs with MF_NOBLOCKMAP
- * (p_mobj.c: MT_TELEPORTMAN flags), so their absence here is grid-identical.
- * Items (MF_SPECIAL) and monsters join this table with M7/M8 — the
- * {@link pmapHooks} slots make every absent-behavior path safe until then.
+ * doomednum → spawn info — M7-02 FILLED (the M5-03 "deferred fields for
+ * M7"): the full mobjinfo[] slice. First doomednum match = vanilla
+ * P_SpawnMapThing's linear-scan semantics (p_mobj.c:756-758, doomednum −1
+ * excluded, info.c order), so grid flags/radius/height are the exact
+ * p_mobj.h bitsets the PIT visitors need (MF_SPECIAL items non-blocking +
+ * touch, MF_NOBLOCKMAP markers inert, barrels MF_SOLID|MF_SHOOTABLE|MF_NOBLOOD
+ * per info.c:1888-1911).
  */
-export const DEFAULT_THING_INFO: ReadonlyMap<number, ThingInfo> = new Map([
-  [2035, { radius: fx(10), height: fx(42), flags: MF_SOLID | MF_SHOOTABLE | MF_NOBLOOD }],
-]);
+export const DEFAULT_THING_INFO: ReadonlyMap<number, ThingInfo> = new Map(
+  [...DOOMEDNUM_TO_MT].map(([doomednum, mt]): [number, ThingInfo] => {
+    const info = mobjinfo[mt]!;
+    return [doomednum, { radius: info.radius, height: info.height, flags: info.flags }];
+  }),
+);
 
-/** Vanilla spawn skill bit (p_mobj.c:737-745): baby=1, nightmare=4, else 1<<(skill-1). */
-function skillBit(skill: number): number {
-  return skill === 1 ? 1 : skill >= 4 ? 4 : 1 << (skill - 1);
+/** Vanilla spawn skill bit (p_mobj.c:737-745): baby(sk_baby=0)→1, baby-as-1
+ * alias too, nightmare=4, else 1<<(skill-1). */
+export function skillBit(skill: number): number {
+  return skill === 0 || skill === 1 ? 1 : skill >= 4 ? 4 : 1 << (skill - 1);
 }
+
+/** MTF_* option bits (R01 §4 / p_mobj.c:740,792): bit 16 = "not in single
+ * player" (skipped when !netgame), bit 8 = MTF_AMBUSH. */
+export const MTF_AMBUSH = 8;
+export const MTF_NOTSINGLEPLAYER = 16;
 
 /* ------------------------------------------------------------------ */
 /* ThingLinks storage                                                   */
@@ -143,6 +160,9 @@ export interface ThingLinks {
   flags: Int32Array;
   /** THINGS `type` (0 = dynamic slot without spawn point). */
   doomednum: Int32Array;
+  /** M7-02: source THINGS record index per static slot (−1 for dynamic
+   * slots) — the slot↔thing binding pSpawnThings walks in spawn order. */
+  thing: Int32Array;
 
   /** 1 = in the block chains/CSR right now (vanilla "valid" link state). */
   linked: Uint8Array;
@@ -167,6 +187,9 @@ export interface BuildThingLinksOptions {
   readonly skill?: number;
   /** dynamic slots reserved for movers (player + telefrags); default 16. */
   readonly dynamicCapacity?: number;
+  /** vanilla `netgame` spawn flag (P_SpawnMapThing's `options & 16` solo
+   * skip, p_mobj.c:740). Default false = single player. */
+  readonly netgame?: boolean;
 }
 
 /**
@@ -182,6 +205,7 @@ export function buildThingLinks(
 ): ThingLinks {
   const info = opts.info ?? DEFAULT_THING_INFO;
   const bit = skillBit(opts.skill ?? 3);
+  const netgame = opts.netgame ?? false;
   const cells = bm.width * bm.height;
 
   // Pass 1: spawnable statics, THINGS order.
@@ -193,10 +217,12 @@ export function buildThingLinks(
   const spawnF: number[] = [];
   const spawnT: number[] = [];
   const spawnCell: number[] = [];
+  const spawnRec: number[] = [];
   let skippedUnknown = 0;
   for (let i = 0; i < map.numThings; i++) {
     const t = mapThingAt(map, i);
     if (t.type <= 4 || t.type === 11) continue; // start machinery, no mobj
+    if (!netgame && (t.flags & MTF_NOTSINGLEPLAYER) !== 0) continue; // solo skip (p_mobj.c:740)
     if (!(t.flags & bit)) continue; // skill-gated spawn (p_mobj.c:744)
     const inf = info.get(t.type);
     if (!inf) {
@@ -219,6 +245,7 @@ export function buildThingLinks(
     spawnH.push(inf.height);
     spawnF.push(inf.flags);
     spawnT.push(t.type);
+    spawnRec.push(i);
     spawnCell.push(cell);
   }
 
@@ -250,6 +277,7 @@ export function buildThingLinks(
   const height = new Int32Array(capacity);
   const flags = new Int32Array(capacity);
   const doomednum = new Int32Array(capacity);
+  const thing = new Int32Array(capacity).fill(-1);
   for (let i = 0; i < staticCount; i++) {
     x[i] = spawnX[i]!;
     y[i] = spawnY[i]!;
@@ -258,6 +286,7 @@ export function buildThingLinks(
     height[i] = spawnH[i]!;
     flags[i] = spawnF[i]!;
     doomednum[i] = spawnT[i]!;
+    thing[i] = spawnRec[i]!;
   }
 
   const links: ThingLinks = {
@@ -272,6 +301,7 @@ export function buildThingLinks(
     height,
     flags,
     doomednum,
+    thing,
     linked: new Uint8Array(capacity),
     cellHead: new Int32Array(cells).fill(-1),
     prev: arena(true),
@@ -310,6 +340,7 @@ export function allocThingSlot(
   links.height[slot] = height;
   links.flags[slot] = flags;
   links.doomednum[slot] = 0;
+  links.thing[slot] = -1;
   links.linked[slot] = 0;
   links.prev[slot] = -1;
   links.next[slot] = -1;
@@ -330,6 +361,7 @@ function growThingLinks(links: ThingLinks): void {
   links.height = grow(links.height);
   links.flags = grow(links.flags);
   links.doomednum = grow(links.doomednum);
+  links.thing = grow(links.thing, true);
   links.prev = grow(links.prev, true);
   links.next = grow(links.next, true);
   const linked = new Uint8Array(next);

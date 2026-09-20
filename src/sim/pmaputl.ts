@@ -35,11 +35,10 @@
  *    1.10; there is NO `opentight`/`closing` field (those are later-source
  *    additions) and the ML_DONTPEGBOTTOM mid-texture rule does not exist
  *    here — plain min/max per the source.
- *  - Thing-side twins (P_SetThingPosition / P_BlockThingsIterator /
- *    PIT_AddThingIntercepts) need mobj links that arrive in M5-02/M7 —
- *    PT_ADDTHINGS therefore throws {@link PMaputlError} instead of
- *    silently iterating nothing (vanilla would compile it against
- *    blocklinks[]; there is no blocklinks grid on the sim side yet).
+ *  - Thing-side twins: P_BlockThingsIterator is thinglinks.ts's
+ *    {@link thingLinksIterator} and PIT_AddThingIntercepts is ported
+ *    (M7-02); PT_ADDTHINGS requires the caller to pass the world's
+ *    {@link ThingLinks} and throws {@link PMaputlError} without it.
  *  - The intercept arena is fixed MAXINTERCEPTS=128; vanilla overflows it
  *    into adjacent globals (UB). We throw a typed error instead
  *    (same policy as MapSetupError).
@@ -66,6 +65,7 @@ import { MAXINT } from '../core/constants';
 import { MAPBLOCKUNITS } from '../core/constants';
 import { pointOnDivlineSide, type DivLine, type Side } from './bsp';
 import { blockLinesIterator, MAPBLOCKSHIFT, type BlockMap } from './blockmap';
+import { thingLinksIterator, type ThingLinks } from './thinglinks';
 import {
   ST_HORIZONTAL,
   ST_POSITIVE,
@@ -383,8 +383,12 @@ export interface Intercept {
   /** fixed fraction of the trace (0..FRACUNIT inside the segment) */
   frac: number;
   isLine: boolean;
-  /** linedef index (−1 for things — M7+) */
+  /** linedef index (−1 for things) */
   line: number;
+  /** M7-02: ThingLinks slot for thing intercepts (−1 for lines) —
+   * PIT_AddThingIntercepts' `d.thing` (p_maputl.c:657-661); consumers
+   * (M7-05 ray shot/missile traversers) read this with isLine=false. */
+  thing: number;
 }
 
 /** Vanilla `traverser_t`: return false to stop the traversal (early out). */
@@ -393,6 +397,8 @@ export type Traverser = (in_: Intercept) => boolean;
 const interceptFrac = new Int32Array(MAXINTERCEPTS);
 const interceptIsLine = new Uint8Array(MAXINTERCEPTS);
 const interceptLine = new Int32Array(MAXINTERCEPTS);
+/** M7-02 thing intercepts (PT_ADDTHINGS): slot id per entry. */
+const interceptThing = new Int32Array(MAXINTERCEPTS);
 let interceptP = 0;
 
 /** Module singletons standing in for `trace`/`earlyout` (p_maputl.c:547-549).
@@ -402,7 +408,7 @@ let earlyout = false;
 /** The linedef view PIT_AddLineIntercepts reads (vanilla implicit state). */
 let activeMap: LineMapView | null = null;
 const dlScratch: DivLineMut = { x: 0, y: 0, dx: 0, dy: 0 };
-const view: Intercept = { frac: 0, isLine: false, line: -1 };
+const view: Intercept = { frac: 0, isLine: false, line: -1, thing: -1 };
 const scan: { valid: Int32Array; stamp: number } = { valid: new Int32Array(0), stamp: 0 };
 
 /** Read the current trace divline (slide traverse, M5-04, reads these). */
@@ -460,9 +466,64 @@ function pitAddLineIntercepts(line: number): boolean {
   interceptFrac[interceptP] = frac;
   interceptIsLine[interceptP] = 1;
   interceptLine[interceptP] = line;
+  interceptThing[interceptP] = -1;
   interceptP++;
 
   return true; // continue
+}
+
+/* ------------------------------------------------------------------ */
+/* PIT_AddThingIntercepts — p_maputl.c:615-675 (M7-02)                  */
+/* ------------------------------------------------------------------ */
+
+/** The thing grid PIT_AddThingIntercepts reads (vanilla implicit blocklinks). */
+let activeLinks: ThingLinks | null = null;
+
+/**
+ * `PIT_AddThingIntercepts(thing)` verbatim (argument = ThingLinks slot):
+ * the corner-to-corner crossection diagonal (tracepositive picks the
+ * corner pair), sides against the trace divline, divline from the
+ * crossed corner pair, frac < 0 ⇒ behind. No MF_NOBLOCKMAP test needed:
+ * inert things never enter the chains (thinglinks.ts), exactly like
+ * vanilla's blocklinks. NO validcount dedup — a thing bordering two
+ * visited blocks yields two intercepts, as in the C original.
+ */
+function pitAddThingIntercepts(slot: number): boolean {
+  const links = activeLinks!;
+  const tracepositive = (trace.dx ^ trace.dy) > 0;
+
+  // check a corner to corner crossection for hit
+  const x1 = (links.x[slot]! - links.radius[slot]!) | 0;
+  const x2 = (links.x[slot]! + links.radius[slot]!) | 0;
+  const y1 = tracepositive
+    ? (links.y[slot]! + links.radius[slot]!) | 0
+    : (links.y[slot]! - links.radius[slot]!) | 0;
+  const y2 = tracepositive
+    ? (links.y[slot]! - links.radius[slot]!) | 0
+    : (links.y[slot]! + links.radius[slot]!) | 0;
+
+  const s1 = pointOnDivlineSide(x1, y1, trace);
+  const s2 = pointOnDivlineSide(x2, y2, trace);
+  if (s1 === s2) return true; // line isn't crossed
+
+  dlScratch.x = x1;
+  dlScratch.y = y1;
+  dlScratch.dx = (x2 - x1) | 0;
+  dlScratch.dy = (y2 - y1) | 0;
+
+  const frac = pInterceptVector(trace, dlScratch);
+  if (frac < 0) return true; // behind source
+
+  if (interceptP === MAXINTERCEPTS) {
+    throw new PMaputlError('P_PathTraverse: MAXINTERCEPTS overflow');
+  }
+  interceptFrac[interceptP] = frac;
+  interceptIsLine[interceptP] = 0;
+  interceptLine[interceptP] = -1;
+  interceptThing[interceptP] = slot;
+  interceptP++;
+
+  return true; // keep going
 }
 
 /* ------------------------------------------------------------------ */
@@ -494,6 +555,7 @@ export function pTraverseIntercepts(trav: Traverser, maxfrac: number): boolean {
     view.frac = dist;
     view.isLine = interceptIsLine[inIdx] === 1;
     view.line = interceptLine[inIdx]!;
+    view.thing = interceptThing[inIdx]!;
     if (!trav(view)) return false; // don't bother going farther
 
     interceptFrac[inIdx] = MAXINT;
@@ -513,9 +575,10 @@ export function pTraverseIntercepts(trav: Traverser, maxfrac: number): boolean {
  * {@link BlockScan}, PT_EARLYOUT ⇔ earlyout, then
  * {@link pTraverseIntercepts} at FRACUNIT. Fixed-point coords in.
  *
- * Deviations: PT_ADDTHINGS throws (thing intercepts need M5-02 thinglinks;
- * PIT_AddThingIntercepts itself is a straight port away from that); the
- * MAXINTERCEPTS arena throws instead of corrupting memory.
+ * Deviations: PT_ADDTHINGS without a supplied {@link ThingLinks} grid
+ * throws (M7-02 wired the real {@link pitAddThingIntercepts} — pass the
+ * world's links as the trailing argument); the MAXINTERCEPTS arena throws
+ * instead of corrupting memory.
  */
 export function pPathTraverse(
   map: LineMapView,
@@ -526,6 +589,7 @@ export function pPathTraverse(
   y2: number,
   flags: number,
   trav: Traverser,
+  links?: ThingLinks,
 ): boolean {
   earlyout = (flags & PT_EARLYOUT) !== 0;
 
@@ -533,6 +597,7 @@ export function pPathTraverse(
   scan.stamp = bumpValidcount(); // vanilla `validcount++`
   interceptP = 0;
   activeMap = map;
+  activeLinks = links ?? null;
 
   if (((x1 - bm.originX) & (MAPBLOCKSIZE - 1)) === 0) x1 = (x1 + FRACUNIT) | 0; // don't side exactly on a line
   if (((y1 - bm.originY) & (MAPBLOCKSIZE - 1)) === 0) y1 = (y1 + FRACUNIT) | 0;
@@ -599,7 +664,12 @@ export function pPathTraverse(
     }
 
     if (flags & PT_ADDTHINGS) {
-      throw new PMaputlError('P_PathTraverse: PT_ADDTHINGS needs M5-02 thinglinks');
+      if (!activeLinks) {
+        throw new PMaputlError('P_PathTraverse: PT_ADDTHINGS needs the ThingLinks grid (M7-02)');
+      }
+      if (!thingLinksIterator(activeLinks, mapx, mapy, pitAddThingIntercepts)) {
+        return false; // early out
+      }
     }
 
     if (mapx === xt2 && mapy === yt2) {

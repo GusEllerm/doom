@@ -38,6 +38,7 @@ import type { PrngState } from './prng';
 import type { GameInput, TurnheldState } from './ticcmd';
 import type { HookSlots, ExitKind } from './hooks';
 import type { Thinker, ThinkerArena } from './ptick';
+import type { MobjRuntime } from './p_mobj';
 
 /* ------------------------------------------------------------------ */
 /* GameState                                                           */
@@ -121,6 +122,15 @@ export interface GameState {
   secretcount: number;
   /** g_game.c `specialexit` flag (G_SecretExitLevel marker); hashed. */
   specialexit: boolean;
+  /** M7-02 mobj runtime (p_mobj.c globals + the live mobj roster). Its
+   * HASH contribution flows through the thinker-arena payload words
+   * (ARCHITECTURE §3.4 per-live-mobj [x,y,z,stateId,tics,flags,health,
+   * targetIndex] in arena order — p_mobj.syncMobj refreshes them at spawn
+   * and every thinker pass), so hashState needed no new serialization
+   * block; the once-per-level re-bless reason is "mobjs in world state
+   * (M7-02)". Assigned right after the state literal (constructor
+   * back-reference); never null after gInitGame returns. */
+  mobjs: MobjRuntime;
 }
 
 /* ------------------------------------------------------------------ */
