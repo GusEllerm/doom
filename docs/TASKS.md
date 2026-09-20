@@ -98,7 +98,7 @@ Future tasks will be added as architects decompose milestones.
 |---|---|---|---|---|
 | M6-01 | Thinker arena + live world + hook slots | M6 | M5 | done (merged, 1001 tests) |
 | M6-02 | Fixture specials/tags/things | M6 | — | done (merged, 143 fixture tests) |
-| M6-05 | Vertical doors (37 ids) | M6 | M6-03/04 | RE-DISPATCHED as M6-05b (agent 8a40541f) — original lost to harness error (D014) |
+| M6-05 | Vertical doors (37 ids) | M6 | M6-03/04 | done (merged — verified) |
 | M6-06 | Plats/lifts (21 ids) | M6 | M6-03/04 | done (merged) |
 | M6-07 | Floors/stairs/donut (43 ids) | M6 | M6-03/04 | done (merged t2, salvage) |
 | M6-08 | Ceilings incl crushers (13 ids) | M6 | M6-03/04 | done (merged t2, 19 tests) |
@@ -106,7 +106,7 @@ Future tasks will be added as architects decompose milestones.
 | M6-10 | Teleporters (4 ids) | M6 | M6-03 | done (merged, 32 tests) |
 | M6-11 | Switches/locked doors/cards | M6 | M6-05/09 | done (merged; registry manifest complete) |
 | M6-12 | Sector specials at feet + exits | M6 | M6-03/04 | done (merged, 19 tests) |
-| M6-13 | Fixture corpus + E1M1 route e2e + L5 | M6 | all | done (merged; 1731 tests; exit pending M6-05b flip) |
+| M6-13 | Fixture corpus + E1M1 route e2e + L5 | M6 | all | done (merged — verified) |
 
 ## M7 tasks
 

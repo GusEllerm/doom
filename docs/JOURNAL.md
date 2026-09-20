@@ -194,3 +194,8 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M7-07 agent silent death (no notification, stubs-only). Lesson: branch-commit-timestamp polling catches what notifications miss; added to merge-turn routine.
 - Silent-death sweep (user report; all 3 agents gone, zero notifications): doors t3 + M7-01 t2 salvage from committed tips; M7-07 fresh t2. Method: branch-commit polling each turn, not just notifications.
 - M7-01 merged (78d38d2, verify-merge OK): 1096 S_* enums, mobjinfo 115, weaponinfo table from p_pspr.c:30, ActionId manifest 72 (36 deferred stubs), stateAdvance 168-state 0-tic closure. Truth: d_items.h authoritative for S_*, info.c order = enum order; S_NULL 1-4-tic quirk kept.
+
+## 2026-09-20 — 🏁 M6 COMPLETE (interactive world)
+- M6-05b merged (9-commit salvage chain): doors live (dr/d1/ds/bliz/auto types, crush=2 semantics, wait tables), 43-id corpus flipped WITHOUT edits (M6-13 design vindicated), door-through strip in mechanics goldens, exit checklist complete (M6 exit: all specials live/verified-exempt incl. lost-task recovery).
+- Security note D015: injection-shaped string found in mirror content — data-only policy reaffirmed.
+- Running: psprite t2, mobj runtime. Next M7 waves: player states + pickups once mobj lands.
