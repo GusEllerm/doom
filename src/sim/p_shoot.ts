@@ -551,6 +551,12 @@ export function rPointToAngle2(x1: number, y1: number, x2: number, y2: number): 
 const NO_HIT: AimResult = { slope: 0, hit: false };
 const NO_TARGET: AttackResult = { hit: false, x: 0, y: 0 };
 
+/** Install the three M7-08 slots (idempotent). Called at module load — the
+ * pslide self-registration idiom — and re-callable by tests after a
+ * `resetPsprHooks()` restores the counted no-op defaults. `bulletSlope`
+ * intentionally stays p_pspr.c's probe shell (p_pspr.c owns P_BulletSlope);
+ * it probes OUR aimLineAttack, so the 1/2/3 probe counts are exact. */
+export function registerShootPsprHooks(): void {
 registerPsprHook('aimLineAttack', (p: PsprPlayer, angle: number, range: number): AimResult => {
   psprHookCounts.aimLineAttack++;
   if (!bound) return NO_HIT;
@@ -568,4 +574,10 @@ registerPsprHook(
   },
 );
 
-registerPsprHook('pointToAngle2', rPointToAngle2);
+registerPsprHook('pointToAngle2', (x1, y1, x2, y2) => {
+  psprHookCounts.pointToAngle2++;
+  return rPointToAngle2(x1, y1, x2, y2);
+});
+}
+
+registerShootPsprHooks();
