@@ -19,6 +19,10 @@
  *       frame, sector ceiling SoA in caption (+ damage-slot cadence);
  *   m6-light-paint  — a W1 light turn-on (cross 13, bright 255): the dark
  *       room ahead JUMPS to full brightness across the crossing frame.
+ * M6-05b FLIP: the door body is LIVE (p_doors.ts EV_DoDoor) — the
+ * original fourth strip lands WITH it:
+ *   m6-door-through — a W1 door raise (cross 4): the slab ahead lifts
+ *       (ceiling SoA 0→124 @2/tic) and the walking player passes through.
  * All three render through `loadRenderWorld(md, …, state.sectors)` — they
  * would be FLAT (no motion) without the live-sector wiring, doubling as
  * its visual proof.
@@ -177,10 +181,30 @@ const LIGHT_SPEC: RectMapSpec = {
   things: [{ x: 48, y: 128, angle: 0, type: 1 }]
 };
 
+// M6-05b door-through: corridor → trigger crossing (open W1 4 at x=448,
+// fires EARLY) → closed slab (tag 4, c0) → room beyond. Ring rooms keep
+// P_FindLowestCeilingSurrounding = 128 exact (topheight 128−4 = 124).
+const DOOR_SPEC: RectMapSpec = {
+  rooms: [
+    { x: 0, y: 0, w: 448, h: 256, ...ROOM }, // approach
+    { x: 448, y: 0, w: 64, h: 256, ...ROOM }, // antechamber (trigger edge)
+    { x: 512, y: 0, w: 64, h: 256, ...ROOM, ceilingHeight: 0, tag: 4 }, // the slab
+    { x: 576, y: 0, w: 256, h: 256, ...ROOM }, // beyond
+    { x: 512, y: 256, w: 64, h: 64, ...ROOM }, // slab ring (N)
+    { x: 512, y: -64, w: 64, h: 64, ...ROOM } // slab ring (S)
+  ],
+  triggers: [{ x1: 448, y1: 96, x2: 448, y2: 160, special: 4, tag: 4 } as LineTriggerSpec],
+  things: [{ x: 48, y: 128, angle: 0, type: 1 }]
+};
+
 const CAP8 = [0, 15, 30, 45, 60, 75, 90, 105];
 // lift: cross ≈ tic 63, ride down (12 tics), the 105-tic vanilla
 // PLATWAIT=3 hold, raise (12 tics) — see probe timings in M6-13 report.
 const CAP_LIFT = [0, 30, 60, 80, 120, 160, 190, 215];
+// door: cross ≈ tic 55, slab UP 62+1 tics (@2, 0→124), player blocked at
+// the slab then walks THROUGH once ceiling > 56; 150-tic VDOORWAIT keeps
+// it open through the last frame (down starts ≈ tic 218).
+const CAP_DOOR = [0, 30, 55, 75, 90, 110, 130, 150];
 
 const SCENES: Scene[] = [
   {
@@ -240,6 +264,25 @@ const SCENES: Scene[] = [
       expect(frames[0]!.statU).toBe(40 * FRACUNIT);
       expect(stat[stat.length - 1]).toBe(255 * FRACUNIT);
       expect(new Set(stat).size).toBeGreaterThanOrEqual(2);
+    }
+  },
+  {
+    name: 'm6-door-through',
+    title: 'M6 DOOR THROUGH: W1 RAISE',
+    subtitle: 'CROSS 4 NORMAL DOOR SC=CEILINGZ LIVE-SECTOR RENDER',
+    script:
+      'FIXMAP door (corridor | trigger edge x448 | tagged slab c0 | hall beyond, ring c128) -> warp (48,128,0deg) -> walk fwd, cross W1 doorRaise trigger @x448 (~tic 55, EV_DoDoor normal LIVE) -> slab SoA 0→124 @2/tic (topheight 128−4), player blocked at the closed slab then walks THROUGH (>56 headroom ~tic 84) -> 8 frames t=0..150 (VDOORWAIT 150 keeps it open)',
+    spec: DOOR_SPEC,
+    stat: 'ceiling',
+    ticCount: 150,
+    captureTics: CAP_DOOR,
+    inputAt: () => ({ ...emptyInput(), forward: true }),
+    warp: { x: 48, y: 128, angleDeg: 0 },
+    expect: (stat, frames) => {
+      expect(frames[0]!.statU, 'closed at t0').toBe(0);
+      expect(Math.max(...stat), 'topheight = 128 − 4').toBe(124 * FRACUNIT);
+      expect(frames[6]!.statU, 'open by the tic-130 frame').toBe(124 * FRACUNIT);
+      expect(frames[7]!.xU, 'player passed through').toBeGreaterThan(576 * FRACUNIT);
     }
   }
 ];

@@ -73,6 +73,7 @@ import {
   type FixedBBox,
   type RuntimeMap,
 } from './map';
+import type { LiveSectors } from './state';
 
 /* ------------------------------------------------------------------ */
 /* Constants (p_local.h / m_bbox.h spellings)                           */
@@ -331,8 +332,19 @@ export const opening: LineOpening = { opentop: 0, openbottom: 0, openrange: 0, l
  * vanilla stale-global quirk, pinned by test). Otherwise plain min/max:
  * opentop = min(ceilings), openbottom = max(floors), lowfloor = min(floors),
  * openrange = opentop − openbottom.
+ *
+ * M6-05b (door-through exactness): vanilla reads the ONE live `sectors[]`;
+ * the port mirrors that through the optional live view (M6-04 seam, same
+ * wiring as P_CheckPosition's seed) — WITHOUT it a mover (door slab,
+ * crushing hall, lift shaft) would keep its LOAD-TIME heights for line
+ * blocking, so walking into an opened-but-load-closed sector is impossible
+ * (the E1M1 door-through e2e and the m6-door-through strip both trip it).
+ * Static callers (no live view) are unchanged — value-identical while no
+ * mover runs.
  */
-export function pLineOpening(map: OpeningMapView, line: number): LineOpening {
+export function pLineOpening(
+  map: OpeningMapView, line: number, live?: LiveSectors | null
+): LineOpening {
   const L = map.lines;
   if (L.sideNumBack[line] === -1) {
     opening.openrange = 0; // single sided line (:305-309)
@@ -342,16 +354,19 @@ export function pLineOpening(map: OpeningMapView, line: number): LineOpening {
   const f = L.sectorFront[line]!;
   const b = L.sectorBack[line]!;
   const S = map.sectors;
+  const ceilF = live ? live.ceilingZ[f]! : S.ceilingHeight[f]!;
+  const ceilB = live ? live.ceilingZ[b]! : S.ceilingHeight[b]!;
+  const floorF = live ? live.floorZ[f]! : S.floorHeight[f]!;
+  const floorB = live ? live.floorZ[b]! : S.floorHeight[b]!;
 
-  opening.opentop =
-    S.ceilingHeight[f]! < S.ceilingHeight[b]! ? S.ceilingHeight[f]! : S.ceilingHeight[b]!;
+  opening.opentop = ceilF < ceilB ? ceilF : ceilB;
 
-  if (S.floorHeight[f]! > S.floorHeight[b]!) {
-    opening.openbottom = S.floorHeight[f]!;
-    opening.lowfloor = S.floorHeight[b]!;
+  if (floorF > floorB) {
+    opening.openbottom = floorF;
+    opening.lowfloor = floorB;
   } else {
-    opening.openbottom = S.floorHeight[b]!;
-    opening.lowfloor = S.floorHeight[f]!;
+    opening.openbottom = floorB;
+    opening.lowfloor = floorF;
   }
 
   opening.openrange = (opening.opentop - opening.openbottom) | 0;

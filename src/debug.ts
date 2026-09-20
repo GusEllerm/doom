@@ -79,6 +79,20 @@ export function attachMouseInjection(fn: ((dx: number, dy: number) => void) | nu
   mouseInjector = fn;
 }
 
+/**
+ * M6-13 FINDING 3 seam: main.ts registers the input-DRAIN hook feeding
+ * {@link DoomDebugApi.popInput} — the same vanilla D_ProcessEvents queue
+ * stepTic drains once per tic, plus the raw mouse accumulator. Plain
+ * callback (no platform import here, same discipline as the mouse seam).
+ */
+export type PopInputFn = () => { events: number; mouse: { x: number; y: number } };
+
+let popInputHook: PopInputFn | null = null;
+
+export function attachPopInput(fn: PopInputFn | null): void {
+  popInputHook = fn;
+}
+
 /** The documented counter subset (extra source fields like solidsegDrops are
  * deliberately not echoed into the §7 snapshot shape). */
 function pickCounters(c: {
@@ -278,6 +292,12 @@ export const debugApi: DoomDebugApi = {
   state(): DebugStateSnapshot {
     if (!attached) return { ready: false, note: 'no simulation attached yet' };
     return liveSnapshot(attached);
+  },
+  popInput(): { events: number; mouse: { x: number; y: number } } | null {
+    // M6-13 finding 3: scripted e2e phases run under pause(true) via
+    // sim.runTics — events queued meanwhile would otherwise flush in one
+    // burst on resume. Pop (and report) them between phases.
+    return popInputHook === null ? null : popInputHook();
   },
   capture(): CaptureResult {
     // M3-07: real framebuffer copy (live fb.indices via the render seam);

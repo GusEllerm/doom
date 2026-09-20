@@ -445,7 +445,7 @@ function ptrUseTraverse(in_: Intercept): boolean {
   const line = in_.line;
 
   if (!s.map.lines.special[line]!) {
-    const op = pLineOpening(s.map, line);
+    const op = pLineOpening(s.map, line, s.sectors);
     if (op.openrange <= 0) {
       sfxSlot(s.hooks, SFX_NOWAY, thing.x, thing.y, thing.z, s.leveltime);
       pswitchCounts.useNoWay++;

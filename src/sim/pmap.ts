@@ -279,7 +279,7 @@ export function pitCheckLine(line: number): boolean {
   // set openrange, opentop, openbottom; adjust floor/ceiling heights
   // (p_map.c:230-241 — min/max narrowing, ceilingline tracked for the
   // sky-hack missile rule, unused until M7 missiles)
-  const op = pLineOpening(w.map, line);
+  const op = pLineOpening(w.map, line, w.sectors);
   if (op.opentop < tm.tmceilingz) {
     tm.tmceilingz = op.opentop;
     tm.ceilingline = line;
