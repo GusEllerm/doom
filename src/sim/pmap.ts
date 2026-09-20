@@ -146,6 +146,13 @@ export interface PMapHooks {
   skullFlyHit?: (slot: number, attacker: Mover) => void;
   /** p_map.c:325-329 missile hit damage/explode, M7/M8. */
   missileHit?: (slot: number, source: Mover) => void;
+  /** p_map.c:301-315 same-species missile rule (M7-09 fills it; p_mobj
+   * side resolves the mobj types through the runtime): 'skip' = thing is
+   * the shooter (`return true`, missile flies on), 'explode' = same-
+   * species non-player victim (`return false`, explode WITHOUT damage),
+   * 'pass' = fall through to the MF_SHOOTABLE test. Default (unregis-
+   * tered) = 'pass' — the pre-M7-09 shape, minus the type rule. */
+  missileThingCheck?: (slot: number, missile: Mover) => 'pass' | 'skip' | 'explode';
   /** p_map.c:108 P_DamageMobj(thing, tmthing, tmthing, 10000) — the
    * PIT_StompThing telefrag (P_TeleportMove only). M6/M8 own the damage/
    * death roster; the DEFAULT is a documented no-op (victim survives in
@@ -162,6 +169,9 @@ export const pmapHookCounts = {
   touchSpecialThing: 0,
   skullFlyHit: 0,
   missileHit: 0,
+  /** PIT_CheckThing missile branch, same-species explode-without-damage
+   * return (p_map.c:311-314, M7-09). */
+  missileNoDamage: 0,
   telefrag: 0,
   /** PIT_ChangeSector's `health <= 0 → S_GIBS` branch (p_map.c:1269-1279):
    * unreachable pre-M7 — grid things carry no health field and no dead
@@ -187,6 +197,7 @@ export function resetPmapHookCounts(): void {
   pmapHookCounts.touchSpecialThing = 0;
   pmapHookCounts.skullFlyHit = 0;
   pmapHookCounts.missileHit = 0;
+  pmapHookCounts.missileNoDamage = 0;
   pmapHookCounts.telefrag = 0;
   pmapHookCounts.crushGib = 0;
   pmapHookCounts.crushDroppedRemoved = 0;
@@ -342,6 +353,15 @@ export function pitCheckThing(slot: number): boolean {
     // over / under (p_map.c:295-298) — faithful with z/height on both sides
     if (thing.z > ((w.links.z[slot]! + w.links.height[slot]!) | 0)) return true; // overhead
     if (((thing.z + thing.height) | 0) < w.links.z[slot]!) return true; // underneath
+    // p_map.c:301-315 same-species rule (M7-09): the type compare needs the
+    // mobj roster, so it runs through the slot — 'skip' = the shooter
+    // itself, 'explode' = same-species non-player victim (no damage).
+    const verdict = pmapHooks.missileThingCheck?.(slot, thing) ?? 'pass';
+    if (verdict === 'skip') return true;
+    if (verdict === 'explode') {
+      pmapHookCounts.missileNoDamage++;
+      return false; // Explode, but do no damage.
+    }
     if (!(flags & MF_SHOOTABLE)) return !(flags & MF_SOLID); // no damage done
     pmapHookCounts.missileHit++;
     pmapHooks.missileHit?.(slot, thing);

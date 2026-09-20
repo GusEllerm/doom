@@ -27,6 +27,12 @@ import { stateSprite } from '../wad/info/states';
 import { bindPplayerLevel } from './pplayer';
 import { pSpawnSpecials, pUpdateSpecials } from './pspec';
 import { bindShootWorld } from './p_shoot';
+// M7-09: projectile spawns + splash — these modules self-register their
+// hook/action slots at module load (psprHooks.spawnPlayerMissile,
+// pmapHooks.missileHit/missileThingCheck, mobjHooks.startSound,
+// A_Explode/A_BFGSpray); side-effect imports, nothing to call per level.
+import './pmissiles';
+import './pradius';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */

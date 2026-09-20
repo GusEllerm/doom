@@ -417,8 +417,34 @@ export function pExplodeMissile(m: Mobj): void {
   m.tics = (m.tics - (pRandom(rt.state.rng) & 3)) | 0;
   if (alive && m.tics < 1) m.tics = 1;
   writeFlags(m, m.flags & ~MF.MF_MISSILE);
-  // deathsound token → the M7-06 sfx slot resolves it (no draw, no count).
+  // p_mobj.c:103 `if (mo->info->deathsound) S_StartSound (mo, deathsound)`
+  // — the M7-09/M7-06 seam (mobjHooks.startSound; pmissiles.ts registers
+  // the sfxSlot body, the default is a counted no-op — never silent).
+  const dSound = mobjinfo[m.type]!.deathSound;
+  if (dSound && dSound !== 'sfx_None' && dSound !== '0') {
+    mobjHookCounts.startSound++;
+    mobjHooks.startSound?.(m, dSound, rt.state.leveltime);
+  }
   syncMobj(m);
+}
+
+/* ------------------------------------------------------------------ */
+/* mobj-side hook slots (M7-09: the p_mobj.c:103 S_StartSound site)     */
+/* ------------------------------------------------------------------ */
+
+/** Typed slots for p_mobj.c side-effect call sites whose bodies live in
+ * other modules (same idiom as pmoveHooks / psprHooks). `startSound` is
+ * `S_StartSound(mo, token)` — token is the mobjinfo sfx_* string; the
+ * registrant resolves it to the sounds.h id and emits through hooks.sfx. */
+export const mobjHooks: {
+  startSound?: (m: Mobj, token: string, tic: number) => void;
+} = {};
+
+/** Counts every call (hook present or not); tests reset. */
+export const mobjHookCounts = { startSound: 0 };
+
+export function resetMobjHookCounts(): void {
+  mobjHookCounts.startSound = 0;
 }
 
 /* ------------------------------------------------------------------ */

@@ -270,7 +270,11 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   'pplats.ts': 1, // platSound() body (p_plats.c has 9 S_StartSound lines)
   'pspec.ts': 1, // crossed-switch tail, sfx_swtchn (p_spec.c:107)
   'pswitch.ts': 3, // swtchn / swtchx / the locked-use oof
-  'ptelept.ts': 1 // sfx_telept, origin = the player (p_mobj.c:872)
+  'ptelept.ts': 1, // sfx_telept, origin = the player (p_mobj.c:872)
+  // M7-09 (pmissiles.ts): the two `S_StartSound(th, seesound)` missile
+  // spawn sites (p_mobj.c:899/966) + the P_ExplodeMissile deathsound
+  // bridge body for the p_mobj.c:103 site (mobjHooks.startSound).
+  'pmissiles.ts': 3
 };
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
