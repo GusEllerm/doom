@@ -1,0 +1,427 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "set": "weapons",
+  "pipeline": "M7FIX weapon range -> gInitGame + give/weaponKey/attack script (live sim tics) -> renderFrame x2 (world + psprite pass via pspriteview seam; byte-equal) + montage (state-table-enumerated weapon/flash frames, 5x7 labels) -> sha256(indices), hom + overflow counters asserted 0",
+  "scenes": {
+    "montage": {
+      "kind": "montage",
+      "script": "state-table-enumerated weapon/flash frames, 5x7 labels, fullbright row",
+      "width": 352,
+      "height": 864,
+      "indexSha256": "3d58a86486c66c8be730d225ea91a25f86d67964b09b9240b573e9e24a67e05e",
+      "png": "montage.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "b2f9153503893149608858491585f2cb10c34934ceaf1a5e2f367ed77f5db091"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "3584915bac133a5a0713513f676a37237e1852a7f8391f4568d3a504b7c5d020"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "3d58a86486c66c8be730d225ea91a25f86d67964b09b9240b573e9e24a67e05e"
+        }
+      ]
+    },
+    "wpn-bfg-flash": {
+      "kind": "weapon-script",
+      "script": "mode flash @tic 64 (flash 88) — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6f611772425a3244884ef3b6ccea2b7d4c2edee32dd6d77bd22ccf7c68210a38",
+      "png": "wpn-bfg-flash.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "6f611772425a3244884ef3b6ccea2b7d4c2edee32dd6d77bd22ccf7c68210a38"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "6f611772425a3244884ef3b6ccea2b7d4c2edee32dd6d77bd22ccf7c68210a38"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "6f611772425a3244884ef3b6ccea2b7d4c2edee32dd6d77bd22ccf7c68210a38"
+        }
+      ]
+    },
+    "wpn-bfg-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 44 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e70b33410af1715f6c93c62d13e301ce68579e8e2392098ef86b675c97d451ba",
+      "png": "wpn-bfg-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e70b33410af1715f6c93c62d13e301ce68579e8e2392098ef86b675c97d451ba"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e70b33410af1715f6c93c62d13e301ce68579e8e2392098ef86b675c97d451ba"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e70b33410af1715f6c93c62d13e301ce68579e8e2392098ef86b675c97d451ba"
+        }
+      ]
+    },
+    "wpn-chaingun-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 44 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "0bc8eb8386bc723184ddf90aabf36932b148724a714e94cea76fabd7ab13115b",
+      "png": "wpn-chaingun-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "0bc8eb8386bc723184ddf90aabf36932b148724a714e94cea76fabd7ab13115b"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "0bc8eb8386bc723184ddf90aabf36932b148724a714e94cea76fabd7ab13115b"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "0bc8eb8386bc723184ddf90aabf36932b148724a714e94cea76fabd7ab13115b"
+        }
+      ]
+    },
+    "wpn-chaingun-spin": {
+      "kind": "weapon-script",
+      "script": "mode spin @tic 44 (flash 56) — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b80fbb8f6e440531d978a2b0af621c4c26b183d6fc539c003446dc150aae3156",
+      "png": "wpn-chaingun-spin.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "b80fbb8f6e440531d978a2b0af621c4c26b183d6fc539c003446dc150aae3156"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "b80fbb8f6e440531d978a2b0af621c4c26b183d6fc539c003446dc150aae3156"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "b80fbb8f6e440531d978a2b0af621c4c26b183d6fc539c003446dc150aae3156"
+        }
+      ]
+    },
+    "wpn-fist-punch": {
+      "kind": "weapon-script",
+      "script": "punch state 5 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5b572484dc7496e5de32ca4d2dc00bd35166d671667234f24819c28784f98c55",
+      "png": "wpn-fist-punch.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "5b572484dc7496e5de32ca4d2dc00bd35166d671667234f24819c28784f98c55"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "5b572484dc7496e5de32ca4d2dc00bd35166d671667234f24819c28784f98c55"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "5b572484dc7496e5de32ca4d2dc00bd35166d671667234f24819c28784f98c55"
+        }
+      ]
+    },
+    "wpn-fist-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 44 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e80dac84cf2cdb2e94f5a87693313fef2a22695d167bf220161ad6ee53557bc1",
+      "png": "wpn-fist-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e80dac84cf2cdb2e94f5a87693313fef2a22695d167bf220161ad6ee53557bc1"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e80dac84cf2cdb2e94f5a87693313fef2a22695d167bf220161ad6ee53557bc1"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e80dac84cf2cdb2e94f5a87693313fef2a22695d167bf220161ad6ee53557bc1"
+        }
+      ]
+    },
+    "wpn-missile-flash": {
+      "kind": "weapon-script",
+      "script": "mode flash @tic 78 (flash 17) — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b",
+      "png": "wpn-missile-flash.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        }
+      ]
+    },
+    "wpn-missile-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 44 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e0275c6100339de6bc0fe0c0b36294d5562951bcdf2815732ab2089b033b0cdc",
+      "png": "wpn-missile-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e0275c6100339de6bc0fe0c0b36294d5562951bcdf2815732ab2089b033b0cdc"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e0275c6100339de6bc0fe0c0b36294d5562951bcdf2815732ab2089b033b0cdc"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e0275c6100339de6bc0fe0c0b36294d5562951bcdf2815732ab2089b033b0cdc"
+        }
+      ]
+    },
+    "wpn-pistol-flash": {
+      "kind": "weapon-script",
+      "script": "mode flash @tic 18 (flash 17) — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b",
+      "png": "wpn-pistol-flash.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "ce35b8be9e4ccad8e893fb82c64721dbcfddd57b0ed50796c3a4d6d61a43ef9b"
+        }
+      ]
+    },
+    "wpn-pistol-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 14 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "8c2bf749ecf354222a0c4603986fe3d1cb5c2c7305d0c19c1b505795b06cd808",
+      "png": "wpn-pistol-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "8c2bf749ecf354222a0c4603986fe3d1cb5c2c7305d0c19c1b505795b06cd808"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "8c2bf749ecf354222a0c4603986fe3d1cb5c2c7305d0c19c1b505795b06cd808"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "8c2bf749ecf354222a0c4603986fe3d1cb5c2c7305d0c19c1b505795b06cd808"
+        }
+      ]
+    },
+    "wpn-plasma-flash": {
+      "kind": "weapon-script",
+      "script": "mode flash @tic 44 (flash 79) — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7ab4c6f35598d4294eeb43f17dac85a40fd42c661abfb07ae899b6a845045020",
+      "png": "wpn-plasma-flash.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "7ab4c6f35598d4294eeb43f17dac85a40fd42c661abfb07ae899b6a845045020"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "7ab4c6f35598d4294eeb43f17dac85a40fd42c661abfb07ae899b6a845045020"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "7ab4c6f35598d4294eeb43f17dac85a40fd42c661abfb07ae899b6a845045020"
+        }
+      ]
+    },
+    "wpn-plasma-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 44 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "446fe4f87fb9c2cb682085f820d87ab06a8bd7ba91b30fe582323ded1f1c0727",
+      "png": "wpn-plasma-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "446fe4f87fb9c2cb682085f820d87ab06a8bd7ba91b30fe582323ded1f1c0727"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "446fe4f87fb9c2cb682085f820d87ab06a8bd7ba91b30fe582323ded1f1c0727"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "446fe4f87fb9c2cb682085f820d87ab06a8bd7ba91b30fe582323ded1f1c0727"
+        }
+      ]
+    },
+    "wpn-shotgun-flash": {
+      "kind": "weapon-script",
+      "script": "mode flash @tic 47 (flash 30) — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "c0009f57051790607eb34b89c2706da570a2a1522a26a9a77f15a4d390b55b1d",
+      "png": "wpn-shotgun-flash.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "c0009f57051790607eb34b89c2706da570a2a1522a26a9a77f15a4d390b55b1d"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "c0009f57051790607eb34b89c2706da570a2a1522a26a9a77f15a4d390b55b1d"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "c0009f57051790607eb34b89c2706da570a2a1522a26a9a77f15a4d390b55b1d"
+        }
+      ]
+    },
+    "wpn-shotgun-raise": {
+      "kind": "weapon-script",
+      "script": "raised @tic 44 — gInitGame→give→weaponKey→(attack)→capture",
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e10b0aa2a87aef37e1748353e2bc8a1bd6dd6942a299a1bfb83f1a8aa0a9bb53",
+      "png": "wpn-shotgun-raise.png",
+      "reason": "M7-10 weapon visual pack",
+      "updatedAt": "2026-09-20",
+      "history": [
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e10b0aa2a87aef37e1748353e2bc8a1bd6dd6942a299a1bfb83f1a8aa0a9bb53"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e10b0aa2a87aef37e1748353e2bc8a1bd6dd6942a299a1bfb83f1a8aa0a9bb53"
+        },
+        {
+          "reason": "M7-10 weapon visual pack",
+          "at": "2026-09-20",
+          "indexSha256": "e10b0aa2a87aef37e1748353e2bc8a1bd6dd6942a299a1bfb83f1a8aa0a9bb53"
+        }
+      ]
+    }
+  }
+}

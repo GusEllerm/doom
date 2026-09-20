@@ -27,8 +27,8 @@
 //                                   nearer seg's masked range inline), THEN
 //                                   the remaining maskedtexturecol ranges
 //                                   of every drawseg NEWEST→OLDEST, THEN
-//                                   R_DrawPlayerSprites — psprites are M7,
-//                                   stubbed by absence)
+//                                   R_DrawPlayerSprites — psprites are the
+//                                   M7-10 opt-in deps.psprites pass)
 //
 // So: planes draw AFTER the whole world pass but BEFORE sprites, and the
 // masked middles draw LAST of the 3D passes (later than the sprites that
@@ -98,6 +98,11 @@ import {
   resetRenderCounters,
   type RenderCounters,
 } from './solidsegs';
+import {
+  createPspritePass,
+  type PspritePass,
+  type PspriteView,
+} from './psprites';
 import { createSegCallbacks } from './segs';
 import {
   createSpritePass,
@@ -216,6 +221,24 @@ export interface FrameDeps {
   readonly automap?: AutomapOverlay;
   /** M4-07 static sprite pass; omitted ⇒ no sprite pass at all. */
   readonly sprites?: SpriteTables;
+  /** M7-10 psprite pass (R_DrawPlayerSprites — gun/muzzle-flash layer):
+   * the CALLER resolves the sim pspdefs into PspriteView rows (psprites.ts
+   * header contract — src/pspriteview.ts is the shared seam). OMITTED ⇒ no
+   * psprite pass at all, so every pre-M7-10 golden/frame is byte-identical
+   * by construction; when present the pass draws LAST of the 3D passes
+   * (r_things.c:985, after drawMasked, before the automap overlay). */
+  readonly psprites?: PspriteFrameInput;
+}
+
+/** Per-frame psprite bundle (views row order = vanilla psp loop order:
+ * weapon then flash; null = inactive `psp->state == NULL`). */
+export interface PspriteFrameInput {
+  readonly views: readonly (PspriteView | null)[];
+  /** lightlevel of the player's subsector's sector (R_DrawPlayerSprites
+   * spritelights row selection). */
+  readonly sectorLight: number;
+  /** player->powers[pw_invisibility] (vanilla gate `>4*32 || &8`). */
+  readonly invisibility?: number;
 }
 
 /** renderFrame's return: the solidsegs/plane counters plus the pass-local
@@ -241,6 +264,10 @@ interface FrameCtx {
   /** null ⇒ no sprite pass (deps.sprites omitted). */
   readonly sprites: SpriteTables | null;
   readonly pass: SpritePass | null;
+  /** null ⇒ no psprite pass (sprites absent — the pass needs the patch
+   * decode; deps.psprites presence is checked per FRAME, not here, since
+   * the views change every frame without any identity to cache on). */
+  readonly pspPass: PspritePass | null;
   /** Reinstalled as masked.ts' frame context every frame (ref store, zero
    * alloc; masked.ts owns the draw's globals). */
   readonly maskedCtx: MaskedContext;
@@ -309,6 +336,16 @@ function getCtx(deps: FrameDeps): FrameCtx {
       tables,
       walker: createBspWalker(deps.map, deps.world),
       view,
+      pspPass:
+        sprites === null
+          ? null
+          : createPspritePass({
+            fb: deps.fb,
+            view,
+            sprites: sprites.sprites,
+            patches: sprites.patches,
+            lights: tables,
+          }),
       // The BSP callbacks: segs (solidsegs + storeWallRange + seg loop)
       // plus R_AddSprites at the R_Subsector call site (r_bsp.c:546, BEFORE
       // the seg loop — bsp.renderSubsector already places it there).
@@ -402,9 +439,19 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
   // 7. R_DrawMasked: half 1 = vissprites sorted ascending scale and drawn
   //    back-to-front (each R_DrawSprite may paint a NEARER seg's masked
   //    range inline); half 2 = every leftover maskedtexturecol range,
-  //    drawsegs newest→oldest. (Half 3, psprites, is M7.)
+  //    drawsegs newest→oldest. (Half 3, psprites, is the opt-in pass below.)
   ctx.pass?.drawSprites();
   drawMasked();
+
+  // 7.5 R_DrawPlayerSprites (M7-10 wiring of the M7-07 layer): the psprite
+  // pass draws LAST of the 3D passes — the gun draws OVER the world. Omitted
+  // deps.psprites ⇒ byte-identical pre-M7 frames (every legacy golden).
+  if (deps.psprites !== undefined && ctx.pspPass !== null) {
+    ctx.pspPass.drawPlayerSprites(deps.psprites.views, {
+      sectorLight: deps.psprites.sectorLight,
+      invisibility: deps.psprites.invisibility ?? 0,
+    });
+  }
 
   // 8. §4.1.9 — automap/HUD overlays draw into the same buffer AFTER the
   // 3D passes; AM_Responder owns the toggle (Tab), state.am gates this.

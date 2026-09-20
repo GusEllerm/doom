@@ -3,9 +3,11 @@
 //
 // Synthetic fixtures (wadds rule: L1/L2 behavior on synthetic dumps),
 // plus a freedoom1.wad-gated section drawing REAL PISG/PISF-style weapon
-// lumps with a HOM=0-style bounds assert. The 3D pipeline never calls this
-// module (gun OFF — see psprites.ts header), so goldens stay unmoved; the
-// wiring-guard test pins that no renderer file imports psprites.ts yet.
+// lumps with a HOM=0-style bounds assert. M7-10 wired the module into
+// renderer.ts (opt-in deps.psprites — gun OFF when the dep is absent, so
+// every pre-M7-10 golden stays byte-identical); the wiring-guard test pins
+// that opt-in shape: renderer.ts is the ONLY importer and the draw stays
+// gated behind deps.psprites.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -225,14 +227,26 @@ describe('R_DrawPSprite colormap ladder', () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* 3) Wiring guard: gun OFF ⇒ existing goldens structurally unmoved     */
+/* 3) Wiring guard: opt-in deps.psprites ⇒ legacy goldens unmoved       */
 /* ------------------------------------------------------------------ */
 
-describe('renderer integration status', () => {
-  it('no renderer module imports psprites.ts yet (gun OFF)', async () => {
-    const src = readFileSync(fileURLToPath(new URL('./renderer.ts', import.meta.url)), 'utf8');
-    expect(src).not.toMatch(/from '\.\/psprites'/);
+describe('renderer integration status (M7-10 wiring)', () => {
+  it('renderer.ts is the sole psprites importer and draws ONLY under deps.psprites', async () => {
     const fs = await import('node:fs');
+    const src = fs.readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8');
+    // The pass exists in the frame…
+    expect(src).toMatch(/from '\.\/psprites'/);
+    expect(src).toMatch(/createPspritePass\(/);
+    // …but its draw call sits behind the OPT-IN dep (r_things.c:985 is the
+    // last 3D pass; vanilla order kept, automap overlay still after it).
+    expect(src).toMatch(/deps\.psprites !== undefined && ctx\.pspPass !== null/);
+    const drawIdx = src.indexOf('ctx.pspPass.drawPlayerSprites');
+    const maskedIdx = src.indexOf('drawMasked();');
+    const amIdx = src.indexOf('drawAutomap(deps.fb');
+    expect(maskedIdx).toBeGreaterThan(-1);
+    expect(drawIdx).toBeGreaterThan(maskedIdx); // after R_DrawMasked
+    if (amIdx !== -1) expect(drawIdx).toBeLessThan(amIdx); // before overlays
+    // No other render module imports the layer (single call site).
     for (const f of ['view.ts', 'rdata.ts', 'vissprites.ts', 'bsp.ts']) {
       expect(fs.readFileSync(new URL(`./${f}`, import.meta.url), 'utf8')).not.toMatch(
         /from '\.\/psprites'/,

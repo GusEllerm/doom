@@ -32,11 +32,12 @@
 //    immediately — no pool slot, no sort (psprites never enter the
 //    R_SortVisSprites list).
 //
-// Wiring status (plan: "minimal renderer touch"): NOTHING in renderer.ts
-// calls this module yet — the gun is OFF until the live wiring lands
-// (follow-up: main.ts/renderer.ts pass the sim psprite rows through
-// `drawPlayerSprites`; until then every existing golden is untouched by
-// construction, verified by the untouched-import graph + the golden gate).
+// Wiring status (M7-10): renderer.ts is the single call site — the frame's
+// OPTIONAL `deps.psprites` (src/pspriteview.ts resolves the sim rows) makes
+// `drawPlayerSprites` the LAST 3D pass, r_things.c:985-true. The dep is
+// OMITTED everywhere else, so every pre-M7-10 golden is untouched by
+// construction (golden gate) and the shape is pinned by psprites.test.ts's
+// wiring-guard.
 //
 // Zone discipline: imports core + wad TYPES + render (no sim/p_pspr — the
 // caller resolves psprite STATE rows into {sprite, frame} pairs; this zone
