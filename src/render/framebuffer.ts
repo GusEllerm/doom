@@ -154,8 +154,8 @@ export function resetFuzzPos(): void {
 
 /**
  * `R_DrawFuzzColumn` (r_draw.c:283-365) on the INDEXED buffer. Vanilla has NO
- * translucency and no alpha blend anywhere in 1.10 (`grep -rn "translucent\|"
- * M_TRANMAP" *.c` = 0 hits): a shadow/invisible thing is drawn by re-reading
+ * translucency and no alpha blend anywhere in 1.10 (`grep -rin
+ * "translucen\|M_TRANMAP\|blend" *.c *.h` = 0 hits): a shadow/invisible thing is drawn by re-reading
  * the framebuffer pixel ONE ROW up or down and pushing it through COLORMAP
  * map #6 — `*dest = colormaps[6*256 + dest[fuzzoffset[fuzzpos]]]`. Because
  * our framebuffer also stores palette indices, this is a one-to-one port

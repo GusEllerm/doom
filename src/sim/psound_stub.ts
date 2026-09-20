@@ -14,9 +14,10 @@
 // hand: order = sounds.h enum, sfx_None = 0 … sfx_radio = 108, NUMSFX = 109.
 // Cross-checks against the pins already on main: p_pspr.ts SFX_PISTOL 1 /
 // SFX_SHOTGN 2 / SFX_DSHTGN 4 / SFX_SAWHIT 13 / SFX_PUNCH 83,
-// pdoors.ts SFX_DOROPN 20 / SFX_DORCLS 21 / SFX_BDOPN 88 / SFX_BDCLS 89 /
-// SFX_OOF 34, pswitch.ts SFX_SWTCHN 23, ptelept.ts SFX_TELEPT 35 — all
-// match this table (they stay where they are; nothing moved).
+// pdoors.ts SFX_DOROPN 20 / SFX_DORCLS 21 / SFX_BDOPN 88 / SFX_BDCLS 89,
+// ptelept.ts SFX_TELEPT 35, pswitch.ts SFX_SWTCHN 23 / SFX_OOF 34 /
+// SFX_NOWAY 81, pplats.ts SFX_PSTART 18 — every one matches this table
+// (the constants stay where they are; nothing was moved).
 //
 // SITE LEDGER (plan §M7-06 acceptance 3 — "fire/pickup/explode sites
 // enumerated"). `grep -n S_StartSound` over the mirror's 62 .c files:
