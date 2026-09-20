@@ -11,3 +11,21 @@ Continues branch task/M7-10-suites (dead agent left 6 commits: fixtures, harness
 - NEVER touch docs/** (read-only).
 - src/** minimal-fix-only, with regression tests.
 - Gates: full vitest green; npm run check green; npm run e2e green; goldens --check ALL sets incl. new weapons set.
+
+## Outcome (2026-09-20)
+- Suites: all green as found; the 3 red files on the fresh worktree were a
+  MISSING wads/freedoom1.wad (worktree artifact), fixed by a read-only symlink.
+  No test/fixture repair needed. Wiring flip: psprites.test.ts "gun OFF" pin
+  rewritten to pin the opt-in deps.psprites shape (mirror truth r_things.c:985).
+- Wiring: renderer.ts gains OPTIONAL deps.psprites (drawn after drawMasked,
+  before automap — vanilla order); NEW src/pspriteview.ts resolves sim pspdefs
+  via the 967-state table (sector light via sim/bsp, powers[2] invisibility);
+  main.ts render() passes it every frame. Absent dep ⇒ byte-identical legacy
+  frames — walls/automap goldens --check: no drift.
+- Visual pack: tests/weapons/visual.test.ts (wad-gated, freedoom sprites over
+  M7 fixture maps) — 14 scenes + montage; blessed under
+  tests/render/goldens/weapons/ with meta reason "M7-10 weapon visual pack".
+  L5 note: freedoom's 4CC art differs from doom1 (PUNG→SARG, MISG→APBX,
+  BFGG→ARM1, SHTG→SPOS/POSS) — graphics-naming-only (plan §6 risk 5), the
+  state-machine behavior is identical; findings belong in docs/TASKS.md at
+  M7-11 (docs/** off-limits here).
