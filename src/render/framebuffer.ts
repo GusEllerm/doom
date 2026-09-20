@@ -44,6 +44,80 @@ export function buildLut(base: Uint32Array, bank = 0): Uint32Array {
   return lut;
 }
 
+/* ------------------------------------------------------------------ */
+/* PLAYPAL bank selection — the I_SetPalette half (M7-06)              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Vanilla `I_SetPalette` + its `st_stuff.c:1003 static int st_palette`.
+ *
+ * The framebuffer stores PALETTE INDICES, so "changing the palette" here is
+ * swapping the 256-entry blit LUT to one of the 14 PLAYPAL banks — the
+ * vanilla `pal = (byte*)W_CacheLumpNum(lu_palette) + palette*768;
+ * I_SetPalette(pal)` (st_stuff.c:1047-1050) — and, exactly as in vanilla,
+ * it happens ONLY on a change (`if (palette != st_palette)`). Bank layout
+ * (st_stuff.c:71-76): 0 normal, 1..8 red (damage/berserk fade), 9..12
+ * pickup bonus, 13 radiation suit.
+ *
+ * The band NUMBER is computed SIM-side (sim/ppalette.paletteBand —
+ * DECISIONS D-0xx: band selection is deterministic sim state and gets
+ * hashed; ST_doPaletteStuff's widget half stays M9) and passed in by the
+ * wiring layer, so this module keeps its sim-free import set (A-06).
+ *
+ * LUTs build lazily per bank and are cached, so a powerup frame costs the
+ * same as the constant `buildLut(base, 0)` it replaces. Indexed goldens are
+ * UNAFFECTED by band changes BY CONSTRUCTION (the index buffer never
+ * changes) — only the RGBA blit differs, which is what the pair-frame tests
+ * in tests/render/palette.test.ts pin.
+ */
+export class PaletteLuts {
+  /** Decoded PLAYPAL: NUM_PALETTES × 256 packed 0xAARRGGBB. */
+  readonly base: Uint32Array;
+  private readonly cache: (Uint32Array | undefined)[];
+  private current: number;
+  /** The `palette != st_palette` branch count (I_SetPalette calls). Tests
+   * assert it stays 0 while no flash/powerup is active. */
+  changes = 0;
+
+  constructor(base: Uint32Array) {
+    this.base = base;
+    this.cache = new Array<Uint32Array | undefined>(NUM_PALETTES).fill(undefined);
+    this.current = 0;
+  }
+
+  /** Current bank (vanilla `st_palette`). */
+  get bank(): number {
+    return this.current;
+  }
+
+  /** Current bank's LUT (built on first use). */
+  get lut(): Uint32Array {
+    return this.select(this.current);
+  }
+
+  /**
+   * Select a bank, rebuilding ONLY when it differs (vanilla's guard); true
+   * on an actual change.
+   */
+  setBank(bank: number): boolean {
+    if (bank === this.current) return false;
+    this.select(bank); // may throw for a bad band — then nothing is selected
+    this.current = bank;
+    this.changes += 1;
+    return true;
+  }
+
+  /** LUT for an arbitrary bank (cached per bank). */
+  select(bank: number): Uint32Array {
+    let lut = this.cache[bank];
+    if (lut === undefined) {
+      lut = buildLut(this.base, bank);
+      this.cache[bank] = lut;
+    }
+    return lut;
+  }
+}
+
 /** Indexed 320x200 framebuffer with an RGBA blit scratch. */
 export class Framebuffer {
   readonly width: number;

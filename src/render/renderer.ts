@@ -133,6 +133,16 @@ export interface FramePlayer {
    * (the sim's "pre-first-tic" spawn pin) ⇒ renderer keeps the
    * z + 41·FRACUNIT placeholder, so frame-0 views stay byte-identical. */
   readonly viewz?: number;
+  /** M7-06 read-through: d_player.h `int extralight` in the VANILLA
+   * encoding (A_Light0/1/2 write 0/1/2, r_main.c R_SetupFrame adds it to
+   * the light number). Absent ⇒ 0 (every pre-M7 frame byte-identical). */
+  readonly extralight?: number;
+  /** M7-06 read-through: d_player.h `int fixedcolormap` in the VANILLA
+   * encoding — 0 means the C NULL pointer (normal lighting), nonzero is
+   * the COLORMAP row index (1 = infrared "almost full bright",
+   * 32 = INVERSECOLORMAP for invulnerability, p_user.c:362-383). Absent
+   * or 0 ⇒ the NULL row (−1 here), so pre-powerup frames stay identical. */
+  readonly fixedcolormap?: number;
 }
 
 /** Automap overlay bundle (optional dep): `state` is the sim AutomapState
@@ -355,6 +365,13 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
     z,
     angle: mo.angle,
     viewz: vz !== undefined && vz !== 0 ? vz : undefined,
+    // M7-06 powerup read-through (r_main.c:847-859): the sim carries the
+    // vanilla 0 = NULL encoding, the ViewState the −1 sentinel.
+    extralight: deps.player.extralight ?? 0,
+    fixedcolormap:
+      deps.player.fixedcolormap !== undefined && deps.player.fixedcolormap !== 0
+        ? deps.player.fixedcolormap
+        : -1,
   });
 
   // 2. R_ClearClipSegs / R_ClearDrawSegs / R_ClearPlanes (clip arrays +
