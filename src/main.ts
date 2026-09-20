@@ -42,7 +42,9 @@ import { gInitGame, gTicker, TICS_PER_SECOND } from './sim/game';
 import { buildMapFromData } from './sim/map';
 import type { GameState } from './sim/state';
 import { attachRenderDebug, attachMouseInjection, attachPopInput, debugApi, debugSim, installDebugApi } from './debug';
-import { blitToCanvas, buildLut, Framebuffer } from './render/framebuffer';
+import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
+import { attachPowerupFields, paletteBand } from './sim/ppalette';
+import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
 import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
 import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
 import { buildRenderMapView, type RenderMapView } from './render/view';
@@ -93,7 +95,11 @@ document.body.appendChild(picker);
 interface Boot {
   readonly state: GameState;
   readonly am: ReturnType<typeof amCreateState>;
-  readonly lut: Uint32Array;
+  /** PLAYPAL banks + the current selection (M7-06: the I_SetPalette half —
+   * the band index itself is computed sim-side, see sim/ppalette.ts). */
+  readonly luts: PaletteLuts;
+  /** The player read as a palette/powerup source (fields attached once). */
+  readonly palettePlayer: ReturnType<typeof attachPowerupFields>;
   /** Render world + BSP view + light tables: built ONCE here (M3-07 "load
    * render world once"), reused by every frame's deps bundle. */
   readonly world: RenderWorld;
@@ -148,7 +154,7 @@ function stepTic(): void {
 
 function render(): void {
   if (boot === null) return;
-  const { state, am } = boot;
+  const { state, am, palettePlayer } = boot;
   // §4.1 frame pipeline (renderer.ts): 3D walls always run; the automap
   // overlays afterwards ONLY when its state is active (Tab toggles the
   // state through amResponder in stepTic — the drawing path is stateless).
@@ -162,7 +168,10 @@ function render(): void {
     automap: { state: am, map: state.map, player: state.players[0]! },
   };
   renderFrame(deps);
-  blitToCanvas(ctx, fb, boot.lut);
+  // ST_doPaletteStuff half (st_stuff.c:1000-1050): the band is a sim value,
+  // the LUT swap is the I_SetPalette — and, like vanilla, only on a change.
+  boot.luts.setBank(paletteBand(palettePlayer));
+  blitToCanvas(ctx, fb, boot.luts.lut);
 }
 
 function loop(nowMs: number): void {
@@ -248,7 +257,17 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   const md = loadMap(wad, 'E1M1');
   const map = buildMapFromData(md);
   const state = gInitGame(map);
-  const lut = buildLut(decodePlaypal(wad.readLumpByName('PLAYPAL')), 0);
+  // M7-06: damagecount is the one palette/powerup field the merged inventory
+  // attach (p_inter_inventory) does not carry; P_DamageMobj (M7 damage) owns
+  // the writes, this attach only makes the field exist from frame 0.
+  const palettePlayer = attachPowerupFields(state.players[0]!);
+  // M7-06 sfx slots: the two sites that can fire today (the p_inter.c pickup
+  // tail and p_pspr.c's ten S_StartSound(player->mo, …) lines) enqueue into
+  // the M6-01 hook ring; M10 replaces the slot BODIES, never these call
+  // sites (psound_stub.ts holds the complete site ledger for the audio port).
+  installPickupSfxBridge(state.hooks, () => state.leveltime);
+  installPsprSfxSlot(state.hooks, () => state.leveltime);
+  const luts = new PaletteLuts(decodePlaypal(wad.readLumpByName('PLAYPAL')));
 
   // Render world built ONCE (M3-07): SoA tables + BSP view + wad light
   // tables (R_InitColormaps half: COLORMAP lump → scalelight rows). M4-07
@@ -273,7 +292,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
   attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
-  boot = { state, am, lut, world, mapView, tables, sprites };
+  boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites };
   status.hidden = true;
   picker.hidden = true;
   console.info(`doom-ts: booted ${map.name} from ${src}`);

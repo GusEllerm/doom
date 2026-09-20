@@ -44,6 +44,147 @@ export function buildLut(base: Uint32Array, bank = 0): Uint32Array {
   return lut;
 }
 
+/* ------------------------------------------------------------------ */
+/* PLAYPAL bank selection — the I_SetPalette half (M7-06)              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Vanilla `I_SetPalette` + its `st_stuff.c:1003 static int st_palette`.
+ *
+ * The framebuffer stores PALETTE INDICES, so "changing the palette" here is
+ * swapping the 256-entry blit LUT to one of the 14 PLAYPAL banks — the
+ * vanilla `pal = (byte*)W_CacheLumpNum(lu_palette) + palette*768;
+ * I_SetPalette(pal)` (st_stuff.c:1047-1050) — and, exactly as in vanilla,
+ * it happens ONLY on a change (`if (palette != st_palette)`). Bank layout
+ * (st_stuff.c:71-76): 0 normal, 1..8 red (damage/berserk fade), 9..12
+ * pickup bonus, 13 radiation suit.
+ *
+ * The band NUMBER is computed SIM-side (sim/ppalette.paletteBand —
+ * DECISIONS D-0xx: band selection is deterministic sim state and gets
+ * hashed; ST_doPaletteStuff's widget half stays M9) and passed in by the
+ * wiring layer, so this module keeps its sim-free import set (A-06).
+ *
+ * LUTs build lazily per bank and are cached, so a powerup frame costs the
+ * same as the constant `buildLut(base, 0)` it replaces. Indexed goldens are
+ * UNAFFECTED by band changes BY CONSTRUCTION (the index buffer never
+ * changes) — only the RGBA blit differs, which is what the pair-frame tests
+ * in tests/render/palette.test.ts pin.
+ */
+export class PaletteLuts {
+  /** Decoded PLAYPAL: NUM_PALETTES × 256 packed 0xAARRGGBB. */
+  readonly base: Uint32Array;
+  private readonly cache: (Uint32Array | undefined)[];
+  private current: number;
+  /** The `palette != st_palette` branch count (I_SetPalette calls). Tests
+   * assert it stays 0 while no flash/powerup is active. */
+  changes = 0;
+
+  constructor(base: Uint32Array) {
+    this.base = base;
+    this.cache = new Array<Uint32Array | undefined>(NUM_PALETTES).fill(undefined);
+    this.current = 0;
+  }
+
+  /** Current bank (vanilla `st_palette`). */
+  get bank(): number {
+    return this.current;
+  }
+
+  /** Current bank's LUT (built on first use). */
+  get lut(): Uint32Array {
+    return this.select(this.current);
+  }
+
+  /**
+   * Select a bank, rebuilding ONLY when it differs (vanilla's guard); true
+   * on an actual change.
+   */
+  setBank(bank: number): boolean {
+    if (bank === this.current) return false;
+    this.select(bank); // may throw for a bad band — then nothing is selected
+    this.current = bank;
+    this.changes += 1;
+    return true;
+  }
+
+  /** LUT for an arbitrary bank (cached per bank). */
+  select(bank: number): Uint32Array {
+    let lut = this.cache[bank];
+    if (lut === undefined) {
+      lut = buildLut(this.base, bank);
+      this.cache[bank] = lut;
+    }
+    return lut;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* R_DrawFuzzColumn — the SHADOW/INVISIBILITY post-process (M7-06)     */
+/* ------------------------------------------------------------------ */
+
+/** r_draw.c:251 `#define FUZZTABLE 50`. */
+export const FUZZTABLE = 50;
+/** r_draw.c:252 `#define FUZZOFF (SCREENWIDTH)` — SOURCE TRUTH: the fuzz
+ * neighbour is one ROW above/below (a vertical smear), NOT left/right; the
+ * vanilla comment ("one column left or right of the current one") is wrong,
+ * the offset table is ±SCREENWIDTH. */
+export const FUZZOFF = RENDER_WIDTH;
+
+/** r_draw.c:254-262 `int fuzzoffset[FUZZTABLE]` — order-exact. */
+export const fuzzoffset: readonly number[] = [
+  FUZZOFF, -FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF,
+  FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF,
+  FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF,
+  FUZZOFF, -FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF,
+  FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF, -FUZZOFF, FUZZOFF,
+  FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF,
+  FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF, FUZZOFF, -FUZZOFF, FUZZOFF
+];
+
+/** r_draw.c:265 `int fuzzpos = 0` — a GLOBAL advanced by every fuzz pixel
+ * in the frame (so which neighbour is read depends on the fuzz history of
+ * the whole frame, exactly like vanilla: deterministic for a given frame
+ * sequence, never per-object re-seeded). */
+export const fuzzState = { pos: 0 };
+
+/** Test/reset hook (vanilla never resets it). */
+export function resetFuzzPos(): void {
+  fuzzState.pos = 0;
+}
+
+/**
+ * `R_DrawFuzzColumn` (r_draw.c:283-365) on the INDEXED buffer. Vanilla has NO
+ * translucency and no alpha blend anywhere in 1.10 (`grep -rin
+ * "translucen\|M_TRANMAP\|blend" *.c *.h` = 0 hits): a shadow/invisible thing is drawn by re-reading
+ * the framebuffer pixel ONE ROW up or down and pushing it through COLORMAP
+ * map #6 — `*dest = colormaps[6*256 + dest[fuzzoffset[fuzzpos]]]`. Because
+ * our framebuffer also stores palette indices, this is a one-to-one port
+ * (no compositing stage involved), which is why the MF_SHADOW path never
+ * needed the translucency machinery the brief hypothesised.
+ *
+ * Border adjustments are verbatim (`if (!yl) yl = 1;` / `if (yh == h-1) yh =
+ * h-2;`) — they are what keeps the ±FUZZOFF read inside the buffer.
+ */
+export function drawFuzzColumn(
+  fb: Framebuffer,
+  colormaps: Uint8Array,
+  x: number,
+  yl: number,
+  yh: number
+): void {
+  if (yl === 0) yl = 1; // Adjust borders. Low...
+  if (yh === fb.height - 1) yh = fb.height - 2; // .. and high.
+  let count = yh - yl;
+  if (count < 0) return; // Zero length.
+  let dest = yl * fb.width + x;
+  do {
+    const src = dest + (fuzzoffset[fuzzState.pos] as number);
+    fb.indices[dest] = colormaps[6 * 256 + (fb.indices[src] ?? 0)] ?? 0;
+    if (++fuzzState.pos === FUZZTABLE) fuzzState.pos = 0; // Clamp table lookup
+    dest += fb.width;
+  } while (count--);
+}
+
 /** Indexed 320x200 framebuffer with an RGBA blit scratch. */
 export class Framebuffer {
   readonly width: number;
