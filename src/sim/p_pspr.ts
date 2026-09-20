@@ -5,16 +5,14 @@
 // verbatim from the same tree's info.c/info.h, weaponinfo from d_items.c).
 //
 // Scope notes (docs/design/M7-plan.md §M7-07):
-//  * LOCAL STATE SHAPE: the M7-01 tables (src/wad/info/{states,weaponinfo})
-//    are NOT merged on main, so this module carries a local, statenum-keyed
-//    subset `PSPR_STATES` (rows 0..89 = the psprite-relevant range of the
-//    967-row states[], indices = info.h statenum_t order, so the info.c
-//    `state - states` arithmetic incl. the A_FireCGun
-//    `flashstate + psp->state - &states[S_CHAIN1]` trick stays exact) and a
-//    local `WEAPONINFO` (d_items.c order). FOLLOW-UP (M7-01 merge): swap
-//    these two consts for the generated tables — row shapes are identical,
-//    actions move to the a_actions.ts ActionId registry; no call site here
-//    changes.
+//  * TABLES CONSUMED (M7-01 MERGED): states/frames/tics/next/misc come from
+//    src/wad/info/states.ts (the generated 967-row SoA — real statenums, so
+//    the info.c `state - states` arithmetic incl. the A_FireCGun
+//    `flashstate + psp->state - &states[S_CHAIN1]` trick is exact) and
+//    weapon states dispatch through the src/sim/a_actions.ts ActionId
+//    REGISTRY ({@link registerAction}/{@link dispatchAction}) — this module
+//    registers the 22 p_pspr.c bodies at load; the mobj machine (M7-02/03)
+//    sees the SAME ids. `PSPR_STATES` is a row-view cached over the SoA.
 //  * FIRE-DEPENDENCY SLOTS (plan: "fire actions arrive as registry slots"):
 //    every call p_pspr.c makes into ANOTHER task's file (P_SetMobjState →
 //    M7-02/03, P_AimLineAttack/P_LineAttack/P_BulletSlope → M7-08,
@@ -54,6 +52,24 @@ import { PST_DEAD } from './player';
 import type { PrngState } from './prng';
 import { pRandom } from './prng';
 import { BT_ATTACK } from './ticcmd';
+import { ACT, dispatchAction, registerAction } from './a_actions';
+import {
+  AMMO,
+  NUMWEAPONS as NUMWEAPONS_T,
+  WP,
+  weaponinfo as weaponinfoT,
+} from '../wad/info/weaponinfo';
+import {
+  NUMSTATES,
+  S,
+  stateAction,
+  stateFrame,
+  stateMisc1,
+  stateMisc2,
+  stateNext,
+  stateSprite,
+  stateTics,
+} from '../wad/info/states';
 
 /* ------------------------------------------------------------------ */
 /* p_pspr.c defines (#defines)                                         */
@@ -81,25 +97,24 @@ export const PS_FLASH = 1;
 export const NUMPSPRITES = 2;
 
 /** doomdef.h weapontype_t (wp_nochange = 10 — after NUMWEAPONS=9). */
-export const WP_FIST = 0;
-export const WP_PISTOL = 1;
-export const WP_SHOTGUN = 2;
-export const WP_CHAINGUN = 3;
-export const WP_MISSILE = 4;
-export const WP_PLASMA = 5;
-export const WP_BFG = 6;
-export const WP_CHAINSAW = 7;
-export const WP_SUPERSHOTGUN = 8;
-export const NUMWEAPONS = 9;
-export const WP_NOCHANGE = 10;
+export const WP_FIST = WP.wp_fist;
+export const WP_PISTOL = WP.wp_pistol;
+export const WP_SHOTGUN = WP.wp_shotgun;
+export const WP_CHAINGUN = WP.wp_chaingun;
+export const WP_MISSILE = WP.wp_missile;
+export const WP_PLASMA = WP.wp_plasma;
+export const WP_BFG = WP.wp_bfg;
+export const WP_CHAINSAW = WP.wp_chainsaw;
+export const WP_SUPERSHOTGUN = WP.wp_supershotgun;
+export const WP_NOCHANGE = WP.wp_nochange;
 
 /** doomdef.h ammotype_t (am_noammo = 5 — after NUMAMMO=4). */
-export const AM_CLIP = 0;
-export const AM_SHELL = 1;
-export const AM_CELL = 2;
-export const AM_MISL = 3;
+export const AM_CLIP = AMMO.am_clip;
+export const AM_SHELL = AMMO.am_shell;
+export const AM_CELL = AMMO.am_cell;
+export const AM_MISL = AMMO.am_misl;
 export const NUMAMMO = 4;
-export const AM_NOAMMO = 5;
+export const AM_NOAMMO = AMMO.am_noammo;
 
 /** doomdef.h powerentype (pw_strength = 0; berserk). */
 export const PW_STRENGTH = 0;
@@ -120,103 +135,103 @@ export const SFX_PUNCH = 83;
 
 /** info.h statenum_t — the psprite-relevant subset (indices = info.c
  * states[] row order, 967 rows; see header for the M7-01 swap note). */
-export const S_NULL = 0;
-export const S_LIGHTDONE = 1;
-export const S_PUNCH = 2;
-export const S_PUNCHDOWN = 3;
-export const S_PUNCHUP = 4;
-export const S_PUNCH1 = 5;
-export const S_PUNCH2 = 6;
-export const S_PUNCH3 = 7;
-export const S_PUNCH4 = 8;
-export const S_PUNCH5 = 9;
-export const S_PISTOL = 10;
-export const S_PISTOLDOWN = 11;
-export const S_PISTOLUP = 12;
-export const S_PISTOL1 = 13;
-export const S_PISTOL2 = 14;
-export const S_PISTOL3 = 15;
-export const S_PISTOL4 = 16;
-export const S_PISTOLFLASH = 17;
-export const S_SGUN = 18;
-export const S_SGUNDOWN = 19;
-export const S_SGUNUP = 20;
-export const S_SGUN1 = 21;
-export const S_SGUN2 = 22;
-export const S_SGUN3 = 23;
-export const S_SGUN4 = 24;
-export const S_SGUN5 = 25;
-export const S_SGUN6 = 26;
-export const S_SGUN7 = 27;
-export const S_SGUN8 = 28;
-export const S_SGUN9 = 29;
-export const S_SGUNFLASH1 = 30;
-export const S_SGUNFLASH2 = 31;
-export const S_DSGUN = 32;
-export const S_DSGUNDOWN = 33;
-export const S_DSGUNUP = 34;
-export const S_DSGUN1 = 35;
-export const S_DSGUN2 = 36;
-export const S_DSGUN3 = 37;
-export const S_DSGUN4 = 38;
-export const S_DSGUN5 = 39;
-export const S_DSGUN6 = 40;
-export const S_DSGUN7 = 41;
-export const S_DSGUN8 = 42;
-export const S_DSGUN9 = 43;
-export const S_DSGUN10 = 44;
-export const S_DSNR1 = 45;
-export const S_DSNR2 = 46;
-export const S_DSGUNFLASH1 = 47;
-export const S_DSGUNFLASH2 = 48;
-export const S_CHAIN = 49;
-export const S_CHAINDOWN = 50;
-export const S_CHAINUP = 51;
-export const S_CHAIN1 = 52;
-export const S_CHAIN2 = 53;
-export const S_CHAIN3 = 54;
-export const S_CHAINFLASH1 = 55;
-export const S_CHAINFLASH2 = 56;
-export const S_MISSILE = 57;
-export const S_MISSILEDOWN = 58;
-export const S_MISSILEUP = 59;
-export const S_MISSILE1 = 60;
-export const S_MISSILE2 = 61;
-export const S_MISSILE3 = 62;
-export const S_MISSILEFLASH1 = 63;
-export const S_MISSILEFLASH2 = 64;
-export const S_MISSILEFLASH3 = 65;
-export const S_MISSILEFLASH4 = 66;
-export const S_SAW = 67;
-export const S_SAWB = 68;
-export const S_SAWDOWN = 69;
-export const S_SAWUP = 70;
-export const S_SAW1 = 71;
-export const S_SAW2 = 72;
-export const S_SAW3 = 73;
-export const S_PLASMA = 74;
-export const S_PLASMADOWN = 75;
-export const S_PLASMAUP = 76;
-export const S_PLASMA1 = 77;
-export const S_PLASMA2 = 78;
-export const S_PLASMAFLASH1 = 79;
-export const S_PLASMAFLASH2 = 80;
-export const S_BFG = 81;
-export const S_BFGDOWN = 82;
-export const S_BFGUP = 83;
-export const S_BFG1 = 84;
-export const S_BFG2 = 85;
-export const S_BFG3 = 86;
-export const S_BFG4 = 87;
-export const S_BFGFLASH1 = 88;
-export const S_BFGFLASH2 = 89;
+export const S_NULL = S.S_NULL;
+export const S_LIGHTDONE = S.S_LIGHTDONE;
+export const S_PUNCH = S.S_PUNCH;
+export const S_PUNCHDOWN = S.S_PUNCHDOWN;
+export const S_PUNCHUP = S.S_PUNCHUP;
+export const S_PUNCH1 = S.S_PUNCH1;
+export const S_PUNCH2 = S.S_PUNCH2;
+export const S_PUNCH3 = S.S_PUNCH3;
+export const S_PUNCH4 = S.S_PUNCH4;
+export const S_PUNCH5 = S.S_PUNCH5;
+export const S_PISTOL = S.S_PISTOL;
+export const S_PISTOLDOWN = S.S_PISTOLDOWN;
+export const S_PISTOLUP = S.S_PISTOLUP;
+export const S_PISTOL1 = S.S_PISTOL1;
+export const S_PISTOL2 = S.S_PISTOL2;
+export const S_PISTOL3 = S.S_PISTOL3;
+export const S_PISTOL4 = S.S_PISTOL4;
+export const S_PISTOLFLASH = S.S_PISTOLFLASH;
+export const S_SGUN = S.S_SGUN;
+export const S_SGUNDOWN = S.S_SGUNDOWN;
+export const S_SGUNUP = S.S_SGUNUP;
+export const S_SGUN1 = S.S_SGUN1;
+export const S_SGUN2 = S.S_SGUN2;
+export const S_SGUN3 = S.S_SGUN3;
+export const S_SGUN4 = S.S_SGUN4;
+export const S_SGUN5 = S.S_SGUN5;
+export const S_SGUN6 = S.S_SGUN6;
+export const S_SGUN7 = S.S_SGUN7;
+export const S_SGUN8 = S.S_SGUN8;
+export const S_SGUN9 = S.S_SGUN9;
+export const S_SGUNFLASH1 = S.S_SGUNFLASH1;
+export const S_SGUNFLASH2 = S.S_SGUNFLASH2;
+export const S_DSGUN = S.S_DSGUN;
+export const S_DSGUNDOWN = S.S_DSGUNDOWN;
+export const S_DSGUNUP = S.S_DSGUNUP;
+export const S_DSGUN1 = S.S_DSGUN1;
+export const S_DSGUN2 = S.S_DSGUN2;
+export const S_DSGUN3 = S.S_DSGUN3;
+export const S_DSGUN4 = S.S_DSGUN4;
+export const S_DSGUN5 = S.S_DSGUN5;
+export const S_DSGUN6 = S.S_DSGUN6;
+export const S_DSGUN7 = S.S_DSGUN7;
+export const S_DSGUN8 = S.S_DSGUN8;
+export const S_DSGUN9 = S.S_DSGUN9;
+export const S_DSGUN10 = S.S_DSGUN10;
+export const S_DSNR1 = S.S_DSNR1;
+export const S_DSNR2 = S.S_DSNR2;
+export const S_DSGUNFLASH1 = S.S_DSGUNFLASH1;
+export const S_DSGUNFLASH2 = S.S_DSGUNFLASH2;
+export const S_CHAIN = S.S_CHAIN;
+export const S_CHAINDOWN = S.S_CHAINDOWN;
+export const S_CHAINUP = S.S_CHAINUP;
+export const S_CHAIN1 = S.S_CHAIN1;
+export const S_CHAIN2 = S.S_CHAIN2;
+export const S_CHAIN3 = S.S_CHAIN3;
+export const S_CHAINFLASH1 = S.S_CHAINFLASH1;
+export const S_CHAINFLASH2 = S.S_CHAINFLASH2;
+export const S_MISSILE = S.S_MISSILE;
+export const S_MISSILEDOWN = S.S_MISSILEDOWN;
+export const S_MISSILEUP = S.S_MISSILEUP;
+export const S_MISSILE1 = S.S_MISSILE1;
+export const S_MISSILE2 = S.S_MISSILE2;
+export const S_MISSILE3 = S.S_MISSILE3;
+export const S_MISSILEFLASH1 = S.S_MISSILEFLASH1;
+export const S_MISSILEFLASH2 = S.S_MISSILEFLASH2;
+export const S_MISSILEFLASH3 = S.S_MISSILEFLASH3;
+export const S_MISSILEFLASH4 = S.S_MISSILEFLASH4;
+export const S_SAW = S.S_SAW;
+export const S_SAWB = S.S_SAWB;
+export const S_SAWDOWN = S.S_SAWDOWN;
+export const S_SAWUP = S.S_SAWUP;
+export const S_SAW1 = S.S_SAW1;
+export const S_SAW2 = S.S_SAW2;
+export const S_SAW3 = S.S_SAW3;
+export const S_PLASMA = S.S_PLASMA;
+export const S_PLASMADOWN = S.S_PLASMADOWN;
+export const S_PLASMAUP = S.S_PLASMAUP;
+export const S_PLASMA1 = S.S_PLASMA1;
+export const S_PLASMA2 = S.S_PLASMA2;
+export const S_PLASMAFLASH1 = S.S_PLASMAFLASH1;
+export const S_PLASMAFLASH2 = S.S_PLASMAFLASH2;
+export const S_BFG = S.S_BFG;
+export const S_BFGDOWN = S.S_BFGDOWN;
+export const S_BFGUP = S.S_BFGUP;
+export const S_BFG1 = S.S_BFG1;
+export const S_BFG2 = S.S_BFG2;
+export const S_BFG3 = S.S_BFG3;
+export const S_BFG4 = S.S_BFG4;
+export const S_BFGFLASH1 = S.S_BFGFLASH1;
+export const S_BFGFLASH2 = S.S_BFGFLASH2;
 
 /** info.h — the player attack mobj states p_pspr.c sets through
  * P_SetMobjState (mobj-side states = M7-02/03; only the NUMBERS live here
  * because the call sites are in this file). */
-export const S_PLAY = 149;
-export const S_PLAY_ATK1 = 154;
-export const S_PLAY_ATK2 = 155;
+export const S_PLAY = S.S_PLAY;
+export const S_PLAY_ATK1 = S.S_PLAY_ATK1;
+export const S_PLAY_ATK2 = S.S_PLAY_ATK2;
 
 /* ------------------------------------------------------------------ */
 /* pspdef_t / player fields (see header for the M7-03 note)            */
@@ -297,8 +312,8 @@ export interface PsprStateRow {
   readonly frame: number;
   /** i16 in the generated tables; -1 = forever, 0 = 0-tic cascade. */
   readonly tics: number;
-  /** action, null for {NULL}. */
-  readonly action: PsprAction | null;
+  /** a_actions.ts ActionId (0 = {NULL} — never dispatched). */
+  readonly actionId: number;
   /** statenum (0 = S_NULL removes). */
   readonly next: number;
   readonly misc1: number;
@@ -307,7 +322,7 @@ export interface PsprStateRow {
 
 /** Sparse by statenum (rows 0..89; the psprite machine never enters a row
  * above 89 — player/mobj states are M7-02/03 territory). */
-export const PSPR_STATES: (PsprStateRow | undefined)[] = [];
+export const PSPR_STATES: PsprStateRow[] = [];
 
 /** d_items.c:47-138 weaponinfo[NUMWEAPONS] — verbatim {ammo, up, down,
  * ready, atk, flash}. */
@@ -320,17 +335,16 @@ export interface WeaponRow {
   readonly flashstate: number;
 }
 
-export const WEAPONINFO: readonly WeaponRow[] = [
-  { ammo: AM_NOAMMO, upstate: S_PUNCHUP, downstate: S_PUNCHDOWN, readystate: S_PUNCH, atkstate: S_PUNCH1, flashstate: S_NULL },
-  { ammo: AM_CLIP, upstate: S_PISTOLUP, downstate: S_PISTOLDOWN, readystate: S_PISTOL, atkstate: S_PISTOL1, flashstate: S_PISTOLFLASH },
-  { ammo: AM_SHELL, upstate: S_SGUNUP, downstate: S_SGUNDOWN, readystate: S_SGUN, atkstate: S_SGUN1, flashstate: S_SGUNFLASH1 },
-  { ammo: AM_CLIP, upstate: S_CHAINUP, downstate: S_CHAINDOWN, readystate: S_CHAIN, atkstate: S_CHAIN1, flashstate: S_CHAINFLASH1 },
-  { ammo: AM_MISL, upstate: S_MISSILEUP, downstate: S_MISSILEDOWN, readystate: S_MISSILE, atkstate: S_MISSILE1, flashstate: S_MISSILEFLASH1 },
-  { ammo: AM_CELL, upstate: S_PLASMAUP, downstate: S_PLASMADOWN, readystate: S_PLASMA, atkstate: S_PLASMA1, flashstate: S_PLASMAFLASH1 },
-  { ammo: AM_CELL, upstate: S_BFGUP, downstate: S_BFGDOWN, readystate: S_BFG, atkstate: S_BFG1, flashstate: S_BFGFLASH1 },
-  { ammo: AM_NOAMMO, upstate: S_SAWUP, downstate: S_SAWDOWN, readystate: S_SAW, atkstate: S_SAW1, flashstate: S_NULL },
-  { ammo: AM_SHELL, upstate: S_DSGUNUP, downstate: S_DSGUNDOWN, readystate: S_DSGUN, atkstate: S_DSGUN1, flashstate: S_DSGUNFLASH1 },
-];
+/** d_items.c rows — the generated weaponinfo.ts table, key-renamed for the
+ * p_pspr.c call sites (values identical; parity pinned in the tests). */
+export const WEAPONINFO: readonly WeaponRow[] = weaponinfoT.map((w) => ({
+  ammo: w.ammo,
+  upstate: w.upState,
+  downstate: w.downState,
+  readystate: w.readyState,
+  atkstate: w.atkState,
+  flashstate: w.flashState,
+}));
 
 /* ------------------------------------------------------------------ */
 /* Runtime + hook slots (module-static per the vanilla-globals rule)   */
@@ -550,9 +564,12 @@ export function pSetPsprite(p: PsprPlayer, position: number, stnum: number): voi
       psp.sy = (state.misc2 << FRACBITS) | 0;
     }
 
-    // Call action routine. Modified handling.
-    if (state.action) {
-      state.action(p, psp);
+    // Call action routine. Modified handling. — M7-01 registry dispatch
+    // (a_actions.ts); the pspr machine owns the ctx cast (ActionFn doc).
+    if (state.actionId) {
+      psprActionCtx.player = p;
+      psprActionCtx.psp = psp;
+      dispatchAction(state.actionId, psprActionCtx);
       if (!psp.state) break;
     }
 
@@ -1087,129 +1104,73 @@ export function aCloseShotgun2(p: PsprPlayer, psp: PspDef): void {
  * body. Not transcribed here (no psprite call site). */
 
 /* ------------------------------------------------------------------ */
-/* PSPR_STATES table build (info.c rows 0..89, verbatim fields)        */
+/* ActionId registry: the p_pspr.c bodies register at module load      */
 /* ------------------------------------------------------------------ */
 
-const R = (
-  sprite: number,
-  frame: number,
-  tics: number,
-  action: PsprAction | null,
-  next: number,
-): PsprStateRow => ({ sprite, frame, tics, action, next, misc1: 0, misc2: 0 });
+/** ActionFn context for psprite actions (caller-owned cast per the
+ * a_actions.ts contract). ONE reused record — dispatch sites fill it in
+ * place (vanilla passed (player, psp) directly; the registry erases to
+ * unknown). Registered wrappers read it AT ENTRY only, so nested
+ * SetPsprite cascades (A_Lower → BringUp → SetPsprite) are safe. */
+export interface PsprActionCtx {
+  player: PsprPlayer;
+  psp: PspDef;
+}
 
-// SPR_* (spritedef_t indices of the weapon sprites):
-const SPR_SHTG = 1;
-const SPR_PUNG = 2;
-const SPR_PISG = 3;
-const SPR_PISF = 4;
-const SPR_SHTF = 5;
-const SPR_SHT2 = 6;
-const SPR_CHGG = 7;
-const SPR_CHGF = 8;
-const SPR_MISG = 9;
-const SPR_MISF = 10;
-const SPR_SAWG = 11;
-const SPR_PLSG = 12;
-const SPR_PLSF = 13;
-const SPR_BFGG = 14;
-const SPR_BFGF = 15;
+const psprActionCtx = {} as PsprActionCtx;
 
-/** p_pspr.h FF_FULLBRIGHT. */
-export const FF_FULLBRIGHT = 0x8000;
-/** p_pspr.h FF_FRAMEMASK. */
-export const FF_FRAMEMASK = 0x7fff;
+/** Wrap a (player, psp) body as an ActionFn. */
+const W =
+  (fn: PsprAction) =>
+    (ctx: unknown): void => {
+      const c = ctx as PsprActionCtx;
+      fn(c.player, c.psp);
+    };
 
-// info.c states[] rows 0..89 (spritedef/frame/tics/action/next), info.c
-// comment ordering — see /tmp mirror; every row misc1=misc2=0 (the
-// coordinate-set branch of P_SetPsprite is vacuous for weapon states).
-PSPR_STATES[S_NULL] = R(0, 0, 1, null, S_NULL); // SPR_TROO — "removed"
-PSPR_STATES[S_LIGHTDONE] = R(SPR_SHTG, 4, 0, aLight0, S_NULL);
-PSPR_STATES[S_PUNCH] = R(SPR_PUNG, 0, 1, aWeaponReady, S_PUNCH);
-PSPR_STATES[S_PUNCHDOWN] = R(SPR_PUNG, 0, 1, aLower, S_PUNCHDOWN);
-PSPR_STATES[S_PUNCHUP] = R(SPR_PUNG, 0, 1, aRaise, S_PUNCHUP);
-PSPR_STATES[S_PUNCH1] = R(SPR_PUNG, 1, 4, null, S_PUNCH2);
-PSPR_STATES[S_PUNCH2] = R(SPR_PUNG, 2, 4, aPunch, S_PUNCH3);
-PSPR_STATES[S_PUNCH3] = R(SPR_PUNG, 3, 5, null, S_PUNCH4);
-PSPR_STATES[S_PUNCH4] = R(SPR_PUNG, 2, 4, null, S_PUNCH5);
-PSPR_STATES[S_PUNCH5] = R(SPR_PUNG, 1, 5, aReFire, S_PUNCH);
-PSPR_STATES[S_PISTOL] = R(SPR_PISG, 0, 1, aWeaponReady, S_PISTOL);
-PSPR_STATES[S_PISTOLDOWN] = R(SPR_PISG, 0, 1, aLower, S_PISTOLDOWN);
-PSPR_STATES[S_PISTOLUP] = R(SPR_PISG, 0, 1, aRaise, S_PISTOLUP);
-PSPR_STATES[S_PISTOL1] = R(SPR_PISG, 0, 4, null, S_PISTOL2);
-PSPR_STATES[S_PISTOL2] = R(SPR_PISG, 1, 6, aFirePistol, S_PISTOL3);
-PSPR_STATES[S_PISTOL3] = R(SPR_PISG, 2, 4, null, S_PISTOL4);
-PSPR_STATES[S_PISTOL4] = R(SPR_PISG, 1, 5, aReFire, S_PISTOL);
-PSPR_STATES[S_PISTOLFLASH] = R(SPR_PISF, FF_FULLBRIGHT | 0, 7, aLight1, S_LIGHTDONE);
-PSPR_STATES[S_SGUN] = R(SPR_SHTG, 0, 1, aWeaponReady, S_SGUN);
-PSPR_STATES[S_SGUNDOWN] = R(SPR_SHTG, 0, 1, aLower, S_SGUNDOWN);
-PSPR_STATES[S_SGUNUP] = R(SPR_SHTG, 0, 1, aRaise, S_SGUNUP);
-PSPR_STATES[S_SGUN1] = R(SPR_SHTG, 0, 3, null, S_SGUN2);
-PSPR_STATES[S_SGUN2] = R(SPR_SHTG, 0, 7, aFireShotgun, S_SGUN3);
-PSPR_STATES[S_SGUN3] = R(SPR_SHTG, 1, 5, null, S_SGUN4);
-PSPR_STATES[S_SGUN4] = R(SPR_SHTG, 2, 5, null, S_SGUN5);
-PSPR_STATES[S_SGUN5] = R(SPR_SHTG, 3, 4, null, S_SGUN6);
-PSPR_STATES[S_SGUN6] = R(SPR_SHTG, 2, 5, null, S_SGUN7);
-PSPR_STATES[S_SGUN7] = R(SPR_SHTG, 1, 5, null, S_SGUN8);
-PSPR_STATES[S_SGUN8] = R(SPR_SHTG, 0, 3, null, S_SGUN9);
-PSPR_STATES[S_SGUN9] = R(SPR_SHTG, 0, 7, aReFire, S_SGUN);
-PSPR_STATES[S_SGUNFLASH1] = R(SPR_SHTF, FF_FULLBRIGHT | 0, 4, aLight1, S_SGUNFLASH2);
-PSPR_STATES[S_SGUNFLASH2] = R(SPR_SHTF, FF_FULLBRIGHT | 1, 3, aLight2, S_LIGHTDONE);
-PSPR_STATES[S_DSGUN] = R(SPR_SHT2, 0, 1, aWeaponReady, S_DSGUN);
-PSPR_STATES[S_DSGUNDOWN] = R(SPR_SHT2, 0, 1, aLower, S_DSGUNDOWN);
-PSPR_STATES[S_DSGUNUP] = R(SPR_SHT2, 0, 1, aRaise, S_DSGUNUP);
-PSPR_STATES[S_DSGUN1] = R(SPR_SHT2, 0, 3, null, S_DSGUN2);
-PSPR_STATES[S_DSGUN2] = R(SPR_SHT2, 0, 7, aFireShotgun2, S_DSGUN3);
-PSPR_STATES[S_DSGUN3] = R(SPR_SHT2, 1, 7, null, S_DSGUN4);
-PSPR_STATES[S_DSGUN4] = R(SPR_SHT2, 2, 7, aCheckReload, S_DSGUN5);
-PSPR_STATES[S_DSGUN5] = R(SPR_SHT2, 3, 7, aOpenShotgun2, S_DSGUN6);
-PSPR_STATES[S_DSGUN6] = R(SPR_SHT2, 4, 7, null, S_DSGUN7);
-PSPR_STATES[S_DSGUN7] = R(SPR_SHT2, 5, 7, aLoadShotgun2, S_DSGUN8);
-PSPR_STATES[S_DSGUN8] = R(SPR_SHT2, 6, 6, null, S_DSGUN9);
-PSPR_STATES[S_DSGUN9] = R(SPR_SHT2, 7, 6, aCloseShotgun2, S_DSGUN10);
-PSPR_STATES[S_DSGUN10] = R(SPR_SHT2, 0, 5, aReFire, S_DSGUN);
-PSPR_STATES[S_DSNR1] = R(SPR_SHT2, 1, 7, null, S_DSNR2);
-PSPR_STATES[S_DSNR2] = R(SPR_SHT2, 0, 3, null, S_DSGUNDOWN);
-PSPR_STATES[S_DSGUNFLASH1] = R(SPR_SHT2, FF_FULLBRIGHT | 8, 5, aLight1, S_DSGUNFLASH2);
-PSPR_STATES[S_DSGUNFLASH2] = R(SPR_SHT2, FF_FULLBRIGHT | 9, 4, aLight2, S_LIGHTDONE);
-PSPR_STATES[S_CHAIN] = R(SPR_CHGG, 0, 1, aWeaponReady, S_CHAIN);
-PSPR_STATES[S_CHAINDOWN] = R(SPR_CHGG, 0, 1, aLower, S_CHAINDOWN);
-PSPR_STATES[S_CHAINUP] = R(SPR_CHGG, 0, 1, aRaise, S_CHAINUP);
-PSPR_STATES[S_CHAIN1] = R(SPR_CHGG, 0, 4, aFireCGun, S_CHAIN2);
-PSPR_STATES[S_CHAIN2] = R(SPR_CHGG, 1, 4, aFireCGun, S_CHAIN3);
-PSPR_STATES[S_CHAIN3] = R(SPR_CHGG, 1, 0, aReFire, S_CHAIN);
-PSPR_STATES[S_CHAINFLASH1] = R(SPR_CHGF, FF_FULLBRIGHT | 0, 5, aLight1, S_LIGHTDONE);
-PSPR_STATES[S_CHAINFLASH2] = R(SPR_CHGF, FF_FULLBRIGHT | 1, 5, aLight2, S_LIGHTDONE);
-PSPR_STATES[S_MISSILE] = R(SPR_MISG, 0, 1, aWeaponReady, S_MISSILE);
-PSPR_STATES[S_MISSILEDOWN] = R(SPR_MISG, 0, 1, aLower, S_MISSILEDOWN);
-PSPR_STATES[S_MISSILEUP] = R(SPR_MISG, 0, 1, aRaise, S_MISSILEUP);
-PSPR_STATES[S_MISSILE1] = R(SPR_MISG, 1, 8, aGunFlash, S_MISSILE2);
-PSPR_STATES[S_MISSILE2] = R(SPR_MISG, 1, 12, aFireMissile, S_MISSILE3);
-PSPR_STATES[S_MISSILE3] = R(SPR_MISG, 1, 0, aReFire, S_MISSILE);
-PSPR_STATES[S_MISSILEFLASH1] = R(SPR_MISF, FF_FULLBRIGHT | 0, 3, aLight1, S_MISSILEFLASH2);
-PSPR_STATES[S_MISSILEFLASH2] = R(SPR_MISF, FF_FULLBRIGHT | 1, 4, null, S_MISSILEFLASH3);
-PSPR_STATES[S_MISSILEFLASH3] = R(SPR_MISF, FF_FULLBRIGHT | 2, 4, aLight2, S_MISSILEFLASH4);
-PSPR_STATES[S_MISSILEFLASH4] = R(SPR_MISF, FF_FULLBRIGHT | 3, 4, aLight2, S_LIGHTDONE);
-PSPR_STATES[S_SAW] = R(SPR_SAWG, 2, 4, aWeaponReady, S_SAWB);
-PSPR_STATES[S_SAWB] = R(SPR_SAWG, 3, 4, aWeaponReady, S_SAW);
-PSPR_STATES[S_SAWDOWN] = R(SPR_SAWG, 2, 1, aLower, S_SAWDOWN);
-PSPR_STATES[S_SAWUP] = R(SPR_SAWG, 2, 1, aRaise, S_SAWUP);
-PSPR_STATES[S_SAW1] = R(SPR_SAWG, 0, 4, aSaw, S_SAW2);
-PSPR_STATES[S_SAW2] = R(SPR_SAWG, 1, 4, aSaw, S_SAW3);
-PSPR_STATES[S_SAW3] = R(SPR_SAWG, 1, 0, aReFire, S_SAW);
-PSPR_STATES[S_PLASMA] = R(SPR_PLSG, 0, 1, aWeaponReady, S_PLASMA);
-PSPR_STATES[S_PLASMADOWN] = R(SPR_PLSG, 0, 1, aLower, S_PLASMADOWN);
-PSPR_STATES[S_PLASMAUP] = R(SPR_PLSG, 0, 1, aRaise, S_PLASMAUP);
-PSPR_STATES[S_PLASMA1] = R(SPR_PLSG, 0, 3, aFirePlasma, S_PLASMA2);
-PSPR_STATES[S_PLASMA2] = R(SPR_PLSG, 1, 20, aReFire, S_PLASMA);
-PSPR_STATES[S_PLASMAFLASH1] = R(SPR_PLSF, FF_FULLBRIGHT | 0, 4, aLight1, S_LIGHTDONE);
-PSPR_STATES[S_PLASMAFLASH2] = R(SPR_PLSF, FF_FULLBRIGHT | 1, 4, aLight1, S_LIGHTDONE);
-PSPR_STATES[S_BFG] = R(SPR_BFGG, 0, 1, aWeaponReady, S_BFG);
-PSPR_STATES[S_BFGDOWN] = R(SPR_BFGG, 0, 1, aLower, S_BFGDOWN);
-PSPR_STATES[S_BFGUP] = R(SPR_BFGG, 0, 1, aRaise, S_BFGUP);
-PSPR_STATES[S_BFG1] = R(SPR_BFGG, 0, 20, aBFGsound, S_BFG2);
-PSPR_STATES[S_BFG2] = R(SPR_BFGG, 1, 10, aGunFlash, S_BFG3);
-PSPR_STATES[S_BFG3] = R(SPR_BFGG, 1, 10, aFireBFG, S_BFG4);
-PSPR_STATES[S_BFG4] = R(SPR_BFGG, 1, 20, aReFire, S_BFG);
-PSPR_STATES[S_BFGFLASH1] = R(SPR_BFGF, FF_FULLBRIGHT | 0, 11, aLight1, S_BFGFLASH2);
-PSPR_STATES[S_BFGFLASH2] = R(SPR_BFGF, FF_FULLBRIGHT | 1, 6, aLight2, S_LIGHTDONE);
+registerAction(ACT.A_Light0, W(aLight0));
+registerAction(ACT.A_WeaponReady, W(aWeaponReady));
+registerAction(ACT.A_Lower, W(aLower));
+registerAction(ACT.A_Raise, W(aRaise));
+registerAction(ACT.A_Punch, W(aPunch));
+registerAction(ACT.A_ReFire, W(aReFire));
+registerAction(ACT.A_FirePistol, W(aFirePistol));
+registerAction(ACT.A_Light1, W(aLight1));
+registerAction(ACT.A_FireShotgun, W(aFireShotgun));
+registerAction(ACT.A_Light2, W(aLight2));
+registerAction(ACT.A_FireShotgun2, W(aFireShotgun2));
+registerAction(ACT.A_CheckReload, W(aCheckReload));
+registerAction(ACT.A_OpenShotgun2, W(aOpenShotgun2));
+registerAction(ACT.A_LoadShotgun2, W(aLoadShotgun2));
+registerAction(ACT.A_CloseShotgun2, W(aCloseShotgun2));
+registerAction(ACT.A_FireCGun, W(aFireCGun));
+registerAction(ACT.A_GunFlash, W(aGunFlash));
+registerAction(ACT.A_FireMissile, W(aFireMissile));
+registerAction(ACT.A_Saw, W(aSaw));
+registerAction(ACT.A_FirePlasma, W(aFirePlasma));
+registerAction(ACT.A_BFGsound, W(aBFGsound));
+registerAction(ACT.A_FireBFG, W(aFireBFG));
+// A_BFGSpray (ACT 23) is an MOBJ state action (S_BFGLAND3) — M7-09/M8
+// registers that body; the pspr table never dispatches it.
+
+/* ------------------------------------------------------------------ */
+/* PSPR_STATES row view over the generated states.ts SoA               */
+/* ------------------------------------------------------------------ */
+
+for (let i = 0; i < NUMSTATES; i++) {
+  PSPR_STATES[i] = {
+    sprite: stateSprite[i]!,
+    frame: stateFrame[i]!,
+    tics: stateTics[i]!,
+    actionId: stateAction[i]!,
+    next: stateNext[i]!,
+    misc1: stateMisc1[i]!,
+    misc2: stateMisc2[i]!,
+  };
+}
+
+/** p_pspr.h FF_FULLBRIGHT / FF_FRAMEMASK (re-exported from the tables). */
+export { FF_FULLBRIGHT, FF_FRAMEMASK } from '../wad/info/states';
+
+/** NUMWEAPONS re-export (weaponinfo.ts is the authority). */
+export const NUMWEAPONS = NUMWEAPONS_T;
+

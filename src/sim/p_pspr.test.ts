@@ -59,6 +59,9 @@ import {
   WP_SHOTGUN,
 } from './p_pspr';
 import { BT_ATTACK } from './ticcmd';
+import { ACT, isActionRegistered } from './a_actions';
+import { weaponinfo } from '../wad/info/weaponinfo';
+import { stateAt } from '../wad/info/states';
 import { FixedMul } from '../core/fixed';
 import { finecosine, finesine } from '../core/tables';
 import { FINEMASK, FRACUNIT } from '../core/constants';
@@ -71,7 +74,7 @@ type World = PsprWorld;
 
 let world: World;
 
-function mkPlayer(readyweapon = WP_FIST): PsprPlayer {
+function mkPlayer(readyweapon: number = WP_FIST): PsprPlayer {
   const p = attachPsprFields(createPlayer());
   p.readyweapon = readyweapon;
   p.pendingweapon = WP_NOCHANGE;
@@ -480,6 +483,36 @@ describe('double-run determinism', () => {
 /* ------------------------------------------------------------------ */
 
 describe('P_SetPsprite semantics', () => {
+  it('table consumption: rows/actions come from the merged M7-01 tables', () => {
+    // row view parity (states.ts SoA is the authority)
+    for (const st of [S_PUNCH, S_PUNCHUP, S_PISTOL, S_PISTOLUP, S_PISTOLFLASH, S_LIGHTDONE]) {
+      const r = stateAt(st);
+      expect([PSPR_STATES[st]!.tics, PSPR_STATES[st]!.next, PSPR_STATES[st]!.frame], `row ${st}`).toEqual(
+        [r.tics, r.nextstate, r.frame],
+      );
+    }
+    // WEAPONINFO is the weaponinfo.ts table (key-renamed)
+    for (let w = 0; w < WEAPONINFO.length; w++) {
+      expect(WEAPONINFO[w]).toEqual({
+        ammo: weaponinfo[w]!.ammo,
+        upstate: weaponinfo[w]!.upState,
+        downstate: weaponinfo[w]!.downState,
+        readystate: weaponinfo[w]!.readyState,
+        atkstate: weaponinfo[w]!.atkState,
+        flashstate: weaponinfo[w]!.flashState,
+      });
+    }
+    // the pspr bodies are registered in the M7-01 ActionId registry
+    for (const id of [ACT.A_WeaponReady, ACT.A_Lower, ACT.A_Raise, ACT.A_ReFire, ACT.A_FirePistol, ACT.A_GunFlash, ACT.A_Light0, ACT.A_Light1, ACT.A_Light2]) {
+      expect(isActionRegistered(id), `action ${id}`).toBe(true);
+    }
+    // registry dispatch drives the machine: the pistol entry fires through it
+    const p = mkPlayer(WP_PISTOL);
+    pSetupPsprites(p);
+    for (let t = 0; t < 16; t++) tick(p);
+    expect(psp(p).state).toBe(S_PISTOL);
+  });
+
   it('S_NULL removes; 0-tic cascades run actions once each', () => {
     const p = mkPlayer(WP_SHOTGUN);
     pSetupPsprites(p);
