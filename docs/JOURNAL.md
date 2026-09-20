@@ -212,3 +212,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M7-09 merged. M7-10 dispatched: per-weapon suites, shared-stream interleaving determinism, and the D016 weapon VISUAL PACK (gun-raised goldens + montage — my visual review rides on it). M7 at 9/11.
 - Session restart #5: M7-10 died but left 6 commits (all weapon suites + stream suite). Finisher dispatched for visual pack + greens.
 - M7-10 merged. VISUAL GATE (D016): pistol-raise+flash scene = PASS (gun bottom-center-right, blue flash, correct sx/sy). Finding: montage enumerated sprites instead of tiling scenes — fix folded into M7-11. 10/11 M7 tasks landed.
+- Visual review board added: docs/VISUAL-REVIEW.md (human-eye tier list; weapons parked pending M7-11 psprite fix).
