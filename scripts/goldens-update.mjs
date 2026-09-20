@@ -71,6 +71,19 @@ const SETS = {
     // untouched).
     pipeline:
       'WALLFIX / M4FIX(mask,sky,things,pan) / E1M1 -> gInitGame -> warp (viewpoints.ts) -> renderFrame x2 full frame (planes+masked+statics; byte-equal) -> sha256(fb.indices), hom + visplane/vissprite/opening/drawseg overflow asserted 0'
+  },
+  weapons: {
+    // M7-10 weapon visual pack (plan §M7-10 + D016 visual gate):
+    // tests/weapons/visual.test.ts — M7 firing-range fixture maps (no
+    // graphics) rendered with the freedoom sprite/patch tables, live-sim
+    // psprite rows through the src/pspriteview.ts seam (gun raised +
+    // muzzle flash), plus one labelled montage contact sheet enumerating
+    // every weapon/flash sprite frame from the 967-state table. WAD-GATED
+    // (skipIf no wad, like the E1M1 wall scenes): without a wad the set
+    // dumps nothing and committed goldens stay untouched.
+    testFile: join('tests', 'weapons', 'visual.test.ts'),
+    pipeline:
+      'M7FIX weapon range -> gInitGame + give/weaponKey/attack script (live sim tics) -> renderFrame x2 (world + psprite pass via pspriteview seam; byte-equal) + montage (state-table-enumerated weapon/flash frames, 5x7 labels) -> sha256(indices), hom + overflow counters asserted 0'
   }
 };
 
