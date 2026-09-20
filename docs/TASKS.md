@@ -121,4 +121,5 @@ Future tasks will be added as architects decompose milestones.
 | M7-08 | Hitscan aim/attack/traverse | M7 | M7-02/07 | done (merged, verified) |
 | M7-05 | Ammo economy + weapon switching | M7 | M7-02/03/04 | done (merged, verified) |
 | M7-06 | Powerup render effects + palettes | M7 | M7-02/04 | done (merged, verified) |
-| M7-09 | Projectiles + splash + BFG | M7 | M7-06/08 | dispatched (agent e404697d) |
+| M7-09 | Projectiles + splash + BFG | M7 | M7-06/08 | done (merged, verified) |
+| M7-10 | L2 weapon suites + visual pack | M7 | M7-04..09 | dispatched (agent a916da2c) |
