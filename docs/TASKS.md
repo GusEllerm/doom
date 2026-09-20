@@ -137,4 +137,4 @@ Future tasks will be added as architects decompose milestones.
 | M8-04..13 | (see docs/design/M8-plan.md) | M8 | waves | planned |
 
 | M8-05 | Damage/kill/infighting module | M8 | M8-02 | salvage t2 (agent bd8e70bf; core committed, tests pending) |
-| M8-04 | AI core (A_Look/A_Chase/P_Move) | M8 | M8-01/02 | salvage t2 (agent fe78ba7f; scaffold only survived) |
+| M8-04 | AI core (A_Look/A_Chase/P_Move) | M8 | M8-01/02 | done (merged, verified — monsters hunt) |

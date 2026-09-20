@@ -228,3 +228,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M8-01 merged: real P_CheckSight (brute-force 1000-pair parity, sightcounts census, validcount semantics matched). Soundtarget field live; NoiseAlert WRITE site still pending (tests seed it directly) — wiring belongs to A_Look (M8-04).
 - M8-01 merged; M8-04 (AI core) dispatched — noise-alert wiring folded in per journal note. Running: damage module + AI core.
 - Reload #7: M8-04/05 agents lost; salvage from tips (05 core survived, 04 scaffold-only). Two finishers running.
+- M8-04 merged: THE HUNT IS ON. A_Look/A_Chase/P_Move verbatim; P_LookForPlayers is 1.10's 30-line version (2.x lore rejected); NOISEALERT TRUTH: called ONLY from player attack actions (sfx.c never — 18 later-port calls rejected); ambush=static-until-seen, dropoff=never-MISSILE. lastlook draws: only blocked-chase tics consume PRNG.
