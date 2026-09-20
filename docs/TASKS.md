@@ -123,4 +123,4 @@ Future tasks will be added as architects decompose milestones.
 | M7-06 | Powerup render effects + palettes | M7 | M7-02/04 | done (merged, verified) |
 | M7-09 | Projectiles + splash + BFG | M7 | M7-06/08 | done (merged, verified) |
 | M7-10 | L2 weapon suites + visual pack | M7 | M7-04..09 | done (merged, verified) |
-| M7-11 | L4 e2e + exit sweep | M7 | M7-10 | dispatched (agent dc8ba097) |
+| M7-11 | L4 e2e + exit sweep | M7 | M7-10 | fix merged (visual gate PASS); remainder finisher (agent 24f7f0ee) |
