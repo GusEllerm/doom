@@ -302,7 +302,7 @@ describe('T_VerticalDoor state-machine arms (direct)', () => {
 
 /* pmap/thing-crush arms are covered below with the EV_* bodies (step 2). */
 
-import { pTeleportMove } from './pmap';
+import { pTeleportMove, pTryMove } from './pmap';
 import { PLAYER_FLAGS } from './player';
 import { MF_SOLID } from './thinglinks';
 import type { Mover } from './pmap';
@@ -620,5 +620,32 @@ describe('EV_VerticalDoor open types (special-clear inside the body)', () => {
     expect(thinkerCount(s.thinkers), 'second thinker (vanilla leak)').toBe(n + 1);
     expect(doorOf(s, sec).type, 'specialdata now the open door').toBe(VL.open);
     expect(s.map.lines.special[line]).toBe(0);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Door-THROUGH physics: live openings vs the closed-then-open slab    */
+/* (pmap.ts PIT_CheckLine reads the LIVE SoA — vanilla's             */
+/* P_LineOpening sees the ONE live sectors[]; M6-05b requirement).     */
+/* ------------------------------------------------------------------ */
+
+describe('walk-through an opened W1-style slab (live line openings)', () => {
+  it('blocked while closed; pTryMove succeeds once ceiling > height', () => {
+    const s = stateFor(RAISE168);
+    const sec = secByTag(s, 30);
+    const line = lineByTag(s, 30);
+    const mo: Mover = {
+      x: fx(96), y: fx(128), z: 0, radius: fx(16), height: fx(56),
+      flags: MF_SOLID | PLAYER_FLAGS, player: true
+    };
+    expect(pTryMove(s.pmap, mo, fx(132), fx(128)), 'closed slab blocks')
+      .toBe(false);
+    expect(evDoDoor(s, line, VL.normal)).toBe(true);
+    step(s, 27); // ceiling 54 < height 56 → still blocked
+    expect(s.sectors.ceilingZ[sec]).toBe(fx(54));
+    expect(pTryMove(s.pmap, mo, fx(132), fx(128)), 'ceiling 54: no headroom')
+      .toBe(false);
+    step(s, 2); // ceiling 58 — strict `openrange < height` gate (56 passes)
+    expect(pTryMove(s.pmap, mo, fx(132), fx(128)), 'ceiling 58: fits').toBe(true);
   });
 });
