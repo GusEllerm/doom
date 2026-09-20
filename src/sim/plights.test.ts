@@ -53,6 +53,12 @@ function tick(s: GameState, n: number): void {
   for (let i = 0; i < n; i++) pRunThinkers(s.thinkers);
 }
 
+/** Live thinkers MINUS the M7-03 player mobj entry (excludeFromHash) —
+ * these suites reason about the LIGHT thinkers only. */
+function liveThinkers(s: GameState) {
+  return [...s.thinkers.entries.values()].filter((t) => !t.removed && !t.excludeFromHash);
+}
+
 /** lightLevel of sector `sec` sampled after each of the next n ticks. */
 function sampleLight(s: GameState, sec: number, n: number): number[] {
   const out: number[] = [];
@@ -98,7 +104,9 @@ describe('T_FireFlicker (special 17)', () => {
     expect(s.rng.prndindex).toBe(0); // P_SpawnFireFlicker never draws
     const f = lightThinkers(s)[0]!;
     expect(f).toEqual({ kind: 'fireflicker', sector: 1 });
-    const flick = [...s.thinkers.entries.values()][0] as FireFlickerThinker;
+    // M7-03: entries[0] is the fixture's player mobj thinker; the light
+    // thinkers follow (filter the excludeFromHash entry).
+    const flick = liveThinkers(s)[0] as FireFlickerThinker;
     expect(flick.minlight).toBe(16); // 0 (VOID) + 16 — fixture convention
     expect(flick.maxlight).toBe(48);
     expect(s.sectors.special[1]).toBe(0); // cleared at spawn
@@ -430,7 +438,7 @@ describe('P_SpawnSpecials lights subtable (live registry fill)', () => {
       ],
       things: [{ x: 64, y: 64, angle: 0, type: 1 }]
     });
-    expect(s.thinkers.entries.size).toBe(0);
+    expect(liveThinkers(s).length).toBe(0); // nothing but the player (M7-03)
     const before = s.sectors.light.slice();
     tick(s, 100);
     expect(s.rng.prndindex).toBe(0);
@@ -488,7 +496,7 @@ describe('live-SoA light hashing (M6-01 seam)', () => {
       rooms: [{ x: 0, y: 0, w: 256, h: 256, special: 17, lightLevel: 192 }],
       things: [{ x: 64, y: 64, angle: 0, type: 1 }]
     });
-    const f = [...s.thinkers.entries.values()][0] as FireFlickerThinker;
+    const f = liveThinkers(s)[0] as FireFlickerThinker; // player entry skipped
     expect(f.hashWords).toBe(f.words);
     expect(f.words).toEqual([LIGHT_THINKER_KINDS.fireFlicker, 4]);
     tick(s, 1);

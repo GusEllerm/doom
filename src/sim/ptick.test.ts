@@ -246,9 +246,12 @@ describe('gTicker P_Ticker order (§3.2)', () => {
     expect(t.leveltime).toBe(3);
   });
 
-  it('fresh gInitGame starts with an empty arena (P_InitThinkers)', () => {
+  it('fresh gInitGame starts with ONLY the player mobj thinker (M7-03)', () => {
     const s = freshState();
-    expect(thinkerCount(s.thinkers)).toBe(0);
+    // M7-03: P_SpawnPlayer spawns the MT_PLAYER mobj DURING the thing
+    // pass — its (hash-excluded) thinker is the only arena entry at load.
+    expect(thinkerCount(s.thinkers)).toBe(1);
+    expect([...s.thinkers.entries.values()][0]!.excludeFromHash).toBe(true);
     expect(s.exitRequest).toBe('none');
     expect(s.totalsecret).toBe(0);
     expect(s.secretcount).toBe(0);

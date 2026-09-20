@@ -381,6 +381,11 @@ describe('stuck-vs-crush matrix (crush flag semantics, live pThingHeightClip)', 
   it('ceiling UP is never blocked (#if 0 pin): rise through a floater, zero damage, monotone', () => {
     const s = stateFor(RIDE);
     const mo = s.players[0]!.mo;
+    // M7-03: the player mo is now a real arena thinker (P_MobjThinker
+    // runs P_ZMovement for it) — make the floater EXPLICITLY
+    // gravity-free, which is what this test's "gravity-free thinkers-only
+    // step" label always meant.
+    mo.flags |= 512; // MF_NOGRAVITY (p_mobj.h)
     // Head ABOVE the 128 ceiling (80 + 56 = 136 > 128) ⇒ clamped to
     // ceiling − 56 at the first mover tic (see the once-clamp truth at
     // the bottom of this test). (A floater whose head fits under a RISING
@@ -408,7 +413,10 @@ describe('stuck-vs-crush matrix (crush flag semantics, live pThingHeightClip)', 
     // clamp at t1: z = 129 − 56 = 73; the speed-1 rise never overtakes a
     // fixed head again ⇒ z stays 73 (a rising ceiling does NOT carry a
     // floater — gravity-free thinkers-only step; real-game fall is M5
-    // physics outside this mover tick).
+    // physics outside this mover tick). M7-03 phase pin: in the gTicker
+    // wiring the player's own pre-run P_ZMovement would clamp against the
+    // UNmoved 128 (72) one tic earlier; this harness is thinker-only, so
+    // the mover's 129-based clamp is what lands here.
     expect(mo.z).toBe(fx(73));
     expect(damageEntries(s).length).toBe(0);
     expect(ceilingOf(7)).toBe(c);
@@ -479,7 +487,7 @@ describe('crusher stasis (57 W1 / 74 GR + revival re-fire)', () => {
     // the fast re-fire still REVIVED nothing (not in stasis) and spawned
     // nothing: exactly one slot, one thinker.
     expect(activeCeilings.filter((t) => t !== null).length).toBe(1);
-    expect([...s.thinkers.entries.values()].filter((t) => !t.removed).length).toBe(1);
+    expect([...s.thinkers.entries.values()].filter((t) => !t.removed && !t.excludeFromHash).length).toBe(1); // minus player
   });
 });
 
@@ -554,7 +562,9 @@ describe('level load: no spawn-special crushers exist in 1.10 (census PIN)', () 
     for (let i = 0; i < s.sectors.count; i++) {
       expect(s.sectors.ceilingZ[i]).toBe(cz0[i]);
     }
-    expect(thinkerCount(s.thinkers)).toBe(0); // 5/16 have no spawn case
+    // M7-03: exactly ONE live thinker at load — the player mobj entry
+    // (5/16 have no spawn case).
+    expect(thinkerCount(s.thinkers)).toBe(1);
     expect(unimplementedSpecial.byFn.get('evDoCeiling')).toBeUndefined();
   });
 });

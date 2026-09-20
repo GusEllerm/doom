@@ -164,7 +164,7 @@ describe('P_SpawnDoorCloseIn30 (sector 10, plan acceptance 3 boundary)', () => {
     expect(sectorSpecialData(s.sectors, sec), 'still alive at 1114').not.toBeNull();
     step(s, 1); // t=1115: pastdest-down → unlink
     expect(sectorSpecialData(s.sectors, sec)).toBeNull();
-    expect(thinkerCount(s.thinkers), 'sentinel not counted').toBe(0);
+    expect(thinkerCount(s.thinkers), 'sentinel not counted').toBe(1); // player (M7-03)
     const size = s.thinkers.entries.size;
     step(s, 1); // the lazy sentinel unlinks at the next visit
     expect(s.thinkers.entries.size).toBe(size - 1);

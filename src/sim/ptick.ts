@@ -45,6 +45,12 @@ export interface Thinker {
    * (ARCHITECTURE §3.4 "per-live-mobj" fields — mobjs arrive M7, movers
    * M6-03+ fill this; empty while the thinker has no hashed state). */
   hashWords: readonly number[];
+  /** M7-03 hash dedup: the thinker still TICKS, but the entry contributes
+   * ZERO bytes to hashState (neither the live-count nor words). Used for
+   * the player mobj, whose state is already serialized through the
+   * `players[]` block (state.ts §3.4) — hashing it twice would move every
+   * blessed golden without adding information. */
+  excludeFromHash?: boolean;
 }
 
 export interface ThinkerArena {
@@ -63,9 +69,17 @@ export function createThinkerArena(): ThinkerArena {
 }
 
 /** P_AddThinker — appends at the list tail. Called DURING a tick, the entry
- * joins `pending` and is merged (ticked) only next tic. */
-export function pAddThinker(arena: ThinkerArena, fn: ThinkerFn | null): Thinker {
-  const t: Thinker = { id: arena.nextId++, fn, removed: false, hashWords: [] };
+ * joins `pending` and is merged (ticked) only next tic. M7-03: `reservedId`
+ * takes the entry OFF the id counter (the excluded-from-hash player mobj
+ * must not shift the hashed thinker ids of the blessed goldens; iteration
+ * is Map-insertion order, ids are keys only — pRunThinkers above). */
+export function pAddThinker(
+  arena: ThinkerArena,
+  fn: ThinkerFn | null,
+  reservedId?: number
+): Thinker {
+  const id = reservedId ?? arena.nextId++;
+  const t: Thinker = { id, fn, removed: false, hashWords: [] };
   if (arena.running) arena.pending.push(t);
   else arena.entries.set(t.id, t);
   return t;

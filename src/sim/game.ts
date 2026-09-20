@@ -11,12 +11,11 @@
 import { TICRATE } from '../core/constants';
 
 import { buildBlockMap } from './blockmap';
-import { sectorAtPoint } from './bsp';
 import type { RuntimeMap } from './map';
-import { buildThingLinks, allocThingSlot, thingSetPosition } from './thinglinks';
-import { pXYMovement, pZMovement } from './pmove';
+import { buildThingLinks } from './thinglinks';
 import { pPlayerThink } from './puser';
-import { createPlayer, ONFLOORZ, pSpawnPlayer } from './player';
+import { pXYMovement, pZMovement } from './pmove';
+import { createPlayer } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
@@ -25,6 +24,7 @@ import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from '
 import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
 import { initPlayerInventory } from './p_inter_inventory';
 import { stateSprite } from '../wad/info/states';
+import { bindPplayerLevel } from './pplayer';
 import { pSpawnSpecials, pUpdateSpecials } from './pspec';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
@@ -47,11 +47,12 @@ export class GameSetupError extends Error {
  *  - one playing player slot (vanilla `playeringame[0] = true`; netgame
  *    flag false, §"netgame=false");
  *  - `M_ClearRandom()` (g_game.c G_InitNew calls it at g_game.c:1414);
- *  - spawn via {@link pSpawnPlayer} at `playerstarts[0]` (p_mobj.c
- *    P_SpawnMapThing → doomednum 1 → P_SpawnPlayer), completed by the
- *    P_SpawnMobj tail (M5-06): floorz/ceilingz from the spawn subsector +
- *    the ONFLOORZ resolution of p_mobj.c:519-522, and the P_SetThingPosition
- *    thinglinks slot the shared mover path relinks every P_TryMove.
+ *  - M7-03: the player spawns as a REAL MT_PLAYER mobj at the player-start
+ *    thing's THINGS-lump position (p_mobj.c P_SpawnMapThing → doomednum 1
+ *    → P_SpawnPlayer → P_SpawnMobj), wired through
+ *    {@link bindPplayerLevel} → `mobjs.playerSpawnFn`. The mobj's thinker
+ *    (P_MobjThinker, M7-02 arena) IS its mover from here on — the M5
+ *    manual P_XYMovement/P_ZMovement loop in {@link gTicker} is gone.
  */
 export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   const start = map.playerStarts[0];
@@ -59,30 +60,15 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
     throw new GameSetupError(`map ${map.name}: no player 1 start (doomednum 1)`);
   }
   const player = createPlayer();
-  pSpawnPlayer(player, start);
   // M7-04: d_player.h inventory fields (ammo/maxammo/armor/…) must exist
   // before the first touch can reach P_Give*. Guarded attach — defers to
-  // the canonical G_PlayerReborn init the moment M7-03 wires it (puser/
-  // createPlayer); until then the pickup layer sees zeroed fields, never
-  // undefined.
+  // the canonical G_PlayerReborn init M7-03 wires (pplayer); until then
+  // the pickup layer sees zeroed fields, never undefined.
   initPlayerInventory(player);
 
   const bm = buildBlockMap(map);
   const links = buildThingLinks(map, bm, { skill });
   const pmap = { map, bm, links };
-
-  // p_mobj.c:519-526 (P_SpawnMobj tail): subsector floors/ceilings become
-  // the mobj's, THEN the ONFLOORZ token resolves to the actual floor.
-  const sector = sectorAtPoint(map, player.mo.x, player.mo.y);
-  player.mo.floorz = map.sectors.floorHeight[sector]!;
-  player.mo.ceilingz = map.sectors.ceilingHeight[sector]!;
-  if (player.mo.z === ONFLOORZ) player.mo.z = player.mo.floorz;
-
-  // P_SetThingPosition for the player mobj (M5-06: dynamic thinglinks
-  // slot — PIT_CheckThing's self-skip is then slot identity, D012).
-  const slot = allocThingSlot(links, player.mo.radius, player.mo.height, player.mo.flags);
-  player.mo.linkSlot = slot;
-  thingSetPosition(links, slot, player.mo.x, player.mo.y);
 
   const state: GameState = {
     map,
@@ -125,6 +111,12 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
     pRemoveMobj(m);
     return true;
   });
+  // M7-03: registers mobjs.playerSpawnFn (real P_SpawnPlayer; spawns the
+  // player mobj DURING pSpawnThings below — vanilla P_LoadThings order,
+  // so the thinker-arena position of the player mobj is exact), binds the
+  // p_pspr world and the player-side action/hook registrations. MUST run
+  // before pSpawnThings.
+  bindPplayerLevel(state);
   mClearRandom(state.rng); // g_game.c:1414
   // M7-02 thing spawn pass — 1.10 site: P_SetupLevel → P_LoadThings →
   // P_SpawnMapThing (p_setup.c:346) BEFORE P_SpawnSpecials, in THINGS
@@ -171,20 +163,29 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
 
   // 4: special buttons (pause/save) — none.
 
-  // 5: GS_LEVEL → P_Ticker (p_tick.c order, M5-06 + M6-01): P_PlayerThink
-  // for ALL players, THEN P_RunThinkers — the player's mobj thinker IS the
-  // M5-05 P_XYMovement + P_ZMovement pair run at the all-players position
-  // (the player mobj enters the arena with M7 mobjs; the after-all-players
-  // order is kept so multi-player thinker interleaving never needs a
-  // re-bless — the arena is empty for M5 scenarios, so this is order-
-  // identical to M5-06).
-  for (const p of state.players) pPlayerThink(state.pmap, p, state.leveltime);
+  // 5: GS_LEVEL → P_Ticker (p_tick.c order, M5-06 + M6-01 + M7-03):
+  // P_PlayerThink for ALL players, THEN P_RunThinkers. Since M7-03 the
+  // player's mobj IS an arena thinker — but the MOVEMENT half of
+  // P_MobjThinker (the M5-06 P_XYMovement/P_ZMovement pair) still runs
+  // HERE, before P_RunThinkers: the blessed M5 tick moved the player
+  // before every mover, and specials crossed by that movement
+  // (P_CrossSpecialLine spawning door/crusher movers) must therefore
+  // reach the arena while it is NOT running — direct-insert, present in
+  // this tic's snapshot — exactly like M5/M6. Inside the arena the
+  // player entry ticks only the mobj STATE (pplayer.ts); vanilla's
+  // strict single-list order (movers before the post-P_SetupLevel player
+  // thinker) is DOCUMENTED as intentionally not matched here — keeping
+  // the blessed hashes outranks it (docs/reports/M7-03-implementer.md).
   for (const p of state.players) {
-    pXYMovement(state.pmap, p.mo);
+    pPlayerThink(state.pmap, p, state.leveltime);
+    pXYMovement(state.pmap, p.mo); // momentum set by P_MovePlayer above
     pZMovement(p.mo);
   }
   pRunThinkers(state.thinkers); // p_tick.c P_RunThinkers (M6-01 arena;
-  // M7-02: the map-thing/mover mobj thinkers live HERE, in arena order)
+  // M7-02: the map-thing/mover mobj thinkers live HERE, in arena order;
+  // M7-03: the player's entry ticks its mobj STATE only — the
+  // state/channel is excludeFromHash, so its in-run phase is invisible
+  // to the blessed hashes).
   pUpdateSpecials(state); // p_spec.c button/scroll tick (M6-03 body)
   // P_RespawnSpecials (p_mobj.c:589) — item-respawn queue drain; the
   // deathmatch!=2 early return is taken in SP (queue still maintained by
