@@ -112,7 +112,7 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M7-01 | State-table infra + ActionId registry | M7 | M5/M6 | salvage t2 (agent 54b14063; generated tables committed) |
+| M7-01 | State-table infra + ActionId registry | M7 | M5/M6 | done (merged 78d38d2, 1764 tests) |
 | M7-07 | Psprite state machine + weapon view layer | M7 | M5/M6 | re-dispatched t2 (agent 4c266782; stubs lost) |
 | M7-02..11 | (see docs/design/M7-plan.md) | M7 | waves | planned |
 
