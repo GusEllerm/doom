@@ -11,7 +11,12 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { describe, it, expect, beforeEach } from 'vitest';
+
+import { attachPsprFields, psprHooks, resetPsprHooks } from './p_pspr';
 
 import {
   BRIGHTCOLORMAP,
@@ -44,7 +49,16 @@ import {
 import { createPlayer } from './player';
 import { MF_SHADOW } from './thinglinks';
 import { createHookSlots, resetHookSlots } from './hooks';
-import { NUMSFX, SFX_ID, installPickupSfxBridge, resolveSfxId, sStartSound } from './psound_stub';
+import {
+  NUMSFX,
+  SFX_ID,
+  SFX_SITE_LEDGER,
+  SFX_SITE_SCAN_SKIP,
+  installPickupSfxBridge,
+  installPsprSfxSlot,
+  resolveSfxId,
+  sStartSound
+} from './psound_stub';
 import { SFX_DOROPN, SFX_DORCLS, SFX_BDOPN, SFX_BDCLS } from './pdoors';
 import { SFX_PISTOL, SFX_SHOTGN, SFX_DSHTGN, SFX_SAWHIT, SFX_PUNCH } from './p_pspr';
 import { SFX_SWTCHN, SFX_OOF, SFX_NOWAY } from './pswitch';
@@ -535,6 +549,38 @@ describe('sfx slot', () => {
     // S_StartSound(NULL, sound) → listener origin on every one of them.
     expect(h.sfx.entries.every((e) => e.x === 0 && e.y === 0 && e.z === 0 && e.tic === 7)).toBe(true);
     expect(() => tail('sfx_nope')).toThrow(/not an sfxenum_t name/);
+  });
+
+  it('the pspr slot routes S_StartSound(player->mo, …) with the mobj coords', () => {
+    const h = createHookSlots();
+    installPsprSfxSlot(h, () => 21);
+    const p = attachPsprFields(createPlayer());
+    p.mo.x = 64 * 65536;
+    p.mo.y = 128 * 65536;
+    p.mo.z = 0;
+    // The slot body is what p_pspr.ts's ten startSound sites call.
+    psprHooks.startSound(p, SFX_ID.sfx_pistol);
+    expect(h.sfx.count).toBe(1);
+    expect(h.sfx.entries[0]).toEqual({ id: 1, x: 64 * 65536, y: 128 * 65536, z: 0, tic: 21 });
+    resetPsprHooks();
+  });
+
+  it('the site ledger enumerates EVERY emitter in src/sim (scan, not prose)', () => {
+    const dir = fileURLToPath(new URL('.', import.meta.url));
+    const found: Record<string, number> = {};
+    for (const name of readdirSync(dir)) {
+      if (!name.endsWith('.ts') || name.endsWith('.test.ts')) continue;
+      if (SFX_SITE_SCAN_SKIP.includes(name)) continue;
+      const src = readFileSync(`${dir}/${name}`, 'utf8');
+      const n =
+        (src.match(/(^|[^A-Za-z0-9_])sfxSlot\(/g)?.length ?? 0) +
+        (src.match(/psprHooks\.startSound\(/g)?.length ?? 0) +
+        (src.match(/(^|[^A-Za-z0-9_])pickupSoundHook\(/g)?.length ?? 0);
+      if (n > 0) found[name] = n;
+    }
+    // Both directions: an unlisted emitter fails, and a stale ledger entry
+    // (site removed by a later milestone) fails too.
+    expect(found).toEqual({ ...SFX_SITE_LEDGER });
   });
 
   it('a powerup pickup site emits sfx_getpow (93) and nothing else', () => {

@@ -44,6 +44,7 @@ import type { GameState } from './sim/state';
 import { attachRenderDebug, attachMouseInjection, attachPopInput, debugApi, debugSim, installDebugApi } from './debug';
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
+import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
 import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
 import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
 import { buildRenderMapView, type RenderMapView } from './render/view';
@@ -260,6 +261,12 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // attach (p_inter_inventory) does not carry; P_DamageMobj (M7 damage) owns
   // the writes, this attach only makes the field exist from frame 0.
   const palettePlayer = attachPowerupFields(state.players[0]!);
+  // M7-06 sfx slots: the two sites that can fire today (the p_inter.c pickup
+  // tail and p_pspr.c's ten S_StartSound(player->mo, …) lines) enqueue into
+  // the M6-01 hook ring; M10 replaces the slot BODIES, never these call
+  // sites (psound_stub.ts holds the complete site ledger for the audio port).
+  installPickupSfxBridge(state.hooks, () => state.leveltime);
+  installPsprSfxSlot(state.hooks, () => state.leveltime);
   const luts = new PaletteLuts(decodePlaypal(wad.readLumpByName('PLAYPAL')));
 
   // Render world built ONCE (M3-07): SoA tables + BSP view + wad light

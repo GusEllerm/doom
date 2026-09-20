@@ -31,11 +31,13 @@
 //     ptelept.ts    teleport                          35 telept
 //     p_inter_pickup.ts (M7-04) pickup tail           32 itemup, 33 wpnup,
 //                                                    93 getpow ← bridged here
+//   EMITS THROUGH A SLOT THIS FILE FILLS:
+//     weapon fire   p_pspr.ts has TEN `psprHooks.startSound(` statements, an
+//                   exact mirror of p_pspr.c's ten S_StartSound(player->mo, …)
+//                   lines (1 pistol, 2 shotgn, 4 dshtgn, 9 bfg, 10-13 saw*).
+//                   p_pspr called the SLOT (its own M7-06 slot); the BODY is
+//                   installPsprSfxSlot below — p_pspr.ts was not edited.
 //   NOT YET EMITTED (owner task pins the site; enumerated, not faked):
-//     weapon fire   p_pspr.c A_Fire*/A_Saw/A_WeaponReady — the SFX_* ids are
-//                   already pinned in p_pspr.ts (1 pistol, 2 shotgn, 4 dshtgn,
-//                   9 bfg, 10-13 saw*, 14 rlaunc, 86 chgun) but p_pspr does not
-//                   call the slot yet (M7-07's file, untouched here)
 //     impacts       p_map.c:1104 sfx_noway (81), PTR_ShootTraverse puff /
 //                   blood sfx_slop (31) — M7-08
 //     explosions    p_mobj.c:103 deathsound, A_Explode — sfx_barexp (82),
@@ -62,6 +64,7 @@
 
 import { sfxSlot, type HookSlots } from './hooks';
 import { setPickupSoundHook } from './p_inter_pickup';
+import { registerPsprHook, type PsprPlayer } from './p_pspr';
 
 /** sounds.h sfxenum_t (order-exact; 0..108, NUMSFX = 109). */
 export const SFX_ID = {
@@ -224,3 +227,53 @@ export function installPickupSfxBridge(
   setPickupSoundHook(emit);
   return emit;
 }
+
+/**
+ * Fill the `psprHooks.startSound` slot (p_pspr.ts labels it "M7-06 slot"):
+ * every A_Fire / A_Saw / A_Punch / A_WeaponReady site in p_pspr.c calls
+ * `S_StartSound(player->mo, sfx_…)` — origin is ALWAYS the player's own mobj
+ * there, so the coords come off `p.mo`. The mirror's ten sites
+ * (p_pspr.c:146/299/489/520/523/651/675/705/737/822) are mirrored ONE FOR
+ * ONE by the ten `psprHooks.startSound(` statements in p_pspr.ts — which is
+ * what the ledger test below pins.
+ */
+export function installPsprSfxSlot(h: HookSlots, getTic: () => number): void {
+  registerPsprHook('startSound', (p: PsprPlayer, sfxId: number) => {
+    sStartSound(h, sfxId, { x: p.mo.x, y: p.mo.y, z: p.mo.z }, getTic());
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Machine-checked site ledger (plan §M7-06 acceptance 3)              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every sim file that can enqueue an sfx, with its number of EMIT
+ * STATEMENTS (not vanilla call sites — pdoors.ts's single `doorSound()` body
+ * stands for ten `S_StartSound` lines in p_doors.c/p_lights.c, and
+ * `platSound()` for p_plats.c's seven). A file that emits and is not listed
+ * here fails the scan test in ppalette.test.ts, so M10 gets the complete
+ * site list from this table and no count was invented for the assertion.
+ *
+ * Patterns scanned (per file):
+ *   `sfxSlot(`            — the direct hook call (M6-01 idiom)
+ *   `psprHooks.startSound(` — p_pspr.c's S_StartSound(player->mo, …) form
+ *   `pickupSoundHook(`    — p_inter.c's `S_StartSound(NULL, sound)` tail
+ */
+export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
+  'p_inter_pickup.ts': 2, // p_inter.c:194 (sfx_wpnup inside P_GiveWeapon) + :660 tail
+  'p_pspr.ts': 10, // the ten S_StartSound(player->mo, …) lines of p_pspr.c
+  'pceilng.ts': 1, // crusher-stop sfx_stnmov
+  'pdoors.ts': 2, // doorSound() body + the locked-use oof (p_doors.c ×6)
+  'pfloor.ts': 1, // floor move/stop helper body
+  'pplats.ts': 1, // platSound() body (p_plats.c has 9 S_StartSound lines)
+  'pspec.ts': 1, // crossed-switch tail (p_spec.c:107)
+  'pswitch.ts': 3, // swtchn / swtchx / the locked-use oof
+  'ptelept.ts': 1 // sfx_telept (p_mobj.c:872)
+};
+
+/** Files the ledger deliberately EXCLUDES from the scan. */
+export const SFX_SITE_SCAN_SKIP: readonly string[] = [
+  'hooks.ts', // the slot definition itself
+  'psound_stub.ts' // this file: the bridge bodies, not gameplay sites
+];
