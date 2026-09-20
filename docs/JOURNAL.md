@@ -203,3 +203,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M7-02 merged (211-mobj census). M7 wave 2/3 dispatched: playerstates/pickups/hitscan. Monsters now stand solid in E1M1 (silent until M8 AI).
 - Visual audit: mechanics strips + live E1M1 screenshot verified good (corridor/water/sky/sprites correct, 0 errors). D016 visual gate adopted. GAP: state().thinkers.count unfilled in browser debug summary (-1) — fix in M7 exit brief. Session restart lost 3 M7 agents: 03/04 stubs only, 08 core committed -> salvage t2s dispatched.
 - Session restart #4: salvage agents lost mid-run; re-assessed branch evidence (03 stubs-only third try, 04 nearly complete, 08 core committed) and dispatched three targeted finishers.
+- M7-04 merged: pickups/inventory live. Census truths: BTNTREE has no spawn num (source has no 'case BTNTREE' in P_SpawnMapThing); MT_BOSSSPIT(86) was missing from our mobjinfo (115->116). Items now vanish when you walk over them.

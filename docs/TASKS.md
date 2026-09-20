@@ -117,5 +117,5 @@ Future tasks will be added as architects decompose milestones.
 | M7-02 | mobj runtime + ZMISC + thinglinks fill | M7 | M7-01 | done (merged, verified) |
 | M7-03..11 | (see docs/design/M7-plan.md) | M7 | waves | planned |
 | M7-03 | Player states, pain/death, reborn | M7 | M7-01/02 | third dispatch (agent aa1a4070; twice lost at stubs) |
-| M7-04 | Pickups + inventory | M7 | M7-02 | finisher (agent 0f99075b; 746L impl+tests committed, 2 fails) |
+| M7-04 | Pickups + inventory | M7 | M7-02 | done (merged, verified) |
 | M7-08 | Hitscan aim/attack/traverse | M7 | M7-02/07 | finisher (agent 605ef527; traverse core committed) |
