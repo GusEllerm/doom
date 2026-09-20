@@ -26,6 +26,7 @@ import { initPlayerInventory } from './p_inter_inventory';
 import { stateSprite } from '../wad/info/states';
 import { bindPplayerLevel } from './pplayer';
 import { pSpawnSpecials, pUpdateSpecials } from './pspec';
+import { bindShootWorld } from './p_shoot';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */
@@ -129,6 +130,15 @@ export function gInitGame(map: RuntimeMap, skill: Skill = 2): GameState {
   // (p_setup.c); M6-03 sector-9 totalsecret pass + special-48 line
   // collection + list inits + family-stub spawn calls (M6-plan §0.3).
   pSpawnSpecials(state);
+  // M7-08 hitscan world bind (plan §M7-08 owns "the game-boot bind"). Two
+  // effects, both side-effect-free at boot: (a) importing p_shoot.ts runs
+  // its module-load `registerPsprHook` block, so the p_pspr.ts A_Fire*/
+  // A_Punch/A_Saw call sites reach the REAL P_AimLineAttack/P_LineAttack/
+  // R_PointToAngle2 instead of the counted no-op defaults; (b) the bound
+  // level lets the traversers walk this map's blockmap + ThingLinks grid.
+  // Nothing traverses until a weapon actually fires (the psprite machine
+  // is ticked by puser.ts / M7-03), so no boot-time draw and no hash move.
+  bindShootWorld(state);
   return state;
 }
 
