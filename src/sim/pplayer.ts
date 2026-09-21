@@ -124,7 +124,24 @@ export const BASETHRESHOLD = 100;
  * position; the player entry is hash-excluded AND must not displace
  * the numbering). */
 const PLAYER_THINKER_ID_BASE = 0x40000000;
-let playerThinkerSeq = 0;
+
+/** M8-05 FIX — the reserved id is now keyed by the PLAYER INDEX, not a
+ * module-global sequence. The old `playerThinkerSeq++` made the id depend
+ * on how many worlds this PROCESS had booted. Harmless while the entry was
+ * hash-excluded AND unreferenced, but M8-05's retarget rule
+ * (p_inter.c:911, `target->target = source`) puts the player mobj into a
+ * monster's `target`, and the mobj hash word[7] IS `target.thinker.id`
+ * (p_mobj.ts:529) — so an in-process double run hashed a boot-count-
+ * dependent number with zero sim nondeterminism
+ * (tests/weapons/stream.test.ts 'identical scripts ⇒ identical hashes').
+ * The id stays in the reserved range, so `arena.nextId` (the hashed
+ * vanilla-list-position proxy) is still untouched. Consequence: a respawn
+ * inside ONE arena reuses the entry slot (Map key replace, arena order
+ * preserved) instead of appending — deterministic either way. */
+function playerThinkerId(rt: MobjRuntime, p: Player): number {
+  const idx = rt.state.players.indexOf(p);
+  return PLAYER_THINKER_ID_BASE + (idx >= 0 ? idx : 0);
+}
 
 /** p_user.c:176 `#define ANG5 (ANG90/18)` — the death-cam turn step. */
 export const ANG5 = (ANG90 / 18) | 0;
@@ -244,7 +261,7 @@ export function pSpawnPlayerFromStart(rt: MobjRuntime, p: Player, start: SpawnPo
   // D-t1: skipLastLookRandom — the one documented rng deviation.
   const m = pSpawnMobj(rt, x, y, ONFLOORZ, MT.MT_PLAYER, -1, {
     skipLastLookRandom: true,
-    thinkerId: PLAYER_THINKER_ID_BASE + playerThinkerSeq++
+    thinkerId: playerThinkerId(rt, p)
   });
 
   if (start.type > 1) m.flags = (m.flags | ((start.type - 1) << MF_TRANSSHIFT)) | 0;

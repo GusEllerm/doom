@@ -69,6 +69,7 @@ import { S } from '../wad/info/states';
 
 import { registerDamageBridge, type HookSlots, type MobjRef } from './hooks';
 import { pSetMobjState, pSpawnMobj, type Mobj } from './p_mobj';
+import { allocThingSlot, thingUnsetPosition } from './thinglinks';
 import { ONFLOORZ } from './player';
 import { pRandom } from './prng';
 import { pointToAngleOrigin } from './pslide';
@@ -210,6 +211,19 @@ export function pDamageMobj(
       thrust = (thrust * 4) | 0;
     }
 
+    // PORT BRIDGE (M8-04's `promoteMoverSlot`, p_enemy.ts:289, same rule):
+    // a load-time THINGS spawn lives in a STATIC grid slot and
+    // `thingSetPosition` refuses to reposition it (thinglinks.ts:397).
+    // Vanilla has one thing list, so a kicked monster simply slides; the
+    // port must promote it to a dynamic mover slot BEFORE the kick lands,
+    // otherwise the victim's next P_XYMovement (pmove.ts:247 ->
+    // pmap.ts:530) throws. Damage thrust is the ONLY momentum source a
+    // never-chased monster/barrel can acquire in this port (no
+    // P_PushMobs exists in 1.10 — p_map.c has no push routine at all), so
+    // this single site covers the whole class. Promotion moves no hashed
+    // bytes and takes no PRNG draw (draw order above/below is untouched).
+    promoteMoverSlot(target);
+
     const fine = ang >>> ANGLETOFINESHIFT;
     target.momx = (target.momx + FixedMul(thrust, finecosine[fine]!)) | 0;
     target.momy = (target.momy + FixedMul(thrust, finesine[fine]!)) | 0;
@@ -245,6 +259,34 @@ export function pDamageMobj(
       pSetMobjState(target, info.seeState);
     }
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Port bridge: static THINGS slot -> dynamic mover slot                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Slot promotion, identical control flow to `p_enemy.ts`'s chase-side
+ * bridge (p_enemy.ts:289, whose thinglinks.ts header note it implements):
+ * unlink from the static CSR membership, clear the old pair, allocate a
+ * dynamic slot, carry the doomednum/z over, and rebind `slotMobjs` so the
+ * damageBridge resolver, PIT hooks and telefrag still resolve the victim.
+ * Idempotent — a mover is returned untouched. Consolidation follow-up:
+ * the helper belongs in `p_mobj.ts` (it owns `slotMobjs`); until then the
+ * two copies are pinned identical by p_inter_damage.test.ts.
+ */
+function promoteMoverSlot(m: Mobj): void {
+  const links = m.rt.state.pmap.links;
+  if (m.linkSlot >= links.staticCount) return;
+  const old = m.linkSlot;
+  thingUnsetPosition(links, old);
+  links.flags[old] = 0;
+  const s = allocThingSlot(links, m.radius, m.height, m.flags);
+  links.doomednum[s] = links.doomednum[old]!;
+  links.z[s] = m.z;
+  m.linkSlot = s;
+  m.rt.slotMobjs.delete(old);
+  m.rt.slotMobjs.set(s, m);
 }
 
 /* ------------------------------------------------------------------ */
