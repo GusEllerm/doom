@@ -8,22 +8,22 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { ANG45, TICRATE } from '../core/constants';
+import { TICRATE } from '../core/constants';
 
 import { buildBlockMap } from './blockmap';
 import type { RuntimeMap } from './map';
 import { buildThingLinks } from './thinglinks';
 import { pPlayerThink } from './puser';
 import { pXYMovement, pZMovement } from './pmove';
-import { createPlayer, PST_REBORN, type Player } from './player';
+import { createPlayer, PST_DEAD, PST_REBORN } from './player';
 import { createPrngState, mClearRandom } from './prng';
 import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
 import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
-import { asMobj, createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSetMobjState, pSpawnThings } from './p_mobj';
-import { pTeleportMove } from './pmap';
-import { pPlayerReborn, pplayerSoundLog } from './pplayer';
-import { MT, mobjinfo } from '../wad/info/mobjinfo';
+import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from './p_mobj';
+import { pplayerSoundLog } from './pplayer';
+import { mobjinfo } from '../wad/info/mobjinfo';
+import { gDoReborn } from './reborn';
 import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
 import { registerAmmoHooks } from './p_ammo';
 import { initPlayerInventory } from './p_inter_inventory';
@@ -322,6 +322,17 @@ function gSetupLevel(state: GameState, map: RuntimeMap, clearRandom: boolean): v
   state.leveltime = 0; // P_SetupLevel (p_setup.c)
   state.totalsecret = 0; // P_SetupLevel totalsecret = 0 (g_game.c)
   state.wminfo.totaltime = 0; // g_game.c: P_SetupLevel zeroes wminfo.totaltime
+  // p_setup.c:597-601 `players[i].killcount = players[i].secretcount =
+  // players[i].itemcount = 0` — per-level tally counters reset on EVERY
+  // load (death reload included: G_PlayerReborn's preserve/restore pair
+  // then preserves ZERO; its preservation is only observable on the
+  // netgame respawn path, M12). secretcount is the game-level
+  // player->secretcount proxy (state.ts:190) — same zeroing verdict.
+  for (const p of state.players) {
+    p.killcount = 0;
+    p.itemcount = 0;
+  }
+  state.secretcount = 0;
   resetHookSlots(state.hooks); // entry logs fresh; bodies/bridges STAY
   state.mobjs = createMobjRuntime(state);
   // M7-04 pickups: fill the M5-02 PIT_CheckThing touch slot against THIS
@@ -379,7 +390,9 @@ function gSetupLevel(state: GameState, map: RuntimeMap, clearRandom: boolean): v
 /**
  * Advance `state` exactly one tic with the platform-supplied input snapshot.
  * §3.2/g_game.c:605 order (M9-03 completes steps 2 and 5):
- *  1. reborn pass (g_game.c:613-614) — see D017 note below;
+ *  1. reborn pass (g_game.c:613-614) — {@link gDoReborn} (M9-08: faithful
+ *     `gameaction = ga_loadlevel`; the level RELOADS through the step-2
+ *     drain in the SAME tic — D017 retired, plan §0.5);
  *  2. gameaction drain (g_game.c:621-649) — the while-loop switch,
  *     {@link gDrainGameAction}; gameaction NEVER survives a completed
  *     gTicker (acceptance 3 — handlers clear it up front, and the
@@ -400,14 +413,16 @@ function gSetupLevel(state: GameState, map: RuntimeMap, clearRandom: boolean): v
  * exactly like vanilla.
  */
 export function gTicker(state: GameState, input: GameInput = emptyInput()): void {
-  // 1: reborn pass (g_game.c:629-640) — M7-11c. D017 DEVIATION: vanilla
-  // G_DoReborn restarts the LEVEL (P_SetupLevel — every mobj/item
-  // respawns). This port reborns the PLAYER in place (world persists);
-  // the faithful full-restart wiring routes through the ga_loadlevel
-  // plumbing above at M9-08 (plan §M9-08 owns the post-M9-03 gameaction
-  // cases). Pinning test: e2e death test + tests/sim m7exit guard.
+  // 1: reborn pass (g_game.c:613-614) — M9-08: playerstate == PST_REBORN
+  // ⇒ G_DoReborn (g_game.c:924). Single-player (!netgame) is
+  // `gameaction = ga_loadlevel` (:928): the LEVEL restarts from scratch
+  // through the step-2 drain below in THIS tic (G_DoLoadLevel →
+  // P_SetupLevel — monsters, items, specials and the per-level counters
+  // all respawn; the player respawns pistol-start at the 1-player start
+  // via the P_SpawnPlayer PST_REBORN branch). D017's in-place deviation
+  // retired here per plan §0.5; netgame respawn branch = M12 (§4).
   for (const p of state.players) {
-    if (p.playerstate === PST_REBORN) gDoRebornInPlace(state, p);
+    if (p.playerstate === PST_REBORN) gDoReborn(state);
   }
 
   // 2: gameaction drain (g_game.c:621-649) — only when an action is
@@ -631,6 +646,14 @@ function gDoLoadLevel(state: GameState): void {
   state.gamestate = GS.LEVEL; // g_game.c:461
   state.paused = false; // :497 (sendpause/paused = false half)
   state.viewactive = true; // g_game.c:806
+  // g_game.c:477-483: a player still flagged PST_DEAD at a load joins the
+  // reborn spawn (the death chain arrives PST_REBORN already — the pass
+  // consumed the latch; this half covers loads armed while dead, e.g. an
+  // exit latched in the death tic) + the per-load frags memset.
+  for (const p of state.players) {
+    if (p.playerstate === PST_DEAD) p.playerstate = PST_REBORN; // :479-481
+    p.frags.fill(0); // :482 memset(players[i].frags,0,…)
+  }
   gSetupLevel(state, map, false);
 }
 
@@ -692,32 +715,9 @@ export function gRequestAdvanceDemo(state: GameState): void {
   state.advancedemo = true;
 }
 
-/**
- * M7-11c in-place player reborn (see D017 deviation note at the gTicker
- * reborn pass). Reuses the SAME player mobj (no new spawn, no thinker
- * churn): G_PlayerReborn clears via pPlayerReborn, then the mobj is
- * resurrected at the 1-player start — mobjinfo spawn state/flags/health,
- * angle re-encoded from the start thing (p_mobj.c:665 rule), momentum
- * zeroed, position via the live P_TeleportMove (relink + floorz refresh).
- */
-function gDoRebornInPlace(state: GameState, p: Player): void {
-  pPlayerReborn(p); // p_mobj.c:656-657 G_PlayerReborn (sets PST_LIVE)
-  const start = state.map.playerStarts[0];
-  const m = asMobj(p.mo);
-  if (start && m) {
-    const info = mobjinfo[MT.MT_PLAYER]!;
-    pSetMobjState(m, info.spawnState);
-    m.flags = info.flags;
-    m.health = p.health;
-    p.mo.momx = 0;
-    p.mo.momy = 0;
-    p.mo.momz = 0;
-    pTeleportMove(state.pmap, p.mo, (start.x << 16) | 0, (start.y << 16) | 0);
-    p.mo.z = p.mo.floorz; // ONFLOORZ resolve (p_mobj.c:522 idiom)
-    p.mo.angle = Math.imul(ANG45, Math.trunc(start.angle / 45)) >>> 0;
-    m.angle = p.mo.angle;
-  }
-}
+// M9-08: gDoRebornInPlace (the D017 in-place deviation body) is DELETED.
+// The reborn pass now routes through reborn.ts gDoReborn → ga_loadlevel
+// (plan §0.5; docs/DECISIONS.md D017 retires at M9 — docs task transcribes).
 
 /* ------------------------------------------------------------------ */
 /* Headless harness (ARCHITECTURE §7 layer 2)                          */
