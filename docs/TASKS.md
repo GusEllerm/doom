@@ -152,4 +152,4 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M9-plan | Menus/HUD/transitions plan | M9 | M8 | dispatched (agent 4000ee14) |
+| M9-plan | Menus/HUD/transitions plan | M9 | M8 | salvage t2 (agent 1296d2b7; skeleton survived) |
