@@ -283,7 +283,13 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   // full-volume + actor origin; podth %3 / bgdth %2 variant selects) +
   // A_XScream sfx_slop 1. A_Fall is silent (p_enemy.c:1585 clears
   // MF_SOLID only — no S_StartSound site exists there).
-  'pdeath.ts': 4};
+  'pdeath.ts': 4,
+  // M8-07 (amon_poss.ts): A_PosAttack sfx_pistol 1 (p_enemy.c:815) +
+  // A_SPosAttack sfx_shotgn 1 (:832) + A_CPosAttack sfx_shotgn 1 (:855)
+  // + A_TroopAttack melee sfx_claw 1 (:923). The POSS/SPOS ATTACKSOUNDS
+  // (mobjinfo rows) fire from A_Chase's melee branch — p_enemy.ts's line,
+  // not here; A_CPosRefire emits nothing.
+  'amon_poss.ts': 4};
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
 export const SFX_SITE_SCAN_SKIP: readonly string[] = [

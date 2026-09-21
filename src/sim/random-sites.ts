@@ -25,6 +25,12 @@ export const RANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
   'p_enemy.ts': 9, // M8-04 p_enemy.c draws
   'pdeath.ts': 2, // M8-06 A_Scream podth %3 + bgdth %2 selects (A_Pain/
   // A_XScream/A_Fall draw NOTHING — pinned behaviourally in pdeath.test)
+  'amon_poss.ts': 11, // M8-07 family A TEXT OCCURRENCES (the scan's unit):
+  // PosAttack 3 (jitter 2 + damage 1), SPosAttack 3 written once but RUN in
+  // the 3-shot loop ⇒ 9 runtime draws, CPosAttack 3, CPosRefire 1 (the <40
+  // gate), TroopAttack 1 (the %8 claw roll). The
+  // A_FaceTarget shadow jitter belongs to p_enemy.ts; P_CheckMissileRange
+  // (A_Chase's dice) likewise — this file draws NOTHING outside its bodies.
   'p_mobj.ts': 9, // spawn lastlook, explode tics, mapthing tics, puff(3), blood(3)
   'p_pspr.ts': 15, // punch 1, saw 3, plasma flash 1, gunshot 3, shotgun(3), ssgun(6)
   'plights.ts': 5, // M6 light flashers (P_Random & …)
