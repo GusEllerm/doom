@@ -22,7 +22,7 @@ import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
 import { asMobj, createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSetMobjState, pSpawnThings } from './p_mobj';
 import { pTeleportMove } from './pmap';
-import { pPlayerReborn } from './pplayer';
+import { pPlayerReborn, pplayerSoundLog } from './pplayer';
 import { MT, mobjinfo } from '../wad/info/mobjinfo';
 import { registerPickupHook, setSpecialRemover, setSpecialSpriteLookup } from './p_inter_pickup';
 import { registerAmmoHooks } from './p_ammo';
@@ -49,11 +49,48 @@ import './pradius';
 // no-op before the flip, so nothing else changes. The damageBridge
 // (p_inter_damage.ts) was already live via pplayer.bindPplayerLevel.
 import './p_enemy';
-import './pdeath';
+import { aPain, aXScream } from './pdeath';
+import { ACT, registerAction } from './a_actions';
+import type { Mobj } from './p_mobj';
 import './amon_poss';
 import './amon_sarg';
 import './amon_bruiser';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
+
+// M8-12 flip companion (D-m1 note): pdeath.ts registers the GENERIC
+// p_enemy.c death/pain bodies into the mobj-domain slots — vanilla has ONE
+// shared body per id — so it supersedes pplayer.ts's player-side fills for
+// A_Pain (25) and A_XScream (28) (and A_Fall 27, where pdeath's mirror-write
+// body is strictly more correct for the real player mobj too). The sim sound
+// sink (hooks.sfx via sfxSlot) now carries player pain/gib sounds; the
+// player-side observability log (pplayerSoundLog — reset per boot, never
+// hashed) stays fed by re-registering the two sound ids as composites BELOW
+// any graph that loads game.ts. Token knowledge mirrors pdeath.ts aPain /
+// aXScream and the mobjinfo table (MT_PLAYER.painSound = sfx_plpain);
+// sfx_slop is A_XScream's fixed gib token.
+registerAction(
+  ACT.A_Pain,
+  (ctx) => {
+    const m = ctx as Mobj & { playerRef?: unknown };
+    aPain(m);
+    const token = mobjinfo[m.type]!.painSound;
+    if (m.playerRef !== undefined && token !== '0' && token !== 'sfx_None' && pplayerSoundLog.length < 256) {
+      pplayerSoundLog.push({ token, tic: m.rt.state.leveltime });
+    }
+  },
+  'mobj'
+);
+registerAction(
+  ACT.A_XScream,
+  (ctx) => {
+    const m = ctx as Mobj & { playerRef?: unknown };
+    aXScream(m);
+    if (m.playerRef !== undefined && pplayerSoundLog.length < 256) {
+      pplayerSoundLog.push({ token: 'sfx_slop', tic: m.rt.state.leveltime });
+    }
+  },
+  'mobj'
+);
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */
 export const TICS_PER_SECOND = TICRATE;
