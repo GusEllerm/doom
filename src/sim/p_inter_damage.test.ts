@@ -5,9 +5,9 @@
 //     then dispatch (hooks.ts:168-186) — unresolvable slots and PLAYER
 //     targets (deviation D-m1) stay record-only;
 //  2. P_DamageMobj non-player body: the painChance roll happens on EVERY
-//     non-fatal hit (p_inter.c:884 — MF_SKULLFLY suppresses the STATE, never
+//     non-fatal hit (p_inter.c:894 — MF_SKULLFLY suppresses the STATE, never
 //     the draw), MF_JUSTHIT, and reactiontime = 0 (:897);
-//  3. the generic retarget (:903-913): target = source, threshold =
+//  3. the generic retarget (:904-913): target = source, threshold =
 //     BASETHRESHOLD, seestate only from spawnstate — plus its three exemptions
 //     (threshold already spent, source is the VILE, source === target);
 //  4. the KICK (p_inter.c:806-832). This is this port's whole "push" story:
@@ -18,9 +18,9 @@
 //     DRAW GATE, the static-slot promotion the kick forces in this port, and
 //     the NEGATIVE proof that nothing nearby gets shoved;
 //  5. P_KillMobj: corpse flags/height, killcount bookkeeping (player source /
-//     !netgame monster-on-monster / netgame silence), the gib rule (:718),
-//     the `tics -= P_Random()&3` clamp (:725, exactly ONE draw), and the drop
-//     table (:735-761 — CLIP/SHOTGUN/CHAINGUN only, MF_DROPPED, ONFLOORZ);
+//     !netgame monster-on-monster / netgame silence), the gib rule (:719-724),
+//     the `tics -= P_Random()&3` clamp (:726, exactly ONE draw), and the drop
+//     table (:737-757 — CLIP/SHOTGUN/CHAINGUN only, MF_DROPPED, ONFLOORZ);
 //  6. INTEGRATION with the merged M8-04 core: an infight retarget does not
 //     merely remember the shooter — A_Chase then CHASES it;
 //  7. determinism: in-process double runs + the boot-stable player thinker id
@@ -67,7 +67,9 @@ import {
 } from './p_inter_damage';
 import { aChase, pLookForPlayers, registerEnemyHooks } from './p_enemy';
 import { resetActions } from './a_actions';
-import { attachPsprFields, WP_CHAINSAW, WP_PISTOL } from './p_pspr';
+import { attachPsprFields, bindPsprWorld, WP_CHAINSAW, WP_PISTOL } from './p_pspr';
+import { bindShootWorld, pLineAttack } from './p_shoot';
+import { MISSILERANGE } from './p_mobj';
 
 const fx = (n: number): number => (n * FRACUNIT) | 0;
 
@@ -205,7 +207,7 @@ describe('damage bridge — record first, then dispatch', () => {
     expect(mo.health).toBe(health);
   });
 
-  it('a dead target is a no-op (p_inter.c:777 `health <= 0`)', () => {
+  it('a dead target is a no-op (p_inter.c:790 `health <= 0`)', () => {
     const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3004 }]));
     const m = thing(s, MT.MT_POSSESSED);
     m.health = 0;
@@ -230,7 +232,7 @@ describe('damage bridge — record first, then dispatch', () => {
 /* 2. Pain: the roll, the flag, the state                              */
 /* ================================================================== */
 
-describe('P_DamageMobj — pain state (p_inter.c:884-897)', () => {
+describe('P_DamageMobj — pain state (p_inter.c:894-902)', () => {
   it('roll < painChance: MF_JUSTHIT + painstate + reactiontime 0, ONE draw', () => {
     const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3004 }]));
     const m = thing(s, MT.MT_POSSESSED);
@@ -279,7 +281,7 @@ describe('P_DamageMobj — pain state (p_inter.c:884-897)', () => {
     expect(imp.flags & MF.MF_JUSTHIT).toBe(0);
   });
 
-  it('MF_SKULLFLY also zeroes momentum up front (:781-783)', () => {
+  it('MF_SKULLFLY also zeroes momentum up front (:793-796)', () => {
     const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3001 }]));
     const imp = thing(s, MT.MT_TROOP);
     imp.flags = (imp.flags | MF.MF_SKULLFLY) | 0;
@@ -302,7 +304,7 @@ describe('P_DamageMobj — pain state (p_inter.c:884-897)', () => {
 });
 
 /* ================================================================== */
-/* 3. Retarget (:903-913)                                              */
+/* 3. Retarget (:904-913                                              */
 /* ================================================================== */
 
 describe('P_DamageMobj — generic retarget', () => {
@@ -686,6 +688,41 @@ describe('P_KillMobj — death, gibs, killcount, drops', () => {
     }
   });
 
+  it('corpse flags reach the ThingLinks mirror (traces read links.flags)', () => {
+    // PIT_CheckThing / the line-attack traverse read the GRID mirror
+    // (pmap.ts:331 ← p_map.c's `th->flags`), and §3.4 word[5] hashes it.
+    // A raw `mobj.flags` write here would leave a corpse SHOOTABLE to shots.
+    const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3004 }]));
+    const m = thing(s, MT.MT_POSSESSED);
+    const links = s.pmap.links;
+    expect(links.flags[m.linkSlot]! & MF.MF_SHOOTABLE).not.toBe(0);
+    syncMobj(m);
+    expect(m.words[5]! & MF.MF_SHOOTABLE).not.toBe(0);
+    pKillMobj(null, m);
+    expect(links.flags[m.linkSlot]! & MF.MF_SHOOTABLE).toBe(0);
+    expect(links.flags[m.linkSlot]! & MF.MF_CORPSE).not.toBe(0);
+    expect(links.flags[m.linkSlot]! & MF.MF_SOLID).not.toBe(0); // still solid!
+    syncMobj(m);
+    expect(m.words[5]! & MF.MF_SHOOTABLE).toBe(0);
+  });
+
+  it('shots fly OVER a corpse (p_map.c `!(th->flags & MF_SHOOTABLE)`)', () => {
+    const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3004 }]));
+    const victim = thing(s, MT.MT_POSSESSED);
+    bindShootWorld(s);
+    bindPsprWorld({ rng: s.rng, leveltime: s.leveltime });
+    attachPsprFields(s.players[0]!);
+    const p = playerMo(s);
+    pLineAttack(p, 0, MISSILERANGE, 0, 7); // angle 0 = due EAST: a real hit
+    expect(s.hooks.damage.count).toBe(1);
+    pLineAttack(p, 0, MISSILERANGE, 0, 999); // kill it
+    expect(s.hooks.damage.count).toBe(2);
+    expect(victim.health).toBeLessThanOrEqual(0);
+    const before = s.hooks.damage.count;
+    pLineAttack(p, 0, MISSILERANGE, 0, 7); // corpse: the shot flies on
+    expect(s.hooks.damage.count).toBe(before);
+  });
+
   it('killcount: a player source counts the kill', () => {
     const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3004 }]));
     const m = thing(s, MT.MT_POSSESSED);
@@ -718,7 +755,7 @@ describe('P_KillMobj — death, gibs, killcount, drops', () => {
     expect(net.players[0]!.killcount).toBe(0);
   });
 
-  it('source null still counts the monster death (!netgame branch, :693-697)', () => {
+  it('source null still counts the monster death (!netgame branch, :694-697)', () => {
     const s = boot(room([{ x: 300, y: 256, angle: 0, type: 3004 }]));
     const m = thing(s, MT.MT_POSSESSED);
     pKillMobj(null, m);

@@ -3,19 +3,19 @@
 // hooks.damageSlot call sites into live damage (M8-plan §M8-05/§0.8).
 //
 // Sources (verbatim targets, 62-file mirror):
-//   p_inter.c P_DamageMobj (:775-947) — SHOOTABLE/health guards, the
+//   p_inter.c P_DamageMobj (:775-915) — SHOOTABLE/health guards, the
 //     MF_SKULLFLY momentum zero, sk_baby halving (player-only, mirrored in
-//     pplayer.ts), the close-combat thrust kick (:826-857, incl. the
-//     fall-forwards `P_Random()&1` variant :841-846), `health -= damage` ->
+//     pplayer.ts), the close-combat thrust kick (:806-832, incl. the
+//     fall-forwards `P_Random()&1` variant :821-826), `health -= damage` ->
 //     P_KillMobj, the painChance roll (:894, 1 draw ALWAYS taken on a
 //     non-fatal hit) + MF_JUSTHIT + painstate, reactiontime = 0, and the
 //     retarget/infighting rule (:911: BASETHRESHOLD 100, VILE exemption,
 //     source != target, spawnstate -> seestate).
-//   p_inter.c P_KillMobj (:668-764) — corpse flag bookkeeping, the
+//   p_inter.c P_KillMobj (:668-758) — corpse flag bookkeeping, the
 //     MF_NOGRAVITY drop (non-SKULL), the killcount bookkeeping (player
 //     source + the `!netgame` monster-on-monster fallback), the gib rule
-//     (`health < -spawnhealth && xdeathstate`, :721), the
-//     `tics -= P_Random()&3` clamp (:725), and the drop table (:730-756)
+//     (`health < -spawnhealth && xdeathstate`, :719-724), the
+//     `tics -= P_Random()&3` clamp (:726), and the drop table (:737-757)
 //     spawning the MF_DROPPED item. THE drop table lives HERE (single
 //     source): pplayer.ts's player-target kill keeps its own branch and
 //     hits the same `default: return` (players drop nothing in
@@ -40,19 +40,23 @@
 //        own re-bless). pPlayerDamage/pKillPlayer stay the live player
 //        entries for direct/scripted use, unchanged.
 //  D-m2: the bridge signature (M8-02, hooks.ts — frozen) carries no
-//        inflictor. Resolution per site: hitscan/telefrag/BFG-spray
-//        (inflictor == source, exact), crushers/hazard floors/BFG-spark
-//        (source null -> no thrust, exact), missile direct hits (vanilla
-//        inflictor = the missile — approximated by the source shooter:
-//        same kick axis along the flight line, z from the shooter), and
-//        P_RadiusAttack (p_map.c:1144-1145 initialises `bd = bombspot` and
-//        never reassigns it, so the inflictor it hands P_DamageMobj is the
-//        BLAST POINT mobj itself — NOT NULL; source is non-NULL outside the
-//        crush site). The fall-forwards `&1` DRAW gate therefore keys on
-//        `inflictor.z` at every site where an inflictor exists. The
-//        fall-forwards `&1` DRAW gate therefore keys on `source.z` at
-//        missile/radius sites (draw ORDER unchanged: still only when the
-//        earlier &&s pass).
+//        inflictor, so the body receives `source` in both slots. Per-site
+//        fidelity: hitscan / telefrag / BFG-spray ⇒ vanilla also uses
+//        source as inflictor ⇒ EXACT. Crushers / hazard floors ⇒ source
+//        null ⇒ no thrust in either implementation ⇒ EXACT. Missile direct
+//        hits (vanilla inflictor = the missile, pmissiles.ts) and
+//        P_RadiusAttack (vanilla passes the BLAST POINT: `bombspot = spot`
+//        at p_map.c:1226, handed over at :1194) ⇒ the source sits on the
+//        same shot line as the real inflictor, so the kick ANGLE is
+//        identical and only the `dz` term of the fall-forwards test can
+//        differ (draw ORDER unchanged: the `&1` roll still happens only
+//        when the three earlier &&s pass). Both sites are pinned in
+//        p_inter_damage.test.ts.
+//  D-m4: the kick's thrust is the vanilla int32 expression
+//        `damage*(FRACUNIT>>3)*100/mass` — including its OVERFLOW: for
+//        damage > 5242 (telefrag's 10000) the product wraps negative and
+//        vanilla kicks the victim toward the inflictor. Math.imul mirrors
+//        the wrap; a JS-exact product would silently diverge there.
 //  D-m3: death-state action BODIES (A_Scream/A_XScream/A_Fall) are M8-06
 //        (unmerged at authoring): the state ENTRY here is verbatim
 //        P_SetMobjState; the action rows dispatch through the counted
@@ -82,7 +86,7 @@ import { WP_CHAINSAW, type PsprPlayer } from './p_pspr';
 export const BASETHRESHOLD = 100;
 
 /* ------------------------------------------------------------------ */
-/* P_KillMobj — p_inter.c:668-764, non-player target                    */
+/* P_KillMobj — p_inter.c:668-758, non-player target                    */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -101,9 +105,18 @@ export const BASETHRESHOLD = 100;
 export function pKillMobj(source: Mobj | null, target: Mobj): void {
   const rt = target.rt;
 
-  target.flags = (target.flags & ~(MF.MF_SHOOTABLE | MF.MF_FLOAT | MF.MF_SKULLFLY)) | 0;
-  if (target.type !== MT.MT_SKULL) target.flags = (target.flags & ~MF.MF_NOGRAVITY) | 0;
-  target.flags = (target.flags | MF.MF_CORPSE | MF.MF_DROPOFF) | 0;
+  // The four flag statements collapse into ONE write through writeFlags:
+  // the collision/trace side reads links.flags[] (pmap.ts:331 PIT_CheckThing
+  // skips non-shootable things, exactly like PIT_CheckLine's
+  // `!(tflags & MF_SHOOTABLE)` in p_map.c), and §3.4 word[5] hashes the
+  // mirror too — a raw field write would leave the corpse SHOOTABLE to
+  // traces (shots would stop on a corpse instead of passing over it).
+  // MF_SOLID is NOT touched: monster corpses stay solid (only the player
+  // branch clears it, p_inter.c:705) and become steppable via height >>= 2.
+  let corpseFlags = target.flags & ~(MF.MF_SHOOTABLE | MF.MF_FLOAT | MF.MF_SKULLFLY);
+  if (target.type !== MT.MT_SKULL) corpseFlags &= ~MF.MF_NOGRAVITY;
+  corpseFlags |= MF.MF_CORPSE | MF.MF_DROPOFF;
+  pSetMobjFlags(target, corpseFlags);
   target.height = (target.height >> 2) | 0;
 
   const sp = source ? (source.playerRef as { killcount: number } | undefined) : undefined;
@@ -115,10 +128,10 @@ export function pKillMobj(source: Mobj | null, target: Mobj): void {
     rt.state.players[0]!.killcount = (rt.state.players[0]!.killcount + 1) | 0;
   }
 
-  // DIE vs X DIE (:721) + the tics clamp (:725) — ONE draw, always.
+  // DIE vs X DIE (:720) + the tics clamp (:726) — ONE draw, always.
   pSetDeathStateClamped(target);
 
-  // Drop stuff (:730-756) — the death frame's item spawn, verbatim.
+  // Drop stuff (:737-757) — the death frame's item spawn, verbatim.
   let item = -1;
   switch (target.type) {
     case MT.MT_WOLFSS:
@@ -144,7 +157,7 @@ export function pKillMobj(source: Mobj | null, target: Mobj): void {
 
 /**
  * The gib-rule state selection + the `tics -= P_Random()&3` clamp
- * (p_inter.c:721-727). Shared by pKillMobj above and pplayer.ts's PLAYER
+ * (p_inter.c:719-726). Shared by pKillMobj above and pplayer.ts's PLAYER
  * branch (single source of the draw; the random-sites ledger counts it
  * HERE, not in pplayer.ts anymore).
  */
@@ -160,14 +173,14 @@ export function pSetDeathStateClamped(target: Mobj): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* P_DamageMobj — p_inter.c:775-947, non-player target                  */
+/* P_DamageMobj — p_inter.c:775-915, non-player target                  */
 /* ------------------------------------------------------------------ */
 
 /**
  * `P_DamageMobj(target, inflictor, source, damage)` for a NON-player
- * target, verbatim order (the player-specific block :861-905 has no
+ * target, verbatim order (the player-specific block :835-884 has no
  * part here — D-m1): guards, MF_SKULLFLY momentum zero, thrust kick
- * (:826-857, chainsaw source exempt, MF_NOCLIP exempt, the fall-forwards
+ * (:805-832, chainsaw source exempt, MF_NOCLIP exempt, the fall-forwards
  * draw gated by the earlier &&s — draw order matters), `health -=
  * damage` -> P_KillMobj + return, the painChance roll (:894 — the draw
  * is taken EVEN when MF_SKULLFLY suppresses the pain state),
@@ -212,7 +225,7 @@ export function pDamageMobj(
       Math.trunc(Math.imul(Math.imul(damage, FRACUNIT >> 3), 100) / mass) | 0;
 
     // make fall forwards sometimes — the draw fires ONLY when the three
-    // earlier &&s pass (P_Random ORDER, :841-846).
+    // earlier &&s pass (P_Random ORDER, :821-826).
     if (
       damage < 40 &&
       damage > target.health &&

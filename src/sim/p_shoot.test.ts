@@ -543,6 +543,14 @@ describe('intercept order — first qualifying target wins (p_map.c:1099-1135)',
   it('across a 120-angle fan the damaged thing IS the brute target', () => {
     const s = range(FAN);
     const p = shooter(s);
+    // M8-05: the fan runs 120 traces over the SAME things, and a dead
+    // monster's corpse is no longer MF_SHOOTABLE (P_KillMobj clears the flag
+    // through the ThingLinks mirror, so PIT_CheckThing / the line-attack
+    // traverse skip it exactly like p_map.c's `!(th->flags & MF_SHOOTABLE)`)
+    // ⇒ volleys after the kill fly OVER the corpse. bruteTarget walks the
+    // live FAN geometry, so the victims are pinned immortal (m7Fixtures'
+    // convention): this test measures intercept GEOMETRY, not death.
+    for (const m of live(s)) if (m.flags & MF_SHOOTABLE) m.health = 1 << 20;
     let hitsChecked = 0;
     for (let deg = 0; deg < 360; deg += 3) {
       const ang = Math.round((deg / 360) * 0x100000000) >>> 0;

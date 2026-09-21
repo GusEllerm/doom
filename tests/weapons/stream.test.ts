@@ -35,6 +35,7 @@ import type { GameState } from '../../src/sim/state';
 
 
 const SFX_TELEPORT = resolveSfxId('sfx_telept');
+const SFX_PISTOL = resolveSfxId('sfx_pistol');
 const FU = 65536;
 
 /** The canonical 500-tic interleaving; `fireTic`/`useTic` are the knobs. */
@@ -81,8 +82,14 @@ describe('shared-stream determinism — fire+pickup+door+flicker+teleport', () =
     const s = boot(streamArenaSpec());
     const dummy = of(s, MT.MT_POSSESSED)[0]!;
     const w = runWitnessed(s, 100);
-    // FIRE: pistol volleys down the axis past the teleport (autoaim hit)
-    expect(dmgTo(s, dummy).length).toBeGreaterThan(3);
+    // FIRE: pistol volleys down the axis past the teleport (autoaim hit).
+    // M8-05: once the zombie dies, its corpse is NOT MF_SHOOTABLE any more
+    // (P_KillMobj clears the flag through the ThingLinks mirror the traces
+    // read, matching p_map.c's `!(th->flags & MF_SHOOTABLE)`), so the
+    // volleys after the kill fly OVER the corpse and log nothing. The FIRE
+    // witness is therefore the shot stream + the first connect.
+    expect(sfxCount(s, SFX_PISTOL)).toBeGreaterThan(3);
+    expect(dmgTo(s, dummy).length).toBeGreaterThanOrEqual(1);
     // PICKUP: the clip box (thing 2048 = +50 clips) south of the teleport
     // pushed ammo past its boot value — the witness is the state delta
     // (the p_inter pickup tail's sfx is not in the p_pspr slot ledger).
@@ -125,7 +132,8 @@ describe('shared-stream determinism — fire+pickup+door+flicker+teleport', () =
     const b = doubleRunHash(streamArenaSpec(), 500, script(100, 22));
     expect(Math.abs(b.b.players[0]!.mo.y - a.a.players[0]!.mo.y)).toBeLessThan(FU);
     for (const [tag, s] of [['a', a.a], ['b', b.b]] as const) {
-      expect(s.hooks.damage.count, tag).toBeGreaterThan(3); // FIRE happened
+      expect(sfxCount(s, SFX_PISTOL), tag).toBeGreaterThan(3); // FIRE happened
+      expect(s.hooks.damage.count, tag).toBeGreaterThanOrEqual(1);
     }
     expect(b.hashA).toBe(b.hashB); // …and each variant is self-deterministic
     expect(a.hashA).not.toBe(b.hashA);
