@@ -34,11 +34,44 @@ Status: in progress (filling incrementally; commits every ~10 min per lost-agent
 
 ## 1. Task graph and parallel waves
 
-(filling)
+| Wave | Tasks (parallel) | Depends |
+|---|---|---|
+| 1 | M9-01, M9-02, M9-03 | M8 main |
+| 2 | M9-04, M9-05, M9-06, M9-07 | M9-01, M9-02, M9-03 |
+| 3 | M9-08, M9-09, M9-10 | M9-04..07 |
+| 4 | M9-11, M9-12, M9-13 | M9-08..10 |
+
+**Disjointness (one owner per path):** M9-01 owns `src/render/vvideo.ts` (new: patch decode/blit/BG-canvas/copyRect) + `src/wad/patches2.ts` (named-lump patch loader for UI lumps); M9-02 owns `src/input/keyboard.ts` + `src/input/menuMouse.ts` (menu-mode mouse→arrow synthesis, D-0yy) + their tests; M9-03 owns `src/sim/game.ts` (gameaction drain, gamestate per-tic routing, `gDeferedInitNew`, state object fields incl. `gamestate/gameaction/gamemap/gameepisode/gameskill/usergame/paused/viewactive`) + `src/sim/gamemode.ts` (the shareware-policy constant + clamps, §0.12) + `src/main.ts` (loop: advancedemo/M_Ticker placement, responder chain wiring, wipe trigger); M9-04 owns `src/ui/menu.ts` (+tests) — pure module over the M9-01 blitter, tables transcribed from m_menu.c, sfx via counted stub log; M9-05 owns `src/ui/statusbar.ts` + `src/ui/stlib.ts` (+tests) — STlib widgets + face machine + ST_Ticker/ST_Drawer onto the BG canvas; M9-06 owns `src/ui/humessage.ts` (+tests) — HU font + message queue + `showMessages`, and **fills the `player.message` string consumer** (the field exists, player.ts:145 — today drained nowhere); M9-07 owns `src/sim/wintermission.ts` (WI counters/state machine, sim-side) + `src/render/wiDraw.ts` (WI patches drawer); M9-08 owns `src/sim/reborn.ts` (G_DoLoadLevel re-setup path + G_PlayerReborn faithful body) + the death-flip tests; M9-09 owns `src/render/view.ts` params + `src/render/rthings.ts` KIND_MONSTER flip + `src/render/renderer.ts` (D_Display-order drawer composition incl. statusbar viewport + live-mobj sprites, ROADMAP M9-preview bullet 1); M9-10 owns `src/ui/finale.ts` (F_TextWrite/E1TEXT/FLOOR4_8/HELP2) + `src/ui/title.ts` (reduced attract: TITLEPIC page, any-key→menu); M9-11 owns `tests/render/m9-*.test.ts` L3 goldens; M9-12 owns `e2e/m9-flow.spec.ts` + `src/debug.ts` menu/HUD seams; M9-13 owns docs (`STATUS/ROADMAP/TASKS/JOURNAL/DECISIONS`) + golden re-bless ledger. `src/sim/hooks.ts` gains the sfx-stub/message counters as ONE additive edit (M9-03); `src/sim/random-sites.ts` follows the M8 rule: every draw site ships with its ledger line in the same commit (the ST_Ticker `M_Random` face draw, §0.8, is the new permanent stream addition).
+
+
 
 ## 2. Per-task specifications
 
-(filling)
+### M9-01 — Patch blitter + screen layers (v_video)
+- **Goal**: `vvideo.ts` implementing the v_video.c primitives M9 (and M12) build on: patch-header decode (`patch_t` r_defs.h:356-364, BE shorts + columnofs, posts r_defs.h:285-292 — reuse M1-06's `patch.ts` decoder where shapes agree), `vDrawPatch(x,y,scrn,patch)` verbatim column/post copy (§0.11, incl. the RANGECHECK warn-and-ignore behaviour :222-233), `vDrawPatchFlipped` (:265+), `vDrawPatchDirect` semantics (same pixels, no MarkRect), `vCopyRect` with BG(4)/FG(0) layers (§0.11), `screens[0]/[1]/[4]` equivalents (main canvas, wipe/back buffer, 320×32 statusbar canvas), `vMarkRect` no-op-or-AM-recompute, plus a `lumpPatch(wad, "NAME")` helper caching decoded patches by name (PU_STATIC equivalent, no eviction needed at 320×200).
+- **Owns**: `src/render/vvideo.ts` (+ `vvideo.test.ts`), `src/wad/patches2.ts` (named-lump UI-patch table: STKEYS/STFST…/M_*/WI* name patterns from §0.12).
+- **Must not touch**: `renderer.ts`, `view.ts`, `rthings.ts`, `src/ui/*` (consumers come in wave 2).
+- **Source cites**: v_video.c:204 (V_DrawPatch)/:271 (Flipped)/:158 (V_CopyRect)/:143 (V_MarkRect), r_defs.h:285-292/:356-364, st_lib.h:33-34, st_stuff.c:499-514.
+- **Acceptance**: 1) L1: every §0.12-audited UI lump decodes (header sanity: w/h/offsets ≥ sane, posts walk terminates with 0xff on ALL columns) on freedoom1.wad (skipIf) — golden hash of decoded pixels for a 10-lump spot set; 2) synthetic-fixture parity test: blit vs patch.ts reference decode byte-exact incl. left/topoffset anchor math; 3) `vCopyRect` BG→FG erase restores canvas-exact background (roundtrip test); 4) out-of-bounds patch returns without throwing, warning counted.
+- **Verify**: `npx vitest run src/render/vvideo.test.ts src/wad/patches2.test.ts`
+
+### M9-02 — Keyboard event layer + menu mouse
+- **Goal**: extend the event seam (§0.13) to the full menu/game-flow key set: `DEFAULT_EVENT_CODES` + Esc/Enter/Backspace/arrows/F1-F12/a-z/0-9/`-`/`=` mapped to vanilla `KEY_*`/ASCII data1 (doomdef.h enum order), keeping the held-channel split (movement keys stay polled); implement `menuMouse.ts`: when the menu layer is armed, hover/wheel/click synthesize `KEY_UPARROW/KEY_DOWNARROW/KEY_ENTER` keydown+keyup pairs (the OS-layer trick 1.10 relied on, §0.7 mouse finding) with item-height=16 math from the caller's item boxes; keep keyup-returns-false semantics.
+- **Owns**: `src/input/keyboard.ts` (additive table + tests), `src/input/menuMouse.ts` (+tests); `src/input/mapping.test.ts`/`keyboard.events.test.ts` extensions.
+- **Must not touch**: `src/main.ts` (M9-03 wires), `src/ui/*`, `src/sim/*`.
+- **Source cites**: doomdef.h KEY_* codes; m_menu.c:1349-1710 (what must be deliverable); g_game.c:571-577 (keyup never eaten); ROADMAP M9 exit line ("menus keyboard+mouse operable (L4 real clicks/keys…)") — QUOTE: “menus keyboard+mouse operable (L4 real clicks/keys, zero console errors)”; ROADMAP M10: “SFX with priority/attenuation/panning … volume settings take effect (L4)” ⇒ sfx *bodies* are M10, silent-M9 is the roadmap boundary (§3 D-0xx); M11: “bindings/sensitivity/volumes persisted across reload” ⇒ option *persistence* is NOT M9.
+- **Acceptance**: 1) every key M_Responder consumes emits `{type,data1}` packets with vanilla-identical data1 (table test vs doomdef.h transcribed constants); 2) F-keys reach the queue (they are event-only, never held); 3) mouse-synth unit test: arming with 6 item boxes + hover row 3 ⇒ down×N to index, click ⇒ Enter pair; wheel = ±1; 4) no regressions in `keyboard*.test.ts`.
+- **Verify**: `npx vitest run src/input`
+
+### M9-03 — gameaction drain + gamestate routing + deferred-init plumbing
+- **Goal**: complete `gTicker` steps 1-2 (§0.2) behind real state fields: `GameState.gamestate: GS_LEVEL|GS_INTERMISSION|GS_FINALE|GS_DEMOSCREEN`, `gameaction`, `secretexit`, `wminfo` carrier; `gDeferedInitNew(skill,ep,map)`/`gExitLevel`/`gSecretExitLevel`/`gWorldDone` exported setters; per-state ticker routing (GS_LEVEL → today's body; GS_INTERMISSION → M9-07 module hook; GS_FINALE → M9-10 hook; GS_DEMOSCREEN → title hook) — each via registrable module hooks (M8 self-import idiom) so later tasks do not re-edit game.ts; `gamemode.ts` pinning the shareware-episodic policy constant + G_InitNew clamps (§0.4); `src/main.ts`: tic-block runs advancedemo-flag + M_Ticker (§0.6), display block consumes `wipegamestate` sentinel via the renderer seam, `paused` gate wired to the existing pause plumbing; `hooks.ts` additive: `sfxStub(name)` counter (M10 replaces body) + `gameactionLog`.
+- **Owns**: `src/sim/game.ts` (+`game.test.ts`), `src/sim/gamemode.ts`, `src/main.ts`, `src/sim/hooks.ts` (additive-only).
+- **Must not touch**: `vvideo.ts`, `keyboard.ts`, `src/ui/*` (hooks are interface-first: `GameFlowHooks` in `game.ts`), `wintermission.ts`.
+- **Source cites**: g_game.c:605-650/:1333-1357, d_event.h:55-65, d_main.c:354-398 (tic block), d_net.c:636 (tic sourcing mapping note), d_main.c:216-222 (wipe sentinel).
+- **Acceptance**: 1) `gDeferedInitNew(2,1,1)` from GS_DEMOSCREEN drains to level load in ONE gTicker call (while-loop semantics, with a guard-counter mirroring M8's unimplementedSpecial idiom for unregistered state handlers); 2) hash stability: a fresh `gInitGame` E1M1 2000-tic run byte-equals the M8 blessed goldens (no flow fields touched → zero re-bless); 3) `gameaction` never survives a completed `gTicker` (assert); 4) clamps: ep=5→1 (shareware), map=0→1, map=12→9, skill=6→5; 5) wipe sentinel consumed exactly once per state change.
+- **Verify**: `npx vitest run src/sim/game.test.ts src/sim/gamemode.test.ts`
+
+
 
 ## 3. Deviations, deferred hooks, and open decisions
 
