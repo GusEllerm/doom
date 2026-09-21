@@ -55,6 +55,7 @@ import {
   stPaletteBand,
   stResetAll,
   stStats,
+  stStop,
   stTicker,
   stWidgets,
   type PointToAngle2,
@@ -850,6 +851,45 @@ describe('ST_Drawer', () => {
     stDrawer(h.ctx, false, false);
     expect(seen[seen.length - 1]).toBe(6);
     expect(stPaletteBand()).toBe(6);
+  });
+
+  it('ST_Stop restores the base palette but leaves the change gate STALE (vanilla)', () => {
+    const seen: number[] = [];
+    const h = boot();
+    h.ctx.setPaletteBand = (b) => seen.push(b);
+    stTicker(h.ctx);
+    stDrawer(h.ctx, false, true);
+    h.p.damagecount = 33;
+    stTicker(h.ctx);
+    stDrawer(h.ctx, false, false);
+    expect(seen.length).toBe(2); // 0 then 6
+    stStop();
+    expect(seen[seen.length - 1]).toBe(0); // I_SetPalette(base)
+    expect(stPaletteBand()).toBe(6); // …but st_palette is NOT reset (:1456-1465)
+    // The bug this leaves behind: while the player is STILL hurt, every later
+    // ST_Drawer recomputes band 6, matches the stale gate, and skips
+    // I_SetPalette — so the red bank never comes back after the stop.
+    stTicker(h.ctx);
+    stDrawer(h.ctx, false, false);
+    expect(seen.length).toBe(3);
+    stTicker(h.ctx);
+    stDrawer(h.ctx, false, false);
+    expect(seen.length).toBe(3);
+  });
+
+  it('stStart after stStop re-arms the gate through stInitData (st_palette = -1)', () => {
+    const seen: number[] = [];
+    const h = boot();
+    h.ctx.setPaletteBand = (b) => seen.push(b);
+    stTicker(h.ctx);
+    stDrawer(h.ctx, false, true);
+    stStop();
+    stStart(h.ctx);
+    expect(stPaletteBand()).toBe(-1); // ST_initData (:1280) re-arms the gate
+    stTicker(h.ctx);
+    stDrawer(h.ctx, false, true);
+    expect(seen.length).toBe(3); // 0 (drawer), 0 (stop), 0 (drawer after restart)
+    expect(stPaletteBand()).toBe(0);
   });
 });
 

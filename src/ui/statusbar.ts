@@ -70,6 +70,20 @@
 //     STKEYS6-8, STFB1-3 exist); vanilla references 78 lumps in
 //     ST_loadGraphics + STTMINUS in STlib_init = 79, and this module
 //     references exactly those 79 (the §0.12 audit's "all present" holds).
+//     The M9-05 brief's "81 names" count is NOT reachable from the source —
+//     78 (+STTMINUS) is the audited number, asserted by census AND against
+//     the real IWAD in statusbar.test.ts.
+//   * ST_Stop (:1456-1465) calls I_SetPalette(base) but does NOT reset
+//     st_palette — the change gate is left stale (harmless only because
+//     ST_initData's st_palette = -1 runs on the next ST_Start). Transcribed.
+//   * ST_createWidgets seeds w_ready.num with `&plyr->ammo[am_noammo]` — an
+//     out-of-bounds read in C for the fists/chainsaw (weaponinfo.ammo == 5).
+//     Modelled as the 1994 sentinel: ST_updateWidgets re-points the widget
+//     BEFORE any draw, so no frame can tell the difference.
+//   * `priority` and `lastattackdown` are FUNCTION-statics (:759-760) and
+//     ST_initData does not reset them, so a latch can survive a level change
+//     mid-game; only the R7 idle tail clears them. stResetAll (process start)
+//     is the only place this module clears them.
 //
 // Seam shape (plan §M9-05 "face lookup from the LIVE player, no sim state
 // import"): the live player arrives through {@link StContext.player} — a
@@ -1007,9 +1021,12 @@ export function stStart(c: StContext): void {
 export function stStop(): void {
   if (stStopped) return;
 
-  stPalette = 0;
+  // I_SetPalette(PLAYPAL+0) — and, exactly as in C, st_palette is LEFT STALE:
+  // the next ST_doPaletteStuff that recomputes the band already in st_palette
+  // will then NOT reprogram the palette (ST_initData's -1 is what papers over
+  // it after a real ST_Start). Transcribed, not fixed.
   stStats.paletteChanges += 1;
-  ctx?.setPaletteBand?.(0); // I_SetPalette(PLAYPAL+0)
+  ctx?.setPaletteBand?.(0);
 
   stStopped = true;
 }
