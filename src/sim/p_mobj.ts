@@ -436,7 +436,9 @@ export function pSetMobjState(m: Mobj, state: number): boolean {
     m.tics = row.tics;
     m.sprite = row.sprite;
     m.frame = row.frame;
-    if (row.action !== ACT_NONE) dispatchAction(row.action, m);
+    // M8-07 domain fix: this machine dispatches the MOBJ-domain identity of
+    // every id (vanilla stores the pointer per row; id27 = A_Fall here).
+    if (row.action !== ACT_NONE) dispatchAction(row.action, m, 'mobj');
     if (m.removed) return false;
     st = stateNext[st]!;
     if (m.tics !== 0) {

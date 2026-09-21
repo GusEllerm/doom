@@ -688,10 +688,10 @@ function aXScream(ctx: unknown): void {
   playSound(ctx as Mobj, 'sfx_slop');
 }
 
-registerAction(ACT.A_Pain, aPain);
-registerAction(ACT.A_PlayerScream, aPlayerScream);
-registerAction(ACT.A_Fall, aFall);
-registerAction(ACT.A_XScream, aXScream);
+registerAction(ACT.A_Pain, aPain, 'mobj');
+registerAction(ACT.A_PlayerScream, aPlayerScream, 'mobj');
+registerAction(ACT.A_Fall, aFall, 'mobj');
+registerAction(ACT.A_XScream, aXScream, 'mobj');
 
 /* The p_pspr seams p_mobj/pplayer own (p_pspr.ts registration map):
  * P_SetPsprite's S_PLAY_ATK1/2 writes and A_WeaponReady's attack-state

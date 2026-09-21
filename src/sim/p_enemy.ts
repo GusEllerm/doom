@@ -734,9 +734,9 @@ export function aFaceTarget(actor: Mobj): void {
 /* ------------------------------------------------------------------ */
 
 export function registerEnemyHooks(): void {
-  registerAction(ACT.A_Look, (ctx) => aLook(ctx as Mobj));
-  registerAction(ACT.A_Chase, (ctx) => aChase(ctx as Mobj));
-  registerAction(ACT.A_FaceTarget, (ctx) => aFaceTarget(ctx as Mobj));
+  registerAction(ACT.A_Look, (ctx) => aLook(ctx as Mobj), 'mobj');
+  registerAction(ACT.A_Chase, (ctx) => aChase(ctx as Mobj), 'mobj');
+  registerAction(ACT.A_FaceTarget, (ctx) => aFaceTarget(ctx as Mobj), 'mobj');
 
   // p_pspr.c:256 `P_NoiseAlert (player->mo, player->mo);` inside
   // P_FireWeapon — the tree's only call site (§0.3). The counter keeps
