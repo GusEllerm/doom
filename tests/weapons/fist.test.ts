@@ -20,7 +20,7 @@ import { MT } from '../../src/wad/info/mobjinfo';
 import { SFX_PUNCH, attachPsprFields } from '../../src/sim/p_pspr';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, pinInPlace, sfxCount, staticDummies, trackPsprites } from './harness';
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const RAISE_DONE = 14;
@@ -33,9 +33,11 @@ const PUNCH_F = SWITCH_READY; // first punch fires on the ready tic
 const DAMAGE_DRAWS = 1;
 
 function range(dummies: { x: number; y?: number }[]) {
-  const s = boot(weaponRangeSpec(
+  // M8-fix: AI gate ON — the pinned-geometry dummies stay STATIC again
+  // (A_Look/A_Chase skipped; pain/death/damage untouched). See harness.
+  const s = staticDummies(boot(weaponRangeSpec(
     dummies.map((d) => ({ x: d.x, y: d.y, type: 3004 }))
-  ));
+  )));
   for (const m of of(s, MT.MT_POSSESSED)) m.health = 1 << 20;
   return s;
 }

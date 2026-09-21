@@ -23,7 +23,7 @@ import { MT } from '../../src/wad/info/mobjinfo';
 import { SFX_PISTOL, AM_CLIP, WP_CHAINGUN, attachPsprFields } from '../../src/sim/p_pspr';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, sfxCount, staticDummies, trackPsprites } from './harness';
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const RAISE_DONE = 14;
@@ -35,7 +35,8 @@ const DAMAGE_DRAWS = 1;
 const SWITCH_READY = 44; // pistol→chaingun (weaponKey '4')
 
 function range() {
-  const s = boot(weaponRangeSpec([{ x: 192, type: 3004 }]));
+  // M8-fix: static dummies (AI gate) — see fist.test.ts / harness.
+  const s = staticDummies(boot(weaponRangeSpec([{ x: 192, type: 3004 }])));
   const dummy = of(s, MT.MT_POSSESSED)[0]!;
   dummy.health = 1 << 20;
   const p = attachPsprFields(s.players[0]!);
