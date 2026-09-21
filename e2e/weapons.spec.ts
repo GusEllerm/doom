@@ -117,8 +117,10 @@ test.describe('M7 weapon e2e', () => {
     const errors = await boot(page);
     await page.evaluate(() => window.__doom!.sim.killPlayer());
     // death window: health must hit <=0 somewhere in the 29-31-tic death
-    // sequence; SINGLE-PLAYER then AUTO-RESPAWNS (pistolstart path), so
-    // sample the window rather than one late snapshot.
+    // sequence; single-player death then RELOADS THE LEVEL on USE
+    // (faithful G_DoReborn → ga_loadlevel — M9-08, D017 retired: world
+    // respawns, player pistol-starts at the start spot), so sample the
+    // window rather than one late snapshot.
     let sawDead = false;
     for (let i = 0; i < 20; i++) {
       await page.evaluate(() => window.__doom!.sim.runTics(1, {}));

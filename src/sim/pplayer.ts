@@ -45,10 +45,12 @@
 //        automap state is M9). Armor fields exist (M7-04 inventory slice;
 //        zeroed by the reborn memset since M7-05); I_Tactile has no sink
 //        in this port — M10.
-//  D-t3: G_DoReborn's gameaction=ga_level level reload is the game-layer
-//        loop (M7-08); pPlayerReborn is the verbatim clears list and
-//        pSpawnPlayerFromStart reproduces the vanilla reborn SPAWN
-//        (P_SetupLevel -> P_LoadThings -> P_SpawnPlayer) on demand.
+//  D-t3: G_DoReborn's gameaction=ga_loadlevel level reload — WIRED AT
+//        M9-08 (reborn.ts + game.ts reborn pass; D017 retired): the live
+//        death path reaches pPlayerReborn THROUGH the reload
+//        (P_SetupLevel -> P_LoadThings -> P_SpawnPlayer PST_REBORN),
+//        so the per-level tallies are already zeroed by
+//        p_setup.c:595-604 when the preserve/restore pair runs.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
