@@ -157,7 +157,7 @@ export const UI_PATCH_FAMILIES: readonly UiPatchFamily[] = [
       'WIMINUS',
       ...digits('WINUM'),
     ],
-    count: 20,
+    count: 21,
   },
   /* ---- title / finale screens (d_main.c F_StartFinale page draws) ---- */
   {
