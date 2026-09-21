@@ -250,3 +250,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M9-03 merged: state machine live (4 registrable hooks, unregistered = counted + clear, never silent). Zero re-bless = plumbing invisible. D017 death path still untouched (D-m2 pending M9-08).
 - M9-03 merged (zero re-bless). Wave 2a dispatched: menu stack, statusbar/face, WI. M9-06 (messages, small) queues behind the concurrency cap.
 - M9-04 merged. TRUTH: NO CRISPS/TEXTSPLAT in 1.10 — menu text = st-font patches + M_DrawTXTCR; 1.99-era names fixed AGAIN; M_LOADICON 40-cell border; menus = in-game state (only NewGame is a gameaction).
+- M9-07 merged. TRUTH: intermission canvas 320x240 (WI_STARTY=168 proves it); counters animate at 2/5 tics by count threshold (NOT uniform 11); secret exit -> E1M9 unconditional; par NEVER displayed in 1.10.

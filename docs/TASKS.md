@@ -164,5 +164,5 @@ Future tasks will be added as architects decompose milestones.
 | M9-04..13 | (see docs/design/M9-plan.md) | M9 | waves | planned |
 
 | M9-05 | Statusbar widgets + face | M9 | M9-01/03 | dispatched (agent 068ef38e) |
-| M9-07 | Intermission WI | M9 | M9-01/03 | dispatched (agent 7268d856) |
+| M9-07 | Intermission WI | M9 | M9-01/03 | done (merged, verified) |
 | M9-06 | HU messages | M9 | M9-01/03 | queued (cap) |
