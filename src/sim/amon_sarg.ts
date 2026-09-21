@@ -31,7 +31,8 @@
 // ACTION-NAME TRUTH (the brief's open questions, resolved FROM SOURCE):
 //  * The demon/spectre melee row's action is **A_SargAttack** (info.c:623).
 //    It is NOT A_PainAttack — A_PainAttack (id 64, p_enemy.c:1512) belongs
-//    to the PAIN ELEMENTAL (MT_PAIN, doomednum 84, ZERO in E1 per §0.12)
+//    to the PAIN ELEMENTAL (MT_PAIN, doomednum 71, info.c:1681, absent
+//    from E1M1-E1M9 per the §0.12 census)
 //    and is M9-scope (plan §3 "Deferred": A_PainAttack/A_PainShootSkull/
 //    A_PainDie). Same for A_PainDie (id 65, p_enemy.c:1522).
 //  * There is NO "A_LostSoulAttack" / A_Skullflight action in 1.10
@@ -48,53 +49,41 @@
 //    shape, different `info->damage`.
 //  * Spectre = MT_SHADOWS (doomednum 58) = the SARG state rows +
 //    MF_SHADOW (info.c:1468) — ZERO action diff; the fuzz draw is a
-//    RENDERER concern (r_things.c MF_SHADOW ⇒ NULL colormap), reported
-//    as a gap, NOT faked here: `src/render/vissprites.ts` still throws
-//    `drawFuzzColumnUnused()` for a negative colormap ("not implemented
-//    until M8"). Translucency does NOT exist in 1.10 at all
-//    (framebuffer.ts header: grep translucen/M_TRANMAP/blend = 0 hits) —
-//    the spectre is FUZZ, never an alpha blend.
+// RENDERER concern (r_things.c:577-580 sets `vis->colormap = NULL` for
+//    MF_SHADOW, then R_DrawVisSprite runs R_DrawFuzzColumn), reported as
+//    a gap, NOT faked here. Truth found by reading src/render/vissprites
+//    .ts: its light block treats the fuzz branch as dead for the M4
+//    static roster, so `pColormap` never goes negative and the
+//    `drawFuzzColumnUnused()` stub at :516-518 is UNREACHABLE ⇒ a live
+//    spectre/lost soul draws FULLY OPAQUE at normal light, silently.
+//    The fuzz PRIMITIVE is already exact in framebuffer.ts
+//    (`drawFuzzColumn` + `fuzzoffset` + the `fuzzState.pos` global,
+//    r_draw.c:285), so only the wiring + a per-frame `resetFuzzState()`
+//    are missing. 1.10 has NO translucency anywhere (framebuffer.ts grep
+//    pin: translucen/M_TRANMAP/blend = 0 hits) — the spectre is FUZZ,
+//    never an alpha blend.
 //
-// SKULLFLY × MOVEMENT (M8-02 landed; consumed, never edited):
+// SKULLFLY × MOVEMENT (M8-02 landed in pmove.ts; consumed, never edited)
 //  * no friction while flying: `if (flags & (MF_MISSILE|MF_SKULLFLY))
-//    return;` — pmove.ts:277 = p_mobj.c:201-202 (momx/momy ride constant).
-//  * z-bounce: the floor/ceiling clips flip momz for MF_SKULLFLY
-//    (pmove.ts:356/384 = p_mobj.c:246-291) ⇒ the hop stream.
-//  * the MF_FLOAT target-hover block is SKIPPED while flying
-//    (`!(flags & MF_SKULLFLY) && !(flags & MF_INFLOAT)`, p_mobj.c:262) —
-//    so a charging lost soul does NOT also hover toward the target.
-//  * the OTHER slam half (p_mobj.c:117-123, momentum already zero) lives
-//    in pmove.ts:209-217 + p_mobj.ts's `setMobjState('spawnstate')`
-//    adapter — no work here.
-//
-// VANILLA-FIDELITY FINDING (why this hook re-checks the flag):
-// p_map.c:276 tests the LIVE `tmthing->flags` (NOT the `tmflags`
-// snapshot), so once the first slam clears MF_SKULLFLY, further things in
-// the SAME cell can never slam a second time in that traverse. The port's
-// `pitCheckThing` gates on the snapshot `tm.flags` (pmap.ts:344), so
-// without the guard below a two-thing cell would draw/damage TWICE where
-// vanilla draws once. The `if (!(skull.flags & MF_SKULLFLY)) return;`
-// check reproduces the source's live read exactly (draw count included).
-//
-// DAMAGE ROUTING (M8-05 convention, same as amon_poss.ts): the melee and
-// slam bodies call the port's single P_DamageMobj entry — pplayer.ts
-// `pPlayerDamage` (player branch + non-player delegation to
-// p_inter_damage.pDamageMobj) — with the EXACT vanilla
-// (target, inflictor, source) triple: demon ⇒ (target, actor, actor),
-// skull slam ⇒ (thing, skull, skull). `hooks.damage` keeps recording for
-// the seven damageSlot sites; action-driven damage is the direct entry
-// (D-m1: the production PLAYER-site activation is M8-11's re-derivation,
-// so the suite installs a player-aware bridge where it measures).
-//
-// PRNG ledger (random-sites.ts, same commit): A_SargAttack 1 occurrence
-// (1 draw), skullFlyHit 1 occurrence (1 draw, ALWAYS) → 2.
-// SFX ledger (psound_stub.ts SFX_SITE_LEDGER, same commit): A_SkullAttack
-// attacksound 1 emit statement (A_SargAttack emits NOTHING — the demon's
-// sfx_sgtatk is A_Chase's line in p_enemy.ts).
-//
-// Zone rules (A-06): sim zone, imports sim + wad tables only.
-//
-// SPDX-License-Identifier: GPL-2.0-or-later
+//    return;` — pmove.ts:277 = p_mobj.c:201-202, so momx/momy ride the
+//    whole flight at exactly FixedMul(SKULLSPEED, fine*).
+//  * z-bounce: BOTH clips flip momz for a flying soul — floor
+//    pmove.ts:354 = p_mobj.c:291-294, ceiling pmove.ts:386 =
+//    p_mobj.c:337-340 — the lost soul's endless hop.
+//  * MF_NOGRAVITY (info.c:1598) keeps momz constant between hits:
+//    gravity lives in the `else if (!(flags & MF_NOGRAVITY))` branch,
+//    p_mobj.c:320-326 — so the arc never decays.
+//  * the MF_FLOAT target-hover block is SKIPPED while flying (the
+//    `!(flags & MF_SKULLFLY)` guard on the float branch, p_mobj.c:263 +
+//    pmove.ts:343) ⇒ the straight-line charge wins over the smoothing.
+//  * if momentum reaches zero with the flag still set (a blocked move
+//    with nothing to hit), the `!momx && !momy` branch clears it and
+//    resets the state WITHOUT damaging (pmove.ts:209-215 = p_mobj.c:
+//    122-128) — and because THIS module's slam already cleared the flag
+//    and zeroed the momenta, that branch stays at
+//    `pmoveHookCounts.setMobjStateSpawn === 0`: no double spawnstate (the
+//    lost soul's spawnstate 585 has its own A_Look, so the circling
+//    resumes through the state machine).
 
 import { ANGLETOFINESHIFT, FRACUNIT } from '../core/constants';
 import { FixedMul } from '../core/fixed';
