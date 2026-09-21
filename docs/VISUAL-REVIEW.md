@@ -217,3 +217,4 @@ re-bless only with a source-explained cause.
 | mechanics/m8-chase-corner.png | imp wraps pillar face (y 183→307), emerges + first attack T160 | PASS (imp distant but emerge+P frame legible) |
 | mechanics/m8-infight.png | imp vs shotguy: face-off → approach → attack → death-frame 'F' at T360 | PASS |
 | mechanics/m8-pain-death.png | shotgun burst: pain P states, blood specks, death X frames | PASS (corpse flat-sprite too small at 300u — frames covered by unit layer) |
+| screens/montage.png | TITLEPIC (full art, version stamp), finale reveal mid-tic-200 (matches 250+3n math), HELP2 credits page over dim art | PASS (M9-10 merge turn) |
