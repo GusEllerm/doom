@@ -66,25 +66,128 @@ export interface KeyboardInput {
   attach(target: KeyboardTargetLike): () => void;
 }
 
+/**
+ * Vanilla KEY_* data1 codes — verbatim transcriptions of the `#define` block
+ * in doomdef.h (linuxdoom-1.10, "DOOM keyboard definition"). Arrows are the
+ * 0xax set, F-keys are the scancode-based 0x80+base (F11/F12 jump to 0x57/
+ * 0x58), KEY_BACKSPACE is DEL (127), Enter is CR (13), Escape is 27.
+ * M9-02: transcribed here so the event table and its tests share one truth.
+ */
+export const KEY_ESCAPE = 27;
+export const KEY_ENTER = 13;
+export const KEY_TAB = 9;
+export const KEY_BACKSPACE = 127;
+export const KEY_PAUSE = 0xff;
+export const KEY_UPARROW = 0xad;
+export const KEY_DOWNARROW = 0xaf;
+export const KEY_LEFTARROW = 0xac;
+export const KEY_RIGHTARROW = 0xae;
+export const KEY_F1 = 0x80 + 0x3b; // 0xbb
+export const KEY_F2 = 0x80 + 0x3c;
+export const KEY_F3 = 0x80 + 0x3d;
+export const KEY_F4 = 0x80 + 0x3e;
+export const KEY_F5 = 0x80 + 0x3f;
+export const KEY_F6 = 0x80 + 0x40;
+export const KEY_F7 = 0x80 + 0x41;
+export const KEY_F8 = 0x80 + 0x42;
+export const KEY_F9 = 0x80 + 0x43;
+export const KEY_F10 = 0x80 + 0x44;
+export const KEY_F11 = 0x80 + 0x57;
+export const KEY_F12 = 0x80 + 0x58;
+export const KEY_EQUALS = 0x3d;
+export const KEY_MINUS = 0x2d;
+
 /** Event-level keys: DOM KeyboardEvent.code → vanilla event_t.data1
  * (doomdef.h KEY_* codes / ASCII for printables). These are NOT movement
  * channels — they model the ev_keydown/ev_keyup stream AM_Responder/
  * G_Responder consume (M2-08 seam). Keys bound to a movement action are
  * deliberately absent-or-inert here: bound codes never fire events (the
  * held-channel model already matches vanilla's gamekeydown polling; see
- * DEVIATIONS note for arrows-while-map-open). */
+ * DEVIATIONS note for arrows-while-map-open).
+ *
+ * M9-02 additive: the FULL menu/game-flow key set M_Responder
+ * (m_menu.c:1349-1710) + G_Responder consume — Esc/Enter/Backspace/arrows
+ * (doomdef.h KEY_*), F1-F12 (event-only: never held, only queued), a-z /
+ * 0-9 lowercase-ASCII printables (menu alphaKey scan + cheats + AM keys),
+ * '-'/'=' (M_ChangeScreenSize / AM zoom). Values are identical to vanilla
+ * event_t.data1: m_menu.c compares `ch = ev->data1` against these exact
+ * codes (case KEY_F1 / alphaKey == ch with lowercase letters). */
 export const DEFAULT_EVENT_CODES: Readonly<Record<string, number>> = {
-  Tab: 9, // KEY_TAB — KEY_MAPENTER (am_map.c AM_STARTKEY/AM_ENDKEY)
-  Equal: 0x3d, // '=' KEY_EQUALS (AM_ZOOMINKEY)
-  Minus: 0x2d, // '-' KEY_MINUS  (AM_ZOOMOUTKEY)
+  // --- specials (doomdef.h KEY_* constants) ---
+  Tab: KEY_TAB, // KEY_MAPENTER (am_map.c AM_STARTKEY/AM_ENDKEY)
+  Escape: KEY_ESCAPE, // M_Responder popup/close + message-input cancel
+  Enter: KEY_ENTER, // menu fire (case KEY_ENTER), chat send
+  NumpadEnter: KEY_ENTER, // same scancode family → CR 13
+  Backspace: KEY_BACKSPACE, // prevMenu (case KEY_BACKSPACE, DEL 127)
+  ArrowUp: KEY_UPARROW, // menu cycle / movement (polled while bound)
+  ArrowDown: KEY_DOWNARROW,
+  ArrowLeft: KEY_LEFTARROW, // thermo −/turn (polled while bound)
+  ArrowRight: KEY_RIGHTARROW,
+  // --- F-keys: event-ONLY (m_menu.c case KEY_F1..F11; KEY_F12 spy in
+  // G_Responder). Never bound → never held; always queued. ---
+  F1: KEY_F1,
+  F2: KEY_F2,
+  F3: KEY_F3,
+  F4: KEY_F4,
+  F5: KEY_F5,
+  F6: KEY_F6,
+  F7: KEY_F7,
+  F8: KEY_F8,
+  F9: KEY_F9,
+  F10: KEY_F10,
+  F11: KEY_F11,
+  F12: KEY_F12,
+  // --- screensize / automap (KEY_EQUALS/KEY_MINUS are plain ASCII) ---
+  Equal: KEY_EQUALS, // '=' (AM_ZOOMINKEY, M_ChangeScreenSize)
+  Minus: KEY_MINUS, // '-' (AM_ZOOMOUTKEY, M_ChangeScreenSize)
+  // --- printables: lowercase ASCII (m_menu alphaKey table and the
+  // G_Responder cheat/AM letters compare lowercase ev->data1) ---
   Digit0: 0x30, // '0' (AM_GOBIGKEY)
+  Digit1: 0x31, // '1' (EpiDef alphaKey)
+  Digit2: 0x32,
+  Digit3: 0x33,
+  Digit4: 0x34,
+  Digit5: 0x35,
+  Digit6: 0x36,
+  Digit7: 0x37,
+  Digit8: 0x38,
+  Digit9: 0x39,
+  KeyA: 0x61,
+  KeyB: 0x62,
+  KeyC: 0x63, // 'c' (AM_CLEARMARKKEY)
+  KeyD: 0x64,
+  KeyE: 0x65,
   KeyF: 0x66, // 'f' (AM_FOLLOWKEY)
   KeyG: 0x67, // 'g' (AM_GRIDKEY)
+  KeyH: 0x68,
+  KeyI: 0x69,
+  KeyJ: 0x6a,
+  KeyK: 0x6b,
+  KeyL: 0x6c,
   KeyM: 0x6d, // 'm' (AM_MARKKEY)
-  KeyC: 0x63 // 'c' (AM_CLEARMARKKEY)
+  KeyN: 0x6e, // 'n' (MainMenu New Game alphaKey)
+  KeyO: 0x6f, // 'o' (OptionsMenu)
+  KeyP: 0x70,
+  KeyQ: 0x71, // 'q' (M_QUITG alphaKey)
+  KeyR: 0x72, // 'r' (M_RDTHIS)
+  KeyS: 0x73, // 's' (M_SAVEG)
+  KeyT: 0x74,
+  KeyU: 0x75,
+  KeyV: 0x76,
+  KeyW: 0x77,
+  KeyX: 0x78,
+  KeyY: 0x79,
+  KeyZ: 0x7a
 };
 
-/** Vanilla-shaped key event handed to options.onEvent. */
+/** Vanilla-shaped key event handed to options.onEvent.
+ *
+ * keyup semantics (g_game.c:571-577): ev_keyup is NEVER eaten — every keyup
+ * this layer emits must reach every responder (G_Responder `return false`
+ * on keyups so gamekeydown[] clears even with the menu open). This seam
+ * therefore always forwards keyup packets in full pairs with their keydown;
+ * consuming/eating is the responder chain's decision, not the input
+ * layer's (menuMouse.ts follows the same rule for synthesized keys). */
 export interface KeyboardEventPacket {
   readonly type: 'keydown' | 'keyup';
   /** event_t.data1 */

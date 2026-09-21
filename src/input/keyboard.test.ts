@@ -152,8 +152,11 @@ describe('attach/detach', () => {
     const detach = k.attach(t);
     t.emit('keydown', 'ArrowLeft');
     t.emit('keydown', 'KeyQ');
+    t.emit('keydown', 'ShiftLeft');
     expect(k.isDown('turnLeft')).toBe(true);
-    expect(t.prevented).toEqual(['ArrowLeft']); // unbound not prevented
+    // M9-02: bound codes prevented; KeyQ now queued as an event key (also
+    // prevented); unbound AND uneventful codes (ShiftLeft) are not.
+    expect(t.prevented).toEqual(['ArrowLeft', 'KeyQ']);
     t.emit('keyup', 'ArrowLeft');
     expect(k.isDown('turnLeft')).toBe(false);
     detach();
