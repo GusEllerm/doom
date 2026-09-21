@@ -10,7 +10,7 @@
 //                          `if (P_CheckMeleeRange)` dmg ((R%10)+1)*4 =
 //                          4..40 (ONE draw). NO attacksound here —
 //                          sfx_sgtatk comes from A_Chase's melee branch
-//                          (p_enemy.c:727), pinned in p_enemy.ts.)
+//                          (p_enemy.c:728-729), pinned in p_enemy.ts.)
 //   A_SkullAttack  id 57  p_enemy.c:1419-1443 (SKULL S_SKULL_ATK2 row,
 //                          info.c:726, 4 tics): attacksound, MF_SKULLFLY,
 //                          A_FaceTarget, mom = FixedMul(SKULLSPEED =
@@ -19,7 +19,7 @@
 //                          = (dest.z + height/2 − z)/dist. NO draw of its
 //                          own (A_FaceTarget's MF_SHADOW pair belongs to
 //                          p_enemy.ts's ledger).)
-//   skullFlyHit          p_map.c:276-288  (the PIT_CheckThing MF_SKULLFLY
+//   skullFlyHit          p_map.c:274-287  (the PIT_CheckThing MF_SKULLFLY
 //                          branch, wired through the M5-era
 //                          `pmapHooks.skullFlyHit` slot — registered
 //                          HERE, chain-preserving, ptelept.ts idiom):
@@ -31,20 +31,20 @@
 // ACTION-NAME TRUTH (the brief's open questions, resolved FROM SOURCE):
 //  * The demon/spectre melee row's action is **A_SargAttack** (info.c:623).
 //    It is NOT A_PainAttack — A_PainAttack (id 64, p_enemy.c:1512) belongs
-//    to the PAIN ELEMENTAL (MT_PAIN, doomednum 71, ZERO in E1 per §0.12)
+//    to the PAIN ELEMENTAL (MT_PAIN, doomednum 84, ZERO in E1 per §0.12)
 //    and is M9-scope (plan §3 "Deferred": A_PainAttack/A_PainShootSkull/
 //    A_PainDie). Same for A_PainDie (id 65, p_enemy.c:1522).
 //  * There is NO "A_LostSoulAttack" / A_Skullflight action in 1.10
 //    (`grep -n '^void A_' p_enemy.c` — the whole contact-damage half lives
 //    in PIT_CheckThing, p_map.c:276, NOT in a state action; MT_SKULL's
-//    meleestate is 0 (info.c:482), so `P_CheckMeleeRange` is never the
+//    meleestate is 0 (info.c:1587), so `P_CheckMeleeRange` is never the
 //    lost soul's path — its attack is the MISSILE state S_SKULL_ATK1
-//    (info.c:483) which A_Chase enters through P_CheckMissileRange).
+//    (info.c:1588) which A_Chase enters through P_CheckMissileRange).
 //  * `MF_HITTRIGGER` does not exist in 1.10 (`grep MF_HITTRIGGER *.c *.h`
 //    = 0 hits) — pinned absent, nothing to implement.
-//  * The skull's contact damage multiplies `info->damage` = 3 (info.c:491
+//  * The skull's contact damage multiplies `info->damage` = 3 (info.c:1596
 //    mobjinfo MT_SKULL `3, // damage`), i.e. 3..24, and the SAME dice
-//    expression is the MF_MISSILE branch's (p_map.c:325) — same draw
+//    expression is the MF_MISSILE branch's (p_map.c:323-324) — same draw
 //    shape, different `info->damage`.
 //  * Spectre = MT_SHADOWS (doomednum 58) = the SARG state rows +
 //    MF_SHADOW (info.c:1468) — ZERO action diff; the fuzz draw is a
@@ -57,7 +57,7 @@
 //
 // SKULLFLY × MOVEMENT (M8-02 landed; consumed, never edited):
 //  * no friction while flying: `if (flags & (MF_MISSILE|MF_SKULLFLY))
-//    return;` — pmove.ts:277 = p_mobj.c:207 (momx/momy ride constant).
+//    return;` — pmove.ts:277 = p_mobj.c:201-202 (momx/momy ride constant).
 //  * z-bounce: the floor/ceiling clips flip momz for MF_SKULLFLY
 //    (pmove.ts:356/384 = p_mobj.c:246-291) ⇒ the hop stream.
 //  * the MF_FLOAT target-hover block is SKIPPED while flying
@@ -127,9 +127,9 @@ export const SKULLSPEED = 20 * FRACUNIT;
  * single draw `((P_Random()%10)+1)*4` (4..40) into
  * `P_DamageMobj(target, actor, actor, d)` (:945-946). There is NO missile
  * branch and NO sound here — MT_SERGEANT/MT_SHADOWS have
- * `missilestate = 0` (info.c:327/353), so out of melee range A_Chase
+ * `missilestate = 0` (info.c:1432/1458), so out of melee range A_Chase
  * simply chases (`P_CheckMissileRange` never runs for them: no missile
- * state at p_enemy.c:734).
+ * state at p_enemy.c:736-748).
  */
 export function aSargAttack(actor: Mobj): void {
   if (!actor.target) return; // :939 (`if (!actor->target) return;` — nothing else)
@@ -160,7 +160,7 @@ export function aSargAttack(actor: Mobj): void {
  * NO PRNG draw of its own.
  *
  * STATE INTERPLAY (the brief's "target lock A_Look/A_Chase interplay"):
- * this row is MT_SKULL's MISSILE state (info.c:483), entered by A_Chase
+ * this row is MT_SKULL's MISSILE state (info.c:1588), entered by A_Chase
  * through P_CheckMissileRange (which has the live `MT_SKULL ⇒ dist >>= 1`
  * tweak, p_enemy.c:239-245 ⇒ lost souls fire at close range). ATK2 is 4
  * tics and its nextstate is ATK3→ATK4↺ (info.c:727-728, `NULL` actions)
@@ -202,7 +202,7 @@ export function aSkullAttack(actor: Mobj): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* The MF_SKULLFLY slam — p_map.c:276-288 (pmapHooks.skullFlyHit)       */
+/* The MF_SKULLFLY slam — p_map.c:274-287 (pmapHooks.skullFlyHit)       */
 /* ------------------------------------------------------------------ */
 
 /**

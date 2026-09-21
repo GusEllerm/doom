@@ -14,17 +14,23 @@
 //     TWO draws per landed hit (1 die + the p_inter.c:894 painChance
 //     roll), the PLAYER half of P_DamageMobj live (health drop asserted —
 //     the action calls the direct entry, not the record-only bridge),
-//     ZERO sound (sfx_sgtatk belongs to A_Chase, p_enemy.c:727), and out
+//     ZERO sound (sfx_sgtatk belongs to A_Chase, p_enemy.c:728-729), and out
 //     of range: no damage, ZERO draws, and no missile path at all
-//     (missilestate 0, info.c:327/353);
+//     (missilestate 0, info.c:1432/1458);
 //  3. SPECTRE = DEMON + MF_SHADOW (acceptance 3): identical mobjinfo rows,
 //     identical damage at the same stream index, and the ONE stream
 //     difference the flag causes — A_FaceTarget's 2-draw jitter when the
-//     target is fuzzy (p_enemy.c:795). RENDER GAP REPORTED, NOT FAKED:
-//     vissprites.ts never sets the NULL colormap for MF_SHADOW (its fuzz
-//     half is `drawFuzzColumnUnused`, still a throw), so a live spectre
-//     renders OPAQUE. 1.10 has NO translucency at all (framebuffer.ts
-//     grep pin) — the look is the fuzz column, a renderer task's scope;
+//     target is fuzzy (p_enemy.c:794-795). RENDER GAP REPORTED, NOT FAKED:
+//     1.10 has NO translucency anywhere — a shadow thing is drawn by the
+//     FUZZ column (r_things.c:577-580 sets `vis->colormap = NULL` for
+//     MF_SHADOW, R_DrawVisSprite then runs R_DrawFuzzColumn, r_draw.c:285).
+//     The port's fuzz PRIMITIVE exists and is exact (framebuffer.ts
+//     drawFuzzColumn + fuzzoffset + the fuzzpos global), but vissprites.ts
+//     never lets pColormap go negative (its light block calls the fuzz
+//     branch "dead per file header", so the drawFuzzColumnUnused stub at
+//     :518 is UNREACHABLE) ⇒ a live spectre/lost soul draws FULLY OPAQUE
+//     at normal light, silently. Renderer task to close: pColormap = -1 on
+//     MF_SHADOW + route the negative branch to framebuffer.drawFuzzColumn;
 //  4. A_Chase integration: the demon closes, emits sfx_sgtatk and runs
 //     ATK1→ATK2→ATK3 (the A_SargAttack row) with a real player hit;
 //  5. A_SkullAttack (acceptance 2): MF_SKULLFLY, |mom_xy| = SKULLSPEED
@@ -34,21 +40,36 @@
 //     (((R%8)+1)× info->damage 3), flag cleared, momentum zeroed, state ⇒
 //     spawnstate (the STND row's own A_Look is what then re-arms it), ONE
 //     slam draw, `pmapHookCounts.skullFlyHit` in step;
-//  7. the p_map.c:276 LIVE-flag read (the port snapshots `tm.flags`, so
+//  7. the p_map.c:276 LIVE-flag read (pitCheckThing snapshots `tm.flags`
+//     once per mover, so
 //     without the flag re-check a second thing in the same cell would
 //     draw+damage twice where vanilla draws once) — pinned at zero draws;
 //  8. MOVEMENT integration (M8-02): no friction while flying
-//     (p_mobj.c:207 ⇒ mom_xy constant) and the floor hit FLIPS momz
-//     (p_mobj.c:305) — the lost-soul hop, with NO gravity (info.c:493
+//     (p_mobj.c:201-202 ⇒ mom_xy constant) and the floor hit FLIPS momz
+//     (p_mobj.c:291-294) — the lost-soul hop, with NO gravity (info.c:1598
 //     MF_NOGRAVITY row) so the arc never decays;
 //  9. SKULLFLY RELEASE ON DEATH: p_inter.c:676 clears MF_SKULLFLY, the
-//     :679 `type != MT_SKULL` test keeps MF_NOGRAVITY for lost souls ONLY,
-//     the DIE chain then runs M8-06's A_Scream (deathsound sfx_firxpl —
-//     NOT sfx_skldth, which 1.10's mobjinfo never references) and A_Fall,
-//     and MT_SKULL is !MF_COUNTKILL (killcount unmoved, §0.11);
+//     :679 `type != MT_SKULL` test keeps MF_NOGRAVITY for lost souls ONLY
+//     (the port's flags mirror carries FLOAT for the soul and the corpse
+//     clears it), the DIE chain then runs M8-06's A_Scream (deathsound
+//     sfx_firxpl) and A_Fall, and MT_SKULL is !MF_COUNTKILL (killcount
+//     unmoved, §0.11) while the demon/spectre DO carry it;
 // 10. INFIGHT: a slam on a monster IS the §0.8 retarget (target = the
-//     SOUL, threshold = 100) and the imp then runs on it;
-// 11. LEDGERS both directions + double-run determinism.
+//     SOUL, threshold = BASETHRESHOLD 100) and A_Chase runs on it — the
+//     player is ignored while the soul lives;
+// 11. EVERY state row of MT_SERGEANT / MT_SHADOWS / MT_SKULL walked from
+//     the mobjinfo pointers: entry action registered or faithfully NULL,
+//     the attack chain's damage row reached, pain/death chain actions
+//     found — nothing hits the unimplemented-action recorder;
+// 12. doomednum truth (§0.12): 3002 demon / 58 spectre / 3006 lost soul,
+//     spawned through the real pSpawnThings doomednum scan, and the
+//     soul's SPAWN row is not yet charging (MF_SKULLFLY is an action flag);
+// 13. the ThingLinks flag mirror (§3.4 word[5] / PIT read the MIRROR,
+//     not the field) carries MF_SHADOW and flips MF_SKULLFLY off on slam;
+// 14. LEDGERS both directions (RANDOM_SITE_CALLS 2 = melee die + slam die,
+//     SFX_SITE_LEDGER 1 = the soul's attacksound; A_SargAttack emits
+//     NOTHING, the demon's sfx_sgtatk is A_Chase's) + double-run
+//     determinism: same stream index ⇒ same damage, same hash.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -158,19 +179,19 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
 
     // THE TRUTH THE BRIEF ASKED FOR (resolved from the mirror, not guessed):
     //   demon/spectre melee row ⇒ A_SargAttack (info.c:623). A_PainAttack
-    //   (id 64) is the PAIN ELEMENTAL (MT_PAIN, doomednum 71, ZERO in E1
+    //   (id 64) is the PAIN ELEMENTAL (MT_PAIN, doomednum 84, ZERO in E1
     //   per §0.12) — plan §3 defers A_PainAttack/A_PainDie to M9.
     //   The lost soul has NO attack action of its own beyond A_SkullAttack:
-    //   MT_SKULL meleestate is 0 (info.c:482), so its contact damage is
+    //   MT_SKULL meleestate is 0 (info.c:1587), so its contact damage is
     //   PIT_CheckThing's MF_SKULLFLY branch (p_map.c:276), reached through
-    //   the MISSILE state (info.c:483) that A_Chase opens in
+    //   the MISSILE state (info.c:1588) that A_Chase opens in
     //   P_CheckMissileRange (which carries the live MT_SKULL `dist >>= 1`
     //   tweak, p_enemy.c:239-245). No "A_LostSoulAttack" exists in 1.10.
     expect(stateAction[S.S_SARG_ATK3]).toBe(ACT.A_SargAttack);
     expect(stateAction[S.S_SKULL_ATK2]).toBe(ACT.A_SkullAttack);
     expect(mobjinfo[MT.MT_SKULL]!.meleeState).toBe(0);
     expect(mobjinfo[MT.MT_SKULL]!.missileState).toBe(S.S_SKULL_ATK1);
-    expect(mobjinfo[MT.MT_SKULL]!.damage).toBe(3); // info.c:491 ⇒ 3..24 slam
+    expect(mobjinfo[MT.MT_SKULL]!.damage).toBe(3); // info.c:1596 ⇒ 3..24 slam
     expect(mobjinfo[MT.MT_SERGEANT]!.missileState).toBe(0); // melee-only family
   });
 
@@ -180,7 +201,7 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
   it('A_SargAttack in range: (R%10+1)*4 — the 4 AND 40 bounds pinned, 2 draws, LIVE player half, silent', () => {
     s = boot(room());
     const p = playerMo();
-    // MELEERANGE − 20 + victim radius 16 = 60 units (p_enemy.c:186) ⇒ 48.
+    // MELEERANGE − 20 + victim radius 16 = 60 units (p_enemy.c:184) ⇒ 48.
     const demon = spawned(MT.MT_SERGEANT, 112, 256);
     demon.target = p;
 
@@ -216,8 +237,8 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     aSargAttack(demon); // 336 units ≥ the 60-unit bound
     expect(hp()).toBe(h0);
     expect(draws(idx)).toBe(0); // the gate is a range test + CheckSight, no die
-    expect(mobjinfo[MT.MT_SERGEANT]!.missileState).toBe(0); // info.c:327
-    expect(mobjinfo[MT.MT_SHADOWS]!.missileState).toBe(0); // info.c:353
+    expect(mobjinfo[MT.MT_SERGEANT]!.missileState).toBe(0); // info.c:1432
+    expect(mobjinfo[MT.MT_SHADOWS]!.missileState).toBe(0); // info.c:1458
   });
 
   it('A_SargAttack with no target bails BEFORE A_FaceTarget (p_enemy.c:939)', () => {
@@ -239,7 +260,7 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     const p = playerMo();
     const demon = spawned(MT.MT_SERGEANT, 112, 256);
     demon.target = p;
-    // info.c:341-355 vs :1468 — the ONLY table difference is MF_SHADOW.
+    // info.c:1446-1470 vs :1420-1444 — the — the ONLY table difference is MF_SHADOW.
     for (const r of [
       'spawnState',
       'seeState',
@@ -272,7 +293,7 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     expect(h1 - hp()).toBe(demonHit);
 
     // The ONE stream difference a spectre causes: A_FaceTarget's fuzzy-
-    // target jitter (p_enemy.c:795, TWO draws) — only when the spectre is
+    // target jitter (p_enemy.c:794-795, TWO draws) — only when the spectre is
     // the TARGET (the demon attacking a spectre), never when attacking a
     // player. A player target: die + painChance = 2. A spectre target:
     // +2 jitter = 4.
@@ -341,7 +362,7 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     expect(dist).toBe(10); // 200 units / 20 per tic
     expect(skull.momz).toBe(Math.trunc((((p.z + (p.height >> 1)) | 0) - skull.z) / dist));
     expect(skull.momz).toBe(Math.trunc(fx(28) / 10)); // = 183500 ≈ 2.8/tic
-    expect(sfxIds()).toEqual([SFX_ID.sfx_sklatk]); // info.c:478
+    expect(sfxIds()).toEqual([SFX_ID.sfx_sklatk]); // info.c:1583
     expect(draws(idx)).toBe(0); // NO draw of its own
     expect(SKULLSPEED).toBe(20 * FRACUNIT); // p_enemy.c:1417
   });
@@ -373,7 +394,7 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     const p = playerMo();
     const skull = spawned(MT.MT_SKULL, 264, 256);
     skull.target = p;
-    // The authentic entry: A_Chase's missile state (info.c:483) — ATK1 is
+    // The authentic entry: A_Chase's missile state (info.c:1588) — ATK1 is
     // A_FaceTarget, ATK2 is A_SkullAttack, then ATK3↔ATK4 (NULL rows) is
     // the flight loop, so the soul never re-enters A_Chase while flying.
     pSetMobjState(skull, mobjinfo[MT.MT_SKULL]!.missileState);
@@ -436,14 +457,14 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     skull.momz = -2 * FRACUNIT;
 
     pRunThinkers(s.thinkers);
-    expect([skull.momx, skull.momy]).toEqual([mx, my]); // p_mobj.c:207 exemption
+    expect([skull.momx, skull.momy]).toEqual([mx, my]); // p_mobj.c:201-202 exemption
     expect(skull.z).toBe(fx(38)); // z += momz, NOGRAVITY ⇒ momz never accelerates
     pRunThinkers(s.thinkers);
     pRunThinkers(s.thinkers);
     expect(skull.momz).toBe(-2 * FRACUNIT); // still the same, still falling
     expect(skull.z).toBe(fx(34));
 
-    // The bounce itself (p_mobj.c:303-306): ON the floor with momz < 0.
+    // The bounce itself (p_mobj.c:291-294): ON the floor with momz < 0.
     skull.z = 0;
     skull.momz = -3 * FRACUNIT;
     pZMovement(skull);
@@ -477,7 +498,7 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     expect(s.players[0]!.killcount).toBe(0); // lost souls never count (§0.11)
 
     tickUntil(() => skull.state === S.S_SKULL_DIE2, 30, 'DIE2');
-    expect(sfxIds()).toContain(SFX_ID.sfx_firxpl); // info.c:487 deathsound
+    expect(sfxIds()).toContain(SFX_ID.sfx_firxpl); // info.c:1591 deathsound
     tickUntil(() => skull.state === S.S_SKULL_DIE6, 60, 'DIE6');
     expect(skull.flags & MF.MF_SOLID).toBe(0); // A_Fall ran (info.c:734)
     expect(skull.removed).toBe(false); // the -1 corpse row persists
@@ -497,13 +518,13 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     const idx = s.rng.prndindex;
 
     (pmapHooks.skullFlyHit as NonNullable<typeof pmapHooks.skullFlyHit>)(imp.linkSlot, soul);
-    expect(imp.target).toBe(soul); // p_inter.c:911
+    expect(imp.target).toBe(soul); // p_inter.c:908-911
     expect(imp.threshold).toBe(100); // BASETHRESHOLD (p_local.h:61)
     expect(soul.flags & MF_SKULLFLY).toBe(0);
     expect(draws(idx)).toBeGreaterThanOrEqual(2); // slam die + painChance roll
 
     // And A_Chase RUNS ON the new target (the M8-05 integration shape):
-    // threshold decays every chase tic WHILE the target lives (p_enemy.c:690
+    // threshold decays every chase tic WHILE the target lives (p_enemy.c:682-689
     // -695) and the target is never re-looked, i.e. the player is ignored.
     imp.reactionTime = 0;
     imp.movecount = 0;
@@ -591,14 +612,51 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     const spectre = spawned(MT.MT_SHADOWS, 400, 256);
     const demon = spawned(MT.MT_SERGEANT, 500, 256);
     expect(spectre.flags & MF_SHADOW).toBe(MF_SHADOW);
-    expect(s.pmap.links.flags[spectre.linkSlot!] & MF_SHADOW).toBe(MF_SHADOW);
-    expect(s.pmap.links.flags[demon.linkSlot!] & MF_SHADOW).toBe(0);
+    expect(s.pmap.links.flags[spectre.linkSlot!]! & MF_SHADOW).toBe(MF_SHADOW);
+    expect(s.pmap.links.flags[demon.linkSlot!]! & MF_SHADOW).toBe(0);
     // A slam through the mirror path flips the mirrored flag too (§0.7):
     const soul = spawned(MT.MT_SKULL, 600, 256);
     pSetMobjFlags(soul, soul.flags | MF_SKULLFLY);
-    expect(s.pmap.links.flags[soul.linkSlot!] & MF_SKULLFLY).toBe(MF_SKULLFLY);
+    expect(s.pmap.links.flags[soul.linkSlot!]! & MF_SKULLFLY).toBe(MF_SKULLFLY);
     skullFlyHit(demon.linkSlot, soul);
-    expect(s.pmap.links.flags[soul.linkSlot!] & MF_SKULLFLY).toBe(0);
+    expect(s.pmap.links.flags[soul.linkSlot!]! & MF_SKULLFLY).toBe(0);
+  });
+
+  /* -------------------------------------------------------------- */
+  /* 12. doomednum truth (§0.12) — the map-thing spawn path           */
+  /* -------------------------------------------------------------- */
+  it('doomednums 3002 / 58 / 3006 spawn the family through pSpawnThings (§0.12)', () => {
+    // The three rows are NOT adjacent in info.c and the doomednums are not
+    // sequential: demon 3002 (info.c:1421), spectre 58 (:1447 — the ONLY
+    // low-numbered one, and E1M1 places none of them: the spectre appears
+    // from ExMx/UDMS), lost soul 3006 (:1577). Spawned from THINGS, the
+    // first-match doomednum scan must land on exactly these types.
+    expect(mobjinfo[MT.MT_SERGEANT]!.doomednum).toBe(3002);
+    expect(mobjinfo[MT.MT_SHADOWS]!.doomednum).toBe(58);
+    expect(mobjinfo[MT.MT_SKULL]!.doomednum).toBe(3006);
+    const st = boot(
+      room([
+        { x: 200, y: 128, angle: 90, type: 3002 },
+        { x: 300, y: 128, angle: 90, type: 58 },
+        { x: 400, y: 128, angle: 90, type: 3006 },
+      ]),
+    );
+    s = st;
+    const byType = new Map<number, Mobj[]>();
+    for (const m of st.mobjs.slotMobjs.values()) {
+      if (m.type === MT.MT_SERGEANT || m.type === MT.MT_SHADOWS || m.type === MT.MT_SKULL) {
+        byType.set(m.type, [...(byType.get(m.type) ?? []), m]);
+      }
+    }
+    expect(byType.get(MT.MT_SERGEANT)?.length).toBe(1);
+    expect(byType.get(MT.MT_SHADOWS)?.length).toBe(1);
+    expect(byType.get(MT.MT_SKULL)?.length).toBe(1);
+    const soul = byType.get(MT.MT_SKULL)![0]!;
+    // The spawned soul is NOT yet charging: MF_SKULLFLY is an action flag
+    // (p_enemy.c:1428) — A_Chase has to open ATK1/ATK2 first.
+    expect(soul.flags & MF_SKULLFLY).toBe(0);
+    expect(soul.state).toBe(mobjinfo[MT.MT_SKULL]!.spawnState);
+    expect(byType.get(MT.MT_SHADOWS)![0]!.flags & MF_SHADOW).toBe(MF_SHADOW);
   });
 
   /* -------------------------------------------------------------- */
