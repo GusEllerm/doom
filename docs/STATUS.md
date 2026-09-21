@@ -29,3 +29,8 @@ M1–M8 all tasks (plans + ledgers in docs/design, docs/TASKS.md).
 ## Environment quirks
 - git via /Library/Developer/CommandLineTools/usr/bin/git until Xcode license accepted by user (D007).
 - Infra failure waves have killed agents repeatedly: keep dispatches scoped, write-early, commit-often.
+
+## M8 COMPLETE — monster AI
+- 13/13 tasks; sight tracer, AI core, damage/kill/infight, 3 families, DEHACKED fullbrights, live e2e, pacing envelopes
+- Gates: ~2450 unit + 27 e2e, marathon determinism (4.6M steps), goldens drift-free, strips reviewed
+- TRUTH bank added: painChance 200 always-pained; P_PushMobs mass rules; A_Fall@death+24; MT_HEADSHOT/BRUISERSHOT; tag-666 E1 exit; no FLOATBOB in 1.10; NoiseAlert from attack-actions only

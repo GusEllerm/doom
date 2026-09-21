@@ -135,7 +135,7 @@ Future tasks will be added as architects decompose milestones.
 | M8-02 | Mobj AI fields + damage bridge | M8 | M7 | done (merged, verified) |
 | M8-03 | Monster census fixture | M8 | — | done (merged, verified) |
 | M8-04..12 | (see docs/design/M8-plan.md) | M8 | waves | done (merged, verified) |
-| M8-13 | L5 motion strips + pacing envelope + exit sweep | M8 | M8-11/12 | done (this commit: strips m8-chase-corner/pain-death/infight, m8-pacing.test.ts, docs) |
+| M8-13 | L5 motion strips + pacing envelope + exit sweep | M8 | M8-11/12 | done (merged, verified — M8 CLOSED) |
 
 | M8-05 | Damage/kill/infighting module | M8 | M8-02 | done (merged, verified — third attempt) |
 | M8-04 | AI core (A_Look/A_Chase/P_Move) | M8 | M8-01/02 | done (merged, verified — monsters hunt) |
@@ -146,4 +146,4 @@ Future tasks will be added as architects decompose milestones.
 | M8-09 | Family C (caco/baron/boss death) | M8 | M8-04/05/06 | done (merged, verified) |
 | M8-11 | Family suites + stream pins + ledger | M8 | families | done (merged, verified) |
 | M8-12 | Live e2e monsters + registration flip | M8 | families | done (merged + incident fix) |
-| M8-13 | Motion strips + pacing envelopes + exit sweep | M8 | all | dispatched (agent 67d92524) |
+| M8-13 | Motion strips + pacing envelopes + exit sweep | M8 | all | done (merged, verified — M8 CLOSED) |
