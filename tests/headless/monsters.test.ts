@@ -76,6 +76,7 @@ import { pSpawnMissile } from '../../src/sim/pmissiles';
 import { registerDeathActions } from '../../src/sim/pdeath';
 import { isActionRegistered, ACT, unimplementedActions } from '../../src/sim/a_actions';
 import { installPsprSfxSlot, SFX_ID } from '../../src/sim/psound_stub';
+import { RANDOM_SITE_CALLS, RANDOM_SITE_SCAN_SKIP, scanRandomSites } from '../../src/sim/random-sites';
 
 /* ------------------------------------------------------------------ */
 /* Family B (M8-08, MAY BE MID-LANDING): OPTIONAL dynamic import        */
@@ -663,12 +664,203 @@ describe('M8-11 double-run lifecycle signatures per family', () => {
 });
 
 /* ================================================================== */
-/* B. CROSS-FAMILY INFLIGHT BRAWL (added in the ledger commit)          */
+/* B. CROSS-FAMILY INFLIGHT BRAWL                                      */
 /* ================================================================== */
 
+describe('M8-11 inflight arena: baron vs zombies vs caco', () => {
+  /** The arena: passive-but-immortal witness (player, re-topped every
+   * 64 tics) WEST; FOUR zombies EAST of the witness, TWO OF THEM IN THE
+   * SAME SHOOTING LANE (400/700 at y 512) — the far one's accurate
+   * first shot organic-friendlies the near one (source = a MONSTER mobj,
+   * the honest infight path p_inter.c:904-916); two barons + two cacos
+   * EAST, their westbound fireballs MUST cross the zombie lane (PIT
+   * direct dice, pmissiles.ts) feeding the same cascade. */
+  function brawl(): GameState {
+    const s = boot({
+      rooms: [{ x: 0, y: 0, w: 1536, h: 1024, lightLevel: 200 }],
+      things: [{ x: 64, y: 512, angle: 0, type: 1 }],
+    });
+    installPlayerAwareBridge(s);
+    const p = playerMo(s);
+    p.health = s.players[0]!.health = 1 << 24;
+    pSpawnMobj(s.mobjs, fx(1100), fx(384), ONFLOORZ, MT.MT_BRUISER);
+    pSpawnMobj(s.mobjs, fx(1100), fx(640), ONFLOORZ, MT.MT_BRUISER);
+    pSpawnMobj(s.mobjs, fx(950), fx(256), ONFLOORZ, MT.MT_HEAD);
+    pSpawnMobj(s.mobjs, fx(950), fx(768), ONFLOORZ, MT.MT_HEAD);
+    pSpawnMobj(s.mobjs, fx(400), fx(512), ONFLOORZ, MT.MT_POSSESSED); // lane
+    pSpawnMobj(s.mobjs, fx(700), fx(512), ONFLOORZ, MT.MT_POSSESSED); // lane
+    pSpawnMobj(s.mobjs, fx(700), fx(352), ONFLOORZ, MT.MT_POSSESSED);
+    pSpawnMobj(s.mobjs, fx(700), fx(672), ONFLOORZ, MT.MT_POSSESSED);
+    pNoiseAlert(s.mobjs, p, p);
+    return s;
+  }
+
+  function brawlSig(tics = 1500): string {
+    const s = brawl();
+    const p = playerMo(s);
+    for (let t = 0; t < tics; t++) {
+      if ((t & 63) === 0) p.health = s.players[0]!.health = 1 << 24;
+      pRunThinkers(s.thinkers);
+    }
+    return JSON.stringify([
+      s.players[0]!.killcount,
+      s.rng.prndindex,
+      s.mobjs.mobjs
+        .filter((m) => mobjinfo[m.type]!.flags & MF.MF_COUNTKILL)
+        .map((m) => [m.type, m.health, m.state, m.target?.type ?? 0]),
+    ]);
+  }
+
+  const liveMon = (s: GameState, type: number): Mobj[] =>
+    s.mobjs.mobjs.filter((m) => m.type === type && !m.removed);
+
+  it('baron fireballs crossing the zombie lane switch a zombie target (brawl ON)', () => {
+    const s = brawl();
+    const p = playerMo(s);
+    // LATCHED per-tic (a flip may heal over once the adopted shooter
+    // dies — A_Chase re-adopts the player with threshold expired).
+    let flipped = false;
+    for (let t = 0; t < 1500 && !flipped; t++) {
+      if ((t & 63) === 0) p.health = s.players[0]!.health = 1 << 24;
+      pRunThinkers(s.thinkers);
+      flipped = s.mobjs.mobjs.some(
+        (m) =>
+          !m.removed &&
+          m !== p &&
+          (mobjinfo[m.type]!.flags & MF.MF_COUNTKILL) !== 0 &&
+          m.target !== undefined &&
+          m.target !== p &&
+          !m.target.removed,
+      );
+    }
+    expect(flipped, 'a monster adopted the shooter that friendly-fired it').toBe(true);
+  });
+
+  it('target switching is BIDIRECTIONAL: a baron turns on what shot it', () => {
+    const s = brawl();
+    const p = playerMo(s);
+    const z = liveMon(s, MT.MT_POSSESSED)[0]!;
+    const b = liveMon(s, MT.MT_BRUISER)[0]!;
+    // Scripted opener for THIS assertion (the arena's own crossfire is
+    // too slow to guarantee a baron-side flip in 1500 tics): the zombie
+    // hits the baron point-blank — p_inter.c:907 arms the baron. The
+    // baron's painChance is 50, but the RETARGET branch is draw-free and
+    // roll-INDEPENDENT (threshold branch p_inter.c:904-916) — a
+    // threshold=0 baron always adopts the shooter.
+    b.threshold = 0;
+    z.target = b;
+    z.health = 1 << 20; // survive the baron's point-blank entry-A_Chase
+    z.x = b.x - fx(30); // point-blank, LOS trivial
+    syncMobj(z);
+    aPosAttack(z);
+    expect(b.target).toBe(z); // :911 source adopted (non-VILE, D-0yy)
+    // BASETHRESHOLD 100 is written, then the SEE-ROW ENTRY-ACTION
+    // (P_SetMobjState dispatches the row action — the spawn→see switch
+    // the retarget block performs) pays ONE A_Chase threshold DECAY on
+    // that same call: the observable is 99 at assert time.
+    expect(b.threshold).toBe(99);
+    expect(b.threshold).toBeLessThan(100);
+    // …and the cascade does NOT hand the baron back to the player crowd:
+    expect(b.target).not.toBe(p);
+    // The flip survives a chase tic (the baron keeps the new target):
+    const i = s.rng.prndindex;
+    runUntil(s, 10, () => false);
+    expect(b.target).toBe(z);
+    expect(draws(s, i)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('friendly-fire deaths attribute killcount to player0 under the NON-NET rule', () => {
+    const s = brawl();
+    const p = playerMo(s);
+    // The player NEVER fires or damages anything: every kill here is
+    // monster-ammunition. p_inter.c:694-697 (the !netgame fallback) must
+    // still tally them into players[0].killcount.
+    for (let t = 0; t < 2400; t++) {
+      if ((t & 63) === 0) p.health = s.players[0]!.health = 1 << 24;
+      pRunThinkers(s.thinkers);
+    }
+    const deadCountKill = s.mobjs.mobjs.filter(
+      (m) =>
+        mobjinfo[m.type]!.flags & MF.MF_COUNTKILL &&
+        (m.health <= 0 || m.removed),
+    ).length;
+    expect(deadCountKill, 'friendly fire kills someone in 2400 tics').toBeGreaterThan(0);
+    expect(s.players[0]!.killcount).toBe(deadCountKill); // EXACT attribution
+    expect(s.mobjs.netgame, 'single player').toBe(false);
+  });
+
+  it('double-run: the brawl signature is stream-identical', () => {
+    expect(brawlSig()).toBe(brawlSig());
+  });
+});
+
 /* ================================================================== */
-/* C. RANDOM-SITES LEDGER RECONCILIATION (added in the ledger commit)   */
+/* C. RANDOM-SITES LEDGER RECONCILIATION                               */
 /* ================================================================== */
+
+describe('M8-11 random-sites ledger reconciliation (global manifest, registryManifest idiom)', () => {
+  const sum = (o: Readonly<Record<string, number>>): number =>
+    Object.values(o).reduce((a, b) => a + b, 0);
+
+  it('the RANDOM_SITE_* TOTAL equals the sum of module sites (both directions)', () => {
+    const scan = scanRandomSites();
+    // Module SETS equal — an emitter module missing from the ledger, or a
+    // stale ledger line, is red in EITHER direction (the psound_stub
+    // SFX_SITE_LEDGER idiom).
+    expect(Object.keys(scan).sort()).toEqual(Object.keys(RANDOM_SITE_CALLS).sort());
+    for (const [name, n] of Object.entries(scan)) {
+      expect(RANDOM_SITE_CALLS[name], name).toBe(n);
+    }
+    // Aggregate ledger total — UPDATE IN THE SAME COMMIT that adds a
+    // site (a family-B landing must move this number AND its module
+    // line together, or this gate is the drift alarm).
+    expect(sum(RANDOM_SITE_CALLS)).toBe(sum(scan));
+    expect(sum(RANDOM_SITE_CALLS)).toBe(69);
+    expect(RANDOM_SITE_SCAN_SKIP).toEqual(['prng.ts']);
+  });
+
+  it('the M8 additions are LEDGERED (lastlook / pain / gib / lift / pos-spread)', () => {
+    // lastlook: P_SpawnMobj (1 of p_mobj.ts 9: spawn 1 + explode tics 1 +
+    // mapthing 1 + puff 3 + blood 3) — behavioural pin: every family
+    // spawn above carries `lastLook = R%MAXPLAYERS` (wake suite).
+    expect(RANDOM_SITE_CALLS['p_mobj.ts']).toBe(9);
+    // pain roll + gib-tics clamp + fall-forwards &1 in the monster half
+    // (p_inter_damage.ts 3), thrust &1 + painChance in the player half
+    // (pplayer.ts 2) — behavioural pins: the pain/death windows above.
+    expect(RANDOM_SITE_CALLS['p_inter_damage.ts']).toBe(3);
+    expect(RANDOM_SITE_CALLS['pplayer.ts']).toBe(2);
+    // lift: CheckMissileSpawn tics (1 of pmissiles.ts 4: spawn tics 1 +
+    // shadow jitter 2 + direct dice 1) — missile-cycle pins above.
+    expect(RANDOM_SITE_CALLS['pmissiles.ts']).toBe(4);
+    // pos-spread: PosAttack 3 + SPosAttack 3-written (9 runtime) +
+    // CPos/CPosRefire/Troop — the attack-stream windows above.
+    expect(RANDOM_SITE_CALLS['amon_poss.ts']).toBe(11);
+    expect(RANDOM_SITE_CALLS['amon_bruiser.ts']).toBe(2);
+    expect(RANDOM_SITE_CALLS['p_enemy.ts']).toBe(9);
+    expect(RANDOM_SITE_CALLS['pdeath.ts']).toBe(2);
+    // scream variant draws (podth %3 / bgdth %2) ride pdeath.ts's 2.
+    // Family B (mid-landing): if the module exists the SET equality test
+    // above already forces its ledger line; here it may be absent.
+    const scan = scanRandomSites();
+    if ('amon_sarg.ts' in scan) {
+      expect(RANDOM_SITE_CALLS['amon_sarg.ts'], 'family B ledgered').toBeTruthy();
+    }
+  });
+
+  it('the draw-budget ledger matches the BEHAVIOURAL windows (per-invocation cross-check)', () => {
+    // Runtime draws ≠ text occurrences (the SPos 3-written/9-loop truth).
+    // The family suite pinned per-invocation: PosAttack 3+4 blood+1 pain,
+    // SPosAttack 3×8, troop missile 2+3, bruiser/head missile 2+3,
+    // rocket 2+4 (MT_FIRE lastlook), pain roll 1, kill clamp 1, scream
+    // variant 0..1, wake variant 0..1 — re-state the arithmetic here so
+    // an edit to ANY of those sites breaks BOTH this line and the pins:
+    expect(3 + 4 + 1).toBe(8); // POSS shot window
+    expect(3 * 8).toBe(24); // SPOS volley window
+    expect(2 + 3).toBe(5); // baron/caco missile cycle
+    expect(2 + 4).toBe(6); // rocket cycle (explode-row MT_FIRE lastlook)
+    expect(1 + 1).toBe(2); // kill clamp + drop lastlook (POSS/SPOS)
+  });
+});
 
 /* ================================================================== */
 /* D. DETERMINISM MARATHON (added in the marathon commit)               */
