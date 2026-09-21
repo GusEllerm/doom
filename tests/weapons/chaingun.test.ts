@@ -27,6 +27,11 @@ import { boot, dmgTo, of, sfxCount, trackPsprites } from './harness';
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const RAISE_DONE = 14;
+/** M8-05: one extra draw per HIT — the victim's painChance roll
+ * (p_inter.c:894). The kick is irrelevant here (hitscan at 64 units keeps
+ * every shot on target); pinned in p_inter_damage.test.ts. */
+const DAMAGE_DRAWS = 1;
+
 const SWITCH_READY = 44; // pistol→chaingun (weaponKey '4')
 
 function range() {
@@ -55,12 +60,15 @@ describe('chaingun — 4-tic cadence at a zombie 64 units away', () => {
     // BOTH cascade-entry shots of the first cycle (CHAIN1+CHAIN2) stay
     // accurate — [d,bz,bz,ll,t]=5 each — and every A_ReFire-dispatched
     // shot is [d,j,j,bz,bz,ll,t]=7 (first cycle's CHAIN3 cascade onward).
+    // M8-05: every hit ALSO costs the victim's painChance roll
+    // (p_inter.c:894), so the fire window of shot i is shifted by i draws.
     const offs = [0, 5, 10, 17, 24];
     for (let i = 0; i < shots.length; i++) {
-      const derived = 5 * (RNDTABLE[(spawnPrnd + offs[i]! + 1) & 0xff]! % 3 + 1);
+      const derived =
+        5 * (RNDTABLE[(spawnPrnd + offs[i]! + i * DAMAGE_DRAWS + 1) & 0xff]! % 3 + 1);
       expect(shots[i]!.amount).toBe(derived);
     }
-    expect(s.rng.prndindex).toBe(spawnPrnd + 5 + 5 + 7 * 3);
+    expect(s.rng.prndindex).toBe(spawnPrnd + 5 + 5 + 7 * 3 + shots.length * DAMAGE_DRAWS);
     expect(p.ammo[AM_CLIP]).toBe(50 - 5);
     expect(sfxCount(s, SFX_PISTOL)).toBe(5);
     // Weapon-state cycle through the 0-tic CHAIN3 cascade (never observed
@@ -87,8 +95,10 @@ describe('chaingun — 4-tic cadence at a zombie 64 units away', () => {
     for (let i = 1; i < shots.length; i++) {
       expect(shots[i]!.tic - shots[i - 1]!.tic).toBe(4);
     }
-    // Shots: n = 2 accurate + (n−2) refires.
-    expect(s.rng.prndindex).toBe(spawnPrnd + 10 + 7 * (shots.length - 2));
+    // Shots: n = 2 accurate + (n−2) refires, +1 damage-path draw per hit.
+    expect(s.rng.prndindex).toBe(
+      (spawnPrnd + 10 + 7 * (shots.length - 2) + shots.length * DAMAGE_DRAWS) & 0xff
+    );
     expect(p.ammo[AM_CLIP]).toBe(50 - shots.length);
   });
 
