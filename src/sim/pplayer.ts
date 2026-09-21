@@ -90,6 +90,12 @@ import {
   type PsprPlayer
 } from './p_pspr';
 import { pCalcHeight, puserGlobals, puserHooks } from './puser';
+import {
+  installDamageBridge,
+  pDamageMobj as pDamageMobjNonPlayer,
+  pKillMobj as pKillMobjShared,
+  pSetDeathStateClamped
+} from './p_inter_damage';
 import { MAXAMMO } from './p_ammo'; // M7-05: g_game.c:830 maxammo table
 import { initPlayerInventory, type PickupPlayer } from './p_inter_inventory';
 import { NUMAMMO } from '../wad/info/weaponinfo';
@@ -195,6 +201,12 @@ export function bindPplayerLevel(state: GameState): void {
   for (const p of state.players) attachPsprFields(p);
   bindPsprWorld({ rng: state.rng, leveltime: state.leveltime });
   state.mobjs.playerSpawnFn = playerSpawnHook;
+  // M8-05: the damageBridge body ships in p_inter_damage.ts; attaching it
+  // to THIS level's hook slots is what turns the seven damageSlot sites
+  // live (the slot→Mobj resolver itself is registered by
+  // p_mobj.createMobjRuntime, M8-02). Idempotent per boot; gInitGame
+  // builds fresh slots, so a re-bind can never double-dispatch.
+  installDamageBridge(state.hooks);
 }
 
 /** pSpawnMapThing's `if (!deathmatch) P_SpawnPlayer (mthing);` (M7-03
@@ -413,18 +425,27 @@ puserHooks.deathThink = pDeathThink;
 /* ------------------------------------------------------------------ */
 
 /**
- * `P_KillMobj(source, target)` — shared body, PLAYER branch complete
- * (monster pain/death STATE selection is inert for the generic path:
- * non-player targets run the same flag/health bookkeeping, count
- * `killNonPlayer`, and the death-state tables arrive fully with
- * M7-07/M8; the item-drop switch below IS verbatim). Source order kept
- * INCLUDING the `tics -= P_Random()&3` clamp AFTER the deathstate set.
+ * `P_KillMobj(source, target)` — the PLAYER branch stays here (M7-03);
+ * M8-05 swapped the NON-player branch for the shared body
+ * `p_inter_damage.pKillMobj` (real death/xdeath STATE selection, the
+ * `tics -= P_Random()&3` clamp and the MF_DROPPED drop table — the old
+ * "count and bookkeep, die invisibly" shell is gone; `killNonPlayer`
+ * stays as the §0.13 must-be-zero-after guard, counted HERE before the
+ * delegation). The player-target gib/tics selection runs through the
+ * shared `pSetDeathStateClamped` (single source of the draw, ledger
+ * note: the clamp's pRandom counts in p_inter_damage.ts); the drop
+ * switch below is verbatim `default: return` for MT_PLAYER — players
+ * drop via P_DropWeapon, still a counted seam (D-t2).
  */
 export function pKillMobjPlayer(source: Mobj | null, target: Mobj): void {
   const rt = target.rt;
   const tp = target.playerRef as Player | undefined;
   if (tp) pplayerHookCounts.killPlayer++;
   else pplayerHookCounts.killNonPlayer++;
+  if (!tp) {
+    pKillMobjShared(source, target); // M8-05: the real monster body
+    return;
+  }
 
   target.flags = (target.flags & ~(MF.MF_SHOOTABLE | MF.MF_FLOAT | MF.MF_SKULLFLY)) | 0;
   if (target.type !== MT.MT_SKULL) target.flags = (target.flags & ~MF.MF_NOGRAVITY) | 0;
@@ -440,9 +461,6 @@ export function pKillMobjPlayer(source: Mobj | null, target: Mobj): void {
       const victimIdx = rt.state.players.indexOf(tp);
       if (victimIdx >= 0) sp.frags[victimIdx] = (sp.frags[victimIdx]! + 1) | 0;
     }
-  } else if (!rt.netgame && (target.flags & MF.MF_COUNTKILL) !== 0) {
-    // count all monster deaths, even those caused by other monsters
-    rt.state.players[0]!.killcount = (rt.state.players[0]!.killcount + 1) | 0;
   }
 
   if (tp) {
@@ -460,36 +478,12 @@ export function pKillMobjPlayer(source: Mobj | null, target: Mobj): void {
     // pplayerHookCounts.amStop will count when it exists.
   }
 
-  // DIE vs X DIE: health < -spawnhealth AND an xdeathstate exists.
-  const info = mobjinfo[target.type]!;
-  if (target.health < -info.spawnHealth && info.xdeathState !== S.S_NULL) {
-    pSetMobjState(target, info.xdeathState);
-  } else {
-    pSetMobjState(target, info.deathState);
-  }
-  target.tics = (target.tics - (pRandom(rt.state.rng) & 3)) | 0;
-  if (target.tics < 1) target.tics = 1;
-
-  //	Drop stuff. — the death frame's item spawn (verbatim switch;
-  // players hit `default: return` — no player weapon drop here, that is
-  // P_DropWeapon's, M7-04).
-  let item = -1;
-  switch (target.type) {
-    case MT.MT_WOLFSS:
-    case MT.MT_POSSESSED:
-      item = MT.MT_CLIP;
-      break;
-    case MT.MT_SHOTGUY:
-      item = MT.MT_SHOTGUN;
-      break;
-    case MT.MT_CHAINGUY:
-      item = MT.MT_CHAINGUN;
-      break;
-    default:
-      return;
-  }
-  const mo = pSpawnMobj(rt, target.x, target.y, ONFLOORZ, item);
-  mo.flags = (mo.flags | MF.MF_DROPPED) | 0; // special versions of items
+  // DIE vs X DIE + the `tics -= P_Random()&3` clamp — the shared
+  // p_inter_damage helper (M8-05; identical draw to the former inline
+  // block: one P_Random AFTER the state set). The drop table moved to
+  // pKillMobjShared — MT_PLAYER hits vanilla's `default: return` anyway
+  // (players drop through P_DropWeapon, D-t2).
+  pSetDeathStateClamped(target);
 }
 
 /** Scripted player death (acceptance: "scripted death via direct
@@ -523,6 +517,12 @@ export function pPlayerDamage(
   source: Mobj | null,
   damage: number
 ): void {
+  if (target.playerRef === undefined) {
+    // M8-05: non-player target — the shared p_inter.c body, WITH the
+    // exact inflictor (this entry carries it; the bridge cannot — D-m2).
+    pDamageMobjNonPlayer(target, inflictor, source, damage);
+    return;
+  }
   const rt = target.rt;
   const rng = rt.state.rng;
   if ((target.flags & MF.MF_SHOOTABLE) === 0) return; // shouldn't happen...
@@ -533,7 +533,7 @@ export function pPlayerDamage(
   }
 
   const player = target.playerRef as Player | undefined;
-  if (!player) throw new Error('pPlayerDamage: target is not a player mobj (M7-07 owns monsters)');
+  if (!player) return; // non-player handled by the delegation above
   const pp = attachPsprFields(player);
   if (rt.state.skill === 0 /* sk_baby */) damage = (damage >> 1) | 0;
 
