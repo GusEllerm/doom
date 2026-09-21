@@ -29,6 +29,9 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { FRACUNIT } from '../../src/core/constants';
@@ -38,7 +41,7 @@ import { WadFile } from '../../src/wad/wadfile';
 import { MF, MT, mobjinfo } from '../../src/wad/info/mobjinfo';
 import { S } from '../../src/wad/info/states';
 
-import { gInitGame } from '../../src/sim/game';
+import { gInitGame, gTicker } from '../../src/sim/game';
 import { buildMapFromData } from '../../src/sim/map';
 import {
   asMobj,
@@ -76,7 +79,9 @@ import { pSpawnMissile } from '../../src/sim/pmissiles';
 import { registerDeathActions } from '../../src/sim/pdeath';
 import { isActionRegistered, ACT, unimplementedActions } from '../../src/sim/a_actions';
 import { installPsprSfxSlot, SFX_ID } from '../../src/sim/psound_stub';
+import { attachPsprFields, WP_CHAINGUN, AM_CLIP } from '../../src/sim/p_pspr';
 import { RANDOM_SITE_CALLS, RANDOM_SITE_SCAN_SKIP, scanRandomSites } from '../../src/sim/random-sites';
+import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
 
 /* ------------------------------------------------------------------ */
 /* Family B (M8-08, MAY BE MID-LANDING): OPTIONAL dynamic import        */
@@ -863,5 +868,73 @@ describe('M8-11 random-sites ledger reconciliation (global manifest, registryMan
 });
 
 /* ================================================================== */
-/* D. DETERMINISM MARATHON (added in the marathon commit)               */
+/* D. DETERMINISM MARATHON — E1M1 warp + scripted combat                */
 /* ================================================================== */
+
+const WAD_PATH = fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url));
+const hasWad = existsSync(WAD_PATH);
+
+describe.skipIf(!hasWad)('M8-11 determinism marathon: E1M1 warp, chaingun, 300 scripted tics', () => {
+  /** Warp E1M1 and stage the scripted combat: chaingun GIVEN (weaponKey
+   * 3 at tic 5, HOLD from tic 20 — the M7-10 switch/raise cadence),
+   * reinforcements spawned at the start room (POSS close + TROO at
+   * fireball range — the map roster alone yields no 300-tic contact,
+   * FINDINGS), and a 400-HP tank so death/rebirth cannot mask the
+   * retaliation stats. NO game.ts live wiring — pure harness seams. */
+  function marathonState(): GameState {
+    const bytes = readFileSync(WAD_PATH);
+    const buf = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    const s = gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'E1M1')));
+    installPsprSfxSlot(s.hooks, () => s.leveltime);
+    installPlayerAwareBridge(s); // D-m1 test bridge (monster→player hits land)
+    const p = attachPsprFields(s.players[0]!);
+    p.weaponowned[WP_CHAINGUN] = 1;
+    p.ammo[AM_CLIP] = 20; // ~15 shots, then the dry-gun ladder (M7-10)
+    const mo = playerMo(s);
+    mo.health = s.players[0]!.health = 400;
+    pSpawnMobj(s.mobjs, fx(-256), fx(256), ONFLOORZ, MT.MT_POSSESSED);
+    pSpawnMobj(s.mobjs, fx(-256), fx(352), ONFLOORZ, MT.MT_POSSESSED);
+    pSpawnMobj(s.mobjs, fx(-160), fx(192), ONFLOORZ, MT.MT_POSSESSED);
+    pSpawnMobj(s.mobjs, fx(64), fx(256), ONFLOORZ, MT.MT_TROOP);
+    pSpawnMobj(s.mobjs, fx(64), fx(352), ONFLOORZ, MT.MT_TROOP);
+    return s;
+  }
+
+  function marathonRun(s: GameState): void {
+    for (let t = 0; t < 300; t++) {
+      const inp: GameInput = {
+        ...emptyInput(),
+        weaponKey: t === 5 ? 3 : undefined,
+        attack: t >= 20,
+      };
+      gTicker(s, inp);
+    }
+  }
+
+  it('double run identical: hash, prndindex, killcount sane', () => {
+    // ONE live world per process (the p_shoot/pmap `bound` singletons):
+    // build→run pairs MUST interleave, never build-both-then-run-both
+    // (the M2-era loop tests dodge the same rule; FINDINGS note).
+    const a = marathonState();
+    marathonRun(a);
+    const b = marathonState();
+    marathonRun(b);
+
+    expect(hashState(b)).toBe(hashState(a));
+    expect(b.rng.prndindex).toBe(a.rng.prndindex);
+    expect(b.leveltime).toBe(a.leveltime);
+
+    // killcount SANE: the 3 close zombies fall to the chain; the two
+    // imps fight back from fireball range.
+    expect(a.players[0]!.killcount).toBeGreaterThan(0);
+    expect(b.players[0]!.killcount).toBe(a.players[0]!.killcount);
+    // RETALIATION landed (monsters hit the tank — the M8 plan's "mixed AI
+    // + player fire" pin) yet the tank survived (no reborn noise):
+    expect(a.players[0]!.health).toBeLessThan(400);
+    expect(a.players[0]!.health).toBeGreaterThan(0);
+    expect(a.leveltime).toBe(300);
+  });
+});
