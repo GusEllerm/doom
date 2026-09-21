@@ -167,5 +167,5 @@ Future tasks will be added as architects decompose milestones.
 | M9-07 | Intermission WI | M9 | M9-01/03 | done (merged, verified) |
 | M9-06 | HU messages | M9 | M9-01/03 | done (merged, verified) |
 | M9-08 | G_DoReborn faithful (D017 retired) | M9 | M9-03 | done (merged — D017 RETIRED) |
-| M9-09 | Renderer: viewport+composition | M9 | 04-07 | dispatching |
-| M9-10 | Title + finale | M9 | 04 | dispatching |
+| M9-09 | Renderer: viewport+composition | M9 | 04-07 | salvage re-run (agent 4bf94c38; stub-only survived 502 outage) |
+| M9-10 | Title + finale | M9 | 04 | salvage finish (agent afdb8eea; 906-line impl survived 502) |
