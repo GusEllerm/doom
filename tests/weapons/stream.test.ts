@@ -111,13 +111,22 @@ describe('shared-stream determinism — fire+pickup+door+flicker+teleport', () =
   it('order sensitivity: same event mix, fire-metronome phase shifted ⇒ new hash', () => {
     // Shifting the FIRE press (16→22) re-phases the shot draws against
     // the flicker metronome's fixed-tic draws. Both runs still perform
-    // ALL five events (walk/door/teleport/pickup/fire — the walk
-    // re-pins the player against the zombie at the identical spot, so
-    // only the DRAW-ORDER residue differs): same script ⇒ same hash
-    // (test above), phase-shifted order ⇒ different hash.
+    // ALL five events (walk/door/teleport/pickup/fire): same script ⇒ same
+    // hash (test above), phase-shifted order ⇒ different hash.
+    //
+    // M8-05 note: the zombie used to be a fixed obstacle the player wedged
+    // against at a bit-identical y. Now every hit kicks it (p_inter.c:826-857
+    // thrust — the port's only "push"; 1.10 has no P_PushMobs), it dies a
+    // volley earlier or later depending on the phase, and the corpse stops
+    // blocking MF_SOLID sooner, so the player's final y carries a sub-unit
+    // residue (0.06 units measured). The test's actual claim is about the
+    // DRAW ORDER, so the mix is witnessed instead of the coordinate.
     const a = doubleRunHash(streamArenaSpec(), 500, script(100, 16));
     const b = doubleRunHash(streamArenaSpec(), 500, script(100, 22));
-    expect(b.b.players[0]!.mo.y).toBe(a.a.players[0]!.mo.y); // pinned at zombie
+    expect(Math.abs(b.b.players[0]!.mo.y - a.a.players[0]!.mo.y)).toBeLessThan(FU);
+    for (const [tag, s] of [['a', a.a], ['b', b.b]] as const) {
+      expect(s.hooks.damage.count, tag).toBeGreaterThan(3); // FIRE happened
+    }
     expect(b.hashA).toBe(b.hashB); // …and each variant is self-deterministic
     expect(a.hashA).not.toBe(b.hashA);
   });

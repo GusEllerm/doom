@@ -201,7 +201,7 @@ describe('damage bridge — record first, then dispatch', () => {
     expect(p.health).toBe(100);
     expect(mo.state).toBe(mobjinfo[MT.MT_PLAYER]!.spawnState);
     // The body itself short-circuits on playerRef, whatever the payload:
-    damageBridgeBody(mo as never, 50, undefined, s.leveltime);
+    damageBridgeBody(mo as never, 50, undefined);
     expect(mo.health).toBe(health);
   });
 

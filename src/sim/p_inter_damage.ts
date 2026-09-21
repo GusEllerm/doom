@@ -328,11 +328,13 @@ function promoteMoverSlot(m: Mobj): void {
  * by M8-02; null source -> null inflictor -> no thrust, exact for
  * crushers/hazard floors).
  */
+// The 4th `tic` argument of the frozen DamageBridgeFn signature is not
+// needed by the body (the L2 log already stamped it) — omitting the
+// parameter keeps it assignable to DamageBridgeFn.
 export const damageBridgeBody = (
   target: MobjRef,
   amount: number,
-  source: MobjRef | undefined,
-  _tic: number
+  source: MobjRef | undefined
 ): void => {
   const t = target as Mobj;
   if (t.playerRef !== undefined) return; // D-m1: player sites stay record-only
