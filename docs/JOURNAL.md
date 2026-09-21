@@ -253,3 +253,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M9-07 merged. TRUTH: intermission canvas 320x240 (WI_STARTY=168 proves it); counters animate at 2/5 tics by count threshold (NOT uniform 11); secret exit -> E1M9 unconditional; par NEVER displayed in 1.10.
 - M9-07 merged; M9-06 + M9-08 (D017 retirement) dispatched. Running: statusbar, HU, reborn.
 - M9-06 merged. TRUTH: HU queue drops NEWEST (not oldest); 'A secret is hidden!' lives 6*35=210 tics; pickup strings 37 from d_englsh.h.
+- M9-08 merged: D017 RETIRED — death = faithful full level reload (leveltime 0, monsters/items/secret flags reborn, weapons 0-6 kept 7-9 cleared). Zero golden re-bless (no golden dies on main path). D017 marked retired in DECISIONS. HU census line-drift fix folded.
