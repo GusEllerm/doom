@@ -66,3 +66,15 @@ GitHub origin (GusEllerm/doom) present; user authorized pushes. main pushed & tr
 ## D017 — In-place player reborn (deviation, revisited at M9)
 - gTicker reborn pass (g_game.c:629-640) implemented M7-11c WITHOUT vanilla's G_DoReborn level restart: dying reborns the player at the 1-player start while the WORLD persists (picked-up items stay gone, slaughtered monsters stay dead). Vanilla restarts the level via P_SetupLevel (everything respawns).
 - Accepted for M7 (death/respawn loop otherwise exact: states, latch, G_PlayerReborn clears, position/angle encoding). M9 (level transitions + gameaction plumbing) implements the faithful full-restart and RETIRES this deviation; e2e death test asserts respawn, and a world-persistence pin marks the deviated observable.
+
+## D018 — Monster motion strips compose the draw list test-side (2026-10, M8-13)
+The production renderer has no live-mobj sprite pass (rthings KIND_MONSTER was
+always skipped; 'excluded until M8' never landed in M8). Rather than rewrite
+src/render mid-exit, the m8-* mechanics strips build the StaticThings list
+per capture frame from the LIVE mobjs (position, state sprite/frame, z) using
+only exported src primitives, with synthetic labelled sprite plates (family
+tone + state-letter bitmap) standing in for art. The captions carry the sim
+truth (x/y/HP/state/PRNG deltas) exactly like the M6 SoA captions; meta.json
+records the substitution. Accepted as interim evidence (D016 review notes
+"plates, not pixels"); the production pass is an M9 render task and the strip
+generator flips to it with a re-bless.

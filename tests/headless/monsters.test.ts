@@ -343,8 +343,12 @@ describe('M8-11 attack streams: pos/ssarg spread draws pinned to the stream', ()
     expect(hp0 - v.health).toBe(((RNDTABLE[(i0 + 1) & 0xff]! % 8) + 1) * 3);
     expect(draws(s, i0)).toBe(2);
 
-    // MISSILE ("MT_FIRE" shorthand — the 1.10 truth is MT_TROOPSHOT, the
-    // MT_FIRE reading is disproved in amon_poss.ts:180). Spawn side 2
+    // MISSILE — canonical missile type is MT_TROOPSHOT (mobjinfo.ts row
+    // index 31: doomednum −1, spawnstate S_TBALL1=97, damage 3; the plan
+    // "TROOPBALL/MT_FIRE" shorthand is disproved in amon_poss.ts:22-35 —
+    // MT_FIRE (enum 4) is the explosion FLAME FX the rocket/BFG explode
+    // rows spawn, never an imp missile; doomednum 58 belongs to
+    // MT_SHADOWS, not to any fireball). Spawn side 2
     // (lastlook + CheckMissileSpawn lift), impact 3 (direct dice,
     // explode-tics lift, pain roll) ⇒ 5 total, ceiling ≤ 10.
     const s2 = bootArena();

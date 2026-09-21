@@ -7,8 +7,8 @@
     "m6-crusher": {
       "kind": "mechanics",
       "script": "FIXMAP crusher (corridor | antechamber | tagged hall c128) -> warp (48,128,0deg) -> walk fwd <=45 tics, cross W1 fastCrushAndRaise trigger @x256 -> STOP in antechamber, hall ceiling crushes down (8/tic) and climbs (2/tic) in view (SC caption) -> 8 frames t=0..105",
-      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
-      "updatedAt": "2026-09-20",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
       "png": "m6-crusher.png",
       "width": 1310,
       "height": 442,
@@ -107,14 +107,24 @@
           "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
           "at": "2026-09-20",
           "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e"
         }
       ]
     },
     "m6-lift-through": {
       "kind": "mechanics",
       "script": "FIXMAP lift (corridor | tagged plat f0, sump f-24) -> warp (48,128,0deg) -> walk fwd until x≥520 (cross W1 plat trigger @x512 ~tic 63), momentum-stop ON the shaft -> floor -24 under the rider, PLATWAIT 105, raise -> player RIDES the special (SF/Z captions) -> 8 frames t=0/30/60/80/120/160/190/215",
-      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
-      "updatedAt": "2026-09-20",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
       "png": "m6-lift-through.png",
       "width": 1310,
       "height": 442,
@@ -213,14 +223,24 @@
           "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
           "at": "2026-09-20",
           "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
         }
       ]
     },
     "m6-light-paint": {
       "kind": "mechanics",
       "script": "FIXMAP light (corridor | tagged room light 40) -> warp (48,128,0deg) -> walk fwd <=105 tics, cross W1 lightOn(255) trigger @x512 (~tic 66) -> tagged light SoA 40→255, room ahead repaints at full brightness (SL caption) -> 8 frames t=0..105",
-      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
-      "updatedAt": "2026-09-20",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
       "png": "m6-light-paint.png",
       "width": 1310,
       "height": 442,
@@ -319,14 +339,24 @@
           "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
           "at": "2026-09-20",
           "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
         }
       ]
     },
     "m6-door-through": {
       "kind": "mechanics",
       "script": "FIXMAP door (corridor | trigger edge x448 | tagged slab c0 | hall beyond, ring c128) -> warp (48,128,0deg) -> walk fwd, cross W1 doorRaise trigger @x448 (~tic 55, EV_DoDoor normal LIVE) -> slab SoA 0→124 @2/tic (topheight 128−4), player blocked at the closed slab then walks THROUGH (>56 headroom ~tic 84) -> 8 frames t=0..150 (VDOORWAIT 150 keeps it open)",
-      "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
-      "updatedAt": "2026-09-20",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
       "png": "m6-door-through.png",
       "width": 1310,
       "height": 442,
@@ -420,6 +450,334 @@
           "reason": "M6-05b door bodies live: +m6-door-through (W1 4 slab 0-124 @2/tic, player passes through); m6-crusher frames shift because PIT_CheckLine/P_LineOpening now read the LIVE sector heights (vanilla single-sectors truth; was load-time static, so a player could walk into load-closed sectors)",
           "at": "2026-09-20",
           "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e"
+        }
+      ]
+    },
+    "m8-chase-corner": {
+      "kind": "mechanics",
+      "script": "FIXMAP pillar (896x384 ring | solid c0 pillar 128x128 @448,128) -> warp (256,192,0deg) -> spawn TROO (768,192) + P_NoiseAlert (A_Look wake tic 9) -> imp closes, P_NewChaseDir random-search draws (D-stat) corner it around the pillar (plates = synthetic state-letter sprites; captions x/y/HP/state) -> 8 frames t=0..160",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
+      "png": "m8-chase-corner.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        20,
+        40,
+        60,
+        85,
+        110,
+        135,
+        160
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 20,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 40,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 60,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 85,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 110,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 135,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "d5ae29de6fa2d4357cb130863baea5659766a418cdbd583e9cf24fb7b3f09afb"
+        },
+        {
+          "tic": 160,
+          "xU": 16777216,
+          "yU": 12582912,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "02e88d185f7ae94a4d9714f340ab10e8ba04ae8ec4868e49b0b97a665d27f84c"
+        }
+      ],
+      "indexSha256": "2b0ecb3fc341233052673950f893d6784899e958c5262b4a4e2c798fd9997bb7",
+      "history": [
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "2a310589632299ae5ad6eadaef2fb31b143929af02635390134ac5bba75f07d2"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "2b0ecb3fc341233052673950f893d6784899e958c5262b4a4e2c798fd9997bb7"
+        }
+      ]
+    },
+    "m8-infight": {
+      "kind": "mechanics",
+      "script": "FIXMAP corridor 1024x256 -> warp (64,128,0deg) -> SPOS B at (448,128), TROO A at (768,128), both woken by one P_NoiseAlert (target player) -> FINDING: the plan scripted imp-vs-imp, but PIT_CheckThing (p_map.c:301-315, pmissiles.ts missileThingCheck) explodes same-species missiles with ZERO damage — the species pair is the minimal honest infight rig -> A fireballs catch B (X@ captions) -> p_inter.c:911: B.target := A, threshold := 100 -> B shotguns back THROUGH A (hitscan has no species rule) -> retarget + damage exchange -> 8 frames t=0..420",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
+      "png": "m8-infight.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        60,
+        120,
+        180,
+        240,
+        300,
+        360,
+        420
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 12582912,
+          "frameSha": "48d608a62788cd7bda44d6d4ccb2677b1d67db4092df37e4e028912f3b698542"
+        },
+        {
+          "tic": 60,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "e486531e867ca24b22cf5a725c9b083da90d01dabcf0634091c99cf670bb718e"
+        },
+        {
+          "tic": 120,
+          "xU": 2134063,
+          "yU": 8389248,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "ac44c25971de5dd513e863baa01c31dbca78f899fcfe7a7db05ac8cb92147a74"
+        },
+        {
+          "tic": 180,
+          "xU": 1050702,
+          "yU": 8389662,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "79b50b949f4a4faf1c2d6871f5f1dae93248988949b2b61e0424a89547e741e9"
+        },
+        {
+          "tic": 240,
+          "xU": 1050702,
+          "yU": 8389762,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "9e67dec0c5ee694afd4a3660a97a60aa4f6c24c0efa9813e9d5c5080235848d1"
+        },
+        {
+          "tic": 300,
+          "xU": 1050702,
+          "yU": 8389826,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "805ccaa487786258d0f3f8fce0da4a9a6e4bab65f52b0e7e1d0df85ee679769a"
+        },
+        {
+          "tic": 360,
+          "xU": 1049032,
+          "yU": 8294117,
+          "zU": 0,
+          "viewzU": 393216,
+          "statU": 12582912,
+          "frameSha": "9c077dc4aba4e6cdb697b359f98e9ee35757cc5817794e7eb2cbf446569bf388"
+        },
+        {
+          "tic": 420,
+          "xU": 1049032,
+          "yU": 8294117,
+          "zU": 0,
+          "viewzU": 393216,
+          "statU": 12582912,
+          "frameSha": "5f73318e3bd7e5cea813f71204656474bd09cba6275bd898e9fc5b70d5ad30f8"
+        }
+      ],
+      "indexSha256": "b12136343b31c8e02892e6e12057e724591ecca67aed9a372c8254410ad61c35",
+      "history": [
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "850da66d7ba2bf11760aea6c78aa8e6f06ee6dbb5b6426e0ecc47270ed314312"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "b12136343b31c8e02892e6e12057e724591ecca67aed9a372c8254410ad61c35"
+        }
+      ]
+    },
+    "m8-pain-death": {
+      "kind": "mechanics",
+      "script": "FIXMAP room 512x256 -> warp (64,128,0deg) -> POSS at (300,128) -> tic 40 P_DamageMobj 8 (prndindex pinned < painChance 200: A_Pain states 187/188) -> tic 70 P_DamageMobj 45 (health -33 < -spawnhealth 20 => XDEATH chain 194.., A_XScream/A_Fall, gib-tics draw) -> plates + HP/state captions -> 8 frames t=0..110",
+      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+      "updatedAt": "2026-09-21",
+      "png": "m8-pain-death.png",
+      "width": 1310,
+      "height": 442,
+      "frameTics": [
+        0,
+        30,
+        41,
+        44,
+        69,
+        72,
+        78,
+        110
+      ],
+      "frames": [
+        {
+          "tic": 0,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 0,
+          "statU": 12582912,
+          "frameSha": "ccd55a1168e788c8ebb43abc39b06f0e04369499793f4201cfe53465cb944fec"
+        },
+        {
+          "tic": 30,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "03d9dd255821ef2973459d48f74b539708116bf075165fc1dee5ac6a049f82c0"
+        },
+        {
+          "tic": 41,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "456c2def9da9cf31de1435186ebfab1278a54e4ffa1c6f2a94f4e2cb6b339ac6"
+        },
+        {
+          "tic": 44,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "456c2def9da9cf31de1435186ebfab1278a54e4ffa1c6f2a94f4e2cb6b339ac6"
+        },
+        {
+          "tic": 69,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "03d9dd255821ef2973459d48f74b539708116bf075165fc1dee5ac6a049f82c0"
+        },
+        {
+          "tic": 72,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "327192285fb79f6068fab02e4bd7b3d857318ccf13d9f4aefa5d57133f58e5e7"
+        },
+        {
+          "tic": 78,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "5960aa12d8cb7c8195dbaf255eaf30ef030ee6f702aa38e1230e29076ccf8b13"
+        },
+        {
+          "tic": 110,
+          "xU": 4194304,
+          "yU": 8388608,
+          "zU": 0,
+          "viewzU": 2686976,
+          "statU": 12582912,
+          "frameSha": "f3e36e8abd4aaeefe050782e2ea63e37542afb375e1375ab564d31bebcb9ee32"
+        }
+      ],
+      "indexSha256": "a3bb61136359c2fbdf95d5ea6a7a5eef2040f9654ace41857afb84476440eec1",
+      "history": [
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "be88b4cbb37404ab55e5d33ac55dee42a82cbd25b37aa741aa4cd2c4641338dd"
+        },
+        {
+          "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
+          "at": "2026-09-21",
+          "indexSha256": "a3bb61136359c2fbdf95d5ea6a7a5eef2040f9654ace41857afb84476440eec1"
         }
       ]
     }

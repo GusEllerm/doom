@@ -1,28 +1,30 @@
 # STATUS
 
 ## Current phase
-Phase 3, M1 in progress. All 12 research notes committed; ARCHITECTURE.md + M1/M2 plans + roadmap accepted (D008).
+Phase 3, M8 COMPLETE (monsters + DEHACKED fullbright). Merged: T00, R01–R12,
+M1–M8 all tasks (plans + ledgers in docs/design, docs/TASKS.md).
 
-## Merged
-- T00 scaffold (main green: check/e2e/build/fetch-freedoom)
-- R01–R12 research notes (docs/research/)
-- M1-01 wad contract types (`src/wad/types.ts`, WadFile skeleton) — merged 89bdb7b
-
-## In flight (branches in worktrees)
-| Task | Agent | Note |
-|---|---|---|
-| A-INT1 eslint zones | 3f60201e | merge after rebase on main |
-| A-FX1 core/fixed + oracle | 8b7724cf | self-contained; merge check |
-| M1-02 WadFile impl | dad45982 | wave 1 |
-| M1-03 PLAYPAL/COLORMAP | a5389860 | wave 1 |
-| M1-04 patch decoder | def8e6eb | wave 1 |
-| M1-05 fixture WAD builder | cb2f3703 | wave 1 |
+## M8 exit state (M8-13)
+- Gates: `npm run check` 2476 green, `npm run e2e` 27 green, goldens +
+  motion + mechanics sets drift-free (`--check`).
+- L5 mechanics strips: +m8-chase-corner / m8-pain-death / m8-infight
+  (tests/render/goldens/mechanics, meta reason 'M8-13 L5'; human-eyes
+  review per D016 — plates are synthetic, captions carry the sim truth).
+- NEW pacing envelope suite: tests/headless/m8-pacing.test.ts — derived
+  floor (2 POSS @512: death ≥137), derived ceiling (6 SARG melee: ≤146),
+  skill monotonicity (melee rig exact-equal 1–4, baby strictly later),
+  reaction floor (wake+28/+38), every bound cited, measurements blessed.
+- NAMING: MT_TROOPSHOT is the canonical imp-fireball name (code + tests +
+  table agree); the old journal claim 'imp missile = MT_FIRE' was WRONG —
+  MT_FIRE = explosion flame FX (mobjinfo row 4); doomednum 58 = MT_SHADOWS.
+- FINDINGS: production renderer draws NO monsters (KIND_MONSTER 'excluded
+  until M8') → strips compose the thing list test-side (D018); same-species
+  missiles explode WITHOUT damage (pmissiles.ts:205-215) — infight strips
+  need a species pair; POSS/SPOS have no meleestate (mobjinfo meleeState 0).
 
 ## Next actions
-1. As each lands: review diff, merge --no-ff, run full check on main, update ledger.
-2. M1 wave 2 after M1-04/05 merge: M1-06 (flat+TEXTURE1), M1-07 (sprite loader).
-3. Then wave 3: M1-08 debug viewer; wave 4: M1-09 IWAD goldens + e2e; milestone verifier + L5 screenshot review.
-4. A-FX1 merge unblocks M2 wave 0 (M2-01 grid BSP splitter).
+1. M9 planning (game flow & UI) + the three carry-overs in ROADMAP 'M9 preview'.
+2. Orchestrator: merge task/M8-13-exit, re-run the full gate on main.
 
 ## Environment quirks
 - git via /Library/Developer/CommandLineTools/usr/bin/git until Xcode license accepted by user (D007).
