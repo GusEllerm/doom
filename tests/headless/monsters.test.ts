@@ -177,9 +177,9 @@ beforeEach(() => {
   registerFamilyAActions();
   registerFamilyCActions();
   registerDeathActions();
-  if (famB && typeof famB['registerFamilyBActions'] === 'function') {
-    (famB['registerFamilyBActions'] as () => void)();
-  }
+  // Family B self-registers at module import (amon_sarg.ts bottom);
+  // NO per-test re-register — registerFamilyBActions CHAINS the
+  // pmapHooks.skullFlyHit slot, so calling it per test grows the chain.
 });
 
 /* ------------------------------------------------------------------ */
@@ -215,8 +215,8 @@ const FAMILY_TABLE: readonly FamilySpec[] = [
   { name: 'POSS', mt: MT.MT_POSSESSED, wakeDraws: 1, painChance: 200, screamDraws: 1, screamIds: [SFX_ID.sfx_podth1, SFX_ID.sfx_podth1 + 2], gib: true, countKill: true, dropDraws: 1, hitBounds: [3, 15] },
   { name: 'SPOS', mt: MT.MT_SHOTGUY, wakeDraws: 1, painChance: 170, screamDraws: 1, screamIds: [SFX_ID.sfx_podth1, SFX_ID.sfx_podth1 + 2], gib: true, countKill: true, dropDraws: 1, hitBounds: [3, 15] },
   { name: 'TROO', mt: MT.MT_TROOP, wakeDraws: 1, painChance: 200, screamDraws: 1, screamIds: [SFX_ID.sfx_bgdth1, SFX_ID.sfx_bgdth1 + 1], gib: true, countKill: true, dropDraws: 0, hitBounds: [3, 24] },
-  { name: 'SARG', mt: MT.MT_SERGEANT, wakeDraws: 0, painChance: 180, screamDraws: 0, screamIds: [SFX_ID.sfx_sgtdth], gib: false, countKill: true, dropDraws: 0, famB: true, hitBounds: [5, 80] },
-  { name: 'SPECTRE', mt: MT.MT_SHADOWS, wakeDraws: 0, painChance: 180, screamDraws: 0, screamIds: [SFX_ID.sfx_sgtdth], gib: false, countKill: true, dropDraws: 0, famB: true, hitBounds: [5, 80] },
+  { name: 'SARG', mt: MT.MT_SERGEANT, wakeDraws: 0, painChance: 180, screamDraws: 0, screamIds: [SFX_ID.sfx_sgtdth], gib: false, countKill: true, dropDraws: 0, famB: true, hitBounds: [4, 40] },
+  { name: 'SPECTRE', mt: MT.MT_SHADOWS, wakeDraws: 0, painChance: 180, screamDraws: 0, screamIds: [SFX_ID.sfx_sgtdth], gib: false, countKill: true, dropDraws: 0, famB: true, hitBounds: [4, 40] },
   { name: 'SKULL', mt: MT.MT_SKULL, wakeDraws: 0, painChance: 256, screamDraws: 0, screamIds: [SFX_ID.sfx_firxpl], gib: false, countKill: false, dropDraws: 0, famB: true, hitBounds: [3, 24] },
   { name: 'BRUISER', mt: MT.MT_BRUISER, wakeDraws: 0, painChance: 50, screamDraws: 0, screamIds: [SFX_ID.sfx_brsdth], gib: false, countKill: true, dropDraws: 0, hitBounds: [8, 80] },
   { name: 'HEAD', mt: MT.MT_HEAD, wakeDraws: 0, painChance: 128, screamDraws: 0, screamIds: [SFX_ID.sfx_cacdth], gib: false, countKill: true, dropDraws: 0, hitBounds: [5, 60] },
@@ -473,24 +473,33 @@ describe('M8-11 attack streams: pos/ssarg spread draws pinned to the stream', ()
 });
 
 describe('M8-11 family B attack streams (skipped while amon_sarg is unlanded)', () => {
-  const itB = famBPresent ? it : it.skip;
+  const itB = famB !== null ? it : it.skip;
   itB(`probe: amon_sarg present=${String(famBPresent)}`, () => {
     expect(famBPresent).toBe(true);
   });
 
-  itB('SARG melee via the ATK rows: (R%8+1)*10 halved-gate, bounds 5..80', () => {
+  itB('SARG melee via the ATK rows: the ONE-draw (R%10+1)*4 = 4..40 (p_enemy.c:945)', () => {
     const s = bootArena();
     installPlayerAwareBridge(s);
     const d = pSpawnMobj(s.mobjs, fx(150), fx(384), ONFLOORZ, MT.MT_SERGEANT);
     const p = playerMo(s);
-    d.target = p;
+    pNoiseAlert(s.mobjs, p, p); // wake (a target alone never enters the chase rows)
     const hp0 = s.players[0]!.health;
-    const tics = runUntil(s, 60, () => s.players[0]!.health < hp0);
-    expect(tics).toBeLessThan(60);
-    expect(s.players[0]!.health).toBe(hp0 - (hp0 - s.players[0]!.health));
-    for (const e of dmgLog(s)) {
-      expect(e).toBeGreaterThanOrEqual(5); // (R%8+1)*10 halved ⇒ ≥ 5
-      expect(e).toBeLessThanOrEqual(80);
+    const hits: number[] = [];
+    let prev = hp0;
+    const tics = runUntil(s, 300, () => {
+      if (s.players[0]!.health < prev) hits.push(prev - s.players[0]!.health);
+      prev = s.players[0]!.health;
+      return hits.length > 0;
+    });
+    expect(tics, 'the demon closes and bites within 300 tics').toBeLessThan(300);
+    expect(d.target, 'the biter is the woken demon').toBe(p);
+    // MELEE bodies never populate hooks.damage (no damageSlot record) —
+    // the per-tic health drop is the per-hit observable.
+    expect(s.hooks.damage.entries.length).toBe(0);
+    for (const h of hits) {
+      expect(h).toBeGreaterThanOrEqual(4); // ((R%10)+1)*4 — ONE draw
+      expect(h).toBeLessThanOrEqual(40);
     }
   });
 
@@ -499,17 +508,22 @@ describe('M8-11 family B attack streams (skipped while amon_sarg is unlanded)', 
     installPlayerAwareBridge(s);
     const k = pSpawnMobj(s.mobjs, fx(400), fx(384), ONFLOORZ, MT.MT_SKULL);
     const p = playerMo(s);
-    k.target = p;
+    pNoiseAlert(s.mobjs, p, p); // wake (a target alone never enters the chase rows)
     let sawFly = false;
     const hp0 = s.players[0]!.health;
-    runUntil(s, 200, () => {
+    const hits: number[] = [];
+    let prev = hp0;
+    runUntil(s, 600, () => {
       if ((k.flags & MF.MF_SKULLFLY) !== 0) sawFly = true;
-      return s.players[0]!.health < hp0;
+      if (s.players[0]!.health < prev) hits.push(prev - s.players[0]!.health);
+      prev = s.players[0]!.health;
+      return hits.length > 0;
     });
-    expect(sawFly, 'the charge sets MF_SKULLFLY').toBe(true);
-    for (const e of dmgLog(s)) {
-      expect(e).toBeGreaterThanOrEqual(3); // MT_SKULL damage 3
-      expect(e).toBeLessThanOrEqual(24);
+    expect(sawFly, 'the dive sets MF_SKULLFLY').toBe(true);
+    expect(hits.length, 'the dive connects (skullFlyHit, p_map.c:274-287)').toBeGreaterThan(0);
+    for (const h of hits) {
+      expect(h).toBeGreaterThanOrEqual(3); // MT_SKULL damage 3
+      expect(h).toBeLessThanOrEqual(24);
     }
   });
 });
@@ -818,9 +832,13 @@ describe('M8-11 random-sites ledger reconciliation (global manifest, registryMan
     }
     // Aggregate ledger total — UPDATE IN THE SAME COMMIT that adds a
     // site (a family-B landing must move this number AND its module
-    // line together, or this gate is the drift alarm).
+    // line together, or this gate is the drift alarm). 69 = the
+    // M8-01..10 baseline; family B's amon_sarg.ts line rides on top
+    // WHEN LANDED (the per-module equality above pins its exact value).
     expect(sum(RANDOM_SITE_CALLS)).toBe(sum(scan));
-    expect(sum(RANDOM_SITE_CALLS)).toBe(69);
+    expect(sum(RANDOM_SITE_CALLS)).toBe(
+      69 + (RANDOM_SITE_CALLS['amon_sarg.ts'] ?? 0),
+    );
     expect(RANDOM_SITE_SCAN_SKIP).toEqual(['prng.ts']);
   });
 
