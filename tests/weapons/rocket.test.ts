@@ -85,7 +85,6 @@ describe('rocket — direct + splash matrix re-derived from the blast point', ()
     expect(trace[PRESS]!.weapon).toBe(60); // P_FireWeapon → S_MISSILE1
     expect(trace[PRESS + 8]!.weapon).toBe(61); // S_MISSILE2 fires the shot
 
-    const ev = dmgEvents(s);
     const toDummy = dmgOn(s, dummy);
     expect(toDummy).toHaveLength(2); // direct + splash
     expect(toDummy[0]!.tic).toBe(55);

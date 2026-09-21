@@ -45,9 +45,11 @@
 //        (source null -> no thrust, exact), missile direct hits (vanilla
 //        inflictor = the missile — approximated by the source shooter:
 //        same kick axis along the flight line, z from the shooter), and
-//        P_RadiusAttack (vanilla inflictor NULL -> this port kicks AWAY
-//        from the source; the only site with a direction the source
-//        cannot reconstruct exactly — pinned in the test). The
+//        P_RadiusAttack (p_map.c:1144-1145 initialises `bd = bombspot` and
+//        never reassigns it, so the inflictor it hands P_DamageMobj is the
+//        BLAST POINT mobj itself — NOT NULL; source is non-NULL outside the
+//        crush site). The fall-forwards `&1` DRAW gate therefore keys on
+//        `inflictor.z` at every site where an inflictor exists. The
 //        fall-forwards `&1` DRAW gate therefore keys on `source.z` at
 //        missile/radius sites (draw ORDER unchanged: still only when the
 //        earlier &&s pass).
@@ -68,7 +70,7 @@ import { mobjinfo, MF, MT } from '../wad/info/mobjinfo';
 import { S } from '../wad/info/states';
 
 import { registerDamageBridge, type HookSlots, type MobjRef } from './hooks';
-import { pSetMobjState, pSpawnMobj, type Mobj } from './p_mobj';
+import { pSetMobjFlags, pSetMobjState, pSpawnMobj, type Mobj } from './p_mobj';
 import { allocThingSlot, thingSetPosition, thingUnsetPosition } from './thinglinks';
 import { ONFLOORZ } from './player';
 import { pRandom } from './prng';
@@ -133,7 +135,11 @@ export function pKillMobj(source: Mobj | null, target: Mobj): void {
       return;
   }
   const mo = pSpawnMobj(rt, target.x, target.y, ONFLOORZ, item);
-  mo.flags = (mo.flags | MF.MF_DROPPED) | 0; // special versions of items
+  // `mo->flags |= MF_DROPPED; // special versions of items` — through
+  // writeFlags so the ThingLinks mirror stays in step (§3.4 word[5] reads
+  // links.flags[], NOT mobj.flags — a raw field write would silently drop
+  // the flag from the hash; same reason p_enemy.ts:206 uses writeFlags).
+  pSetMobjFlags(mo, (mo.flags | MF.MF_DROPPED) | 0);
 }
 
 /**
@@ -196,8 +202,14 @@ export function pDamageMobj(
       (source.playerRef as PsprPlayer).readyweapon !== WP_CHAINSAW)
   ) {
     let ang = pointToAngleOrigin((target.x - inflictor.x) | 0, (target.y - inflictor.y) | 0);
-    // C: `damage*(FRACUNIT>>3)*100/target->info->mass` (trunc toward 0)
-    let thrust = Math.trunc((damage * (FRACUNIT >> 3) * 100) / mobjinfo[target.type]!.mass) | 0;
+    // C: `damage*(FRACUNIT>>3)*100/target->info->mass` — plain int32 math:
+    // the product WRAPS for damage > 5242 (telefrag's 10000 ⇒ a NEGATIVE
+    // thrust in vanilla), so the multipliers go through Math.imul; the
+    // divide truncates toward zero like C's `/`.
+    // target->info->mass (mobjinfo row; vanilla divides by it unguarded).
+    const mass = mobjinfo[target.type]!.mass;
+    let thrust =
+      Math.trunc(Math.imul(Math.imul(damage, FRACUNIT >> 3), 100) / mass) | 0;
 
     // make fall forwards sometimes — the draw fires ONLY when the three
     // earlier &&s pass (P_Random ORDER, :841-846).
