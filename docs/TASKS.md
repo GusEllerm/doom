@@ -147,3 +147,9 @@ Future tasks will be added as architects decompose milestones.
 | M8-11 | Family suites + stream pins + ledger | M8 | families | done (merged, verified) |
 | M8-12 | Live e2e monsters + registration flip | M8 | families | done (merged + incident fix) |
 | M8-13 | Motion strips + pacing envelopes + exit sweep | M8 | all | done (merged, verified — M8 CLOSED) |
+
+## M9 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M9-plan | Menus/HUD/transitions plan | M9 | M8 | dispatched (agent 4000ee14) |
