@@ -87,6 +87,18 @@ const SETS = {
     testFile: join('tests', 'weapons', 'visual.test.ts'),
     pipeline:
       'M7FIX weapon range -> gInitGame + give/weaponKey/attack script (live sim tics) -> renderFrame x2 (world + psprite pass via pspriteview seam; byte-equal) + montage (scene frames tiled 3x5 at 2x, 2x 5x7 labels) -> sha256(indices), hom + overflow counters asserted 0'
+  },
+  screens: {
+    // M9-10 title/finale page pack (plan §M9-10 acceptance 4 + D016
+    // montage): tests/render/screens.test.ts — the D_Display
+    // GS_DEMOSCREEN/GS_FINALE drawer seams (dPageDrawer = TITLEPIC via
+    // D_StartTitle + one tic block; fDrawer stage 0 = FLOOR4_8 flood +
+    // E1TEXT reveal at F_Ticker x200; stage 1 = HELP2 after the exact
+    // 1571-tic flip). WAD-GATED (all graphics lumps come from the pinned
+    // freedoom1.wad; no wad ⇒ no dumps, committed goldens untouched).
+    testFile: join('tests', 'render', 'screens.test.ts'),
+    pipeline:
+      'E1M1 gInitGame -> [dInit + gFlowTic | fStartFinale + F_Ticker xN] -> drawer seam (screens[FG], no framebuffer) double-draw byte-equal -> sha256(screens[FG].data) + montage (3 pages tiled 3x2 at 2x, 5x7 labels)'
   }
 };
 

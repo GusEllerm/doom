@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "set": "screens",
+  "pipeline": "E1M1 gInitGame -> [dInit + gFlowTic | fStartFinale + F_Ticker xN] -> drawer seam (screens[FG], no framebuffer) double-draw byte-equal -> sha256(screens[FG].data) + montage (3 pages tiled 3x2 at 2x, 5x7 labels)",
+  "scenes": {
+    "finale-help2": {
+      "kind": "screen-script",
+      "script": "gInitGame -> fStartFinale -> F_Ticker x1571 (flip at >440*3+250: stage 1, wipegamestate -1) -> fDrawer HELP2 forever",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7",
+      "png": "finale-help2.png",
+      "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+      "updatedAt": "2026-09-21",
+      "history": [
+        {
+          "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+          "at": "2026-09-21",
+          "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
+        }
+      ]
+    },
+    "finale-text-200": {
+      "kind": "screen-script",
+      "script": "gInitGame -> fStartFinale (FLOOR4_8 + E1TEXT) -> F_Ticker x200 -> fDrawer stage 0 (63 reveal steps at (10,10))",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad",
+      "png": "finale-text-200.png",
+      "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+      "updatedAt": "2026-09-21",
+      "history": [
+        {
+          "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+          "at": "2026-09-21",
+          "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
+        }
+      ]
+    },
+    "montage": {
+      "kind": "montage",
+      "script": "scene-frame contact sheet: 3 screens tiled 3x2, 2x nearest-neighbour, 2x 5x7 labels (D016 pack)",
+      "width": 1920,
+      "height": 832,
+      "indexSha256": "e69eccd0f436c7ac56ecd118e1f6564f04ca5d0003f18e55a40e456fa1301ab8",
+      "png": "montage.png",
+      "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+      "updatedAt": "2026-09-21",
+      "history": [
+        {
+          "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+          "at": "2026-09-21",
+          "indexSha256": "e69eccd0f436c7ac56ecd118e1f6564f04ca5d0003f18e55a40e456fa1301ab8"
+        }
+      ]
+    },
+    "title-pic": {
+      "kind": "screen-script",
+      "script": "gInitGame -> dInit (D_StartTitle) -> gFlowTic (D_DoAdvanceDemo: TITLEPIC, pagetic 170) -> dPageDrawer",
+      "width": 320,
+      "height": 200,
+      "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045",
+      "png": "title-pic.png",
+      "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+      "updatedAt": "2026-09-21",
+      "history": [
+        {
+          "reason": "M9-10 new golden set: title TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold — first bless of the screens set",
+          "at": "2026-09-21",
+          "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
+        }
+      ]
+    }
+  }
+}
