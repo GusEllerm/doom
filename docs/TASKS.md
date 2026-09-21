@@ -140,3 +140,4 @@ Future tasks will be added as architects decompose milestones.
 | M8-04 | AI core (A_Look/A_Chase/P_Move) | M8 | M8-01/02 | done (merged, verified — monsters hunt) |
 | M8-06 | Pain/death/corpse actions | M8 | M8-05 | done (merged, verified; id27 deferred to family task) |
 | M8-10 | DEHACKED fullbright | M8 | M8-02 | dispatched (agent d31f9d0e) |
+| M8-07 | Family A (zombie/shotguy/imp) + id27 domain fix | M8 | M8-04/05/06 | dispatched (agent 2566cc3f) |
