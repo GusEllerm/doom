@@ -143,3 +143,4 @@ Future tasks will be added as architects decompose milestones.
 | M8-07 | Family A (zombie/shotguy/imp) + id27 domain fix | M8 | M8-04/05/06 | done (merged, verified) |
 | M8-08 | Family B (demon/spectre/lost soul) | M8 | M8-04/05/06 | dispatched (agent ec0cd6ad) |
 | M8-09 | Family C (caco/baron/boss death) | M8 | M8-04/05/06 | done (merged, verified) |
+| M8-11 | Family suites + stream pins + ledger | M8 | families | dispatched (agent 974ed298) |
