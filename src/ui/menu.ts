@@ -461,6 +461,7 @@ function mStartMessage(string: string, routine: ((ch: number) => void) | null, i
   messageRoutine = routine;
   messageNeedsInput = input;
   menuactive = true;
+  armMouse(); // message ⇒ itemBoxes() null ⇒ mouse synth disarmed
   return;
 }
 
@@ -469,6 +470,7 @@ function mStartMessage(string: string, routine: ((ch: number) => void) | null, i
 export function mStopMessage(): void {
   menuactive = messageLastMenuActive;
   messageToPrint = 0;
+  armMouse();
 }
 
 /* ------------------------------------------------------------------ */
@@ -890,7 +892,7 @@ export function mDrawer(): void {
   let y = y0;
   const max = currentMenu.numitems;
   for (let i = 0; i < max; i++) {
-    if (currentMenu.menuitems[i]!.name.charCodeAt(0) !== 0) {
+    if (currentMenu.menuitems[i]!.name.length > 0) {
       mDrawPatch(currentMenu.menuitems[i]!.name, currentMenu.x, y);
     }
     y += LINEHEIGHT;
@@ -1155,8 +1157,14 @@ export function mReset(w?: WadFile | null): void {
   MainDef.prevMenu = null;
   EpiDef.numitems = 4;
   NewDef.prevMenu = EpiDef;
+  // C tables are static per-process: restore every mutated lastOn too.
+  MainDef.lastOn = 0;
+  EpiDef.lastOn = ep_e.ep1;
+  NewDef.lastOn = newg_e.hurtme;
   OptionsDef.lastOn = 0;
   SoundDef.lastOn = 0;
+  ReadDef1.lastOn = 0;
+  ReadDef2.lastOn = 0;
   ReadDef1.x = 280;
   ReadDef1.y = 185;
   ReadMenu1[0]!.routine = mReadThis2;
