@@ -104,9 +104,11 @@ export function attachPopInput(fn: PopInputFn | null): void {
 /**
  * M8-12 monster roll-up (M8-plan §M8-12 `state().mobjs`): iterate the
  * level's mobj roster, keep MF_COUNTKILL thinkers (MT_BARREL tallied
- * separately — vanilla barrels share the counter but are not "monsters"
- * for the e2e census), corpses included while un-removed so the e2e can
- * watch the A_Fall SOLID-clear. Pure READ — no sim call, nothing hashed.
+ * separately by TYPE — this port's MT_BARREL row carries no MF_COUNTKILL
+ * bit (mobjinfo flags 0x80006), so a flags-only scan would never see it;
+ * barrels are not "monsters" for the e2e census), corpses included while
+ * un-removed so the e2e can watch the A_Fall SOLID-clear. Pure READ — no
+ * sim call, nothing hashed.
  */
 function monstersSnapshot(state: GameState): DebugMonsters {
   const playerMo = asMobj(state.players[0]!.mo);
@@ -115,11 +117,11 @@ function monstersSnapshot(state: GameState): DebugMonsters {
   let barrels = 0;
   for (const m of state.mobjs.mobjs) {
     if (m.removed) continue;
-    if ((m.flags & MF.MF_COUNTKILL) === 0) continue;
     if (m.type === MT.MT_BARREL) {
       if (m.health > 0) barrels++;
-      continue;
+      continue; // this table's MT_BARREL carries NO MF_COUNTKILL bit
     }
+    if ((m.flags & MF.MF_COUNTKILL) === 0) continue;
     if (views.length < 128) {
       views.push({
         type: m.type,

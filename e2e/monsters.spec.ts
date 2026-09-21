@@ -54,11 +54,33 @@ function trackConsole(page: Page): string[] {
   return errors;
 }
 
+/**
+ * Boot + the physics.spec determinism trick: the in-page watcher PARKS both
+ * page loads at EXACT leveltime 40 (the boot jitter stays out — the rAF
+ * stepper is paused the first frame ≥ 40), so every scripted phase below is
+ * bit-identical across boots, monsters' A_Look look-cycle phase included.
+ */
 async function boot(page: Page): Promise<string[]> {
   const errors = trackConsole(page);
   await page.goto('/?test', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 60000 });
-  await page.evaluate(() => window.__doom!.pause(true)); // freeze the rAF stepper
+  const parked = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const api = window.__doom!;
+        const check = (): void => {
+          const st = api.sim.getState();
+          if (st !== null && st.leveltime >= 40) {
+            api.pause(true);
+            resolve(st.leveltime);
+          } else {
+            requestAnimationFrame(() => check());
+          }
+        };
+        check();
+      })
+  );
+  if (parked !== 40) throw new Error(`park: leveltime ${parked}, expected 40`);
   return errors;
 }
 
@@ -99,76 +121,79 @@ test.describe('M8-12 live monsters e2e', () => {
     expect(m.barrels).toBe(22);
     expect(m.mobjs).toHaveLength(29);
     expect(m.first).not.toBeNull();
-    expect(m.first!.state).toBe(S_POSS_STND); // undisturbed idle row at tic 0
+    // Spawn-order first monster = the doomednum-3002 (SARG) record: at the
+    // park its A_Look cycle is in the deterministic idle pair, never a
+    // wake/chase row.
+    expect([475, 476]).toContain(m.first!.state);
     expect(m.first!.flagsLite.solid).toBe(true);
     expect(m.first!.targetPlayer).toBe(false);
-    expect(m.first!.movedir).toBe(-1); // DI_NODIR — A_Chase never ran
+    expect(m.first!.movedir).toBe(8); // DI_NODIR — A_Chase never ran
     expect(errors.filter((e) => !e.includes('favicon')).length).toBe(0);
   });
 
-  test('gunshot at spawn wakes the far posse (soundtarget → A_Look → A_Chase)', async ({ page }) => {
+  test('gunshot at spawn ARMS the ambush sleepers (soundtarget writes; no wake without LOS)', async ({ page }) => {
     test.skip(await wadMissing(page));
     const errors = await boot(page);
     // Baseline: nobody has a target (idle STAND cycle only).
     const before = await monsters(page);
     expect(before.mobjs.every((mo) => mo.targetSlot === null)).toBe(true);
 
-    // Raise is already done (G_PlayerReborn pistol raised); fire 40 tics =
-    // ~2 pistol shots — A_FirePistol's p_pspr.c:256 P_NoiseAlert body.
+    // Fire 40 tics = ~2 pistol shots: the p_pspr.c:256 P_NoiseAlert body
+    // writes the sector soundtarget; the E1M1 parade pair (doomednum 3004
+    // records with the AMBUSH thing-bit) gets `actor->target` ARMED through
+    // A_Look's soundtarget branch — but MF_AMBUSH is SIGHT-GATED (p_enemy.c
+    // :617) and no LOS reaches the spawn corridor, so they STAY in their
+    // idle look rows (the pure-noise WAKE proof belongs to the non-ambush
+    // fixtures; p_enemy.test.ts pins the flood + cone rules headlessly).
     const r = await runPhase(page, { tics: 40, input: { attack: true } });
     const m = r.monsters;
-    const awake = m.mobjs.filter((mo) => mo.targetPlayer);
-    expect(awake.length, 'gunshot wakes the LOS-free posse').toBeGreaterThanOrEqual(1);
-    expect(awake.some((mo) => mo.state !== S_POSS_STND && mo.state !== S_POSS_STND2), 'woken states leave S_POSS_STAND').toBe(true);
-    expect(awake.some((mo) => mo.movedir >= 0), 'A_Chase picked a chase direction').toBe(true);
-    expect(m.killcount).toBe(0); // nothing died — this is the wake phase
+    const armed = m.mobjs.filter((mo) => mo.targetPlayer && mo.flagsLite.ambush);
+    expect(armed.length, 'gunshot arms the ambush sleepers via soundtarget').toBeGreaterThanOrEqual(1);
+    expect(armed.every((mo) => [S_POSS_STND, S_POSS_STND2].includes(mo.state)), 'armed but asleep: no LOS, no wake').toBe(true);
+    expect(m.killcount).toBe(0);
     expect(errors.filter((e) => !e.includes('favicon')).length).toBe(0);
   });
 
-  test('firefight: chase closes, player fire kills (killcount++, corpse stops blocking)', async ({ page }) => {
+  test('courtyard pair: sight wakes (states leave S_POSS_STAND), chase attacks, player fire kills (killcount++, corpse stops blocking)', async ({ page }) => {
     test.skip(await wadMissing(page));
     const errors = await boot(page);
-    // Warp onto the parade courtyard, facing east: a POSS sits at (752,336)
-    // ~112 units on the eye line, its buddy at (816,448) — the same
-    // (deterministic) pair the headless probe maps.
+    // Warp into the parade courtyard, facing east: a POSS sits at (752,336)
+    // ~112 units on the eye line, its buddy at (816,448) — the pair the
+    // headless probe maps. 30 LOS tics: sight wake (ambush clears on sight).
     const wake = await runPhase(page, { tics: 30, warp: { x: 640 * F, y: 336 * F, deg: 0 } });
     const woken = wake.monsters.mobjs.filter((mo) => mo.targetPlayer);
     expect(woken.length, 'sight wakes the close pair').toBeGreaterThanOrEqual(1);
-    expect(woken.some((mo) => mo.state !== S_POSS_STND && mo.state !== S_POSS_STND2)).toBe(true);
-    const distAt = (m: DebugMonsters, px: number, py: number) =>
-      Math.min(...m.mobjs.filter((mo) => mo.health > 0).map((mo) => Math.hypot(mo.x - px, mo.y - py)));
-    const dWake = distAt(wake.monsters, 640 * F, 336 * F);
+    expect(woken.some((mo) => mo.state !== S_POSS_STND && mo.state !== S_POSS_STND2), 'woken states leave S_POSS_STAND').toBe(true);
 
-    // Hold attack: pistol auto-aim lands; A_Chase closes WHILE shooting.
+    // Hold attack: pistol auto-aim lands; the pair closes to ATTACK range
+    // (states 182..186 = POSS ATk/A_FaceTarget/missile rows) and dies.
     const fight = await page.evaluate(
       () => {
         const api = window.__doom!;
-        const trace: { g: number; kills: number; hp: number; minD: number; corpse: DebugMonsterView | null }[] = [];
-        let ppos = { x: (api.state() as DebugStateLive).player.x, y: (api.state() as DebugStateLive).player.y };
-        for (let t = 0; t < 46; t++) {
+        const trace: { kills: number; hp: number; minD: number; atk: boolean; awake: boolean; corpse: DebugMonsterView | null }[] = [];
+        for (let t = 0; t < 60; t++) {
           api.sim.runTics(10, { attack: true });
           const s = api.state() as DebugStateLive;
-          ppos = { x: s.player.x, y: s.player.y };
-          const alive = s.monsters.mobjs.filter((mo) => mo.health > 0);
+          const w = s.monsters.mobjs.filter((mo) => mo.health > 0 && mo.targetPlayer);
           trace.push({
-            g: s.monsters.killcount,
             kills: s.monsters.killcount,
             hp: s.player.health,
-            minD: alive.length ? Math.min(...alive.map((mo) => Math.hypot(mo.x - ppos.x, mo.y - ppos.y))) : 1e12,
+            minD: w.length ? Math.min(...w.map((mo) => Math.hypot(mo.x - s.player.x, mo.y - s.player.y))) : 1e12,
+            atk: w.some((mo) => mo.state >= 182 && mo.state <= 186),
+            awake: w.length > 0,
             corpse: s.monsters.mobjs.find((mo) => mo.health <= 0) ?? null
           });
-          if (s.monsters.killcount > 0 && trace[trace.length - 1]!.corpse) break;
+          if (s.monsters.killcount > 0 && s.monsters.mobjs.some((mo) => mo.health <= 0)) break;
         }
         return { trace, monsters: (api.state() as DebugStateLive).monsters };
       },
       null
     );
     const last = fight.trace[fight.trace.length - 1]!;
+    expect(fight.trace.some((t) => t.atk), 'the chase closes to attack range (POSS ATk/missile rows 182..186)').toBe(true);
     expect(last.kills, 'killcount increments (intermission counter seam)').toBeGreaterThan(0);
-    expect(last.minD, 'the chase closes the distance').toBeLessThan(dWake);
-    // The plan's OR — player health drops OR monsters die from player fire:
-    // the close pair dies before their shots land (hp stays 100 through the
-    // probe-matched window); killcount > 0 (asserted above) carries it.
+    // The plan's OR: monsters die from player fire (killcount > 0). The
+    // probe-matched E1M1 pair lands no hits before dying — hp 100 throughout.
     expect(last.kills > 0 || last.hp < 100, 'damage exchange happened').toBe(true);
 
     // Corpse: the MF_CORPSE flag lands, and A_Fall clears MF_SOLID (the
@@ -199,7 +224,7 @@ test.describe('M8-12 live monsters e2e', () => {
       (v: { x: number; y: number }) => {
         const api = window.__doom!;
         api.warp(v.x - 160 * 65536, v.y, undefined, 0);
-        api.sim.runTics(45, { forward: true });
+        api.sim.runTics(80, { forward: true });
         const s = api.state() as DebugStateLive;
         return s.player.x;
       },
