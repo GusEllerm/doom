@@ -388,6 +388,15 @@ export const debugApi: DoomDebugApi = {
     // burst on resume. Pop (and report) them between phases.
     return popInputHook === null ? null : popInputHook();
   },
+  aiGate(on: boolean): boolean {
+    // M8-fix static-dummy seam (popInput precedent: plain wiring, no sim
+    // import): flip the hooks.aiGate of the ATTACHED state — true installs
+    // "skip A_Look/A_Chase dispatch" (static fixture dummies), false
+    // restores production AI. No state attached ⇒ nothing to gate.
+    if (!attached) return false;
+    attached.hooks.aiGate = on ? () => true : null;
+    return on;
+  },
   capture(): CaptureResult {
     // M3-07: real framebuffer copy (live fb.indices via the render seam);
     // pre-boot (no source yet) keeps the documented all-zeros contract.

@@ -84,6 +84,28 @@ export interface HookSlots {
   /** M8-02 damage-bridge wiring (NOT an event log — resetHookSlots never
    * clears it; fresh per level because gInitGame builds fresh slots). */
   bridge: DamageBridgeSlots;
+  /** M8-fix static-dummy seam (NOT an event log — resetHookSlots never
+   * clears it; fresh per level because gInitGame builds fresh slots):
+   * a fixture-installed gate consulted ONLY by the MOBJ-domain state-row
+   * action dispatch of p_mobj.ts P_SetMobjState, and there ONLY for the
+   * two AI-churn ids A_Look (29) / A_Chase (30). When set and the call
+   * returns true, that dispatch is SKIPPED: the state fields themselves
+   * still advance exactly like production (the STND row keeps re-entering
+   * STND; sprite/tics unchanged), but the monster never sight- or
+   * sound-wakes and never walks — the fixture's planted dummies stay
+   * STATIC at their spawn geometry, reproducing the pre-M8-12 world
+   * where these bodies were unregistered in the test bundle. When unset
+   * (production, and every suite that WANTS AI live) behavior is
+   * bit-identical to today: the gate is not even called.
+   * Coverage is PRECISELY {A_Look, A_Chase}: pain/death/damage actions
+   * are state actions too but are NOT gated — A_Pain/A_Scream/A_Fall
+   * still run when a gated dummy is hurt or killed, and the P_DamageMobj
+   * bridge is the damageSlot path, not this one. The monster ATTACK
+   * actions (A_PosAttack family, A_FaceTarget, ...) are likewise NOT
+   * gated; they stay unreachable while the gate is on because their only
+   * entries are A_Chase's missile/melee states and A_Look's wake
+   * transition — both gated out. */
+  aiGate: AiGateFn | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -133,13 +155,29 @@ export function mobjFromSlot(h: HookSlots, slot: number): MobjRef | undefined {
   return h.bridge.mobjFromSlot?.(slot);
 }
 
+/* ------------------------------------------------------------------ */
+/* Mobj AI gate (M8-fix static-dummy seam)                             */
+/* ------------------------------------------------------------------ */
+
+/** AI-gate probe: true ⇒ the mobj-domain A_Look/A_Chase dispatches skip
+ * their bodies this tic (see HookSlots.aiGate). Plain callback, no sim
+ * import — same discipline as the damage bridge above. */
+export type AiGateFn = () => boolean;
+
+/** Register (or with null, clear) the mobj AI gate. Fixture/test only —
+ * production never calls this, so the seam costs nothing there. */
+export function registerAiGate(h: HookSlots, fn: AiGateFn | null): void {
+  h.aiGate = fn;
+}
+
 export function createHookSlots(): HookSlots {
   return {
     damage: { count: 0, entries: [] },
     sfx: { count: 0, entries: [], byId: new Map() },
     message: { count: 0, entries: [], byId: new Map() },
     exit: { count: 0, entries: [] },
-    bridge: {}
+    bridge: {},
+    aiGate: null
   };
 }
 

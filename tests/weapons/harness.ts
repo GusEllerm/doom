@@ -159,6 +159,24 @@ export const pinInPlace = (s: GameState, m: Mobj): (() => void) => {
   };
 };
 
+/**
+ * M8-fix static-dummy rig: install the mobj AI gate (hooks.aiGate) on a
+ * booted state — the A_Look/A_Chase state actions then skip dispatch, so
+ * planted MT_POSSESSED dummies never sight- or sound-wake and never
+ * chase-walk: the STND row re-enters STND forever, sprite/tics advancing
+ * exactly like production, ZERO P-stream draws from the AI. Pain/death
+ * state actions and the P_DamageMobj bridge keep running (a gated dummy
+ * still bleeds, kicks and dies like before M8-12). Pre-M8-12 the test
+ * bundle simply had no A_Look/A_Chase bodies registered; with game.ts
+ * importing p_enemy/amon_* they are live everywhere, so the fixtures
+ * that pinned STATIC dummies ask for the gate. Production (and every
+ * suite that wants AI — p_enemy/monsters/amon_*) never installs it.
+ */
+export const staticDummies = (s: GameState): GameState => {
+  s.hooks.aiGate = () => true;
+  return s;
+};
+
 export function sfxCount(s: GameState, id: number): number {
   return s.hooks.sfx.byId?.get(id) ?? 0;
 }
