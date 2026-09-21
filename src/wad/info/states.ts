@@ -21,13 +21,13 @@
 // The ONE DEHACKED hook of M8-10 lives at the foot of the table build
 // (applyDehackedFullbright, docs/design/M8-plan.md §M8-10 + §3 D-0xx); the
 // literals above stay the verbatim info.c transcription.
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
 import {
   applyDehackedFullbright as applyDehackedFullbrightTo,
   type DehackedApplyReport,
   type DehackedLump,
 } from '../dehacked'
-//
-// SPDX-License-Identifier: GPL-2.0-or-later
 
 /** info.h statenum_t NUMSTATES — states[] row count. */
 export const NUMSTATES = 967
