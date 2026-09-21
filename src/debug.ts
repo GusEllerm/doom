@@ -28,6 +28,9 @@ import {
 } from './sim/player';
 import { hashState, type GameState } from './sim/state';
 import { thinkerCount } from './sim/ptick';
+import { asMobj } from './sim/p_mobj';
+import { MF, MT } from './wad/info/mobjinfo';
+import type { DebugMonsters, DebugMonsterView } from './types/debug';
 import { type InventoryFields, type PickupPlayer } from './sim/p_inter_inventory';
 import { P_GiveWeapon } from './sim/p_inter_pickup';
 import { pPlayerDamage } from './sim/pplayer';
@@ -96,6 +99,54 @@ let popInputHook: PopInputFn | null = null;
 
 export function attachPopInput(fn: PopInputFn | null): void {
   popInputHook = fn;
+}
+
+/**
+ * M8-12 monster roll-up (M8-plan §M8-12 `state().mobjs`): iterate the
+ * level's mobj roster, keep MF_COUNTKILL thinkers (MT_BARREL tallied
+ * separately by TYPE — this port's MT_BARREL row carries no MF_COUNTKILL
+ * bit (mobjinfo flags 0x80006), so a flags-only scan would never see it;
+ * barrels are not "monsters" for the e2e census), corpses included while
+ * un-removed so the e2e can watch the A_Fall SOLID-clear. Pure READ — no
+ * sim call, nothing hashed.
+ */
+function monstersSnapshot(state: GameState): DebugMonsters {
+  const playerMo = asMobj(state.players[0]!.mo);
+  const byType: Record<number, number> = {};
+  const views: DebugMonsterView[] = [];
+  let barrels = 0;
+  for (const m of state.mobjs.mobjs) {
+    if (m.removed) continue;
+    if (m.type === MT.MT_BARREL) {
+      if (m.health > 0) barrels++;
+      continue; // this table's MT_BARREL carries NO MF_COUNTKILL bit
+    }
+    if ((m.flags & MF.MF_COUNTKILL) === 0) continue;
+    if (views.length < 128) {
+      views.push({
+        type: m.type,
+        x: m.x,
+        y: m.y,
+        health: m.health,
+        state: m.state,
+        movedir: m.movedir,
+        movecount: m.movecount,
+        flags: m.flags,
+        flagsLite: {
+          solid: (m.flags & MF.MF_SOLID) !== 0,
+          shootable: (m.flags & MF.MF_SHOOTABLE) !== 0,
+          shadow: (m.flags & MF.MF_SHADOW) !== 0,
+          ambush: (m.flags & MF.MF_AMBUSH) !== 0,
+          corpse: (m.flags & MF.MF_CORPSE) !== 0
+        },
+        targetSlot: m.target ? m.target.linkSlot : null,
+        targetPlayer: m.target !== undefined && m.target === playerMo
+      });
+    }
+    if (m.health > 0) byType[m.type] = (byType[m.type] ?? 0) + 1;
+  }
+  const alive = Object.values(byType).reduce((a, b) => a + b, 0);
+  return { alive, byType, barrels, killcount: state.players[0]!.killcount, first: views[0] ?? null, mobjs: views };
 }
 
 /** The documented counter subset (extra source fields like solidsegDrops are
@@ -201,6 +252,8 @@ function liveSnapshot(state: GameState): DebugStateLive {
         : []
     },
     sectors: { count: state.map.sectors.count },
+    // M8-12: live monster census + per-monster views (roll-up above).
+    monsters: monstersSnapshot(state),
     // live arena census (M7-11c: G9-era pinned 0 replaced — the -1 the
     // reviewer spotted originated here).
     thinkers: { count: thinkerCount(state.thinkers) },

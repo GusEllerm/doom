@@ -27,3 +27,63 @@ describe('debugApi.popInput (M6-13 finding 3 seam)', () => {
     expect(debugApi.popInput()).toBeNull();
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* M8-12: state().monsters monster roll-up seam                         */
+/* ------------------------------------------------------------------ */
+
+import { buildFixtureMapWad } from '../tests/fixtures/mapBuilder';
+import { buildMapFromData } from './sim/map';
+import { loadMap } from './wad/mapdata';
+import { WadFile } from './wad/wadfile';
+import { gInitGame } from './sim/game';
+import { debugSim } from './debug';
+import type { DebugStateLive } from './types/debug';
+
+describe('debugApi.state().monsters (M8-12 seam)', () => {
+  function attachWithMonster(dx: number): void {
+    const bytes = buildFixtureMapWad({
+      rooms: [{ x: 0, y: 0, w: 512, h: 256, lightLevel: 200 }],
+      things: [
+        { x: 64, y: 128, angle: 0, type: 1 }, // player 1 start, facing east
+        { x: 64 + dx, y: 128, angle: 180, type: 3004 } // MT_POSSESSED facing the player
+      ]
+    });
+    const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    debugSim.attach(gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP'))));
+  }
+
+  it('rolls up the MF_COUNTKILL roster (alive/byType/killcount/first views)', () => {
+    attachWithMonster(320);
+    const s = debugApi.state() as DebugStateLive;
+    expect(s.monsters.alive).toBe(1);
+    expect(s.monsters.byType).toEqual({ 1: 1 }); // MT_POSSESSED
+    expect(s.monsters.barrels).toBe(0);
+    expect(s.monsters.killcount).toBe(0);
+    expect(s.monsters.mobjs).toHaveLength(1);
+    const m = s.monsters.first!;
+    expect(m.type).toBe(1);
+    expect(m.health).toBe(20);
+    expect(m.flagsLite).toEqual({ solid: true, shootable: true, shadow: false, ambush: false, corpse: false });
+    expect(m.targetPlayer).toBe(false);
+    expect(m.targetSlot).toBeNull();
+    debugSim.detach();
+  });
+
+  it('the SIGHT wake shows up as targetPlayer=true + see-state at the exact tic', () => {
+    attachWithMonster(200); // LOS on the eye line, facing each other
+    let wokeAt = -1;
+    for (let t = 1; t <= 40; t++) {
+      debugSim.runTics(1);
+      const s = debugApi.state() as DebugStateLive;
+      if (s.monsters.mobjs[0]!.targetPlayer) {
+        wokeAt = t;
+        break;
+      }
+    }
+    expect(wokeAt).toBeGreaterThan(0);
+    const s = debugApi.state() as DebugStateLive;
+    expect(s.monsters.mobjs[0]!.state).toBeGreaterThanOrEqual(176); // ≥ S_POSS_RUN1 (see-state row)
+    debugSim.detach();
+  });
+});

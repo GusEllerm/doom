@@ -70,6 +70,11 @@ export interface DebugStateLive {
   };
   sectors: { count: number };
   thinkers: { count: number };
+  /** M8-12 (M8-plan §M8-12): live monster roll-up over the MF_COUNTKILL
+   * thinkers of THIS level (barrels counted separately, items excluded).
+   * Read live at snapshot time — pure observability, nothing here is
+   * hashed and no existing field changes meaning. */
+  monsters: DebugMonsters;
   /** M3-07/M4-07: the LIVE renderer health counters of the last renderFrame
    * (all −1 only while no framebuffer has been attached — pre-boot).
    * `hom` is the solidsegs/store failure count; the four overflow counters
@@ -84,6 +89,54 @@ export interface DebugStateLive {
   };
   /** §3.4 hashState() */
   hash: number;
+}
+
+/** One monster view (M8-plan §M8-12 `state().mobjs` field list:
+ * type, health, state, target, movedir, movecount, flags + coords). */
+export interface DebugMonsterView {
+  /** MT_* index (mobjinfo array order) */
+  type: number;
+  /** fixed */
+  x: number;
+  /** fixed */
+  y: number;
+  health: number;
+  /** states[] index (S_* enum) */
+  state: number;
+  /** p_mobj.h movedir (0-7, DI_NODIR = -1 pre-chase) */
+  movedir: number;
+  /** p_mobj.h movecount (A_Chase new-direction timer) */
+  movecount: number;
+  /** raw MF_* flags */
+  flags: number;
+  /** decoded subset relevant to the M8 suites (corpse walk-over, wake) */
+  flagsLite: {
+    solid: boolean;
+    shootable: boolean;
+    shadow: boolean;
+    ambush: boolean;
+    corpse: boolean;
+  };
+  /** actor->target ThingLinks slot (null = no target) */
+  targetSlot: number | null;
+  /** true when actor->target IS player 0's mobj (A_Look wake proof) */
+  targetPlayer: boolean;
+}
+
+export interface DebugMonsters {
+  /** MF_COUNTKILL, non-barrel, health > 0, not removed */
+  alive: number;
+  /** alive count keyed by MT_* index */
+  byType: Record<number, number>;
+  /** living MT_BARREL count (MF_COUNTKILL too, excluded from `alive`) */
+  barrels: number;
+  /** d_player.h players[0].killcount (the intermission counter) */
+  killcount: number;
+  /** first entry of `mobjs` (thinker/spawn order), or null */
+  first: DebugMonsterView | null;
+  /** every non-removed MF_COUNTKILL monster mobj (CORPSES INCLUDED —
+   * health <= 0 until the S_NULL removal), spawn order, capped at 128 */
+  mobjs: DebugMonsterView[];
 }
 
 export type DebugStateSnapshot = DebugStatePending | DebugStateLive;
