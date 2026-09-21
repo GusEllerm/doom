@@ -289,7 +289,11 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   // + A_TroopAttack melee sfx_claw 1 (:923). The POSS/SPOS ATTACKSOUNDS
   // (mobjinfo rows) fire from A_Chase's melee branch — p_enemy.ts's line,
   // not here; A_CPosRefire emits nothing.
-  'amon_poss.ts': 4};
+  'amon_poss.ts': 4,
+  // M8-09 (amon_bruiser.ts): A_BruisAttack melee sfx_claw 1 (p_enemy.c:988).
+  // A_HeadAttack's melee is SILENT (:958-963 has no S_StartSound) and
+  // A_BossDeath emits nothing; the missile seesounds stay pmissiles.ts's.
+  'amon_bruiser.ts': 1};
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
 export const SFX_SITE_SCAN_SKIP: readonly string[] = [
