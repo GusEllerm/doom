@@ -62,8 +62,13 @@
 //     the attack chain's damage row reached, pain/death chain actions
 //     found — nothing hits the unimplemented-action recorder;
 // 12. doomednum truth (§0.12): 3002 demon / 58 spectre / 3006 lost soul,
-//     spawned through the real pSpawnThings doomednum scan, and the
-//     soul's SPAWN row is not yet charging (MF_SKULLFLY is an action flag);
+//     spawned through the real pSpawnThings doomednum scan (the soul's
+//     SPAWN row is not yet charging — MF_SKULLFLY is an action flag), PLUS
+//     a WAD-guarded census re-measured THIS pass from freedoom1.wad:
+//     E1M1 = demon 9, SPECTRE 1, soul 0; E1M6 = 30/25/3; E1M7 = 53/30/8 —
+//     the E1 totals reproduce plan §0.12 exactly (166/145, 99/97, 11/11),
+//     so lost souls really are E1M6/E1M7-only and the spectre is the
+//     rarest of the three;
 // 13. the ThingLinks flag mirror (§3.4 word[5] / PIT read the MIRROR,
 //     not the field) carries MF_SHADOW and flips MF_SKULLFLY off on slam;
 // 14. LEDGERS both directions (RANDOM_SITE_CALLS 2 = melee die + slam die,
@@ -74,6 +79,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { describe, expect, it } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { ANG90, ANG270, ANGLETOFINESHIFT, FRACUNIT } from '../core/constants';
 import { finecosine, finesine } from '../core/tables';
@@ -663,7 +670,64 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
     expect(byType.get(MT.MT_SHADOWS)![0]!.flags & MF_SHADOW).toBe(MF_SHADOW);
   });
 
-  /* -------------------------------------------------------------- */
+});
+
+/* ------------------------------------------------------------------ */
+/* 12b. The §0.12 census, measured from the pinned WAD this pass        */
+/* ------------------------------------------------------------------ */
+const WAD_PATH = fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url));
+
+describe.skipIf(!existsSync(WAD_PATH))('family B doomednums in freedoom1.wad', () => {
+  // §0.12's numbers, re-measured with THIS task's own scan (10-byte THINGS
+  // records, map.ts:741 idiom; "alive at skill 3" = skill bit 3 set and the
+  // MTF_NOTSINGLE bit clear). The E1 totals reproduce the plan's table
+  // exactly — demon 166/145, spectre 99/97, lost soul 11/11 — so the
+  // family's roster is not folklore: the spectre really is the rarest of
+  // the three and lost souls exist in E1M6/E1M7 ONLY.
+  const count = (name: string, doomed: number): [number, number] => {
+    const bytes = readFileSync(WAD_PATH);
+    const m = buildMapFromData(
+      loadMap(WadFile.parse(bytes.buffer.slice(bytes.byteOffset) as ArrayBuffer), name),
+    );
+    const v = new DataView(m.things.buffer, m.things.byteOffset, m.things.byteLength);
+    let total = 0;
+    let alive = 0;
+    for (let i = 0; i < m.things.length; i += 10) {
+      if (v.getUint16(i + 6, true) !== doomed) continue;
+      const opt = v.getUint16(i + 8, true);
+      total++;
+      if ((opt & 0x1f) !== 0 && (opt & 4) !== 0 && (opt & 0x20) === 0) alive++;
+    }
+    return [total, alive];
+  };
+  for (const map of ['E1M1', 'E1M6', 'E1M7'] as const) {
+    it(`${map}: demon / spectre / lost-soul Thing counts`, () => {
+      const want: Record<string, [number, number, number][]> = {
+        E1M1: [
+          [3002, 9, 9],
+          [58, 1, 1],
+          [3006, 0, 0],
+        ],
+        E1M6: [
+          [3002, 30, 24],
+          [58, 25, 25],
+          [3006, 3, 3],
+        ],
+        E1M7: [
+          [3002, 53, 50],
+          [58, 30, 30],
+          [3006, 8, 8],
+        ]
+      };
+      for (const [doomed, total, alive] of want[map]!) {
+        expect(count(map, doomed), `${map} doomednum ${doomed}`).toEqual([total, alive]);
+      }
+    });
+  }
+});
+
+describe('amon_sarg (M8-08): demon / spectre / lost soul (continued)', () => {
+    /* -------------------------------------------------------------- */
   /* 10. ledgers + determinism                                      */
   /* -------------------------------------------------------------- */
   it('ledgers: amon_sarg rows present and the scan matches both directions', () => {
