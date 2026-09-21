@@ -159,7 +159,7 @@ Future tasks will be added as architects decompose milestones.
 |---|---|---|---|---|
 | M9-plan | Screens & transitions plan | M9 | M8 | done (merged) |
 | M9-01 | Patch blitter + screen layers | M9 | M8 | done (merged, verified) |
-| M9-02 | Keyboard events + menu mouse | M9 | M8 | dispatched (agent 45a74dc1) |
+| M9-02 | Keyboard events + menu mouse | M9 | M8 | done (merged, verified) |
 | M9-03 | Gamestate routing + plumbing | M9 | M8 | dispatched (agent 13766153) |
 | M9-04..13 | (see docs/design/M9-plan.md) | M9 | waves | planned |
 
