@@ -153,3 +153,13 @@ Future tasks will be added as architects decompose milestones.
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
 | M9-plan | Menus/HUD/transitions plan | M9 | M8 | done (real tip merged; skeleton decoy superseded — worktree ref fallback noted) |
+## M9 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M9-plan | Screens & transitions plan | M9 | M8 | done (merged) |
+| M9-01 | Patch blitter + screen layers | M9 | M8 | dispatched (agent a992eddb) |
+| M9-02 | Keyboard events + menu mouse | M9 | M8 | dispatched (agent 45a74dc1) |
+| M9-03 | Gamestate routing + plumbing | M9 | M8 | dispatched (agent 13766153) |
+| M9-04..13 | (see docs/design/M9-plan.md) | M9 | waves | planned |
+

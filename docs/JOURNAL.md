@@ -246,3 +246,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M8 CLOSED (8/12). Strips visually verified; pacing suite delivers the derived-envelope layer (incl. 400000-tic no-death theorem vs ranged zombies). Naming verdict: MT_FIRE canonical (MT_TROOPSHOT never existed). Dispatching M9 plan.
 - Reload #8: M9 planner lost AFTER skeleton commit (write-early wins again) — finisher continuing from branch tip.
 - M9 plan merged AFTER decoy: my merge pulled the stale task/M9-plan ref (skeleton) while the finisher wrote pi-agent-1296d2b7 (worktree branch-name-collision fallback). Real tip 48ffea0 merged second, theirs-resolved. PROCESS: salvage briefs must say 'finish on YOUR pi-agent-* branch'.
+- M9 wave 1 dispatched (blitter/keyboard/gamestate). Plan-merge incident: skeleton decoy merged before real tip discovered on pi-agent branch — both in history, theirs won.
