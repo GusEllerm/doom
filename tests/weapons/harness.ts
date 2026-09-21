@@ -28,6 +28,7 @@ import { RNDTABLE } from '../../src/sim/prng';
 import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
 import { installPsprSfxSlot } from '../../src/sim/psound_stub';
 import type { Mobj } from '../../src/sim/p_mobj';
+import { pTryMove } from '../../src/sim/pmap';
 
 import type { RectMapSpec } from '../fixtures/mapBuilder';
 
@@ -118,6 +119,46 @@ export const dmgEvents = (s: GameState): DmgEvent[] =>
 export const dmgTo = (s: GameState, m: Mobj): DmgEvent[] =>
   dmgEvents(s).filter((e) => e.thing === m.linkSlot || s.mobjs.slotMobjs.get(e.thing) === m);
 
+/**
+ * Fixture rig (M8-05): discard a dummy's XY momentum after every tic. Since
+ * the damageBridge went live, `P_DamageMobj`'s close-combat kick
+ * (p_inter.c:826-857, `thrust = damage*(FRACUNIT>>3)*100/mass`, FRICTION
+ * 0.875 ⇒ a slide of ~8·thrust) pushes map-THINGS dummies around — true
+ * vanilla behavior, but it would fling a 48-unit melee dummy out of
+ * MELEERANGE and turn these M7 draw-derivation suites into knockback
+ * tests. The kick itself is pinned where it belongs, in
+ * src/sim/p_inter_damage.test.ts. Zeroing momentum draws nothing and moves
+ * no hashed bytes a weapon test observes (the dummy is immortal rigging).
+ */
+export const pinMomentum = (m: Mobj): (() => void) => () => {
+  m.momx = 0;
+  m.momy = 0;
+};
+
+/**
+ * Stronger variant of {@link pinMomentum} for the swings where one tic of
+ * momentum is already too much: a berserk punch (≤200 damage on mass 100)
+ * kicks with ~25 units of momentum and P_XYMovement spends ALL of it in the
+ * tic it is applied (the MAXMOVE split loop), so zeroing afterwards cannot
+ * undo the step. The dummy is walked back to its spawn point with P_TryMove
+ * — the port's mover reposition (relinks, draws nothing; P_CheckPosition
+ * skips the mover itself), which is exactly what vanilla's blocked-kick
+ * path would leave. Used by the melee suites, where the fixture wants
+ * "target held at MELEERANGE", not a knockback test.
+ */
+export const pinInPlace = (s: GameState, m: Mobj): (() => void) => {
+  const x = m.x;
+  const y = m.y;
+  return () => {
+    m.momx = 0;
+    m.momy = 0;
+    // Only a drift can call P_TryMove, and a drift means the kick already
+    // promoted the dummy to a mover slot (p_inter_damage.ts) — the
+    // static-slot guard cannot fire.
+    if (m.x !== x || m.y !== y) pTryMove(s.pmap, m, x, y);
+  };
+};
+
 export function sfxCount(s: GameState, id: number): number {
   return s.hooks.sfx.byId?.get(id) ?? 0;
 }
@@ -131,10 +172,16 @@ export interface PsprSample {
   readonly flash: number;
 }
 
+/**
+ * `afterTic` (optional) runs right after each `gTicker` — the rig hook for
+ * fixtures that must neutralise a live sim effect without touching the
+ * stream (M8-05: `pinMomentum` below). Takes no PRNG draws by contract.
+ */
 export function trackPsprites(
   s: GameState,
   tics: number,
-  at: (tic: number) => Partial<GameInput> | undefined
+  at: (tic: number) => Partial<GameInput> | undefined,
+  afterTic?: (tic: number) => void
 ): PsprSample[] {
   const p = s.players[0] as unknown as {
     psprites: { state: number; tics: number; sx: number; sy: number }[];
@@ -145,6 +192,7 @@ export function trackPsprites(
     const patch = at(t);
     if (patch !== undefined) last = { ...last, ...patch };
     gTicker(s, last);
+    afterTic?.(t);
     trace.push({
       tic: t,
       weapon: p.psprites[0]!.state,

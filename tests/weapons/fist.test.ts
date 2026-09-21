@@ -20,12 +20,17 @@ import { MT } from '../../src/wad/info/mobjinfo';
 import { SFX_PUNCH, attachPsprFields } from '../../src/sim/p_pspr';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const RAISE_DONE = 14;
 const SWITCH_READY = 44; // pistol→fist: lower 14..29, raise → ready 44
 const PUNCH_F = SWITCH_READY; // first punch fires on the ready tic
+
+/** Per-hit draws added by the live P_DamageMobj body: the painChance roll
+ * (p_inter.c:894) — the immortality of the fixture dummies rules out the
+ * death-side `tics -= P_Random()&3` clamp (p_inter.c:725). */
+const DAMAGE_DRAWS = 1;
 
 function range(dummies: { x: number; y?: number }[]) {
   const s = boot(weaponRangeSpec(
@@ -49,8 +54,10 @@ describe('fist — melee punches at a zombie 48 units away', () => {
     expect(shots).toHaveLength(1);
     expect(shots[0]!.tic).toBe(PUNCH_F + 5); // fire 45 + 4
 
-    // Window = [damage, jitter, jitter, blood zjit×2, lastlook, tics].
-    expect(s.rng.prndindex).toBe(spawnPrnd + 7);
+    // Window = [damage, jitter, jitter, blood zjit×2, lastlook, tics] +
+    // the victim's P_DamageMobj painChance draw (p_inter.c:894) — M8-05
+    // made the damage path live, so every HIT costs one more draw.
+    expect(s.rng.prndindex).toBe(spawnPrnd + 7 + DAMAGE_DRAWS);
     const derived = ((RNDTABLE[(spawnPrnd + 1) & 0xff]! % 10) + 1) << 1;
     expect(shots[0]!.amount).toBe(derived);
     expect(derived % 2).toBe(0);
@@ -65,7 +72,7 @@ describe('fist — melee punches at a zombie 48 units away', () => {
     void trace;
   });
 
-  it('hold: 17-tic cycle, 7 draws per swing', () => {
+  it('hold: 17-tic cycle, 8 draws per swing', () => {
     const s = range([{ x: 176 }]);
     const dummy = of(s, MT.MT_POSSESSED)[0]!;
     const spawnPrnd = s.rng.prndindex;
@@ -77,7 +84,7 @@ describe('fist — melee punches at a zombie 48 units away', () => {
     for (let i = 1; i < shots.length; i++) {
       expect(shots[i]!.tic - shots[i - 1]!.tic).toBe(17);
     }
-    expect(s.rng.prndindex).toBe(spawnPrnd + 7 * shots.length);
+    expect(s.rng.prndindex).toBe(spawnPrnd + (7 + DAMAGE_DRAWS) * shots.length);
     for (const e of shots) expect(e.amount % 2).toBe(0);
   });
 
@@ -87,14 +94,23 @@ describe('fist — melee punches at a zombie 48 units away', () => {
     const spawnPrnd = s.rng.prndindex;
     const p = attachPsprFields(s.players[0]!);
     p.powers[0] = 1; // pw_strength (perma while >0)
-    trackPsprites(s, 210, (t) => ({
-      attack: true, weaponKey: t === RAISE_DONE ? 0 : undefined
-    }));
+    // The 20..200 punch kicks a POSS (mass 100) with up to 25 units of
+    // momentum — vanilla-true knockback, and out of MELEERANGE after ~1
+    // swing (measured: 1 hit unpinned). This suite derives the DAMAGE half
+    // of the swing, so the dummy is held at range by the harness rig; the
+    // kick itself is pinned where it belongs, in p_inter_damage.test.ts.
+    trackPsprites(
+      s,
+      210,
+      (t) => ({ attack: true, weaponKey: t === RAISE_DONE ? 0 : undefined }),
+      pinInPlace(s, dummy)
+    );
     const shots = dmgTo(s, dummy);
     expect(shots.length).toBe(10); // F=44 + 17k ≤ 209
     let k = 0;
     for (const e of shots) {
-      const derived = (((RNDTABLE[(spawnPrnd + k * 7 + 1) & 0xff]! % 10) + 1) << 1) * 10;
+      const derived =
+        (((RNDTABLE[(spawnPrnd + k * (7 + DAMAGE_DRAWS) + 1) & 0xff]! % 10) + 1) << 1) * 10;
       expect(e.amount).toBe(derived);
       expect(e.amount % 20).toBe(0);
       k++;

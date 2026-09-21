@@ -69,7 +69,7 @@ import { S } from '../wad/info/states';
 
 import { registerDamageBridge, type HookSlots, type MobjRef } from './hooks';
 import { pSetMobjState, pSpawnMobj, type Mobj } from './p_mobj';
-import { allocThingSlot, thingUnsetPosition } from './thinglinks';
+import { allocThingSlot, thingSetPosition, thingUnsetPosition } from './thinglinks';
 import { ONFLOORZ } from './player';
 import { pRandom } from './prng';
 import { pointToAngleOrigin } from './pslide';
@@ -285,6 +285,12 @@ function promoteMoverSlot(m: Mobj): void {
   links.doomednum[s] = links.doomednum[old]!;
   links.z[s] = m.z;
   m.linkSlot = s;
+  // Link it NOW (P_SetThingPosition, p_maputl.c:395): allocThingSlot hands
+  // out a zeroed slot, and unlike the chase path — where the very next
+  // P_TryMove relinks — the kick's move can be BLOCKED (P_XYMovement
+  // zeroes the momentum and never relinks), which would leave the promoted
+  // thing absent from every cell and invisible to PIT_CheckThing.
+  thingSetPosition(links, s, m.x, m.y);
   // Identity alias: the OLD slot keeps resolving to the same mobj (only the
   // NEW one is grid-linked). The grid no longer yields the old id, so no
   // call site can pass it — but the L2 `hooks.damage` log records slots at
