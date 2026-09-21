@@ -744,7 +744,9 @@ export function stUpdateWidgets(c: StContext): void {
  *
  * LEDGER LINE `st_face` (plan §M9-05 / §0.8): exactly ONE mRandom() draw per
  * call, unconditional, every GS_LEVEL tic — the new permanent
- * MENU-stream addition (`src/sim/random-sites.ts`, RANDOM_SITE_MCALLS).
+ * MENU-stream ledger line `statusbar.ts` / site `st_face`
+ * (src/sim/random-sites.ts, MRANDOM_SITE_CALLS — the same ledger M9-07 opened
+ * for wi_anim; the stream is SHARED, plan §0.9).
  */
 export function stTicker(c: StContext): void {
   stClock += 1; // st_stuff.c:964
