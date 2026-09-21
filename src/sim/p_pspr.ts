@@ -572,7 +572,7 @@ export function pSetPsprite(p: PsprPlayer, position: number, stnum: number): voi
     if (state.actionId) {
       psprActionCtx.player = p;
       psprActionCtx.psp = psp;
-      dispatchAction(state.actionId, psprActionCtx);
+      dispatchAction(state.actionId, psprActionCtx, 'pspr');
       if (!psp.state) break;
     }
 
@@ -1130,28 +1130,28 @@ const W =
       fn(c.player, c.psp);
     };
 
-registerAction(ACT.A_Light0, W(aLight0));
-registerAction(ACT.A_WeaponReady, W(aWeaponReady));
-registerAction(ACT.A_Lower, W(aLower));
-registerAction(ACT.A_Raise, W(aRaise));
-registerAction(ACT.A_Punch, W(aPunch));
-registerAction(ACT.A_ReFire, W(aReFire));
-registerAction(ACT.A_FirePistol, W(aFirePistol));
-registerAction(ACT.A_Light1, W(aLight1));
-registerAction(ACT.A_FireShotgun, W(aFireShotgun));
-registerAction(ACT.A_Light2, W(aLight2));
-registerAction(ACT.A_FireShotgun2, W(aFireShotgun2));
-registerAction(ACT.A_CheckReload, W(aCheckReload));
-registerAction(ACT.A_OpenShotgun2, W(aOpenShotgun2));
-registerAction(ACT.A_LoadShotgun2, W(aLoadShotgun2));
-registerAction(ACT.A_CloseShotgun2, W(aCloseShotgun2));
-registerAction(ACT.A_FireCGun, W(aFireCGun));
-registerAction(ACT.A_GunFlash, W(aGunFlash));
-registerAction(ACT.A_FireMissile, W(aFireMissile));
-registerAction(ACT.A_Saw, W(aSaw));
-registerAction(ACT.A_FirePlasma, W(aFirePlasma));
-registerAction(ACT.A_BFGsound, W(aBFGsound));
-registerAction(ACT.A_FireBFG, W(aFireBFG));
+registerAction(ACT.A_Light0, W(aLight0), 'pspr');
+registerAction(ACT.A_WeaponReady, W(aWeaponReady), 'pspr');
+registerAction(ACT.A_Lower, W(aLower), 'pspr');
+registerAction(ACT.A_Raise, W(aRaise), 'pspr');
+registerAction(ACT.A_Punch, W(aPunch), 'pspr');
+registerAction(ACT.A_ReFire, W(aReFire), 'pspr');
+registerAction(ACT.A_FirePistol, W(aFirePistol), 'pspr');
+registerAction(ACT.A_Light1, W(aLight1), 'pspr');
+registerAction(ACT.A_FireShotgun, W(aFireShotgun), 'pspr');
+registerAction(ACT.A_Light2, W(aLight2), 'pspr');
+registerAction(ACT.A_FireShotgun2, W(aFireShotgun2), 'pspr');
+registerAction(ACT.A_CheckReload, W(aCheckReload), 'pspr');
+registerAction(ACT.A_OpenShotgun2, W(aOpenShotgun2), 'pspr');
+registerAction(ACT.A_LoadShotgun2, W(aLoadShotgun2), 'pspr');
+registerAction(ACT.A_CloseShotgun2, W(aCloseShotgun2), 'pspr');
+registerAction(ACT.A_FireCGun, W(aFireCGun), 'pspr');
+registerAction(ACT.A_GunFlash, W(aGunFlash), 'pspr');
+registerAction(ACT.A_FireMissile, W(aFireMissile), 'pspr');
+registerAction(ACT.A_Saw, W(aSaw), 'pspr');
+registerAction(ACT.A_FirePlasma, W(aFirePlasma), 'pspr');
+registerAction(ACT.A_BFGsound, W(aBFGsound), 'pspr');
+registerAction(ACT.A_FireBFG, W(aFireBFG), 'pspr');
 // A_BFGSpray (ACT 23) is an MOBJ state action (S_BFGLAND3) — M7-09/M8
 // registers that body; the pspr table never dispatches it.
 

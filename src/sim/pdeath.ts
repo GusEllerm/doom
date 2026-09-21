@@ -126,10 +126,15 @@ export function aFall(actor: Mobj): void {
 /* ------------------------------------------------------------------ */
 
 export function registerDeathActions(): void {
-  registerAction(ACT.A_Pain, (ctx) => aPain(ctx as Mobj));
-  registerAction(ACT.A_Scream, (ctx) => aScream(ctx as Mobj));
-  registerAction(ACT.A_XScream, (ctx) => aXScream(ctx as Mobj));
-  registerAction(ACT.A_Fall, (ctx) => aFall(ctx as Mobj));
+  // M8-07 id27 domain fix: bodies cast ctx to Mobj, so they register under
+  // the MOBJ domain — the weapon/psprite machine can never execute them
+  // (cross-domain guard in a_actions.resolve; the id-27 weapon-side slot
+  // keeps its own identity, which vanilla never dispatches: pspr-reachable
+  // rows use ids 1..22 only).
+  registerAction(ACT.A_Pain, (ctx) => aPain(ctx as Mobj), 'mobj');
+  registerAction(ACT.A_Scream, (ctx) => aScream(ctx as Mobj), 'mobj');
+  registerAction(ACT.A_XScream, (ctx) => aXScream(ctx as Mobj), 'mobj');
+  registerAction(ACT.A_Fall, (ctx) => aFall(ctx as Mobj), 'mobj');
 }
 
 registerDeathActions();

@@ -195,5 +195,5 @@ function aBFGSpray(ctx: unknown): void {
   }
 }
 
-registerAction(ACT.A_Explode, aExplode);
-registerAction(ACT.A_BFGSpray, aBFGSpray);
+registerAction(ACT.A_Explode, aExplode, 'mobj');
+registerAction(ACT.A_BFGSpray, aBFGSpray, 'mobj');
