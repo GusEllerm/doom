@@ -54,6 +54,7 @@ export const RANDOM_SITE_SCAN_SKIP: readonly string[] = [
   'prng.ts', // pRandom/mRandom definitions + the tables
 ];
 
+
 /* ------------------------------------------------------------------ */
 /* M9-07 ADDITIVE: the MENU-stream (mRandom) ledger — `wi_anim`         */
 /* ------------------------------------------------------------------ */
@@ -71,23 +72,35 @@ export const RANDOM_SITE_SCAN_SKIP: readonly string[] = [
  * mid-intermission. */
 export const MRANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
   'wintermission.ts': 3, // 2 init sites (ALWAYS/RANDOM) + 1 loop site
+  // M9-05 (`st_face`): ST_Ticker's unconditional face draw — ONE mRandom per
+  // GS_LEVEL tic (st_stuff.c:965). st_stuff.c has no other M_Random site
+  // (the chat/cheat layer is deferred and draws nothing).
+  'statusbar.ts': 1,
 };
 
-/** Scan src/sim for mRandom call occurrences (test helper). */
+/** Scan the UI + sim trees for mRandom call occurrences (test helper). The
+ * default covers BOTH trees because the MENU stream is consumed by UI modules
+ * (M9-07 intermission, M9-05 statusbar) as well as the sim — so the ledger's
+ * bidirectional audit stays complete as UI-side M_Random sites appear. */
 export function scanMRandomSites(
-  dir = fileURLToPath(new URL('.', import.meta.url))
+  dirs: string | readonly string[] = [
+    fileURLToPath(new URL('.', import.meta.url)),
+    fileURLToPath(new URL('../ui', import.meta.url)),
+  ],
 ): Record<string, number> {
   const found: Record<string, number> = {};
-  for (const name of readdirSync(dir)) {
-    if (!name.endsWith('.ts') || name.endsWith('.test.ts')) continue;
-    if (RANDOM_SITE_SCAN_SKIP.includes(name)) continue;
-    const src = readFileSync(`${dir}/${name}`, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .map((l) => l.replace(/\/\/.*$/, ''))
-      .join('\n');
-    const n = (src.match(/\bmRandom\(/g) ?? []).length;
-    if (n > 0) found[name] = n;
+  for (const dir of typeof dirs === 'string' ? [dirs] : dirs) {
+    for (const name of readdirSync(dir)) {
+      if (!name.endsWith('.ts') || name.endsWith('.test.ts')) continue;
+      if (RANDOM_SITE_SCAN_SKIP.includes(name)) continue;
+      const src = readFileSync(`${dir}/${name}`, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .map((l) => l.replace(/\/\/.*$/, ''))
+        .join('\n');
+      const n = (src.match(/\bmRandom\(/g) ?? []).length;
+      if (n > 0) found[name] = (found[name] ?? 0) + n;
+    }
   }
   return found;
 }
