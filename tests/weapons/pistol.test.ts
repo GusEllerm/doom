@@ -33,6 +33,13 @@ import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 const FU = 65536;
 const RAISE_DONE = 14; // pistol ready tic (G_PlayerReborn spawn)
 
+/** M8-05: draws the DAMAGE PATH adds per hit on an immortal dummy —
+ * exactly the one `P_Random() < painchance` roll (p_inter.c:894; the
+ * death-side `tics -= P_Random()&3` clamp (p_inter.c:725) cannot fire
+ * here because every fixture dummy is pinned immortal or dies only in the
+ * dedicated death suites, which pin that draw explicitly). */
+const DAMAGE_DRAWS = 1;
+
 function range() {
   const s = boot(weaponRangeSpec([{ x: 192, type: 3004 }]));
   const dummy = of(s, MT.MT_POSSESSED)[0]!;
@@ -59,8 +66,11 @@ describe('pistol — scripted shots (zombie at 64 units)', () => {
     const shots = dmgTo(s, dummy);    expect(shots).toHaveLength(1);
     expect(shots[0]!.tic).toBe(RAISE_DONE + 4); // S_PISTOL2 entry
 
-    // Accurate shot = 5 draws [damage, zjit, zjit, lastlook, tics].
-    expect(s.rng.prndindex).toBe(spawnPrnd + 5);
+    // Accurate shot = 5 weapon draws [damage, zjit, zjit, lastlook, tics]
+    // + 1 damage-path draw: the victim's P_DamageMobj painChance roll
+    // (p_inter.c:894) runs inside the damageSlot dispatch, i.e. AFTER the
+    // blood draws (p_shoot.ts spawns blood, then calls damageSlot).
+    expect(s.rng.prndindex).toBe(spawnPrnd + 5 + DAMAGE_DRAWS);
     const derived = 5 * (RNDTABLE[(spawnPrnd + 1) & 0xff]! % 3 + 1);
     expect(shots[0]!.amount).toBe(derived);
     expect([5, 10, 15]).toContain(shots[0]!.amount);
@@ -95,15 +105,18 @@ describe('pistol — scripted shots (zombie at 64 units)', () => {
     for (let i = 1; i < shots.length; i++) {
       expect(shots[i]!.tic - shots[i - 1]!.tic).toBe(14);
     }
-    // Full-window re-derivation: shot 0 = 5 draws, every refire = 7
-    // (damage draw first, then jitter pair, then the 4 blood draws).
+    // Full-window re-derivation: shot 0 = 5 weapon draws + the victim's
+    // painChance draw, every refire = 7 + 1 (damage draw first, then the
+    // jitter pair, then the 4 blood draws, then painChance).
     expect(5 * (RNDTABLE[(spawnPrnd + 1) & 0xff]! % 3 + 1)).toBe(shots[0]!.amount);
-    let k = 5;
+    let k = 5 + DAMAGE_DRAWS;
     for (let i = 1; i < shots.length; i++) {
       expect(5 * (RNDTABLE[(spawnPrnd + k + 1) & 0xff]! % 3 + 1)).toBe(shots[i]!.amount);
-      k += 7;
+      k += 7 + DAMAGE_DRAWS;
     }
-    expect(s.rng.prndindex).toBe(spawnPrnd + 5 + 7 * (shots.length - 1));
+    expect(s.rng.prndindex).toBe(
+      spawnPrnd + 5 + DAMAGE_DRAWS + (7 + DAMAGE_DRAWS) * (shots.length - 1)
+    );
     expect(p.ammo[AM_CLIP]).toBe(50 - shots.length);
     expect(sfxCount(s, SFX_PISTOL)).toBe(shots.length);
     expect(trace[trace.length - 1]!.weapon).toBe(14); // mid-cycle (8th shot fired 112)

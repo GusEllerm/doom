@@ -22,7 +22,13 @@ import { AM_CELL, WP_PLASMA, attachPsprFields } from '../../src/sim/p_pspr';
 import { resolveSfxId } from '../../src/sim/psound_stub';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
+
+/** M8-05: the live P_DamageMobj adds the victim's painChance roll
+ * (p_inter.c:894) AFTER the hit's own damage draw, and its kick pushes the
+ * dummy — the fire-stream window is measured here, so the dummy is held by
+ * harness.pinInPlace (the kick is pinned in p_inter_damage.test.ts). */
+const DAMAGE_DRAWS = 1;
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const SFX_PLASMA = resolveSfxId('sfx_plasma');
@@ -43,9 +49,12 @@ describe('plasma — single-projectile fire at a zombie 64 units away', () => {
   it('one press: 3 fire draws (flash variant + spawn + missilespawn), hit +1', () => {
     const { s, dummy, p } = range();
     const spawnPrnd = s.rng.prndindex;
-    const trace = trackPsprites(s, 70, (t) => ({
-      attack: t === SWITCH_READY, weaponKey: t === RAISE_DONE ? 5 : undefined
-    }));
+    const trace = trackPsprites(
+      s,
+      70,
+      (t) => ({ attack: t === SWITCH_READY, weaponKey: t === RAISE_DONE ? 5 : undefined }),
+      pinInPlace(s, dummy)
+    );
 
     expect(trace[RAISE_DONE]!.weapon).toBe(11); // switch starts
     expect(trace[SWITCH_READY]!.weapon).toBe(77); // S_PLASMA1 fires on entry
@@ -55,8 +64,9 @@ describe('plasma — single-projectile fire at a zombie 64 units away', () => {
     // Impact tic: spawn tic 44 + flight (speed 25 u/tic over 64 units,
     // ±1 from the P_CheckMissileSpawn nudge — measured pin):
     expect(shots[0]!.tic).toBe(44); // nudge + first thinker tic cover the 64 units
-    // Window (5 draws): dmg roll re-derived at absolute spawnPrnd+4.
-    expect(s.rng.prndindex).toBe(spawnPrnd + 5);
+    // Window (5 fire/impact draws + the painChance draw): dmg roll
+    // re-derived at absolute spawnPrnd+4.
+    expect(s.rng.prndindex).toBe(spawnPrnd + 5 + DAMAGE_DRAWS);
     const derived = ((RNDTABLE[(spawnPrnd + 4) & 0xff]! % 8) + 1) * 5;
     expect(shots[0]!.amount).toBe(derived);
     expect(derived % 5).toBe(0);
@@ -78,18 +88,24 @@ describe('plasma — single-projectile fire at a zombie 64 units away', () => {
   it('hold: S_PLASMA2-entry A_ReFire cycle, 4 draws per shot', () => {
     const { s, dummy, p } = range();
     const spawnPrnd = s.rng.prndindex;
-    trackPsprites(s, 90, (t) => ({
-      attack: true, weaponKey: t === RAISE_DONE ? 5 : undefined
-    }));
+    trackPsprites(
+      s,
+      90,
+      (t) => ({ attack: true, weaponKey: t === RAISE_DONE ? 5 : undefined }),
+      pinInPlace(s, dummy)
+    );
     const shots = dmgTo(s, dummy);
     expect(shots.length).toBe(16); // fire 44,47,50,…3-tic cycle → ≤89
     for (let i = 1; i < 4; i++) {
       expect(shots[i]!.tic - shots[i - 1]!.tic).toBe(3);
     }
-    // Per shot: [flash, lastlook, cms, dmg, explode] = 5 draws.
-    expect(s.rng.prndindex).toBe(spawnPrnd + 5 * shots.length);
+    // Per shot: [flash, lastlook, cms, dmg, explode] = 5 draws + painChance.
+    expect(s.rng.prndindex).toBe(
+      (spawnPrnd + (5 + DAMAGE_DRAWS) * shots.length) & 0xff
+    );
     for (let i = 0; i < shots.length; i++) {
-      const derived = ((RNDTABLE[(spawnPrnd + i * 5 + 4) & 0xff]! % 8) + 1) * 5;
+      const derived =
+        ((RNDTABLE[(spawnPrnd + i * (5 + DAMAGE_DRAWS) + 4) & 0xff]! % 8) + 1) * 5;
       expect(shots[i]!.amount).toBe(derived);
     }
     expect(p.ammo[AM_CELL]).toBe(120 - shots.length);

@@ -18,7 +18,7 @@ import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBu
 import { gInitGame } from './game';
 import { hashState, type GameState } from './state';
 import { RNDTABLE } from './prng';
-import { MT } from '../wad/info/mobjinfo';
+import { MF, MT } from '../wad/info/mobjinfo';
 import { S, stateAction } from '../wad/info/states';
 
 import { MISSILERANGE, attackRange, pSpawnMobj, resetMobjHookCounts, type Mobj } from './p_mobj';
@@ -44,7 +44,17 @@ function boot(spec: RectMapSpec): GameState {
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
-  return gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP')), 2);
+  const s = gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP')), 2);
+  // M8-05 made damage lethal, so a splash suite whose subject is the DISTANCE
+  // math would otherwise measure a corpse (P_KillMobj clears MF_SHOOTABLE ⇒
+  // PIT_RadiusAttack skips the victim entirely, and the death costs its own
+  // draws). The m7Fixtures convention applies: raise dummy health through the
+  // live-mobj seam to keep the death path out of the measured window. The
+  // DEATH path is pinned in src/sim/p_inter_damage.test.ts.
+  for (const m of s.mobjs.mobjs) {
+    if ((m.flags & MF.MF_SHOOTABLE) !== 0 && m.playerRef === undefined) m.health = 1 << 20;
+  }
+  return s;
 }
 
 function range(extra: RectMapSpec['things'] = []): GameState {
@@ -88,6 +98,16 @@ function tick(s: GameState, n: number): void {
  * the direct-hit event is the FIRST one (PIT runs before the explode). */
 const dmgEvents = (s: GameState) => s.hooks.damage.entries;
 
+/** Damage entries whose target is `m`.
+ * M8-05 note: the log stores the ThingLinks slot AT DAMAGE TIME (hooks.ts
+ * records before dispatching to the P_DamageMobj body), and the kick that
+ * body applies promotes a static THINGS dummy to a mover slot exactly once
+ * per lifetime (p_inter_damage.ts) — so identity goes through the runtime
+ * slot map (the pre-promotion id stays aliased to the same mobj) instead of
+ * the live `linkSlot`. */
+const dmgTo = (s: GameState, m: Mobj) =>
+  dmgEvents(s).filter((e) => e.thing === m.linkSlot || s.mobjs.slotMobjs.get(e.thing) === m);
+
 beforeEach(() => {
   resetPsprHooks();
   registerShootPsprHooks();
@@ -128,7 +148,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     const dy = Math.abs(victim.y - expl.y);
     const dist = Math.max(0, ((Math.max(dx, dy) - victim.radius) >> 16));
     const want = 128 - dist;
-    const e = dmgEvents(s).find((ev) => ev.thing === victim.linkSlot);
+    const e = dmgTo(s, victim)[0];
     expect(e, 'splash event for the victim').toBeDefined();
     expect(e!.amount).toBe(want);
     expect(e!.source).toBe((s.players[0]!.mo as unknown as Mobj).linkSlot); // bombsource
@@ -153,17 +173,14 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     pSpawnPlayerMissile(s.mobjs, pmo(p), MT.MT_ROCKET);
     tick(s, 12);
     const victim = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!;
-    expect(
-      dmgEvents(s).some((e) => e.thing === victim.linkSlot),
-      'no splash through a solid wall',
-    ).toBe(false);
+    expect(dmgTo(s, victim).length, 'no splash through a solid wall').toBe(0);
     expect(s.mobjs.counts.explodeMissile).toBe(1); // it DID explode there
   });
 
   it('out of radius (>128 units) takes nothing', () => {
     const s = rocketIntoWall(300, [{ x: 300 - 8, y: 128 + 160, angle: 0, type: 3004 }]);
     const victim = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!;
-    expect(dmgEvents(s).some((e) => e.thing === victim.linkSlot)).toBe(false);
+    expect(dmgTo(s, victim).length).toBe(0);
   });
 
   it('bosses are concussion-immune (MT_CYBORG/MT_SPIDER)', () => {
@@ -175,15 +192,15 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     ]);
     const boss = s.mobjs.mobjs.find((m) => m.type === MT.MT_CYBORG)!;
     const ctrl = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!;
-    expect(dmgEvents(s).some((e) => e.thing === boss.linkSlot), 'boss immune').toBe(false);
-    expect(dmgEvents(s).some((e) => e.thing === ctrl.linkSlot), 'control hit').toBe(true);
+    expect(dmgTo(s, boss).length, 'boss immune').toBe(0);
+    expect(dmgTo(s, ctrl).length, 'control hit').toBeGreaterThan(0);
   });
 
   it('self-splash: 1.10 rockets CAN damage the shooter (rocket-jump truth)', () => {
     // Shooter 24 units from the impact ⇒ dist 0 ⇒ full 128.
     const s = rocketIntoWall(152, []);
     const player = s.players[0]!.mo as unknown as Mobj;
-    const e = dmgEvents(s).find((ev) => ev.thing === player.linkSlot);
+    const e = dmgTo(s, player)[0];
     expect(e, 'P_RadiusAttack has NO source exclusion').toBeDefined();
     expect(e!.amount).toBeGreaterThan(100);
     expect(e!.source).toBe(player.linkSlot); // bombsource == self
@@ -192,7 +209,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
   it('direct hit THEN splash: two events for one point-blank victim', () => {
     const s = rocketIntoWall(240, [{ x: 236, y: 128, angle: 0, type: 3004 }]);
     const victim = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!;
-    const evs = dmgEvents(s).filter((e) => e.thing === victim.linkSlot);
+    const evs = dmgTo(s, victim);
     expect(evs.length).toBeGreaterThanOrEqual(2);
     // 0 = direct (PIT, dice*20, no LOS needed); 1 = splash ≥ 128−dist
     expect(evs[0]!.amount % 20).toBe(0);
@@ -230,7 +247,7 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     tick(s, 22); // 10 u/tic from x≈135 to the x=300 wall + the explode tic
     const victim = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED && m !== shooterMo)!;
     expect(s.mobjs.counts.explodeMissile).toBe(1);
-    expect(dmgEvents(s).some((e) => e.thing === victim.linkSlot)).toBe(false);
+    expect(dmgTo(s, victim).length).toBe(0);
   });
 
   it('barrel path exists: only S_EXPLODE1/S_BEXP4 carry A_Explode (info scan)', () => {
@@ -253,7 +270,11 @@ describe('rocket splash (A_Explode → P_RadiusAttack, p_map.c:1160)', () => {
     const spot = s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!;
     const before = s.rng.prndindex;
     pRadiusAttack(s.mobjs, spot, null, 128);
-    expect(s.rng.prndindex).toBe(before); // P_RadiusAttack draws NOTHING
+    // The radius LOOP draws NOTHING (no P_Random anywhere in
+    // PIT_RadiusAttack); the single advance is the victim's own damage-path
+    // painChance roll (p_inter.c:894) — immortality keeps the death clamp
+    // (p_inter.c:725) and the MT_CLIP drop spawn out of the window.
+    expect(s.rng.prndindex).toBe(before + 1);
     const e = dmgEvents(s)[0];
     expect(e!.amount).toBe(128); // center visit: dist 0
     expect(e!.source).toBe(null); // bombsource NULL (environmental)
@@ -312,10 +333,14 @@ describe('A_BFGSpray (p_pspr.c:781, S_BFGLAND3)', () => {
     tick(s, 20);
     const hits = dmgEvents(s);
     expect(hits.length, 'ray hits damaged the dummy').toBeGreaterThan(0);
-    expect(hits[0]!.thing).toBe(s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED)!.linkSlot);
+    expect(s.mobjs.slotMobjs.get(hits[0]!.thing)).toBe(
+      s.mobjs.mobjs.find((m) => m.type === MT.MT_POSSESSED),
+    );
     // BFGLAND3 is reached 16−(explodeTicsDraw&3) tics later; the draws
-    // between are ONLY the spray's own (thinkers here never draw):
-    expect(s.rng.prndindex).toBe((start + 1 + 16 * hits.length) & 255);
+    // between are the spray's own (16 per hit ray: the MT_EXTRABFG spawn's
+    // lastlook + 15 dice) plus ONE per hit ray from the damage body
+    // (painChance, p_inter.c:894) — M8-05. Thinkers here never draw.
+    expect(s.rng.prndindex).toBe((start + 1 + 17 * hits.length) & 255);
     void bfg;
   });
 
@@ -334,13 +359,14 @@ describe('A_BFGSpray (p_pspr.c:781, S_BFGLAND3)', () => {
     expect(extrabfg, 'one MT_EXTRABFG per hit ray').toBe(hits.length);
 
     // Exact layout: explode tics at start+1, then per hit ray k: spawn
-    // lastlook at start+2+16k, the 15 dice at start+3+16k … +17+16k.
+    // lastlook at start+2+17k, the 15 dice at start+3+17k … +17+17k, and the
+    // victim's painChance draw at start+18+17k (M8-05).
     for (let k = 0; k < hits.length; k++) {
       let want = 0;
-      for (let j = 0; j < 15; j++) want += (RNDTABLE[(start + 3 + 16 * k + j) & 255]! & 7) + 1;
+      for (let j = 0; j < 15; j++) want += (RNDTABLE[(start + 3 + 17 * k + j) & 255]! & 7) + 1;
       expect(hits[k]!.amount, `ray ${k} damage`).toBe(want);
     }
-    expect(s.rng.prndindex).toBe((start + 1 + 16 * hits.length) & 255);
+    expect(s.rng.prndindex).toBe((start + 1 + 17 * hits.length) & 255);
   });
 });
 

@@ -449,15 +449,20 @@ describe('telefrag', () => {
     expect(teleportCounts.noThing).toBe(1);
   });
 
-  it('self-skip: a mover is never its own victim (the un-damaged occupant is ' +
-    'stomped again — pre-M7 damage is a slot no-op, deviation logged)', () => {
+  // M8-05: the second stomp no longer logs. PIT_StompThing (p_map.c:573-577)
+  // starts with `if (!(tflags & MF_SHOOTABLE) && !(tflags & MF_MISSILE))
+  // return true;` and the live P_DamageMobj body's P_KillMobj clears
+  // MF_SHOOTABLE on the first stomp's death — so an already-dead occupant is
+  // skipped instead of being stomped a second time (pre-M8-05 the flag write
+  // never reached the ThingLinks mirror the trace reads).
+  it('self-skip: a mover is never its own victim (a stomped corpse is skipped)', () => {
       const s = stateFor(FRAG);
       freshHooks(s);
       const mo = s.players[0]!.mo;
       const line = armTeleportLine(s, 97, 7);
       expect(evTeleport(s, line, 0, mo)).toBe(true);
       expect(evTeleport(s, line, 0, mo)).toBe(true); // same spot, self-skip
-      expect(s.hooks.damage.count).toBe(2);
+      expect(s.hooks.damage.count).toBe(1);
       for (const e of s.hooks.damage.entries) expect(e.thing).not.toBe(mo.linkSlot);
     });
 });

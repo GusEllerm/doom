@@ -21,7 +21,14 @@ import { MT } from '../../src/wad/info/mobjinfo';
 import { SFX_SHOTGN, AM_SHELL, WP_SHOTGUN, attachPsprFields } from '../../src/sim/p_pspr';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
+
+/** M8-05: the live P_DamageMobj kick (p_inter.c:805-832) adds ONE draw per
+ * hit (the painChance roll, p_inter.c:894) and pushes the dummy — these
+ * suites derive the fire-stream window, so the dummy is held in place by
+ * harness.pinInPlace and the per-hit window is 7+1. The kick itself is
+ * pinned in src/sim/p_inter_damage.test.ts. */
+const DAMAGE_DRAWS = 1;
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const FU = 65536;
@@ -42,9 +49,12 @@ describe('shotgun — 7-pellet volleys at a zombie 64 units away', () => {
   it('switch + volley: 7×{5,10,15} re-derived, ammo −1, 49 draws', () => {
     const { s, dummy, p } = range();
     const spawnPrnd = s.rng.prndindex;
-    const trace = trackPsprites(s, 70, (t) => ({
-      attack: t >= 14, weaponKey: t === 14 ? 2 : undefined
-    }));
+    const trace = trackPsprites(
+      s,
+      70,
+      (t) => ({ attack: t >= 14, weaponKey: t === 14 ? 2 : undefined }),
+      pinInPlace(s, dummy)
+    );
     // Switch machine: PISTOLDOWN at 14, SGUNUP at 29, SGUN ready+fire 44.
     expect(trace[14]!.weapon).toBe(11);
     const up = trace.findIndex((x) => x.weapon === 20); // S_SGUNUP
@@ -55,13 +65,14 @@ describe('shotgun — 7-pellet volleys at a zombie 64 units away', () => {
     const shots = dmgTo(s, dummy);
     expect(shots).toHaveLength(7);
     for (const e of shots) expect(e.tic).toBe(VOLLEY_TIC);
-    // Per-pellet ledger order: dmg, jit, jit, impact×4 → draw 7k+1.
+    // Per-pellet ledger order: dmg, jit, jit, impact×4, painChance → 8k+1.
     for (let k = 0; k < 7; k++) {
-      const derived = 5 * (RNDTABLE[(spawnPrnd + k * 7 + 1) & 0xff]! % 3 + 1);
+      const derived =
+        5 * (RNDTABLE[(spawnPrnd + k * (7 + DAMAGE_DRAWS) + 1) & 0xff]! % 3 + 1);
       expect(shots[k]!.amount).toBe(derived);
       expect([5, 10, 15]).toContain(shots[k]!.amount);
     }
-    expect(s.rng.prndindex).toBe(spawnPrnd + 49);
+    expect(s.rng.prndindex).toBe(spawnPrnd + (49 + 7 * DAMAGE_DRAWS));
     expect(p.ammo[AM_SHELL]).toBe(29);
     expect(sfxCount(s, SFX_SHOTGN)).toBe(1);
 
@@ -73,14 +84,17 @@ describe('shotgun — 7-pellet volleys at a zombie 64 units away', () => {
   it('hold: 37-tic cycle, 7 volleys of blood', () => {
     const { s, dummy, p } = range();
     const spawnPrnd = s.rng.prndindex;
-    trackPsprites(s, 200, (t) => ({
-      attack: true, weaponKey: t === 14 ? 2 : undefined
-    }));
+    trackPsprites(
+      s,
+      200,
+      (t) => ({ attack: true, weaponKey: t === 14 ? 2 : undefined }),
+      pinInPlace(s, dummy)
+    );
     const shots = dmgTo(s, dummy);
     expect(shots.length).toBe(35); // 5 volleys × 7
     const tics = [...new Set(shots.map((e) => e.tic))].sort((a, b) => a - b);
     expect(tics).toEqual([47, 84, 121, 158, 195]);
-    expect(s.rng.prndindex).toBe(spawnPrnd + 49 * 5);
+    expect(s.rng.prndindex).toBe((spawnPrnd + (49 + 7 * DAMAGE_DRAWS) * 5) & 0xff);
     expect(p.ammo[AM_SHELL]).toBe(30 - 5);
     expect(sfxCount(s, SFX_SHOTGN)).toBe(5);
     // Spawned blood roster (removed included): 7 per volley.

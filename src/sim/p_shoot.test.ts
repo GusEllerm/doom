@@ -127,6 +127,16 @@ function range(extra: RectMapSpec['things'] = []): GameState {
 
 const live = (s: GameState): Mobj[] => s.mobjs.mobjs.filter((m) => !m.removed);
 const of = (s: GameState, t: number): Mobj[] => live(s).filter((m) => m.type === t);
+/** True when a damage entry targeted `m`. The L2 log stores the ThingLinks
+ * slot AT DAMAGE TIME (hooks.ts records before dispatching to the M8-05
+ * P_DamageMobj body), and the kick that body applies promotes a static
+ * THINGS thing to a mover slot exactly once per lifetime
+ * (p_inter_damage.ts) — so identity resolves through the runtime slot map,
+ * which keeps the pre-promotion id bound to the same mobj. */
+function hitIs(s: GameState, e: { thing: number }, m: Mobj): boolean {
+  return e.thing === m.linkSlot || s.mobjs.slotMobjs.get(e.thing) === m;
+}
+
 function slotOf(s: GameState, t: number): number {
   const m = of(s, t)[0];
   if (!m) throw new Error(`fixture has no live MT ${t}`);
@@ -345,8 +355,10 @@ describe('PTR_ShootTraverse — hit resolution (p_map.c:910-1013)', () => {
     nearFixed(blood[0]!.y, fx(128), 8192);
     expect(of(s, MT.MT_PUFF)).toHaveLength(0);
     expect(s.hooks.damage.count).toBe(1);
-    expect(s.hooks.damage.entries[0]).toEqual({
-      thing: slotOf(s, MT.MT_POSSESSED),
+    expect(hitIs(s, s.hooks.damage.entries[0]!, of(s, MT.MT_POSSESSED)[0]!)).toBe(
+      true,
+    ); // the victim the trace resolved
+    expect(s.hooks.damage.entries[0]).toMatchObject({
       amount: 15,
       source: p.mo.linkSlot,
       tic: s.leveltime,
@@ -531,6 +543,14 @@ describe('intercept order — first qualifying target wins (p_map.c:1099-1135)',
   it('across a 120-angle fan the damaged thing IS the brute target', () => {
     const s = range(FAN);
     const p = shooter(s);
+    // M8-05: the fan runs 120 traces over the SAME things, and a dead
+    // monster's corpse is no longer MF_SHOOTABLE (P_KillMobj clears the flag
+    // through the ThingLinks mirror, so PIT_CheckThing / the line-attack
+    // traverse skip it exactly like p_map.c's `!(th->flags & MF_SHOOTABLE)`)
+    // ⇒ volleys after the kill fly OVER the corpse. bruteTarget walks the
+    // live FAN geometry, so the victims are pinned immortal (m7Fixtures'
+    // convention): this test measures intercept GEOMETRY, not death.
+    for (const m of live(s)) if (m.flags & MF_SHOOTABLE) m.health = 1 << 20;
     let hitsChecked = 0;
     for (let deg = 0; deg < 360; deg += 3) {
       const ang = Math.round((deg / 360) * 0x100000000) >>> 0;
@@ -548,7 +568,7 @@ describe('intercept order — first qualifying target wins (p_map.c:1099-1135)',
       const m = live(s).find((mm) => mm.x === fx(want.x) && mm.y === fx(want.y));
       expect(m, `brute target ${want.x},${want.y} exists`).toBeDefined();
       if (s.hooks.damage.count > 0) {
-        expect(s.hooks.damage.entries[0]!.thing, `angle ${deg}°`).toBe(m!.linkSlot);
+        expect(hitIs(s, s.hooks.damage.entries[0]!, m!), `angle ${deg}°`).toBe(true);
         hitsChecked++;
       }
     }
@@ -587,7 +607,7 @@ describe('intercept order — first qualifying target wins (p_map.c:1099-1135)',
     const near = live(s)
       .filter((m) => m.type === MT.MT_BARREL)
       .sort((a, b) => a.x - b.x)[0]!;
-    expect(s.hooks.damage.entries[0]!.thing).toBe(near.linkSlot);
+    expect(hitIs(s, s.hooks.damage.entries[0]!, near)).toBe(true);
   });
 
   it('items are passed over, the shootable behind them is hit', () => {
@@ -783,7 +803,9 @@ describe('weapon fire streams (p_pspr.c spread + p_mobj.c impact draws)', () => 
     const before = s.rng.prndindex;
     const damageDraw = RNDTABLE[(before + 1) & 255]!; // P_Random pre-increments
     aPunch(p, psp(p));
-    expect(draws(s, before)).toBe(3 + IMPACT_DRAWS); // blood counts as an impact
+    // blood counts as an impact, +1 for the victim's painChance roll
+    // (p_inter.c:894) inside the live damage body — M8-05.
+    expect(draws(s, before)).toBe(3 + IMPACT_DRAWS + 1);
     expect(attackRange.value).toBe(MELEERANGE);
     expect(s.hooks.damage.entries[0]!.amount).toBe(((damageDraw % 10) + 1) << 1);
     expect(s.hooks.damage.entries[0]!.amount % 2).toBe(0);
