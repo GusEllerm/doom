@@ -21,8 +21,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -42,6 +42,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "404b8c685a2e5e8ef7fd20a4dd2f389e57caf008783987c73a7a92580a21fbbe"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "404b8c685a2e5e8ef7fd20a4dd2f389e57caf008783987c73a7a92580a21fbbe"
         }
       ]
@@ -63,8 +68,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -85,6 +90,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "b2668ffed623534765e3394657a6025ac90518e2688ee8c886d696216e211136"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "b2668ffed623534765e3394657a6025ac90518e2688ee8c886d696216e211136"
         }
       ]
     },
@@ -99,14 +109,14 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "a6329a38e995b26d33e58a01450d82a0e9acf262a84e9bd0d50f237122c5a694",
+      "indexSha256": "906ad41fd4638932174ddaec7e007c5219b3206cf49fb80b76b32c26ffbd9698",
       "png": "e1m1-corner-dm14.png",
       "wad": {
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -127,6 +137,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "a6329a38e995b26d33e58a01450d82a0e9acf262a84e9bd0d50f237122c5a694"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "906ad41fd4638932174ddaec7e007c5219b3206cf49fb80b76b32c26ffbd9698"
         }
       ]
     },
@@ -141,14 +156,14 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "b95e509d8be5ce3d9854d6c26f79bfae49e183de24963cfb9a0c6976cfa676b2",
+      "indexSha256": "e8602225be0223b634f0f775856ee475380b2bf93766f68b6f20c408b52776a2",
       "png": "e1m1-corner-ruin.png",
       "wad": {
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -169,6 +184,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "b95e509d8be5ce3d9854d6c26f79bfae49e183de24963cfb9a0c6976cfa676b2"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "e8602225be0223b634f0f775856ee475380b2bf93766f68b6f20c408b52776a2"
         }
       ]
     },
@@ -189,8 +209,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -211,6 +231,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "2c12e73c366de4d4d4f3c00484ce1bffc2b958808db1ffb055587ffcde024f58"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "2c12e73c366de4d4d4f3c00484ce1bffc2b958808db1ffb055587ffcde024f58"
         }
       ]
     },
@@ -225,14 +250,14 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "1fa85032b31002f41b33c528ae2d09b01ecd10ec99614a064ba78782613d45bd",
+      "indexSha256": "b2604ca33af61cde89351bc0805d0a497518fbb464a2949d0c03279daa19e1b0",
       "png": "e1m1-doorway-midtex.png",
       "wad": {
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -253,6 +278,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "1fa85032b31002f41b33c528ae2d09b01ecd10ec99614a064ba78782613d45bd"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "b2604ca33af61cde89351bc0805d0a497518fbb464a2949d0c03279daa19e1b0"
         }
       ]
     },
@@ -273,8 +303,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -294,6 +324,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad"
         }
       ]
@@ -315,8 +350,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -337,6 +372,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "466480897ace35122afa0f209a7e48a413e0d7c64e8e6709fa6be8db231df7d4"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "466480897ace35122afa0f209a7e48a413e0d7c64e8e6709fa6be8db231df7d4"
         }
       ]
     },
@@ -353,8 +393,8 @@
       "height": 200,
       "indexSha256": "06b2839782627ea23faa33e391adc01844836716da1fa41d25b2cf67d7b5f175",
       "png": "fix-a-n.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -375,6 +415,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "06b2839782627ea23faa33e391adc01844836716da1fa41d25b2cf67d7b5f175"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "06b2839782627ea23faa33e391adc01844836716da1fa41d25b2cf67d7b5f175"
         }
       ]
     },
@@ -391,8 +436,8 @@
       "height": 200,
       "indexSha256": "ac21a9cb2fae8aa360522952e299ef43e9bbf6205b5efc8ffca93a9a8a1f53cc",
       "png": "fix-a-ne.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -413,6 +458,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "ac21a9cb2fae8aa360522952e299ef43e9bbf6205b5efc8ffca93a9a8a1f53cc"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "ac21a9cb2fae8aa360522952e299ef43e9bbf6205b5efc8ffca93a9a8a1f53cc"
         }
       ]
     },
@@ -429,8 +479,8 @@
       "height": 200,
       "indexSha256": "7cfbc66eebda3d8b3627f7b48661b33e88e5b408d57481d2e02b3370f7bbae45",
       "png": "fix-a-w.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -451,6 +501,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "7cfbc66eebda3d8b3627f7b48661b33e88e5b408d57481d2e02b3370f7bbae45"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "7cfbc66eebda3d8b3627f7b48661b33e88e5b408d57481d2e02b3370f7bbae45"
         }
       ]
     },
@@ -467,8 +522,8 @@
       "height": 200,
       "indexSha256": "53b67f24e86b9dd7ba0f94f71dbaf7dd1f11a177a0c2e7a08b219c94ac2cf759",
       "png": "fix-b-n.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -489,6 +544,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "53b67f24e86b9dd7ba0f94f71dbaf7dd1f11a177a0c2e7a08b219c94ac2cf759"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "53b67f24e86b9dd7ba0f94f71dbaf7dd1f11a177a0c2e7a08b219c94ac2cf759"
         }
       ]
     },
@@ -505,8 +565,8 @@
       "height": 200,
       "indexSha256": "69671467312ad8a549302fd587246af739221517a84f884dddd2ed3a3f585158",
       "png": "fix-b-s.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -527,6 +587,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "69671467312ad8a549302fd587246af739221517a84f884dddd2ed3a3f585158"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "69671467312ad8a549302fd587246af739221517a84f884dddd2ed3a3f585158"
         }
       ]
     },
@@ -543,8 +608,8 @@
       "height": 200,
       "indexSha256": "16725e95bde315a1a534513b8d423deb6db1285e7a1b3c580b0278ae468d5899",
       "png": "fix-b-w.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -565,6 +630,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "16725e95bde315a1a534513b8d423deb6db1285e7a1b3c580b0278ae468d5899"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "16725e95bde315a1a534513b8d423deb6db1285e7a1b3c580b0278ae468d5899"
         }
       ]
     },
@@ -581,8 +651,8 @@
       "height": 200,
       "indexSha256": "34eec94438fa096899bcc7927320fe14f4cee73df2799d94055d91694ada15f3",
       "png": "fix-c-e.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -603,6 +673,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "34eec94438fa096899bcc7927320fe14f4cee73df2799d94055d91694ada15f3"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "34eec94438fa096899bcc7927320fe14f4cee73df2799d94055d91694ada15f3"
         }
       ]
     },
@@ -619,8 +694,8 @@
       "height": 200,
       "indexSha256": "a71f1ec6aa74a51cbd199fc089f93a3c415716bd25018fa493aabfda7fff5937",
       "png": "fix-c-n.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -641,6 +716,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "a71f1ec6aa74a51cbd199fc089f93a3c415716bd25018fa493aabfda7fff5937"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "a71f1ec6aa74a51cbd199fc089f93a3c415716bd25018fa493aabfda7fff5937"
         }
       ]
     },
@@ -657,8 +737,8 @@
       "height": 200,
       "indexSha256": "f420c2fc07a7b366459ac062c635b9a1f22f2e1502b0aa5abeb2c3abe81653d4",
       "png": "fix-c-ne.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -679,6 +759,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "f420c2fc07a7b366459ac062c635b9a1f22f2e1502b0aa5abeb2c3abe81653d4"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "f420c2fc07a7b366459ac062c635b9a1f22f2e1502b0aa5abeb2c3abe81653d4"
         }
       ]
     },
@@ -695,8 +780,8 @@
       "height": 200,
       "indexSha256": "3b2824dc65d30ac8531d92e1051952e9af9875287c368c80e1cffdf855808374",
       "png": "fix-d-e.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -717,6 +802,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "3b2824dc65d30ac8531d92e1051952e9af9875287c368c80e1cffdf855808374"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "3b2824dc65d30ac8531d92e1051952e9af9875287c368c80e1cffdf855808374"
         }
       ]
     },
@@ -733,8 +823,8 @@
       "height": 200,
       "indexSha256": "6b8ff94d7a1a10e24c883e59a3e8b9e6d3cf6318eb5b1427e64f759ed2507438",
       "png": "fix-d-n.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -755,6 +845,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "6b8ff94d7a1a10e24c883e59a3e8b9e6d3cf6318eb5b1427e64f759ed2507438"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "6b8ff94d7a1a10e24c883e59a3e8b9e6d3cf6318eb5b1427e64f759ed2507438"
         }
       ]
     },
@@ -771,8 +866,8 @@
       "height": 200,
       "indexSha256": "480a6c4bdcf4927816bd6f43d65db445f1cd8f2f75af1bb5f0840c0091b33993",
       "png": "fix-d-w.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "initial M3-08 baseline",
@@ -793,6 +888,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "480a6c4bdcf4927816bd6f43d65db445f1cd8f2f75af1bb5f0840c0091b33993"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "480a6c4bdcf4927816bd6f43d65db445f1cd8f2f75af1bb5f0840c0091b33993"
         }
       ]
     },
@@ -807,14 +907,14 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "a0fc161e7b448465d6f6d4ca60f22d7ecd7a8f86773df48d8f9795988fd5d8c4",
+      "indexSha256": "8bce628e2c247d3d048b9aab3c14873b3113fe7eed9439117da5eef218032878",
       "png": "e1m1-busy-mix.png",
       "wad": {
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -830,6 +930,11 @@
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
           "indexSha256": "a0fc161e7b448465d6f6d4ca60f22d7ecd7a8f86773df48d8f9795988fd5d8c4"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
+          "indexSha256": "8bce628e2c247d3d048b9aab3c14873b3113fe7eed9439117da5eef218032878"
         }
       ]
     },
@@ -850,8 +955,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -866,6 +971,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "4d01ae045e35555f8d6ffa19ae4301421700791466ae83f3f103aa9bf5541e08"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "4d01ae045e35555f8d6ffa19ae4301421700791466ae83f3f103aa9bf5541e08"
         }
       ]
@@ -887,8 +997,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -903,6 +1013,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "6f2771afe898aedf66ea5541f07a2a4246d1adf8a691c9021d664eb04cc68fed"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "6f2771afe898aedf66ea5541f07a2a4246d1adf8a691c9021d664eb04cc68fed"
         }
       ]
@@ -924,8 +1039,8 @@
         "file": "freedoom1.wad",
         "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
       },
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -940,6 +1055,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "d480d6f8e8c3762034aba5bbc22b31599011fea714713ced3940524bec90bb02"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "d480d6f8e8c3762034aba5bbc22b31599011fea714713ced3940524bec90bb02"
         }
       ]
@@ -957,8 +1077,8 @@
       "height": 200,
       "indexSha256": "6260dfcfeb9a17b12aa5d28e84c8eedb13159de29039a056bf27b277b6f6377d",
       "png": "fixmask-back.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -973,6 +1093,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "6260dfcfeb9a17b12aa5d28e84c8eedb13159de29039a056bf27b277b6f6377d"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "6260dfcfeb9a17b12aa5d28e84c8eedb13159de29039a056bf27b277b6f6377d"
         }
       ]
@@ -990,8 +1115,8 @@
       "height": 200,
       "indexSha256": "66e6c263465f6597f3f30b07723a42729feb21aef205e8ada123409e4cef8773",
       "png": "fixmask-fence.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -1006,6 +1131,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "66e6c263465f6597f3f30b07723a42729feb21aef205e8ada123409e4cef8773"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "66e6c263465f6597f3f30b07723a42729feb21aef205e8ada123409e4cef8773"
         }
       ]
@@ -1023,8 +1153,8 @@
       "height": 200,
       "indexSha256": "11d9a1044a7168c13fcadfa507198060430564c650d9c49ffc1a97bc98cbff95",
       "png": "fixpan-panned.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -1039,6 +1169,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "11d9a1044a7168c13fcadfa507198060430564c650d9c49ffc1a97bc98cbff95"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "11d9a1044a7168c13fcadfa507198060430564c650d9c49ffc1a97bc98cbff95"
         }
       ]
@@ -1056,8 +1191,8 @@
       "height": 200,
       "indexSha256": "377134f42dbb7fb6dc0a423e447684ca23376d1bf82aab6cbc891b5af5ea56ad",
       "png": "fixpan-rowskip.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -1072,6 +1207,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "377134f42dbb7fb6dc0a423e447684ca23376d1bf82aab6cbc891b5af5ea56ad"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "377134f42dbb7fb6dc0a423e447684ca23376d1bf82aab6cbc891b5af5ea56ad"
         }
       ]
@@ -1089,8 +1229,8 @@
       "height": 200,
       "indexSha256": "bd90cd556401c5c35fc425ed63ff42b42dc9d54646d08463d3f53fccf25ae2c2",
       "png": "fixsky-room.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -1105,6 +1245,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "bd90cd556401c5c35fc425ed63ff42b42dc9d54646d08463d3f53fccf25ae2c2"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "bd90cd556401c5c35fc425ed63ff42b42dc9d54646d08463d3f53fccf25ae2c2"
         }
       ]
@@ -1122,8 +1267,8 @@
       "height": 200,
       "indexSha256": "de1f13d62449225cb163e41892f166ae36095dbe8f8e4cd0ba667926e9503b1d",
       "png": "fixsky-seam.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -1138,6 +1283,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "de1f13d62449225cb163e41892f166ae36095dbe8f8e4cd0ba667926e9503b1d"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "de1f13d62449225cb163e41892f166ae36095dbe8f8e4cd0ba667926e9503b1d"
         }
       ]
@@ -1155,8 +1305,8 @@
       "height": 200,
       "indexSha256": "3db193e4425f64668f2c7912ced0cf7c4915c0e3a0fb84260371af7104eee255",
       "png": "fixthings-flip.png",
-      "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
-      "updatedAt": "2026-09-19",
+      "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+      "updatedAt": "2026-09-21",
       "history": [
         {
           "reason": "M4-08: M4 full-frame baseline (planes+masked+statics) replaces M3 walls-only",
@@ -1171,6 +1321,11 @@
         {
           "reason": "M4-10 sidedef mid/bottom slot decode fix (mapdata vanilla layout)",
           "at": "2026-09-19",
+          "indexSha256": "3db193e4425f64668f2c7912ced0cf7c4915c0e3a0fb84260371af7104eee255"
+        },
+        {
+          "reason": "M9-09 D018 flip: KIND_MONSTER THINGS now draw spawnstate frames — the 4 E1M1 viewpoints that SEE monster things (dm14/ruin/doorway-midtex/busy-mix) re-blessed; the other 10 E1M1 frames + all FIXMAP scenes unmoved (no monster THINGS in view/at all)",
+          "at": "2026-09-21",
           "indexSha256": "3db193e4425f64668f2c7912ced0cf7c4915c0e3a0fb84260371af7104eee255"
         }
       ]
