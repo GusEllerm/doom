@@ -16,7 +16,7 @@ import { loadMap } from '../wad/mapdata';
 import { WadFile } from '../wad/wadfile';
 
 import { buildMapFromData } from './map';
-import { gInitGame, gTicker } from './game';
+import { GA, gInitGame, gTicker, registerGameFlowHooks, resetGameFlow } from './game';
 import { hashState, type GameState, type Skill } from './state';
 import type { Mobj } from './p_mobj';
 import { asMobj, pSetMobjState, pSpawnMobj } from './p_mobj';
@@ -338,17 +338,31 @@ describe('M7-03 P_DeathThink (p_user.c:180-232)', () => {
     expect(P(s).damagecount).toBe(0); // faced the killer -> faded
   });
 
-  it('BT_USE while dead latches PST_REBORN; the ticker consumes it (M7-11c)', () => {
+  it('BT_USE while dead latches PST_REBORN → G_DoReborn reloads the level (M9-08, D017 retired)', () => {
     const s = boot();
+    const corpse = MO(s);
     pKillPlayer(P(s));
-    // latch happens INSIDE P_DeathThink (p_user.c:225) during a tic —
-    // with the reborn pass live, the NEXT gTicker step consumes it
-    // (g_game.c:629-640), so the observable end-state is PST_LIVE again
-    // with G_PlayerReborn counted.
+    // latch happens INSIDE P_DeathThink (p_user.c:225) during a tic; the
+    // NEXT gTicker reborn pass consumes it via G_DoReborn (g_game.c:
+    // 613-614 → :924) ⇒ gameaction = ga_loadlevel, drained in the SAME
+    // tic (g_game.c:621-649 → G_DoLoadLevel → P_SetupLevel). M9-08: the
+    // D017 in-place body is gone — death RELOADS the level (the fixture
+    // loader re-runs P_SetupLevel on this map; boot reload = fresh
+    // mobjs/runtime through the normal P_SpawnPlayer reborn branch).
+    registerGameFlowHooks({ levelLoader: (st) => st.map });
     step(s, 5, { ...emptyInput(), use: true });
+    resetGameFlow();
     expect(P(s).playerstate).toBe(PST_LIVE);
     expect(P(s).health).toBe(100);
-    expect(pplayerHookCounts.playerReborn).toBeGreaterThanOrEqual(1);
+    expect(s.gameaction).toBe(GA.nothing); // never survives a gTicker
+    expect(MO(s)).not.toBe(corpse); // NEW player mobj (fresh runtime)
+    expect(P(s).viewheight).toBe(VIEWHEIGHT); // memset→P_SpawnPlayer
+    // leveltime pins the P_SetupLevel reset mid-run (p_setup.c:647):
+    // tic1 dead-cam, tic2 reload (0 at the drain, ++ tail), tics 3-5.
+    expect(s.leveltime).toBe(4);
+    // G_PlayerReborn counted: boot (1, gInitGame PST_REBORN spawn) +
+    // the reload spawn (p_mobj.c:656-657).
+    expect(pplayerHookCounts.playerReborn).toBe(2);
   });
 
   it('the hook is registered: pPlayerThink dead branch runs the body', () => {
@@ -362,6 +376,12 @@ describe('M7-03 P_DeathThink (p_user.c:180-232)', () => {
 
 /* ------------------------------------------------------------------ */
 describe('M7-03 reborn (G_PlayerReborn clears list via the spawn branch)', () => {
+  // M9-08 pin: this calls pSpawnPlayerFromStart DIRECTLY (no P_SetupLevel
+  // zeroing first), which in 1.10 is the netgame-respawn shape
+  // (g_game.c:936-959) — so the non-zero frags/killcount DO survive the
+  // preserve/restore pair here. The live death path (ga_loadlevel →
+  // P_SetupLevel p_setup.c:595-604 zeroes first) resets the counters —
+  // pinned in reborn.test.ts.
   it('everything clears except frags/killcount/itemcount; cheats die', () => {
     const s = boot();
     const p = P(s);
