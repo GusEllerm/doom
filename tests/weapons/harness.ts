@@ -122,7 +122,7 @@ export const dmgTo = (s: GameState, m: Mobj): DmgEvent[] =>
 /**
  * Fixture rig (M8-05): discard a dummy's XY momentum after every tic. Since
  * the damageBridge went live, `P_DamageMobj`'s close-combat kick
- * (p_inter.c:826-857, `thrust = damage*(FRACUNIT>>3)*100/mass`, FRICTION
+ * (p_inter.c:805-832, `thrust = damage*(FRACUNIT>>3)*100/mass`, FRICTION
  * 0.875 ⇒ a slide of ~8·thrust) pushes map-THINGS dummies around — true
  * vanilla behavior, but it would fling a 48-unit melee dummy out of
  * MELEERANGE and turn these M7 draw-derivation suites into knockback

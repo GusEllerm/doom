@@ -23,7 +23,7 @@ import { RNDTABLE } from '../../src/sim/prng';
 
 import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
 
-/** M8-05: the live P_DamageMobj kick (p_inter.c:826-857) adds ONE draw per
+/** M8-05: the live P_DamageMobj kick (p_inter.c:805-832) adds ONE draw per
  * hit (the painChance roll, p_inter.c:894) and pushes the dummy — these
  * suites derive the fire-stream window, so the dummy is held in place by
  * harness.pinInPlace and the per-hit window is 7+1. The kick itself is

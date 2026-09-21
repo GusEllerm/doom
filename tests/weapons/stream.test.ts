@@ -122,7 +122,7 @@ describe('shared-stream determinism — fire+pickup+door+flicker+teleport', () =
     // hash (test above), phase-shifted order ⇒ different hash.
     //
     // M8-05 note: the zombie used to be a fixed obstacle the player wedged
-    // against at a bit-identical y. Now every hit kicks it (p_inter.c:826-857
+    // against at a bit-identical y. Now every hit kicks it (p_inter.c:805-832
     // thrust — the port's only "push"; 1.10 has no P_PushMobs), it dies a
     // volley earlier or later depending on the phase, and the corpse stops
     // blocking MF_SOLID sooner, so the player's final y carries a sub-unit
