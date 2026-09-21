@@ -179,8 +179,9 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
 
     // THE TRUTH THE BRIEF ASKED FOR (resolved from the mirror, not guessed):
     //   demon/spectre melee row ⇒ A_SargAttack (info.c:623). A_PainAttack
-    //   (id 64) is the PAIN ELEMENTAL (MT_PAIN, doomednum 84, ZERO in E1
-    //   per §0.12) — plan §3 defers A_PainAttack/A_PainDie to M9.
+    //   (id 64, p_enemy.c:1512) is the PAIN ELEMENTAL (MT_PAIN, doomednum
+    //   71, info.c:1681, ZERO in E1M1-E1M9 per the §0.12 census) — the plan
+    //   defers A_PainAttack/A_PainDie (and A_PainShootSkull, :1522) to M9.
     //   The lost soul has NO attack action of its own beyond A_SkullAttack:
     //   MT_SKULL meleestate is 0 (info.c:1587), so its contact damage is
     //   PIT_CheckThing's MF_SKULLFLY branch (p_map.c:276), reached through
@@ -627,10 +628,13 @@ describe('amon_sarg (M8-08): demon / spectre / lost soul', () => {
   /* -------------------------------------------------------------- */
   it('doomednums 3002 / 58 / 3006 spawn the family through pSpawnThings (§0.12)', () => {
     // The three rows are NOT adjacent in info.c and the doomednums are not
-    // sequential: demon 3002 (info.c:1421), spectre 58 (:1447 — the ONLY
-    // low-numbered one, and E1M1 places none of them: the spectre appears
-    // from ExMx/UDMS), lost soul 3006 (:1577). Spawned from THINGS, the
-    // first-match doomednum scan must land on exactly these types.
+    // sequential: demon 3002 (info.c:1421), spectre 58 (:1447 — the only
+    // low-numbered one, and the reason it is easy to miss: it reuses the
+    // SARG rows verbatim, spawnstate S_SARG_STND/seestate S_SARG_RUN1/
+    // meleestate S_SARG_ATK1 at :1448/1450/1457), lost soul 3006 (:1577).
+    // Per the §0.12 census the demon is in every E1 map, the SPECTRE is in
+    // E1M1,3-7,9, and lost souls are E1M6/E1M7 only (11 in all of E1).
+    // Spawned from THINGS, the doomednum scan must land on exactly these.
     expect(mobjinfo[MT.MT_SERGEANT]!.doomednum).toBe(3002);
     expect(mobjinfo[MT.MT_SHADOWS]!.doomednum).toBe(58);
     expect(mobjinfo[MT.MT_SKULL]!.doomednum).toBe(3006);
