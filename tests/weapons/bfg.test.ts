@@ -31,6 +31,10 @@ const SFX_BFG = resolveSfxId('sfx_bfg');
 const RAISE_DONE = 14;
 const PRESS = 46; // fresh press after latch-clear at 45
 
+/** M8-05: one draw per damage event — the victim's painChance roll
+ * (p_inter.c:894). */
+const DAMAGE_DRAWS = 1;
+
 function range(dummies: { x: number; y?: number; type?: number }[]) {
   const s = boot(weaponRangeSpec(
     dummies.map((d) => ({ x: d.x, y: d.y, type: d.type ?? 3004 }))
@@ -43,15 +47,15 @@ function range(dummies: { x: number; y?: number; type?: number }[]) {
 }
 
 /** Ordered per-ray re-derivation from the post-spray prnd window. */
-function sprayFromWindow(base: number, hits: number) {
+function sprayFromWindow(base: number, hits: number, stride = 16) {
   const out: number[] = [];
   for (let i = 0; i < hits; i++) {
     let sum = 0;
     for (let k = 0; k < 15; k++) {
-      // 16 draws per hit ray (1 target-look + 15 dice (r&7)+1) — the
-      // window is passed pre-offset to the first die (aBFGSpray,
-      // pspam.c:781-813).
-      sum += (RNDTABLE[(base + 16 * i + k) & 0xff]! & 7) + 1;
+      // 16 draws per hit ray (1 target-look + 15 dice (r&7)+1; +1 damage
+      // draw since M8-05) — the window is passed pre-offset to the first
+      // die (aBFGSpray, pspam.c:781-813).
+      sum += (RNDTABLE[(base + stride * i + k) & 0xff]! & 7) + 1;
     }
     out.push(sum);
   }
@@ -84,8 +88,12 @@ describe('BFG — latch fire, 40-ray spray re-derivation', () => {
     trackPsprites(s, 200, (t) => ({
       attack: t === PRESS, weaponKey: t === RAISE_DONE ? 6 : undefined
     }));
-    const slot = dummy.linkSlot;
-    const hits = dmgEvents(s).filter((e) => e.thing === slot);
+    // M8-05: the log names the slot AT DAMAGE TIME and the kick promotes a
+    // static THINGS dummy once (p_inter_damage.ts) — resolve identity
+    // through the runtime slot map.
+    const hits = dmgEvents(s).filter(
+      (e) => e.thing === dummy.linkSlot || s.mobjs.slotMobjs.get(e.thing) === dummy
+    );
     // One shot: direct missile hit ((r%8+1)·100) + N spray events.
     expect(hits.length).toBeGreaterThanOrEqual(1);
     const direct = hits.find((e) => e.amount % 100 === 0 && e.amount <= 800);
@@ -93,12 +101,16 @@ describe('BFG — latch fire, 40-ray spray re-derivation', () => {
     const spray = hits.filter((e) => e !== direct);
     expect(sfxCount(s, SFX_BFG)).toBe(1);
     const H = spray.length;
-    // Window accounting: 4 draws at the direct-hit/spawn chain, then
-    // exactly 16 per hit ray (21 × 16 = 336 — the index wraps mod 256,
-    // so the same dice windows recur; visible as the repeated tail in
-    // the event list). Ray i's dice window: spawnPrnd+7+16i..+15.
-    expect(s.rng.prndindex).toBe((spawnPrnd + 4 + 16 * H) & 0xff);
-    const { out } = sprayFromWindow(spawnPrnd + 6, H);
+    // Window accounting: 4 draws at the direct-hit/spawn chain, then 16 per
+    // hit ray PLUS one damage-path draw per damage event (the victim's
+    // painChance roll, p_inter.c:894 — M8-05): 17 per hit ray and one for
+    // the direct missile hit. Ray i's dice window: spawnPrnd+7+17i..+15.
+    expect(s.rng.prndindex).toBe(
+      (spawnPrnd + 4 + (16 + DAMAGE_DRAWS) * H + DAMAGE_DRAWS) & 0xff
+    );
+    // The direct-hit painChance draw lands BEFORE the first ray (the missile
+    // damages on impact, then explodes), so the ray windows start one later.
+    const { out } = sprayFromWindow(spawnPrnd + 7, H, 16 + DAMAGE_DRAWS);
     // (helper.end is NOT the run index: the dice-per-ray window sits
     // inside a 16-draw stride — one non-dice draw per ray on top.)
     for (let i = 0; i < H; i++) {
