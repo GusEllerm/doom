@@ -461,6 +461,32 @@ describe('animation timing determinism (wi_anim mRandom ledger)', () => {
   });
 });
 
+describe('draw-golden cross-pin (mirrors render/wiDraw.test.ts frames)', () => {
+  it('counter SoA at tics 1/70/200 of the draw-golden tally', () => {
+    // The freedoom1 golden frames (kills 10/max 20, items 3/max 10,
+    // secrets 0/1, leveltime 500, E1M1 par 30) are driven from the
+    // EXACT counters this state machine produces at those tics.
+    const st = freshState('E1M1');
+    const p = st.players[0]!;
+    st.mobjs.totalkills = 20;
+    st.mobjs.totalitems = 10;
+    st.totalsecret = 1;
+    p.killcount = 10;
+    p.itemcount = 3;
+    st.secretcount = 0;
+    st.leveltime = 500;
+    gExitLevel(st);
+    const soa = (s: WiDrawSnapshot) =>
+      [s.spState, s.cntKills, s.cntItems, s.cntSecret, s.cntTime, s.cntPar];
+    gTicker(st, emptyInput()); // tic 1
+    expect(soa(wiDrawSnapshot())).toEqual([1, -1, -1, -1, -1, -1]);
+    for (let i = 0; i < 69; i++) gTicker(st, emptyInput()); // → tic 70
+    expect(soa(wiDrawSnapshot())).toEqual([3, 50, -1, -1, -1, -1]);
+    for (let i = 0; i < 130; i++) gTicker(st, emptyInput()); // → tic 200
+    expect(soa(wiDrawSnapshot())).toEqual([9, 50, 30, 0, 14, 30]);
+  });
+});
+
 describe('double-run determinism', () => {
   it('two identical scripted sessions ⇒ identical traces', () => {
     const play = (): string => {

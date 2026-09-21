@@ -17,23 +17,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { buildPatchFromColumns } from '../wad/patch';
 import { WadFile } from '../wad/wadfile';
-import { loadMap } from '../wad/mapdata';
-import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
-import { buildMapFromData } from '../sim/map';
-import {
-  gExitLevel,
-  gInitGame,
-  gTicker,
-  registerGameFlowHooks,
-  resetGameFlow
-} from '../sim/game';
-import { emptyInput } from '../sim/ticcmd';
-import { gDoCompleted, wiPeek, wiResetPlayerFlags, wiTicker, type WiDrawSnapshot } from '../sim/wintermission';
-import type { GameState } from '../sim/state';
 
 import {
   FG,
-  SCREENHEIGHT,
   SCREENWIDTH,
   decodeVPatch,
   screens,
@@ -55,6 +41,7 @@ import {
   wiSlamBackground,
   WI_LNODES,
   wiaName,
+  type WiDrawSnapshot,
   type WiGraphics,
   type WiPatchSource
 } from './wiDraw';
@@ -311,7 +298,7 @@ function snapOf(
 describe('WI_Drawer — StatCount layout (labels, lh = 3*num.h/2)', () => {
   it('draws LF + the five labels; negative counters draw no digits', () => {
     vMemset(FG, 0);
-    expect(wiDrawer(src)).toBe(true);
+    expect(wiDrawer(src, snapOf())).toBe(true);
     // bg slam (WIMAP0 synth = 42 everywhere)
     expect(gAt(5, 5)).toBe(42);
     // WILV00 + WIF
@@ -329,26 +316,44 @@ describe('WI_Drawer — StatCount layout (labels, lh = 3*num.h/2)', () => {
   });
 });
 
-// The layout test above drives the real drawer on the WI module's default
-// session state (StatCount / sp_state 1 / counters -1 = the t=0 frame) —
-// no synthetic snapshot needed for the StatCount dispatch.
+// The layout test drives the real WI_Drawer dispatch with a snapshot
+// literal — the render side consumes the snapshot, never the sim module
+// (zone rule; the production glue `wiDrawer(src, wiDrawSnapshot())` lives
+// where main.ts / M9-09 may legally import both zones).
 
 /* ------------------------------------------------------------------ */
-/* sim-driven frames + real-WAD goldens                                */
-/* ------------------------------------------------------------------ */
+/* real-WAD golden frames (snapshot literals — zone rule: render tests
+ * never import sim; the counter values are the LIVE sim values of the
+ * M9-07 tally (kills 10/20, items 3/10, secrets 0/1, leveltime 500,
+ * E1M1 par 30) at WI tics 1/70/200, pinned identically in
+ * sim/wintermission.test.ts). The epsd0 anim ctr values are irrelevant
+ * to the pixels on the pinned freedoom1.wad (every WIA* frame is a
+ * 13-byte 1×1 EMPTY patch — DATA FINDING, report) — the real epsd0
+ * anim locations are used for shape fidelity.
+ * ------------------------------------------------------------------ */
 
-const SPEC: RectMapSpec = {
-  rooms: [{ x: 0, y: 0, w: 256, h: 256, lightLevel: 200 }],
-  things: [{ x: 128, y: 128, angle: 0, type: 1 }]
-};
+const EPSD0_LOCS: readonly (readonly [number, number])[] = [
+  [224, 104], [184, 160], [112, 136], [72, 112], [88, 96],
+  [64, 48], [192, 40], [136, 16], [80, 16], [64, 24]
+];
 
-function fixMap(name: string): ReturnType<typeof buildMapFromData> {
-  const bytes = buildFixtureMapWad(SPEC, name);
-  const buf = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength
-  ) as ArrayBuffer;
-  return buildMapFromData(loadMap(WadFile.parse(buf), name));
+function tallySnap(over: Partial<WiDrawSnapshot>): WiDrawSnapshot {
+  return {
+    phase: 'StatCount',
+    spState: 1,
+    cntKills: -1,
+    cntItems: -1,
+    cntSecret: -1,
+    cntTime: -1,
+    cntPar: -1,
+    snlPointerOn: false,
+    didsecret: false,
+    epsd: 0,
+    last: 0,
+    next: 1,
+    anims: EPSD0_LOCS.map(([x, y]) => ({ x, y, ctr: 0 })),
+    ...over
+  };
 }
 
 function frameHash(): string {
@@ -365,87 +370,43 @@ describe('freedoom1.wad draw goldens', () => {
     : null;
 
   it('StatCount t=1/70/200 + ShowNextLoc blink pair', () => {
-    if (wad === null) return; // guard (skipIf above cannot invert; no-op without wad)
-    resetGameFlow();
-    wiResetPlayerFlags();
-    // resetGameFlow() wiped wintermission's module-load registration;
-    // re-arm the production hooks exactly as the module does at import.
-    registerGameFlowHooks({
-      levelLoader: (_s, ep, m) => fixMap(`E${ep}M${m}`),
-      wiTicker,
-      doCompleted: gDoCompleted
-    });
-    const st: GameState = gInitGame(fixMap('E1M1'));
+    if (wad === null) return; // no pinned wad ⇒ nothing to paint
     vInit();
     const wsrc = wadWiPatches(wad);
 
-    const p = st.players[0]!;
-    st.mobjs.totalkills = 20;
-    st.mobjs.totalitems = 10;
-    st.totalsecret = 1;
-    p.killcount = 10;
-    p.itemcount = 3;
-    st.secretcount = 0;
-    st.leveltime = 500;
-    gExitLevel(st);
-    gTicker(st, emptyInput()); // WI tic 1
-    expect(wiDrawer(wsrc)).toBe(true);
+    // t=1 (sp_state 1 pause: every counter still -1 — nothing drawn but
+    // the map + Finished! + labels)
+    wiDrawer(wsrc, tallySnap({}));
     const h1 = frameHash();
-
-    for (let i = 0; i < 69; i++) {
-      gTicker(st, emptyInput());
-      wiDrawer(wsrc);
-    }
-    const h70 = frameHash(); // mid kills count-up (state 2)
-    for (let i = 0; i < 130; i++) {
-      gTicker(st, emptyInput());
-      wiDrawer(wsrc);
-    }
-    const h200 = frameHash(); // time/par stage region
-
-    // ShowNextLoc blink: the POINTER STATE toggles per (cnt&31) windows —
-    // DATA FINDING (FINDINGS for the exit report): the pinned
-    // freedoom1.wad ships WIURH0/1, WISPLAT and ALL 58 WIA anim frames as
-    // 13-byte 1×1 EMPTY patches (terminator-only post chains; WIMAP0 and
-    // WILV* are real), so blink-on/off paint identical pixels on THIS
-    // wad. The blink is therefore pinned on the SIM state, and the
-    // identical-frame consequence is asserted, not papered over.
-    gTicker(st, { ...emptyInput(), attack: true }); // fast-forward
-    gTicker(st, emptyInput());
-    gTicker(st, { ...emptyInput(), attack: true }); // ShowNextLoc
-    const snl: boolean[] = [];
-    for (let i = 0; i < 40; i++) {
-      snl.push(wiPeek().snlPointerOn);
-      wiDrawer(wsrc);
-      gTicker(st, emptyInput());
-    }
-    expect(snl.some((v) => v)).toBe(true);
-    expect(snl.some((v) => !v)).toBe(true);
-    // capture an ON frame, then advance to the first OFF frame
-    while (!wiPeek().snlPointerOn) {
-      wiDrawer(wsrc);
-      gTicker(st, emptyInput());
-    }
-    wiDrawer(wsrc);
-    const blinkOn = frameHash();
-    let guard = 0;
-    while (wiPeek().snlPointerOn && guard++ < 64) {
-      wiDrawer(wsrc);
-      gTicker(st, emptyInput());
-    }
-    expect(wiPeek().phase).toBe('ShowNextLoc'); // still on the map page
-    wiDrawer(wsrc); // freedoom WIURH = empty patch ⇒ identical pixels
-    expect(blinkOn).toBe(frameHash());
+    // t=70 (state 3 pause: kills landed at 50)
+    wiDrawer(wsrc, tallySnap({ spState: 3, cntKills: 50 }));
+    const h70 = frameHash();
+    // t=200 (state 9 pause: all finals; time 14 s, par 30 s)
+    wiDrawer(wsrc, tallySnap({ spState: 9, cntKills: 50, cntItems: 30, cntSecret: 0, cntTime: 14, cntPar: 30 }));
+    const h200 = frameHash();
 
     expect(h1).toBe(GOLDEN_T1);
     expect(h70).toBe(GOLDEN_T70);
     expect(h200).toBe(GOLDEN_T200);
+
+    // ShowNextLoc blink — DATA FINDING (report FINDINGS): the pinned
+    // freedoom1.wad ships WIURH0/1, WISPLAT and ALL 58 WIA anim frames as
+    // 13-byte 1×1 EMPTY patches (terminator-only post chains; WIMAP0 and
+    // WILV* are real), so blink-on/off paint IDENTICAL pixels on this
+    // data — the pointer STATE (sim-side snl_pointeron, pinned in
+    // sim/wintermission.test.ts) is the observable; the identical-frame
+    // consequence is asserted here, not papered over.
+    wiDrawer(wsrc, { ...tallySnap({ phase: 'ShowNextLoc' }), phase: 'ShowNextLoc', snlPointerOn: true });
+    const blinkOn = frameHash();
+    wiDrawer(wsrc, { ...tallySnap({ phase: 'ShowNextLoc' }), phase: 'ShowNextLoc', snlPointerOn: false });
+    expect(blinkOn).toBe(frameHash());
+    // splats + entering-line: last=0 ⇒ splat on node 0, EL for map 2
+    wiDrawer(wsrc, { ...tallySnap({}), phase: 'ShowNextLoc', snlPointerOn: false });
+    expect(frameHash()).toBe(blinkOn); // splat empty too on this wad
   });
 });
 
 // Goldens recorded 2026-07 against the pinned wads/freedoom1.wad (M9-07).
-// StatCount frames of an E1M1 tally (kills 10/20, items 3/10, secrets 0/1,
-// leveltime 500) at WI tics 1/70/200.
 const GOLDEN_T1 = '843c8211a8f9bb93';
 const GOLDEN_T70 = '9ac44b1b158c97a7';
 const GOLDEN_T200 = '647b253fa39c9c60';

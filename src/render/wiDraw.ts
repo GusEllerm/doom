@@ -31,8 +31,36 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { wiDrawSnapshot, WI_EPSD_ANIMS, type WiDrawSnapshot } from '../sim/wintermission';
 import type { WadFile } from '../wad/wadfile';
+
+/**
+ * The sim-side WI snapshot, re-declared STRUCTURALLY (zone rule:
+ * render/ may not import sim/* except sim/state — ARCH §1.3; the hooks.ts
+ * ExitHost idiom). sim/wintermission.wiDrawSnapshot() satisfies this by
+ * construction; the DRAWER CALLER (main.ts / M9-09 display wiring) does
+ * `wiDrawer(wadWiPatches(wad), wiDrawSnapshot())` — typechecked where the
+ * two zones legally meet, never here.
+ */
+export interface WiAnimDraw {
+  readonly x: number;
+  readonly y: number;
+  readonly ctr: number;
+}
+export interface WiDrawSnapshot {
+  readonly phase: 'StatCount' | 'ShowNextLoc' | 'NoState';
+  readonly spState: number;
+  readonly cntKills: number;
+  readonly cntItems: number;
+  readonly cntSecret: number;
+  readonly cntTime: number;
+  readonly cntPar: number;
+  readonly snlPointerOn: boolean;
+  readonly didsecret: boolean;
+  readonly epsd: number;
+  readonly last: number;
+  readonly next: number;
+  readonly anims: readonly WiAnimDraw[];
+}
 import {
   FG,
   SCREENHEIGHT,
@@ -210,8 +238,7 @@ export function wiDrawOnLnode(
 /** WI_drawAnimatedBack (:583): frame patches of every anim with ctr>=0. */
 export function wiDrawAnimatedBack(src: WiPatchSource, snap: WiDrawSnapshot): void {
   if (snap.epsd > 2) return;
-  const table = WI_EPSD_ANIMS[snap.epsd] ?? [];
-  for (let i = 0; i < table.length; i++) {
+  for (let i = 0; i < snap.anims.length; i++) {
     const a = snap.anims[i]!;
     if (a.ctr >= 0) vDrawPatch(a.x, a.y, FG, src.patch(wiaName(snap.epsd, i, a.ctr)));
   }
@@ -223,7 +250,6 @@ export function wiDrawNum(
   g: WiGraphics, x: number, y: number, n: number, digits: number
 ): number {
   const fontwidth = g.num[0]!.width;
-  let neg: boolean;
   let t = n;
 
   if (digits < 0) {
@@ -239,7 +265,7 @@ export function wiDrawNum(
     }
   }
 
-  neg = t < 0;
+  const neg = t < 0;
   if (neg) t = -t;
 
   // if non-number, do not draw it (stlib 1994 idiom)
@@ -338,12 +364,11 @@ export function wiDrawNoState(src: WiPatchSource, g: WiGraphics, snap: WiDrawSna
   wiDrawShowNextLoc(src, g, { ...snap, snlPointerOn: true });
 }
 
-/** WI_Drawer (:1772) — SP dispatch. Returns false when the WI session is
- * gone (drawer never paints outside GS_INTERMISSION frames; the caller
- * order is D_Display-after-G_Ticker, M9-09 wiring). */
-export function wiDrawer(src: WiPatchSource): boolean {
+/** WI_Drawer (:1772) — SP dispatch. The snapshot comes from the caller
+ * (main.ts glue: `wiDrawer(wadWiPatches(wad), wiDrawSnapshot())`; zone
+ * rule keeps the sim import on the CALLER side, M9-09 wiring). */
+export function wiDrawer(src: WiPatchSource, snap: WiDrawSnapshot): boolean {
   if (screens[1] === null || screens[FG] === null) return false;
-  const snap = wiDrawSnapshot();
   const g = wiLoadData(src, snap.epsd);
 
   switch (snap.phase) {
