@@ -105,8 +105,18 @@ export const dmgEvents = (s: GameState): DmgEvent[] =>
     tic: e.tic
   }));
 
+/**
+ * Damage events delivered to `m`. M8-05 makes the naive `e.thing ===
+ * m.linkSlot` filter WRONG for the first hit of a static-slot dummy: the
+ * log stores the ThingLinks slot *at damage time* (hooks.ts records before
+ * dispatching to the P_DamageMobj body), and the kick that body applies
+ * promotes a static THINGS slot to a mover slot (p_inter_damage.ts), so the
+ * victim's slot id changes ONCE per lifetime. Identity resolution goes
+ * through the runtime's slot map, which keeps the pre-promotion id aliased
+ * to the same mobj; the direct compare still covers the mover case.
+ */
 export const dmgTo = (s: GameState, m: Mobj): DmgEvent[] =>
-  dmgEvents(s).filter((e) => e.thing === m.linkSlot);
+  dmgEvents(s).filter((e) => e.thing === m.linkSlot || s.mobjs.slotMobjs.get(e.thing) === m);
 
 export function sfxCount(s: GameState, id: number): number {
   return s.hooks.sfx.byId?.get(id) ?? 0;

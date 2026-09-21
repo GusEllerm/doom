@@ -285,7 +285,16 @@ function promoteMoverSlot(m: Mobj): void {
   links.doomednum[s] = links.doomednum[old]!;
   links.z[s] = m.z;
   m.linkSlot = s;
-  m.rt.slotMobjs.delete(old);
+  // Identity alias: the OLD slot keeps resolving to the same mobj (only the
+  // NEW one is grid-linked). The grid no longer yields the old id, so no
+  // call site can pass it — but the L2 `hooks.damage` log records slots at
+  // damage time, and the record happens BEFORE the bridge dispatch
+  // (hooks.ts:176 — by design, the log never depends on the body), so the
+  // entry for the hit that caused this promotion names `old`. Keeping it
+  // resolvable is what makes `dmgTo(m)`-style readers work across a
+  // promotion. (p_enemy.ts:299 deletes the old binding instead; a monster
+  // promoted by a CHASE step therefore has no pre-chase alias — nothing
+  // records damage before a chase today. Unify in M8-11.)
   m.rt.slotMobjs.set(s, m);
 }
 
