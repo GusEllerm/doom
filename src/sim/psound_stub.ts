@@ -293,7 +293,13 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   // M8-09 (amon_bruiser.ts): A_BruisAttack melee sfx_claw 1 (p_enemy.c:988).
   // A_HeadAttack's melee is SILENT (:958-963 has no S_StartSound) and
   // A_BossDeath emits nothing; the missile seesounds stay pmissiles.ts's.
-  'amon_bruiser.ts': 1};
+  'amon_bruiser.ts': 1,
+  // M8-08 (amon_sarg.ts): A_SkullAttack's attacksound (p_enemy.c:1429,
+  // sfx_sklatk) — the family's ONE emit statement. A_SargAttack emits
+  // NOTHING (p_enemy.c:935-948 has no S_StartSound; the demon's
+  // sfx_sgtatk is A_Chase's melee line, p_enemy.ts's ledger row) and the
+  // p_map.c:276-286 skull slam is silent (P_DamageMobj emits no sound).
+  'amon_sarg.ts': 1};
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
 export const SFX_SITE_SCAN_SKIP: readonly string[] = [

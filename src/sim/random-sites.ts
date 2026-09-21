@@ -26,6 +26,9 @@ export const RANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
   'amon_bruiser.ts': 2, // M8-09 family C: HeadAttack (R%6+1)*10 melee (:960) +
   // BruisAttack (R%8+1)*10 melee (:989). A_BossDeath draws NOTHING (pinned in
   // amon_bruiser.test.ts); missile touch dice belong to pmissiles.ts.
+  'amon_sarg.ts': 2, // M8-08 Family B: A_SargAttack `%10` (1 draw) + the
+  // p_map.c:278 skullfly slam `%8` (1 draw, ALWAYS). A_SkullAttack draws
+  // NOTHING of its own (the A_FaceTarget shadow pair is p_enemy.ts's).
   'pdeath.ts': 2, // M8-06 A_Scream podth %3 + bgdth %2 selects (A_Pain/
   // A_XScream/A_Fall draw NOTHING — pinned behaviourally in pdeath.test)
   'amon_poss.ts': 11, // M8-07 family A TEXT OCCURRENCES (the scan's unit):
