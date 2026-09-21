@@ -8,7 +8,7 @@
 // p_enemy.c/info.h — cites required):
 //   * "A_CacDemoAttack" / "MT_CACBALL" DO NOT EXIST in 1.10. The
 //     cacodemon's action is A_HeadAttack (p_enemy.c:950, action id 55) and
-//     its missile is MT_HEADSHOT (info.h:1216 area, mobjinfo damage 5,
+//     its missile is MT_HEADSHOT (info.c mobjinfo row: damage 5,
 //     speed 10*FRACUNIT) — the ONLY projectile the caco fires (:966).
 //   * "A_BaronAttack" does not exist: the baron/hell-knight action is
 //     A_BruisAttack (p_enemy.c:979, action id 56; the "Bruiser" spelling
