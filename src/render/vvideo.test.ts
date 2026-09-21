@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { buildPatchFromColumns, decodePatch } from '../wad/patch';
 import { PatchPostError } from '../wad/patch';
 import { WadFile } from '../wad/wadfile';
+import { uiPatchNames } from '../wad/patches2';
 import {
   BG,
   FG,
@@ -338,6 +339,24 @@ describe.skipIf(!hasWad)('lumpPatch on freedoom1.wad', () => {
     expect(p1.name).toBe('STBAR');
     expect(p1.width).toBe(320); // STBAR spans the bar (st_stuff.h ST_WIDTH)
     expect(p1.height).toBe(32);
+  });
+
+  it('decodeVPatch header === patch.ts decodePatch header across the census', () => {
+    // Header-decode reuse check (render side; wad/patches2.test.ts cannot
+    // import this module — one-way zone graph, ARCHITECTURE §1.2).
+    const census = uiPatchNames();
+    expect(census.length).toBeGreaterThan(200);
+    for (const name of census) {
+      const bytes = wad!.readLumpByName(name);
+      const vp = lumpPatch(wad!, name);
+      const dp = decodePatch(bytes);
+      expect([vp.width, vp.height, vp.leftOffset, vp.topOffset], name).toEqual([
+        dp.width,
+        dp.height,
+        dp.leftOffset,
+        dp.topOffset,
+      ]);
+    }
   });
 
   it('a real bar blit is byte-identical to the patch.ts column model modulo literal-0 posts (spot: STARMS)', () => {

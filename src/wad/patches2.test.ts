@@ -7,8 +7,9 @@
  *    terminates on a 0xFF topdelta inside the lump — the acceptance's
  *    "posts walk terminates with 0xff on ALL columns" assert, r_defs.h
  *    :285-292),
- *  - and its vvideo.ts decodeVPatch header agrees field-for-field with
- *    the patch.ts reference decode (header-decode reuse check).
+ *  - header decode reuse: vvideo.ts decodeVPatch agreement is pinned from
+ *    the render side (src/render/vvideo.test.ts — zone graph forbids this
+ *    file importing render/).
  * Plus: per-family counts pinned to the §0.12 measured census, and golden
  * sha256 of decoded column pixels for a 10-lump spot set.
  *
@@ -22,7 +23,6 @@ import { describe, expect, it } from 'vitest';
 
 import { decodePatch } from './patch';
 import { UI_PATCH_FAMILIES, resolveUiPatchLumps, uiPatchNames } from './patches2';
-import { decodeVPatch } from '../render/vvideo';
 import { WadFile } from './wadfile';
 
 /* ------------------------------------------------------------------ */
@@ -102,14 +102,6 @@ describe.skipIf(!hasWad)('freedoom1.wad UI lump audit (acceptance 1)', () => {
       expect(patch.width * patch.height, `${name} area`).toBeLessThanOrEqual(320 * 200);
       expect(patch.columns.length, name).toBe(patch.width);
       columnsWalked += patch.width;
-      // header agreement: vvideo's cache decode === patch.ts decode
-      const vp = decodeVPatch(bytes, name);
-      expect([vp.width, vp.height, vp.leftOffset, vp.topOffset], name).toEqual([
-        patch.width,
-        patch.height,
-        patch.leftOffset,
-        patch.topOffset,
-      ]);
     }
     expect(columnsWalked).toBeGreaterThan(10000); // ~15k columns audited
   });

@@ -300,7 +300,7 @@ export function vDrawPatchDirect(x: number, y: number, scrn: number, patch: VPat
 }
 
 function drawPatch(x: number, y: number, scrn: number, patch: VPatch, flipped: boolean, mark: boolean): void {
-  const layer = scrn >= 0 && scrn < NUMSCREENS ? screens[scrn] : null;
+  const layer = scrn >= 0 && scrn < NUMSCREENS ? (screens[scrn] ?? null) : null;
   if (layer === null) {
     vVideoStats.rangeCheckIgnored += 1; // vanilla: (unsigned)scrn>4
     return;
@@ -389,8 +389,8 @@ export function vCopyRect(
   desty: number,
   destscrn: number,
 ): void {
-  const srcLayer = srcscrn >= 0 && srcscrn < NUMSCREENS ? screens[srcscrn] : null;
-  const dstLayer = destscrn >= 0 && destscrn < NUMSCREENS ? screens[destscrn] : null;
+  const srcLayer = srcscrn >= 0 && srcscrn < NUMSCREENS ? (screens[srcscrn] ?? null) : null;
+  const dstLayer = destscrn >= 0 && destscrn < NUMSCREENS ? (screens[destscrn] ?? null) : null;
   if (
     srcLayer === null ||
     dstLayer === null ||
@@ -417,7 +417,7 @@ export function vCopyRect(
 
 /** Whole-layer fill (widget tests / background flood helper; not a v_video export). */
 export function vMemset(scrn: number, index: number): void {
-  const layer = screens[scrn];
+  const layer = screens[scrn] ?? null;
   if (layer === null) {
     throw new RangeError(`vMemset: no screen layer ${scrn}`);
   }
