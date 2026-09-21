@@ -278,8 +278,12 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   // M8-04 (p_enemy.ts): A_Look seeyou full-volume NULL + origin emits
   // (p_enemy.c:650-656) + A_Chase melee attacksound (:727) + activesound
   // (:773). Four direct hook calls.
-  'p_enemy.ts': 4
-};
+  'p_enemy.ts': 4,
+  // M8-06 (pdeath.ts): A_Pain painsound 1 + A_Scream 2 (boss NULL
+  // full-volume + actor origin; podth %3 / bgdth %2 variant selects) +
+  // A_XScream sfx_slop 1. A_Fall is silent (p_enemy.c:1585 clears
+  // MF_SOLID only — no S_StartSound site exists there).
+  'pdeath.ts': 4};
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
 export const SFX_SITE_SCAN_SKIP: readonly string[] = [
