@@ -37,13 +37,10 @@
 
 import { GA, GS, registerGameFlowHooks, type FlowActFn, type FlowTicFn } from '../sim/game';
 import { sfxStub } from '../sim/hooks';
-import { GAME_MODE } from '../sim/gamemode';
 import { decodeFlat } from '../wad/flat';
 import { lumpPatch, screens, FG, SCREENWIDTH, SCREENHEIGHT, vDrawPatch, vMarkRect, type VPatch } from '../render/vvideo';
 import type { WadFile } from '../wad/wadfile';
-import type { GameState } from '../sim/state';
 import { HU_FONTSIZE, HU_FONTSTART } from './humessage';
-import type { KeyboardEventPacket } from '../input/keyboard';
 
 import { E1TEXT } from './textdata';
 
@@ -134,11 +131,11 @@ export const fStartFinale: FlowActFn = (state) => {
   state.viewactive = false; // :100
   // :101 automapactive = false — automap state seam (display wiring).
 
-  sfxStub('mus_victor'); // :110 S_ChangeMusic(mus_victor, true) — D-0xx
-
-  // shareware/registered/retail arm (gamemode==commercial is §4-absent).
+  // shareware/registered/retail arm (gamemode==commercial is §4-absent;
+  // gamemode.ts pins GAME_MODE='shareware' + G_InitNew clamps ep≤1).
   switch (state.gameepisode) {
-    case 1: // :111-113
+    case 1: // :109-113
+      sfxStub('mus_victor'); // :110 S_ChangeMusic(mus_victor, true) — D-0xx
       finaleflat = 'FLOOR4_8';
       finaletext = E1TEXT;
       break;
@@ -195,10 +192,12 @@ export const fTicker: FlowTicFn = (state) => {
 /**
  * F_Responder: eats events ONLY in stage 2 (the cast, §4-absent), so this
  * is the transcribed constant false — the finale never eats keys; the
- * onward path is M_Responder (Esc/F-keys) over the top, per §0.10.
+ * onward path is M_Responder (Esc/F-keys) over the top, per §0.10. The
+ * event argument is moot (no consumer once F_CastResponder is absent —
+ * wiResponder() precedent); the shape `finalestage === 2` stays visible.
  */
-export function fResponder(_state: GameState, _ev: KeyboardEventPacket): boolean {
-  return false; // finalestage === 2 never happens (F_CastResponder absent)
+export function fResponder(): boolean {
+  return finalestage === 2; // :198 — stage 2 never happens (cast absent)
 }
 
 /* ------------------------------------------------------------------ */
