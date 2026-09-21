@@ -136,6 +136,6 @@ Future tasks will be added as architects decompose milestones.
 | M8-03 | Monster census fixture | M8 | — | done (merged, verified) |
 | M8-04..13 | (see docs/design/M8-plan.md) | M8 | waves | planned |
 
-| M8-05 | Damage/kill/infighting module | M8 | M8-02 | salvage t2 (agent bd8e70bf; core committed, tests pending) |
+| M8-05 | Damage/kill/infighting module | M8 | M8-02 | done (merged, verified — third attempt) |
 | M8-04 | AI core (A_Look/A_Chase/P_Move) | M8 | M8-01/02 | done (merged, verified — monsters hunt) |
 | M8-06 | Pain/death/corpse actions | M8 | M8-05 | queued (needs damage merge) |
