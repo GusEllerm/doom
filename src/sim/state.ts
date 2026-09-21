@@ -85,12 +85,80 @@ export function createLiveSectors(map: RuntimeMap): LiveSectors {
 /** hashState exitRequest enum code (canonical serialization). */
 const EXIT_CODE: Record<'none' | ExitKind, number> = { none: 0, normal: 1, secret: 2 };
 
+/** wi_stuff.c `wminfo_t` carrier (M9-03; g_game.c G_DoCompleted fills it,
+ * WI_Start consumes it — M9-07/08 own the bodies). Plain data: this task
+ * only PINS the shape so wintermission.ts registers via the game.ts hook
+ * registry and never re-opens GameState. */
+export interface Wminfo {
+  /** wi_stuff.c wi_t: 'sp' single-player tally (this port's only mode). */
+  type: 'both' | 'sp' | 'co';
+  /** consoleplayer index (single-player 0). */
+  p: number;
+  /** 0-based episode (g_game.c:1085 `epsd = gameepisode - 1`). */
+  epsd: number;
+  /** 0-based last map played (g_game.c:1086 `last = gamemap - 1`). */
+  last: number;
+  /** 0-based next map (M9-plan §0.3 routing table; M9-08 fills). */
+  next: number;
+  /** single-player tally block (wi_stuff.c ls). */
+  ls: { par: number; kills: number; secret: number; items: number };
+  maxkills: number;
+  maxitems: number;
+  maxsecret: number;
+  updateStats: boolean;
+  nextDone: boolean;
+  firstScore: boolean;
+  sameMap: boolean;
+  totaltime: number;
+  /** 35 * pars[episode-1][map-1] (g_game.c:978 table; §0.3). */
+  partime: number;
+  sPartime: number;
+  ltime: number;
+  killtime: number;
+  itemtime: number;
+  secrettime: number;
+  cheat: boolean;
+  /** pars row (minutes) the carrier boots with — E1 row §0.3 (shareware
+   * policy GAME_MODE pins episode 1; other rows arrive with M12). */
+  pars: readonly number[];
+}
+
+/** Fresh carrier (g_game.c static-init zero + §0.3 E1 pars row). */
+export function createWminfo(pars: readonly number[]): Wminfo {
+  return {
+    type: 'sp',
+    p: 0,
+    epsd: 0,
+    last: 0,
+    next: 0,
+    ls: { par: 0, kills: 0, secret: 0, items: 0 },
+    maxkills: 0,
+    maxitems: 0,
+    maxsecret: 0,
+    updateStats: false,
+    nextDone: false,
+    firstScore: false,
+    sameMap: false,
+    totaltime: 0,
+    partime: 0,
+    sPartime: 0,
+    ltime: 0,
+    killtime: 0,
+    itemtime: 0,
+    secrettime: 0,
+    cheat: false,
+    pars
+  };
+}
+
 export interface GameState {
-  readonly map: RuntimeMap;
+  /** M9-03: MUTATED in place by G_DoLoadLevel (g_game.c:445 level reload
+   * re-runs setup on the SAME state identity). */
+  map: RuntimeMap;
   /** M5-06: the clipping world (blockmap + thinglinks) the shared mover
    * path (P_TryMove/P_XYMovement/P_ZMovement) runs on. Built once per
    * level by gInitGame; NOT part of the hashState serialization. */
-  readonly pmap: PMapWorld;
+  pmap: PMapWorld;
   /** Single-player: index 0 = consoleplayer. Slots are sparse only if a
    * later netgame task adds them. */
   readonly players: Player[];
@@ -106,10 +174,12 @@ export interface GameState {
   skill: Skill;
   /** M6-01 live mutable sector SoA — sim-side authority, seeded from
    * map.sectors (see file header for the renderer seam story). */
-  readonly sectors: LiveSectors;
+  /** Replaced per level load (P_SetupLevel fresh SoA copy). */
+  sectors: LiveSectors;
   /** M6-01 thinker arena (p_tick.c thinkercap; fresh per level =
    * P_InitThinkers at load). */
-  readonly thinkers: ThinkerArena;
+  /** Replaced per level load (= P_InitThinkers). */
+  thinkers: ThinkerArena;
   /** M6-01 typed side-effect slots (damage/sfx/message/exit no-ops). */
   readonly hooks: HookSlots;
   /** g_game.c G_ExitLevel/G_SecretExitLevel proxy until M9 (D013(e)). */
@@ -122,6 +192,38 @@ export interface GameState {
   secretcount: number;
   /** g_game.c `specialexit` flag (G_SecretExitLevel marker); hashed. */
   specialexit: boolean;
+  /* ---- M9-03 game-flow fields (g_game.c run globals; NOT hashed —
+   * zero re-bless is the M9-03 acceptance-2 regression proof). The
+   * d_event.h `gameaction` drain and the d_main.h `gamestate` routing
+   * live in game.ts; `secretexit` IS the existing `specialexit` field
+   * (g_game.c:1000 proxy, hashed since M6-01). ---- */
+  /** d_main.h gamestate_t (GS constants exported from game.ts):
+   * 0 GS_LEVEL · 1 GS_INTERMISSION · 2 GS_FINALE · 3 GS_DEMOSCREEN. */
+  gamestate: number;
+  /** d_main.c:216-222 `wipegamestate` sentinel; the display block
+   * consumes `gamestate !== wipegamestate` exactly once per change
+   * (game.ts takeWipeRequest). -1 = forced melt (g_game.c:451). */
+  wipegamestate: number;
+  /** d_event.h:55-65 gameaction_t (GA constants from game.ts). */
+  gameaction: number;
+  /** g_game.c `gamemap` (1-based current map number). */
+  gamemap: number;
+  /** g_game.c `gameepisode` (1-based). */
+  gameepisode: number;
+  /** g_game.c `d_skill` in the port's 1-based deferred-init domain
+   * (1..5; state.skill keeps the internal 0-based Skill). */
+  gameskill: number;
+  /** g_game.c `usergame` (true single-player). */
+  usergame: boolean;
+  /** g_game.c `paused` (p_tick.c:140 gates the GS_LEVEL thinker half). */
+  paused: boolean;
+  /** g_game.c `viewactive` (3D view on/off; GS_FINALE/DEMO clear it). */
+  viewactive: boolean;
+  /** d_main.c `advancedemo` flag — consumed in the TIC block
+   * (game.ts gFlowTic → advanceDemo hook, M9-10 title body). */
+  advancedemo: boolean;
+  /** wi_stuff.c wminfo carrier (see Wminfo). */
+  wminfo: Wminfo;
   /** M7-02 mobj runtime (p_mobj.c globals + the live mobj roster). Its
    * HASH contribution flows through the thinker-arena payload words
    * (ARCHITECTURE §3.4 per-live-mobj [x,y,z,stateId,tics,flags,health,

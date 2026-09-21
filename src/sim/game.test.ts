@@ -10,17 +10,38 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-import { describe, expect, it } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { loadMap } from '../wad/mapdata';
 import { WadFile } from '../wad/wadfile';
 
 import { buildFixtureMapWad, type RectMapSpec } from '../../tests/fixtures/mapBuilder';
 import { buildMapFromData } from './map';
-import { GameSetupError, gInitGame, gTicker, runHeadless, TICS_PER_SECOND } from './game';
+import {
+  flowStubHits,
+  GA,
+  GameSetupError,
+  gDeferedInitNew,
+  gExitLevel,
+  gFlowTic,
+  gInitGame,
+  gRequestAdvanceDemo,
+  gSecretExitLevel,
+  gTicker,
+  gWorldDone,
+  GS,
+  registerGameFlowHooks,
+  resetGameFlow,
+  runHeadless,
+  takeWipeRequest,
+  TICS_PER_SECOND
+} from './game';
 import { hashState, type GameState } from './state';
 import { emptyInput, type GameInput } from './ticcmd';
-import { CF_NOCLIP } from './player';
+import { CF_NOCLIP, PST_LIVE } from './player';
+import { gameactionLog, resetGameactionLog, resetSfxStubLog, sfxStub, sfxStubLog } from './hooks';
 
 const SPEC: RectMapSpec = {
   rooms: [
@@ -180,5 +201,299 @@ describe('determinism (M2-06 acceptance)', () => {
     const rest = runHeadless(s, 400);
     expect(rest).toBe(GOLDEN_IDLE_1000);
     expect(mid).not.toBe(GOLDEN_IDLE_1000);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* M9-03 — gameaction drain + gamestate routing + deferred-init        */
+/* plumbing (plan §M9-03 acceptance 1-5). FIXMAP fixture; the flow     */
+/* registry is module-global (M8 self-import idiom), so every test     */
+/* resets it + the recorders.                                          */
+/* ------------------------------------------------------------------ */
+
+const WAD_PATH = fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url));
+const hasWad = existsSync(WAD_PATH);
+
+describe('M9-03 game flow', () => {
+  beforeEach(() => {
+    resetGameFlow();
+    resetGameactionLog();
+    resetSfxStubLog();
+  });
+  afterEach(() => resetGameFlow());
+
+  // Acceptance 1: gDeferedInitNew(2,1,1) from GS_DEMOSCREEN drains to a
+  // REAL LEVEL LOAD in ONE gTicker call — while-loop semantics
+  // (ga_newgame → G_DoNewGame → G_InitNew → ga_loadlevel continuation →
+  // G_DoLoadLevel → P_SetupLevel) on the SAME GameState identity.
+  it('acceptance 1: deferred init drains to a level load in one gTicker', () => {
+    const s = freshState();
+    const identity = s;
+    s.gamestate = GS.DEMOSCREEN;
+    s.wipegamestate = GS.DEMOSCREEN;
+    let loaded: { ep: number; map: number } | null = null;
+    registerGameFlowHooks({
+      levelLoader: (_st, ep, map) => {
+        loaded = { ep, map };
+        return fixMap('FIXMAP');
+      }
+    });
+
+    gDeferedInitNew(s, 2, 1, 1);
+    expect(s.gameaction).toBe(GA.newgame);
+
+    gTicker(s); // ONE call
+
+    expect(loaded).toEqual({ ep: 1, map: 1 });
+    expect(identity).toBe(s); // in-place reload, identity preserved
+    expect(s.gamestate).toBe(GS.LEVEL);
+    expect(s.gameaction).toBe(GA.nothing);
+    expect(s.leveltime).toBe(1); // the loaded level is LIVE-ticked this tic
+    expect(s.gametic).toBe(1);
+    expect(s.players[0]!.playerstate).toBe(PST_LIVE); // spawned via PST_REBORN (§0.4)
+    expect(s.players[0]!.mo.x).toBe(128 << 16); // the fixture start
+    expect(s.gameepisode).toBe(1);
+    expect(s.gamemap).toBe(1);
+    expect(s.gameskill).toBe(2);
+    expect(s.usergame).toBe(true);
+    expect(s.viewactive).toBe(true);
+    expect(s.paused).toBe(false);
+    // Drain legs (hooks.gameactionLog): the NEWGAME leg — G_InitNew
+    // calls G_DoLoadLevel DIRECTLY (g_game.c:1457), not via a second
+    // gameaction value, and the whole chain lands inside this one
+    // while-loop pass.
+    expect(gameactionLog.entries.map((e) => e.action)).toEqual([GA.newgame]);
+  });
+
+});
+
+// Acceptance 2: ZERO re-bless. Fresh gInitGame E1M1, 2000 no-input
+// tics — byte-equals the value captured from main (pre-M9-03) code:
+// the flow fields are off-hash and the GS_LEVEL body + boot sequence
+// moved unchanged into gSetupLevel/gLevelTicker.
+describe.skipIf(!hasWad)('M9-03 acceptance 2 — E1M1 hash stability', () => {
+  it('E1M1 2000-tic hash byte-equals the M8 golden (zero re-bless)', () => {
+    const bytes = readFileSync(WAD_PATH);
+    const buf = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    ) as ArrayBuffer;
+    const mk = () => gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'E1M1')));
+    const h1 = runHeadless(mk(), 2000);
+    const h2 = runHeadless(mk(), 2000);
+    expect(h1).toBe(h2);
+    // Captured 2026-09 from this implementation (freedoom1.wad pinned
+    // release, scripts/freedoom) on main BEFORE the M9-03 plumbing —
+    // deliberately NOT recorded from the new code: equality here IS the
+    // no-re-bless regression proof (the FIXMAP 1000-tic goldens above
+    // cover the boot refactor in-suite too).
+    expect(h1).toBe(47732065);
+  });
+});
+
+describe('M9-03 game flow (drain/routing detail)', () => {
+  beforeEach(() => {
+    resetGameFlow();
+    resetGameactionLog();
+    resetSfxStubLog();
+  });
+  afterEach(() => resetGameFlow());
+
+  // Acceptance 3: gameaction NEVER survives a completed gTicker — for
+  // every exported setter AND every d_event.h value, registered or not.
+  it('acceptance 3: no gameaction survives a completed gTicker', () => {
+    const boot = () => {
+      resetGameFlow();
+      registerGameFlowHooks({ levelLoader: () => fixMap('FIXMAP') });
+      return freshState();
+    };
+    let s = boot();
+    gDeferedInitNew(s, 3, 1, 1);
+    gTicker(s);
+    expect(s.gameaction).toBe(GA.nothing);
+
+    s = boot();
+    gExitLevel(s);
+    expect(s.specialexit).toBe(false); // g_game.c:1004 (secretexit=false)
+    gTicker(s);
+    expect(s.gameaction).toBe(GA.nothing);
+    expect(flowStubHits.byName.get('ga_completed')).toBe(1); // unregistered ⇒ counted stub
+
+    s = boot();
+    gSecretExitLevel(s);
+    expect(s.specialexit).toBe(true);
+    gTicker(s);
+    expect(s.gameaction).toBe(GA.nothing);
+
+    s = boot();
+    gWorldDone(s); // built-in case: gamestate=GS_LEVEL, load (no next-routing yet)
+    gTicker(s);
+    expect(s.gameaction).toBe(GA.nothing);
+
+    // Every remaining d_event.h value drains to nothing (counted stubs
+    // for the §4 M11/M12 actions + ga_victory pre-M9-10).
+    s = boot();
+    for (const action of [GA.victory, GA.loadgame, GA.savegame, GA.playdemo, GA.screenshot]) {
+      s.gameaction = action;
+      gTicker(s);
+      expect(s.gameaction, `ga_${action}`).toBe(GA.nothing);
+    }
+    expect(flowStubHits.byName.get('ga_victory')).toBe(1);
+  });
+
+  // Guard-counter idiom (mirrors M8's unimplementedSpecial): a
+  // pathological handler that RE-ARMS gameaction forever is cut after
+  // the bounded drain, counted, never a frozen headless run.
+  it('drain guard cuts a re-arming handler (no infinite while)', () => {
+    const s = freshState();
+    registerGameFlowHooks({ doCompleted: (st) => { st.gameaction = GA.completed; } });
+    s.gameaction = GA.completed;
+    gTicker(s);
+    expect(s.gameaction).toBe(GA.nothing);
+    expect(flowStubHits.byName.get('gameaction-loop')).toBe(1);
+    // 16 iterations max + the forced cut (17 records: 16 + the guard tic
+    // sees the re-armed action once more before the break).
+    expect(gameactionLog.count).toBeLessThanOrEqual(17);
+  });
+
+  // Acceptance 4 (through the real path): clamps observable after one
+  // drain — gDeferedInitNew(6,5,12) ⇒ gameskill 5 / ep 1 / map 9.
+  it('acceptance 4: G_InitNew clamps run on the deferred-init path', () => {
+    const s = freshState();
+    s.gamestate = GS.DEMOSCREEN;
+    registerGameFlowHooks({ levelLoader: () => fixMap('FIXMAP') });
+    gDeferedInitNew(s, 6, 5, 12);
+    gTicker(s);
+    expect(s.gameskill).toBe(5); // 6 → sk_nightmare (1-based domain)
+    expect(s.skill).toBe(4); // internal 0-based nightmare
+    expect(s.gameepisode).toBe(1); // shareware clamp (GAME_MODE)
+    expect(s.gamemap).toBe(9); // 12 → 9
+    expect(s.gamestate).toBe(GS.LEVEL);
+  });
+
+  // Acceptance 5: the wipe sentinel is consumed EXACTLY ONCE per state
+  // change (d_main.c:196-222) — including the g_game.c:451 reload force.
+  it('acceptance 5: wipe sentinel consumed once per change', () => {
+    const s = freshState();
+    expect(s.wipegamestate).toBe(s.gamestate);
+    expect(takeWipeRequest(s)).toBe(false); // no change ⇒ no wipe
+
+    s.gamestate = GS.FINALE;
+    expect(takeWipeRequest(s)).toBe(true); // consuming read
+    expect(takeWipeRequest(s)).toBe(false); // same state ⇒ stays false
+    expect(s.wipegamestate).toBe(GS.FINALE);
+
+    s.gamestate = GS.DEMOSCREEN; // menu opens on the title
+    expect(takeWipeRequest(s)).toBe(true);
+    expect(takeWipeRequest(s)).toBe(false);
+
+    // DEMOSCREEN → LEVEL transition: sentinel differs ⇒ exactly one
+    // consumption (no -1 force here: g_game.c:451 forces the melt only
+    // for a LEVEL→LEVEL reload, wipegamestate === GS_LEVEL).
+    registerGameFlowHooks({ levelLoader: () => fixMap('FIXMAP') });
+    gDeferedInitNew(s, 3, 1, 1);
+    gTicker(s); // → GS_LEVEL
+    expect(s.gamestate).toBe(GS.LEVEL);
+    expect(takeWipeRequest(s)).toBe(true);
+    expect(takeWipeRequest(s)).toBe(false);
+
+    // The g_game.c:451 force: a same-state (GS_LEVEL) reload arms the
+    // sentinel with -1 and the display block consumes it once.
+    const lv = freshState();
+    expect(lv.wipegamestate).toBe(GS.LEVEL);
+    gDeferedInitNew(lv, 3, 1, 1);
+    gTicker(lv);
+    expect(lv.wipegamestate).toBe(-1); // armed by G_DoLoadLevel, unconsumed
+    expect(takeWipeRequest(lv)).toBe(true);
+    expect(lv.wipegamestate).toBe(GS.LEVEL);
+    expect(takeWipeRequest(lv)).toBe(false);
+  });
+
+  it('per-state ticker routing via registrable hooks (§0.2)', () => {
+    const s = freshState();
+    // Unregistered GS_INTERMISSION: counted stub, clocks tick, no crash,
+    // the level body does NOT run (leveltime frozen).
+    s.gamestate = GS.INTERMISSION;
+    gTicker(s);
+    expect(flowStubHits.byName.get('wiTicker')).toBe(1);
+    expect(s.leveltime).toBe(0);
+    expect(s.gametic).toBe(1);
+
+    let ticced = 0;
+    registerGameFlowHooks({ wiTicker: () => { ticced++; } });
+    gTicker(s);
+    gTicker(s);
+    expect(ticced).toBe(2);
+    expect(s.leveltime).toBe(0); // still no P_Ticker while off GS_LEVEL
+    expect(s.gameaction).toBe(GA.nothing);
+
+    // GS_FINALE / GS_DEMOSCREEN route to their own hooks; the GS_LEVEL
+    // body resumes (and ONLY resumes) on GS_LEVEL.
+    s.gamestate = GS.FINALE;
+    gTicker(s);
+    expect(flowStubHits.byName.get('finaleTicker')).toBe(1);
+    s.gamestate = GS.DEMOSCREEN;
+    let paged = 0;
+    registerGameFlowHooks({ pageTicker: () => { paged++; } });
+    gTicker(s);
+    expect(paged).toBe(1);
+    s.gamestate = GS.LEVEL;
+    gTicker(s);
+    expect(s.leveltime).toBe(1);
+  });
+
+  it('tic block: advancedemo flag + M_Ticker slot (d_main.c:381-383)', () => {
+    const s = freshState();
+    // Unregistered attract consumer: flag consumed + counted (no spin).
+    gRequestAdvanceDemo(s);
+    expect(s.advancedemo).toBe(true);
+    gFlowTic(s);
+    expect(s.advancedemo).toBe(false);
+    expect(flowStubHits.byName.get('advanceDemo')).toBe(1);
+
+    let skulled = 0;
+    let demoed = 0;
+    registerGameFlowHooks({
+      advanceDemo: () => { demoed++; },
+      mTicker: () => { skulled++; }
+    });
+    gRequestAdvanceDemo(s);
+    gFlowTic(s);
+    gFlowTic(s);
+    expect(demoed).toBe(1); // the flag, not every tic
+    expect(skulled).toBe(2); // M_Ticker runs every tic
+  });
+
+  it('hooks.ts additive seams: sfxStub counter + gameactionLog', () => {
+    sfxStub('sfx_swtchn');
+    sfxStub('sfx_swtchn');
+    sfxStub('sfx_pistol');
+    expect(sfxStubLog.count).toBe(3);
+    expect(sfxStubLog.byName.get('sfx_swtchn')).toBe(2);
+    expect(sfxStubLog.byName.get('sfx_pistol')).toBe(1);
+    resetSfxStubLog();
+    expect(sfxStubLog.count).toBe(0);
+
+    const s = freshState();
+    registerGameFlowHooks({ levelLoader: () => fixMap('FIXMAP') });
+    gDeferedInitNew(s, 3, 1, 1);
+    gTicker(s);
+    expect(gameactionLog.count).toBe(1); // ga_newgame (loadlevel leg is a direct call)
+    expect(gameactionLog.entries[0]!.action).toBe(GA.newgame);
+    expect(gameactionLog.entries[0]!.gametic).toBe(0);
+  });
+
+  it('booted-state flow fields default to a live level (no behavior move)', () => {
+    const s = freshState();
+    expect(s.gamestate).toBe(GS.LEVEL);
+    expect(s.gameaction).toBe(GA.nothing);
+    expect(s.paused).toBe(false);
+    expect(s.viewactive).toBe(true);
+    expect(s.usergame).toBe(true);
+    expect(s.advancedemo).toBe(false);
+    expect(s.wipegamestate).toBe(GS.LEVEL);
+    expect(s.wminfo.type).toBe('sp');
+    expect(s.wminfo.pars).toEqual([30, 75, 120, 90, 165, 180, 180, 30, 165]);
+    expect(s.gameskill).toBe(3); // boot skill 2 (0-based) ⇒ 3 (1-based domain)
   });
 });

@@ -253,3 +253,53 @@ export function exitSlot(host: ExitHost, kind: ExitKind): void {
   record(host.hooks.exit, { kind, tic: host.leveltime });
   host.exitRequest = kind;
 }
+
+/* ------------------------------------------------------------------ */
+/* M9-03 ADDITIVE: sfx stub counter + gameaction log                   */
+/* ------------------------------------------------------------------ */
+
+/** sfxStub counter state (module-level: these are d_main.c/m_menu.c/
+ * wi_stuff.c UI-side S_StartSound sites, OUTSIDE the per-state sim hook
+ * slots above and OUTSIDE the hash; M10 replaces the BODY, not the call
+ * sites — the same doctrine as sfxSlot above). */
+export interface SfxStubLog {
+  count: number;
+  byName: Map<string, number>;
+}
+
+export const sfxStubLog: SfxStubLog = { count: 0, byName: new Map() };
+
+/** Silent-M9 S_StartSound body for UI-side call sites (menu skull moves,
+ * quit-screen `quitsounds[(gametic>>2)&7]`, WI tally dots …). Keys are the
+ * sfx_* names the M9 plan pins (sfx_pstop/sfx_stnmov/sfx_swtchn/sfx_swtchx/
+ * sfx_pistol/…). */
+export function sfxStub(name: string): void {
+  sfxStubLog.count++;
+  sfxStubLog.byName.set(name, (sfxStubLog.byName.get(name) ?? 0) + 1);
+}
+
+export function resetSfxStubLog(): void {
+  sfxStubLog.count = 0;
+  sfxStubLog.byName.clear();
+}
+
+/** g_game.c G_Ticker gameaction-drain record (d_event.h gameaction_t
+ * value + the gametic it drained at). */
+export interface GameactionEvent {
+  readonly action: number;
+  readonly gametic: number;
+}
+
+export const gameactionLog: SlotLog<GameactionEvent> = { count: 0, entries: [] };
+
+/** game.ts's drain logs EVERY drained action here (cap via `record`, so
+ * long scripted flows cannot blow memory but cadence assertions stay
+ * exact). */
+export function recordGameaction(action: number, gametic: number): void {
+  record(gameactionLog, { action, gametic });
+}
+
+export function resetGameactionLog(): void {
+  gameactionLog.count = 0;
+  gameactionLog.entries.length = 0;
+}
