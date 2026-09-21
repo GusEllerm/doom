@@ -30,10 +30,26 @@
 //   R_PointToAngle (r_main.c:283-372) — octant + SlopeDiv/tantoangle port,
 //     result u32 (C angle_t).
 //
-// m_bbox.h enum order (source truth for R_CheckBBox / checkcoord):
+// // m_bbox.h enum order (source truth for R_CheckBBox / checkcoord):
 //   BOXTOP=0, BOXBOTTOM=1, BOXLEFT=2, BOXRIGHT=3 — bbox flat layout is
 //   {top,bottom,left,right}, NOT the common {left,right,top,bottom} guess.
 //   The flat codes are exported from here for bsp.ts's R_CheckBBox port.
+//
+// M9-09 ADDITION (plan §M9-09, §0.11): R_SetViewSize/R_ExecuteSetViewSize
+//   (r_main.c:647-757) live at the bottom of this file as the {@link ViewSize}
+//   params — scaledviewwidth/viewheight, R_InitBuffer's viewwindowx/y
+//   (r_draw.c:696-723), the per-size yslope/distscale/xtoviewangle rebuild
+//   and the psprite scales. SHIPPED DEFAULT screenblocks = 9 (m_misc.c:279
+//   defaults table — the classic 288x144 windowed view + borders + bar).
+//   DOCUMENTED PORT DEVIATION (M9-plan §0.11 "M4-renderer param FINDING"):
+//   the 3D passes (segs/planes/vissprites) keep the 320x200 projection
+//   constants, so the windowed presentation composes as a CENTER CROP: the
+//   full-res pass's rows [centerY−vh/2, +vh) × columns [wx, wx+vw) are the
+//   window's pixels (renderer.ts displayFrame). Horizontal centering is
+//   exact (crop x0 === viewwindowx); vertical centering is exact (the crop
+//   is centered on centery=100 → horizon lands mid-window like vanilla's
+//   rebuilt yslope). detailshift stays 0 (low-detail spans/wall draws are
+//   not implemented in this port; the parameter is recorded).
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -437,3 +453,201 @@ export function initTextureMapping(): TextureMapping {
 export function getClipangle(): number {
   return initTextureMapping().clipangle;
 }
+
+/* ================================================================== */
+/* R_SetViewSize / R_ExecuteSetViewSize — M9-09 view params            */
+/* ================================================================== */
+
+/** m_misc.c:279 defaults table — `{"screenblocks", &screenblocks, 9}`. The
+ * SHIPPED default (288x144 windowed view + borders + statusbar). */
+export const SCREENBLOCKS_DEFAULT = 9;
+/** M_SizeDisplay range (m_menu.c:1154-1173): screenSize 0..8 ⇒ blocks 3..11. */
+export const SCREENBLOCKS_MIN = 3;
+export const SCREENBLOCKS_MAX = 11;
+/** SBARHEIGHT (doomdef.h — R_InitBuffer's `SCREENHEIGHT-SBARHEIGHT-height`). */
+export const SBARHEIGHT = 32;
+
+/**
+ * The r_main.c view-size globals computed by R_ExecuteSetViewSize + the
+ * R_InitBuffer window origin (r_draw.c:696-723). Plain snapshot object —
+ * {@link executeSetViewSize} builds a fresh one, so a frame holding the
+ * old reference keeps seeing old (never torn) values.
+ */
+export interface ViewSize {
+  /** setblocks (m_menu.c screenblocks 3..11). */
+  readonly screenblocks: number;
+  /** setdetail (recorded; this port draws at detailshift 0 — see header). */
+  readonly detailshift: number;
+  /** scaledviewwidth: 320 at sb 11 else setblocks*32 (r_main.c:679-686). */
+  readonly scaledviewwidth: number;
+  /** viewheight: 200 at sb 11 else (setblocks*168/10)&~7 (r_main.c:689). */
+  readonly viewheight: number;
+  /** viewwidth = scaledviewwidth>>detailshift (r_main.c:692). */
+  readonly viewwidth: number;
+  readonly centerx: number;
+  readonly centery: number;
+  readonly centerxfrac: number;
+  readonly centeryfrac: number;
+  /** projection = centerxfrac (r_main.c:698). */
+  readonly projection: number;
+  /** viewwindowx = (SCREENWIDTH-scaledviewwidth)>>1 (r_draw.c:705). */
+  readonly viewwindowx: number;
+  /** viewwindowy: scaledviewwidth==320 ⇒ 0 else
+   * (SCREENHEIGHT-SBARHEIGHT-viewheight)>>1 (r_draw.c:712-715 — sb10's
+   * 320-wide view is TOP-aligned, the bar owning rows 168-199). */
+  readonly viewwindowy: number;
+  /** pspritescale = FRACUNIT*viewwidth/SCREENWIDTH (r_main.c:718). */
+  readonly pspritescale: number;
+  /** pspriteiscale = FRACUNIT*SCREENWIDTH/viewwidth (r_main.c:719). */
+  readonly pspriteiscale: number;
+  /** R_ExecuteSetViewSize "planes" loop (r_main.c:729-734), rebuilt for
+   * THIS viewheight: yslope[i] = FixedDiv((viewwidth<<detailshift)/2*
+   * FRACUNIT, |((i-viewheight/2)<<FRACBITS)+FRACUNIT/2|). */
+  readonly yslope: Int32Array;
+  /** r_main.c:736-740 for THIS viewwidth (per-size xtoviewangle first). */
+  readonly distscale: Int32Array;
+  /** r_main.c:723 analogue — `viewheight == 200` is exactly the
+   * ST_Drawer(fullscreen) flag D_Display passes (d_main.c:252). */
+  readonly fullscreen: boolean;
+}
+
+/* r_main.c:652-655 file globals. */
+let setBlocks = SCREENBLOCKS_DEFAULT;
+let setDetail = 0;
+let setsizeneeded = true;
+let currentSize: ViewSize | undefined;
+
+/**
+ * R_SetViewSize (r_main.c:657-665): DEFERRED — the change takes effect at
+ * the next display block ({@link executeSetViewSize} via {@link viewSize}
+ * or {@link consumeViewSetSizeNeeded}). The menu wiring registers this as
+ * `menuSeams.setViewSize` (m_menu.c:1161 M_SizeDisplay — the `=`/`-` and
+ * Options-screen live resize); `detail` arrives in the m_menu encoding
+ * (0 = high ⇒ detailshift 0; anything else records shift 1 but draws at 0,
+ * see file-header deviation).
+ */
+export function setViewSize(blocks: number, detail: number): void {
+  setsizeneeded = true;
+  setBlocks = blocks;
+  setDetail = detail === 0 ? 0 : 1;
+}
+
+/** setsizeneeded query WITHOUT applying (d_main.c:198-203 check). */
+export function viewSizeNeeded(): boolean {
+  return setsizeneeded;
+}
+
+/** True exactly once per pending change, applying it (d_main.c:199-203
+ * `setsizeneeded ⇒ R_ExecuteSetViewSize(); oldgamestate=-1; borderdrawcount=3`). */
+export function consumeViewSetSizeNeeded(): boolean {
+  if (!setsizeneeded) return false;
+  executeSetViewSize();
+  return true;
+}
+
+/**
+ * R_ExecuteSetViewSize (r_main.c:671-757). Verbatim param math (see
+ * {@link ViewSize}); the scalelight rebuild is NOT duplicated here — the
+ * merged LightTables come from lights.ts at the 320-wide constants (port
+ * deviation, file header).
+ */
+export function executeSetViewSize(): ViewSize {
+  setsizeneeded = false;
+
+  let scaledviewwidth: number;
+  let viewheight: number;
+  if (setBlocks === SCREENBLOCKS_MAX) {
+    scaledviewwidth = SCREENWIDTH_C;
+    viewheight = SCREENHEIGHT_C;
+  } else {
+    scaledviewwidth = setBlocks * 32;
+    viewheight = Math.floor((setBlocks * 168) / 10) & ~7; // C integer math
+  }
+
+  const detailshift = setDetail;
+  const viewwidth = scaledviewwidth >> detailshift;
+
+  const centery = Math.floor(viewheight / 2);
+  const centerx = Math.floor(viewwidth / 2);
+  const centerxfrac = centerx << FRACBITS;
+  const centeryfrac = centery << FRACBITS;
+
+  // R_InitBuffer (r_draw.c:696-723).
+  const viewwindowx = (SCREENWIDTH_C - scaledviewwidth) >> 1;
+  const viewwindowy =
+    scaledviewwidth === SCREENWIDTH_C ? 0 : (SCREENHEIGHT_C - SBARHEIGHT - viewheight) >> 1;
+
+  // R_InitTextureMapping (r_main.c:544-603) at THIS size — the per-column
+  // angle tables the distscale loop consumes.
+  const focallength = FixedDiv(centerxfrac, finetangent[FINEANGLES / 4 + FIELDOFVIEW / 2]!);
+  const viewangletox = new Int32Array(FINEHALF);
+  for (let i = 0; i < FINEHALF; i += 1) {
+    const tan = finetangent[i]!;
+    let t: number;
+    if (tan > FRACUNIT * 2) t = -1;
+    else if (tan < -FRACUNIT * 2) t = viewwidth + 1;
+    else {
+      t = FixedMul(tan, focallength);
+      t = (centerxfrac - t + FRACUNIT - 1) >> FRACBITS;
+      if (t < -1) t = -1;
+      else if (t > viewwidth + 1) t = viewwidth + 1;
+    }
+    viewangletox[i] = t;
+  }
+  const xtoviewangle = new Uint32Array(viewwidth + 1);
+  for (let x = 0; x <= viewwidth; x += 1) {
+    let i = 0;
+    while (viewangletox[i]! > x) i += 1;
+    xtoviewangle[x] = ((i << ANGLETOFINESHIFT) - ANG90) >>> 0;
+  }
+
+  // "planes" yslope rebuild (r_main.c:729-734).
+  const yslope = new Int32Array(viewheight);
+  const yslopeNum = ((scaledviewwidth >> 1) << FRACBITS) | 0; // (vw<<detail)/2<<16
+  for (let i = 0; i < viewheight; i += 1) {
+    let dy = (((i - viewheight / 2) << FRACBITS) + FRACUNIT / 2) | 0;
+    if (dy < 0) dy = -dy;
+    yslope[i] = FixedDiv(yslopeNum, dy);
+  }
+
+  const distscale = new Int32Array(viewwidth);
+  for (let i = 0; i < viewwidth; i += 1) {
+    const cosadj = Math.abs(finecosine[xtoviewangle[i]! >>> ANGLETOFINESHIFT]!);
+    distscale[i] = FixedDiv(FRACUNIT, cosadj);
+  }
+
+  currentSize = {
+    screenblocks: setBlocks,
+    detailshift,
+    scaledviewwidth,
+    viewheight,
+    viewwidth,
+    centerx,
+    centery,
+    centerxfrac,
+    centeryfrac,
+    projection: centerxfrac,
+    viewwindowx,
+    viewwindowy,
+    // r_main.c:718-719 — C integer division (both directions truncation).
+    pspritescale: Math.floor((FRACUNIT * viewwidth) / SCREENWIDTH_C),
+    pspriteiscale: Math.floor((FRACUNIT * SCREENWIDTH_C) / viewwidth),
+    yslope,
+    distscale,
+    fullscreen: viewheight === SCREENHEIGHT_C,
+  };
+  return currentSize;
+}
+
+/** The current R_ExecuteSetViewSize snapshot (applies a pending change
+ * first — the d_main.c:196-203 display-block ordering made implicit). */
+export function viewSize(): ViewSize {
+  if (setsizeneeded || currentSize === undefined) executeSetViewSize();
+  return currentSize!;
+}
+
+/* Local copies of the SCREENWIDTH/HEIGHT literals (r_draw.c/r_main.c cite
+ * lines reference them; framebuffer.ts owns the canonical constants and
+ * importing it here would drag the wad zone into view.ts's import set). */
+const SCREENWIDTH_C = 320;
+const SCREENHEIGHT_C = 200;
