@@ -23,6 +23,9 @@ export const RANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
   // posit/bgsit (2 sites), A_Chase activesound, A_FaceTarget shadow(2),
   // P_CheckMissileRange dice.
   'p_enemy.ts': 9, // M8-04 p_enemy.c draws
+  'amon_sarg.ts': 2, // M8-08 Family B: A_SargAttack `%10` (1 draw) + the
+  // p_map.c:278 skullfly slam `%8` (1 draw, ALWAYS). A_SkullAttack draws
+  // NOTHING of its own (the A_FaceTarget shadow pair is p_enemy.ts's).
   'pdeath.ts': 2, // M8-06 A_Scream podth %3 + bgdth %2 selects (A_Pain/
   // A_XScream/A_Fall draw NOTHING — pinned behaviourally in pdeath.test)
   'p_mobj.ts': 9, // spawn lastlook, explode tics, mapthing tics, puff(3), blood(3)

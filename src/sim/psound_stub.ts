@@ -283,7 +283,13 @@ export const SFX_SITE_LEDGER: Readonly<Record<string, number>> = {
   // full-volume + actor origin; podth %3 / bgdth %2 variant selects) +
   // A_XScream sfx_slop 1. A_Fall is silent (p_enemy.c:1585 clears
   // MF_SOLID only — no S_StartSound site exists there).
-  'pdeath.ts': 4};
+  'pdeath.ts': 4,
+  // M8-08 (amon_sarg.ts): A_SkullAttack's attacksound (p_enemy.c:1429,
+  // sfx_sklatk) — the family's ONE emit statement. A_SargAttack emits
+  // NOTHING (p_enemy.c:935-948 has no S_StartSound; the demon's
+  // sfx_sgtatk is A_Chase's melee line, p_enemy.ts's ledger row) and the
+  // p_map.c:276-286 skull slam is silent (P_DamageMobj emits no sound).
+  'amon_sarg.ts': 1};
 
 /** Files the ledger deliberately EXCLUDES from the scan. */
 export const SFX_SITE_SCAN_SKIP: readonly string[] = [
