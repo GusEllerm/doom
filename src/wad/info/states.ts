@@ -18,6 +18,15 @@
 // Rotates are NOT a state frame bit in 1.10 (R06 §4): rotation comes from the
 // sprite lump-name grammar parsed by wad/sprites.ts.
 //
+// The ONE DEHACKED hook of M8-10 lives at the foot of the table build
+// (applyDehackedFullbright, docs/design/M8-plan.md §M8-10 + §3 D-0xx); the
+// literals above stay the verbatim info.c transcription.
+import {
+  applyDehackedFullbright as applyDehackedFullbrightTo,
+  type DehackedApplyReport,
+  type DehackedLump,
+} from '../dehacked'
+//
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 /** info.h statenum_t NUMSTATES — states[] row count. */
@@ -1693,6 +1702,41 @@ export const stateMisc2 = new Int32Array([
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0,
 ])
+
+/* ------------------------------------------------------------------ */
+/* M8-10 DEHACKED hook — the single insertion point, AFTER the base   */
+/* columns above. The literals stay canonical; this is the ONLY code  */
+/* path allowed to touch the built table.                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * applyDehackedFullbright — the table-build hook of the M8-10 DEHACKED
+ * cross-cut (docs/design/M8-plan.md §M8-10 + §3 D-0xx): the ONE place a
+ * DEHACKED lump enters the states table. The WAD-loading caller runs it
+ * after this module has built the canonical info.c columns above.
+ *
+ * Scope is the fullbright bit ONLY (plan §M8-10): a `Frame <n>` /
+ * `Sprite subnumber` entry that sets 0x8000 without moving the frame index
+ * is OR-ed into `stateFrame[n]`; every other parsed entry is reported as
+ * ignored with a reason and the table stays untouched (wad/dehacked.ts).
+ *
+ * Determinism: the write is monotone (bit OR only) ⇒ idempotent, so running
+ * the same lump twice yields a byte-identical table. No DEHACKED lump
+ * (`null`, e.g. a synthetic fixture WAD) ⇒ documented NO-OP: the report
+ * counts zero and the bytes above are exactly what the L1 census
+ * (states.test.ts) compares against info.c.
+ *
+ * @param dehacked parsed lump (dehacked.ts parseDehacked/readDehacked), or
+ *                 null when the IWAD ships none.
+ * @param frames   frame column to patch; defaults to the live `stateFrame`
+ *                 (pass a copy to build a candidate table).
+ */
+export function applyDehackedFullbright(
+  dehacked: DehackedLump | null | undefined,
+  frames: Int32Array = stateFrame,
+): DehackedApplyReport {
+  return applyDehackedFullbrightTo(frames, dehacked)
+}
 
 /** Frame bit decode (R06 §4): index letter offset + fullbright flag. */
 export function frameIndex(frame: number): number {
