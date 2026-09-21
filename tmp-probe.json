@@ -1,0 +1,110 @@
+{
+ "fire": [
+  {
+   "t": 16,
+   "hp": 100,
+   "awake": 1,
+   "kills": 0,
+   "ammo": 50
+  },
+  {
+   "t": 100,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 44
+  },
+  {
+   "t": 200,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 37
+  },
+  {
+   "t": 300,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 29
+  },
+  {
+   "t": 400,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 22
+  },
+  {
+   "t": 500,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 15
+  },
+  {
+   "t": 600,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 8
+  },
+  {
+   "t": 700,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 1
+  },
+  {
+   "t": 800,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  },
+  {
+   "t": 900,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  },
+  {
+   "t": 1000,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  },
+  {
+   "t": 1100,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  },
+  {
+   "t": 1200,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  },
+  {
+   "t": 1300,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  },
+  {
+   "t": 1400,
+   "hp": 100,
+   "awake": 2,
+   "kills": 0,
+   "ammo": 0
+  }
+ ],
+ "fireWake": 16
+}
