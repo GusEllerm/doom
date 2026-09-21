@@ -256,3 +256,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M9-08 merged: D017 RETIRED — death = faithful full level reload (leveltime 0, monsters/items/secret flags reborn, weapons 0-6 kept 7-9 cleared). Zero golden re-bless (no golden dies on main path). D017 marked retired in DECISIONS. HU census line-drift fix folded.
 - M9-05 merged: face machine (priority chain incl aim-frame 0, death window EXACT, evil-sly ladder, pain 10-tick decay); M_Random permanently ledgered; statusbar live in harness.
 - 502 model-endpoint outage killed both wave-3 agents mid-flight. Salvage: M9-09 stub-only (re-run), M9-10 near-complete (finisher). git-sim_media/ harness artifact dir spotted untracked in main worktree — left alone.
+- M9-10 merged. TRUTH: F_StartFinale SILENT (no S_StartMusic — music is M12); reveal 250+3*t; FLOOR4_8 128px tile NO wrap; HELP2 640x64 10-col; CIRCLEX=150; wipe = WI_circularMap on screens[1].
