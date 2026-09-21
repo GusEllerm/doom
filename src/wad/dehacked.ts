@@ -68,7 +68,18 @@
  * with "FULLBRIGHT STAYS OFF until A-02/M8" (vissprites.ts:33-36, 363-367).
  * The bit IS live for the psprite layer (render/psprites.ts:244-245 ⇒
  * colormaps row 0), which is fed by sim/p_pspr.ts reading stateFrame of the
- * weapon states. That is why this task changes NO goldens.
+ * weapon states — and freedoom's overrides touch no psprite state's frame
+ * word, so this task changes NO goldens.
+ *
+ * MEASURED, not assumed: rendering freedoom1 E1M1 from the 12 committed
+ * viewpoints (tests/render/viewpoints.ts) gives byte-identical framebuffer
+ * sha256 prefixes with the table unpatched and with all 5 overrides applied
+ * (61e2a836…, 7df6d0c0…, c1ba9ae7…, d26f6e80…, 19d6abb9…, 0e3b04e6…,
+ * f3861cb1…, 30588b27…, 5a823160…, 61e2a836…, e041fc82…, 0f6776d9…), while
+ * dropping the sprite pass changes >3 of them — i.e. things ARE drawn and the
+ * patch is still invisible. The probe lived in tests/render/ only while this
+ * task was measured (M8-10 owns no test outside this file); promote it there
+ * if/when the world-sprite pass starts reading the bit.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
