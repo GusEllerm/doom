@@ -54,6 +54,44 @@ export const RANDOM_SITE_SCAN_SKIP: readonly string[] = [
   'prng.ts', // pRandom/mRandom definitions + the tables
 ];
 
+/* ------------------------------------------------------------------ */
+/* M9-07 ADDITIVE: the MENU-stream (mRandom) ledger — `wi_anim`         */
+/* ------------------------------------------------------------------ */
+
+/** Per-module `mRandom(` CALL-OCCURRENCE counts (same unit as above).
+ * LEDGER (runtime, wi_anim): wi_stuff.c:517/:521 (WI_initAnimatedBack,
+ * EVERY state entry) + :560 (ANIM_RANDOM loop). Under the shareware
+ * policy episode 0 the ONLY live path is ANIM_ALWAYS init: NUMANIMS[0]
+ * = 10 draws per state entry × TWO entries per tally (WI_initStats +
+ * WI_initShowNextLoc) = 20 menu-stream draws per intermission. The
+ * ANIM_RANDOM loop text exists for fidelity but no epsd table member
+ * uses ANIM_RANDOM (measured) — 0 runtime loop draws. The stream is
+ * SHARED with the (M9-05) statusbar face draw — the plan §0.9 ledger
+ * rule; rndindex IS hashed, so these draws land in every hash taken
+ * mid-intermission. */
+export const MRANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
+  'wintermission.ts': 3, // 2 init sites (ALWAYS/RANDOM) + 1 loop site
+};
+
+/** Scan src/sim for mRandom call occurrences (test helper). */
+export function scanMRandomSites(
+  dir = fileURLToPath(new URL('.', import.meta.url))
+): Record<string, number> {
+  const found: Record<string, number> = {};
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith('.ts') || name.endsWith('.test.ts')) continue;
+    if (RANDOM_SITE_SCAN_SKIP.includes(name)) continue;
+    const src = readFileSync(`${dir}/${name}`, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+    const n = (src.match(/\bmRandom\(/g) ?? []).length;
+    if (n > 0) found[name] = n;
+  }
+  return found;
+}
+
 /** Scan src/sim for pRandom call occurrences (test helper). */
 export function scanRandomSites(dir = fileURLToPath(new URL('.', import.meta.url))): Record<string, number> {
   const found: Record<string, number> = {};
