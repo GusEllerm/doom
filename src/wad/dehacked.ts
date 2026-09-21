@@ -39,13 +39,27 @@
  * (they edit state POINTERS, not frame bits). The classic DeHackEd pointer
  * numbering for `Change Thing States` targets is exposed by
  * {@link thingStatePointer}: pointers 0..NUMSTATE-1 address the states[] rows,
- * and pointers from NUMSTATE up address the flat mobj-state table laid out in
- * mobjinfo order, 8 state-pointer slots per mobjtype — vanilla's mobjinfo_t
- * order (info.h:1305+, mirrored field-by-field by src/wad/info/mobjinfo.ts:
- * spawnState, seeState, painState, meleeState, missileState, deathState,
- * xdeathState, raiseState). Freedoom's lump contains zero such entries, so
- * that mapping is format knowledge only (DeHackEd v3.0 text format), exercised
- * by the synthetic test, and inert for M8-10.
+ * and pointers from NUMSTATE up address the flat mobj-state table in mobjinfo
+ * order, 8 state-pointer slots per mobjtype — the mobjinfo_t field order
+ * (info.h:161-183: spawnstate, seestate, painstate, meleestate, missilestate,
+ * deathstate, xdeathstate, raisestate), mirrored field-by-field by
+ * src/wad/info/mobjinfo.ts.
+ *
+ * EVIDENCE LEVEL, stated plainly: linuxdoom-1.10 ships NO dehacked source at
+ * all (no d_deh.c in the mirror tree), so the block grammar and the pointer
+ * numbering above are DeHackEd v3.0 *format* knowledge, not a source
+ * transcription. The part that matters for M8-10 — `Frame <n>` == the states[]
+ * row — is instead pinned EMPIRICALLY on the pinned freedoom1.wad lump, row by
+ * row, by dehacked.test.ts; the pointer numbering contains zero entries in
+ * that lump and is exercised only by the synthetic test (and never applied).
+ *
+ * CALL SITE (intentionally not wired by M8-10, whose file ownership is this
+ * module + the single states.ts hook): the WAD boot path runs
+ * `applyDehackedFullbright(readDehacked(wad))` (the export in
+ * wad/info/states.ts) once after WadFile.parse — with freedoom1.wad that is
+ * the 5-row patch dehacked.test.ts asserts. Wiring main.ts is a no-op for
+ * pixels today for the render reason below, which is why it is left to the
+ * integration milestone rather than done here.
  *
  * RENDER NOTE (verified, cited in the M8-10 report): the WORLD-sprite path
  * never sees the applied bit — render/rthings.ts builds its thing frames as a
@@ -106,7 +120,9 @@ export type DehackedEntryKind =
   /** `Change Weapon States` entry (state-pointer edit). */
   | 'weaponState'
   /** `Change Ammo States` entry (state-pointer edit). */
-  | 'ammoState';
+  | 'ammoState'
+  /** `Change Miscellaneous Numbers` entry (per-global number pointers). */
+  | 'miscNumber';
 
 /** One parsed entry (a `key = value` line, or one `X # n : slot -> v` line). */
 export interface DehackedEntry {
@@ -357,7 +373,7 @@ export function parseDehacked(source: Uint8Array | string): DehackedLump {
     }
 
     // — entry lines —
-    if (STATE_POINTER_KINDS.includes(kind)) {
+    if (kind !== null && STATE_POINTER_KINDS.includes(kind)) {
       const m = POINTER_ENTRY.exec(trimmed);
       if (m) {
         const slot = m[3]!.trim();
@@ -396,6 +412,7 @@ export function parseDehacked(source: Uint8Array | string): DehackedLump {
         skip('unrecognized line');
         continue;
       }
+      // (kind !== null here: entries always belong to a recognized block.)
       entries.push({
         kind,
         block,

@@ -443,8 +443,7 @@ describe.skipIf(!hasWad)('freedoom1.wad DEHACKED', () => {
     expect(rows).toHaveLength(278 + 5);
     for (const s of [185, 419, 685, 687, 689]) expect(rows).toContain(s);
 
-    // eslint-disable-next-line no-console
-    console.log(describeDehacked(lump, report));
+    console.log(describeDehacked(lump!, report));
   });
 
   it('leaves the live table canonical for every other test (hook untouched here)', () => {
