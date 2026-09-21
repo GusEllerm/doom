@@ -38,7 +38,15 @@ import {
   keyup,
   type AutomapEvent
 } from './sim/amMap';
-import { gInitGame, gTicker, TICS_PER_SECOND } from './sim/game';
+import {
+  gFlowTic,
+  gInitGame,
+  gTicker,
+  registerGameFlowHooks,
+  takeWipeRequest,
+  TICS_PER_SECOND
+} from './sim/game';
+import { mapNameFor } from './sim/gamemode';
 import { buildMapFromData } from './sim/map';
 import type { GameState } from './sim/state';
 import { attachRenderDebug, attachMouseInjection, attachPopInput, debugApi, debugSim, installDebugApi } from './debug';
@@ -95,6 +103,10 @@ document.body.appendChild(picker);
 
 interface Boot {
   readonly state: GameState;
+  /** M9-03: kept for the level-reload path (G_DoLoadLevel rebuilds the
+   * per-map render assets when `state.map` changes identity). */
+  wad: WadFile | null;
+  mapName: string;
   readonly am: ReturnType<typeof amCreateState>;
   /** PLAYPAL banks + the current selection (M7-06: the I_SetPalette half —
    * the band index itself is computed sim-side, see sim/ppalette.ts). */
@@ -102,13 +114,15 @@ interface Boot {
   /** The player read as a palette/powerup source (fields attached once). */
   readonly palettePlayer: ReturnType<typeof attachPowerupFields>;
   /** Render world + BSP view + light tables: built ONCE here (M3-07 "load
-   * render world once"), reused by every frame's deps bundle. */
-  readonly world: RenderWorld;
-  readonly mapView: RenderMapView;
+   * render world once"), reused by every frame's deps bundle. M9-03:
+   * world/mapView/sprites are per-MAP and rebuilt by the display block
+   * when a level load changes state.map; tables/luts are per-IWAD. */
+  world: RenderWorld;
+  mapView: RenderMapView;
   readonly tables: LightTables;
   /** M4-07: the once-per-map static thing/sprite tables (rthings census +
    * decoded patches); the frame's sprite pass caches off these. */
-  readonly sprites: SpriteTables;
+  sprites: SpriteTables;
 }
 
 let boot: Boot | null = null;
@@ -123,6 +137,25 @@ let lastFrameMs = 0;
  * D_ProcessEvents (d_main.c tic loop) — event handling never depends on the
  * rAF rate. */
 const eventQueue: AutomapEvent[] = [];
+
+/** M9-03 G_DoLoadLevel map source (game.ts `levelLoader` hook): episodic
+ * naming (mapNameFor, shareware policy pins ep=1 via the G_InitNew
+ * clamps); the loaded MapData is stashed for the display-block render
+ * rebuild. Null ⇒ unresolved map (game.ts counts the stub). */
+let wadFile: WadFile | null = null;
+let pendingMd: ReturnType<typeof loadMap> | null = null;
+registerGameFlowHooks({
+  levelLoader: (_state, episode, map) => {
+    if (wadFile === null) return null;
+    try {
+      const md = loadMap(wadFile, mapNameFor(episode, map));
+      pendingMd = md;
+      return buildMapFromData(md);
+    } catch {
+      return null; // gDoLoadLevel counts `level-load-fail`; never throws into the tic
+    }
+  }
+});
 
 function stepTic(): void {
   if (boot === null) return;
@@ -149,6 +182,11 @@ function stepTic(): void {
   input.mouseX = mouse.mouseX;
   input.mouseY = mouse.mouseY;
 
+  // d_main.c:381-383 (tic block, before G_Ticker): advancedemo flag
+  // consumer + M_Ticker slot (game.ts gFlowTic; M9-04 registers the
+  // skull ticker, M9-10 the attract body — no main.ts re-edit needed).
+  gFlowTic(state);
+
   gTicker(state, input);
   amTicker(am, player); // G_Ticker GS_LEVEL automap item (g_game.c)
 }
@@ -156,6 +194,23 @@ function stepTic(): void {
 function render(): void {
   if (boot === null) return;
   const { state, am, palettePlayer } = boot;
+
+  // M9-03 display-block halves (d_main.c:196-222, §0.6):
+  // 1) level-change rebuild — G_DoLoadLevel swapped state.map in place;
+  //    rebuild the per-map render assets exactly once (the sim-side
+  //    loader already stashed pendingMd; M9-09 folds this into the
+  //    D_Display composition).
+  if (boot.wad !== null && boot.mapName !== state.map.name && pendingMd !== null) {
+    boot.mapName = state.map.name;
+    boot.world = loadRenderWorld(pendingMd, texturesFromWad(boot.wad), flatsFromWad(boot.wad), state.sectors);
+    boot.mapView = buildRenderMapView(pendingMd);
+    boot.sprites = buildMapSprites({ md: pendingMd, map: boot.mapView, wad: boot.wad });
+  }
+  // 2) wipe sentinel — consumed EXACTLY ONCE per gamestate change
+  //    (takeWipeRequest returns true on the consuming frame only; the
+  //    f_wipe melt body registers via the game.ts `wipe` hook, M9-01/09).
+  takeWipeRequest(state);
+
   // §4.1 frame pipeline (renderer.ts): 3D walls always run; the automap
   // overlays afterwards ONLY when its state is active (Tab toggles the
   // state through amResponder in stepTic — the drawing path is stateless).
@@ -185,8 +240,13 @@ function loop(nowMs: number): void {
   accumulator += nowMs - lastFrameMs;
   lastFrameMs = nowMs;
   const paused = debugApi.pause(); // __doom.pause() gates the live sim (§7)
+  // M9-03 pause gate: the in-game `state.paused` (g_game.c run global,
+  // set by the menu layer from M9-04) rides the SAME plumbing — while
+  // either is set no tics are pumped (the sim-side p_tick.c:140 guard in
+  // gTicker is the headless-path half; harness parity documented).
+  const simPaused = boot !== null && boot.state.paused;
   let tics = 0;
-  while (!paused && accumulator >= TIC_MS && tics < MAX_CATCHUP_TICS) {
+  while (!paused && !simPaused && accumulator >= TIC_MS && tics < MAX_CATCHUP_TICS) {
     stepTic();
     accumulator -= TIC_MS;
     tics++;
@@ -259,7 +319,9 @@ attachPopInput(() => {
 
 function afterLoad(buf: ArrayBuffer, src: string): void {
   const wad = WadFile.parse(buf);
+  wadFile = wad; // M9-03 levelLoader seam (registered above, reads it lazily)
   const md = loadMap(wad, 'E1M1');
+  pendingMd = md;
   const map = buildMapFromData(md);
   const state = gInitGame(map);
   // M7-06: damagecount is the one palette/powerup field the merged inventory
@@ -297,7 +359,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
   attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
-  boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites };
+  boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites, wad, mapName: map.name };
   status.hidden = true;
   picker.hidden = true;
   console.info(`doom-ts: booted ${map.name} from ${src}`);
