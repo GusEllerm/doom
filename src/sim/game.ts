@@ -37,15 +37,22 @@ import { bindShootWorld } from './p_shoot';
 // A_Explode/A_BFGSpray); side-effect imports, nothing to call per level.
 import './pmissiles';
 import './pradius';
-// M8-04 NOTE: p_enemy.ts self-registers A_Look/A_Chase/A_FaceTarget + the
-// p_pspr.c:256 P_NoiseAlert body AT IMPORT, but is deliberately NOT
-// imported here yet — enabling it flips every M7-era punching-bag fixture
-// (a LOS-visible zombie wakes on its first A_Look tic and starts drawing),
-// which is the PRNG-stream event the plan pins for M8-11 ("differs only
-// by the ledger-explained interleaving" + goldens re-bless). M8 tests and
-// later tasks import './p_enemy' themselves; the production enable is a
-// one-line flip here made IN M8-11's commit together with the re-derived
-// corpus (M8-plan §0.5 R1, §M8-11).
+// M8-12 PRODUCTION FLIP (the enable the M8-04 NOTE held open): importing
+// these five modules self-registers the monster AI + death + family action
+// ids AT MODULE LOAD — A_Look/A_Chase/A_FaceTarget + the p_pspr.c:256
+// P_NoiseAlert body (p_enemy.ts), A_Pain/A_Scream/A_XScream/A_Fall
+// (pdeath.ts), and the family attacks A_PosAttack/A_SPosAttack/A_CPos*/
+// A_TroopAttack (amon_poss.ts), A_SargAttack/A_SkullAttack (amon_sarg.ts),
+// A_HeadAttack/A_BruisAttack/A_BossDeath (amon_bruiser.ts). Same idiom as
+// the M7-09 pmissiles/pradius side-effect imports above; the domain-strict
+// a_actions registry already routed every state-table id to a counted
+// no-op before the flip, so nothing else changes. The damageBridge
+// (p_inter_damage.ts) was already live via pplayer.bindPplayerLevel.
+import './p_enemy';
+import './pdeath';
+import './amon_poss';
+import './amon_sarg';
+import './amon_bruiser';
 import { createLiveSectors, hashState, type GameState, type Skill } from './state';
 
 /** Fixed simulation rate (ARCHITECTURE §3.1: 35 Hz; = TICRATE). */
