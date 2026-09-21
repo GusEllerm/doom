@@ -331,13 +331,24 @@ function drawPatch(x: number, y: number, scrn: number, patch: VPatch, flipped: b
   for (let col = 0; col < w; col += 1) {
     let p = patch.columnofs[flipped ? w - 1 - col : col]!;
     for (;;) {
-      if (p + 2 > bytes.length) {
+      // V_DrawPatch reads topdelta FIRST and stops on the 0xff terminator
+      // — an EMPTY post chain is legal and exactly one byte wide (the
+      // shipped freedoom1 WIURH*/WISPLAT/WIA* frames are 13-byte 1×1
+      // patches whose only post byte is the terminator: reading the
+      // length before checking the terminator threw on that real data,
+      // M9-07 FINDING).
+      if (p >= bytes.length) {
         throw new PatchPostError(
           `patch '${patch.name}' column ${col}: post stream ran off the lump at ${p} (length ${bytes.length})`,
         );
       }
       const top = bytes[p]!;
       if (top === POST_TERMINATOR) break;
+      if (p + 2 > bytes.length) {
+        throw new PatchPostError(
+          `patch '${patch.name}' column ${col}: post stream truncated before length byte at ${p} (length ${bytes.length})`,
+        );
+      }
       const length = bytes[p + 1]!;
       const src = p + POST_DATA_OFFSET;
       if (src + length > bytes.length) {
