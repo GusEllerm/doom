@@ -246,7 +246,7 @@ function loop(nowMs: number): void {
   // gTicker is the headless-path half; harness parity documented).
   const simPaused = boot !== null && boot.state.paused;
   let tics = 0;
-  while (!(paused || simPaused) && accumulator >= TIC_MS && tics < MAX_CATCHUP_TICS) {
+  while (!paused && !simPaused && accumulator >= TIC_MS && tics < MAX_CATCHUP_TICS) {
     stepTic();
     accumulator -= TIC_MS;
     tics++;
