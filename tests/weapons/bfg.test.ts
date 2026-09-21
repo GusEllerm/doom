@@ -24,7 +24,7 @@ import { AM_CELL, attachPsprFields } from '../../src/sim/p_pspr';
 import { resolveSfxId } from '../../src/sim/psound_stub';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgEvents, sfxCount, trackPsprites } from './harness';
+import { boot, dmgEvents, sfxCount, staticDummies, trackPsprites } from './harness';
 import { weaponRangeSpec } from '../fixtures/m7Fixtures';
 
 const SFX_BFG = resolveSfxId('sfx_bfg');
@@ -36,9 +36,10 @@ const PRESS = 46; // fresh press after latch-clear at 45
 const DAMAGE_DRAWS = 1;
 
 function range(dummies: { x: number; y?: number; type?: number }[]) {
-  const s = boot(weaponRangeSpec(
+  // M8-fix: static dummies (AI gate) — see fist.test.ts / harness.
+  const s = staticDummies(boot(weaponRangeSpec(
     dummies.map((d) => ({ x: d.x, y: d.y, type: d.type ?? 3004 }))
-  ));
+  )));
   for (const m of s.mobjs.mobjs) if (!m.removed && m.type !== 0) m.health = 1 << 20;
   const p = attachPsprFields(s.players[0]!);
   p.weaponowned[6] = 1; // WP_BFG

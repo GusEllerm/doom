@@ -47,7 +47,7 @@
 import { ANG45, FRACUNIT } from '../core/constants';
 import { stateAt, stateNext, S, MAX_STATE_CHAIN } from '../wad/info/states';
 import { mobjinfo, MT, MF, DOOMEDNUM_TO_MT } from '../wad/info/mobjinfo';
-import { ACT_NONE, dispatchAction } from './a_actions';
+import { ACT, ACT_NONE, dispatchAction } from './a_actions';
 
 import { sectorAtPoint } from './bsp';
 import { mapThingAt, type RuntimeMap } from './map';
@@ -438,7 +438,16 @@ export function pSetMobjState(m: Mobj, state: number): boolean {
     m.frame = row.frame;
     // M8-07 domain fix: this machine dispatches the MOBJ-domain identity of
     // every id (vanilla stores the pointer per row; id27 = A_Fall here).
-    if (row.action !== ACT_NONE) dispatchAction(row.action, m, 'mobj');
+    // M8-fix static-dummy seam: when hooks.aiGate is installed and returns
+    // true, the two AI-churn ids (A_Look/A_Chase) skip dispatch HERE only —
+    // every other state action (A_Pain, A_Scream, A_Fall, …) runs exactly
+    // as production, and unset gates cost nothing (see hooks.ts HookSlots
+    // .aiGate for the precise coverage contract).
+    if (row.action !== ACT_NONE &&
+      !((row.action === ACT.A_Look || row.action === ACT.A_Chase) &&
+        rt.state.hooks.aiGate?.())) {
+      dispatchAction(row.action, m, 'mobj');
+    }
     if (m.removed) return false;
     st = stateNext[st]!;
     if (m.tics !== 0) {

@@ -1,8 +1,8 @@
 /**
- * sim-facing debug seams (src/debug.ts) — M6-13 finding 3: popInput.
- * The main.ts input wiring is a plain callback hook; headless asserts the
- * seam contract (null while detached, hook result passthrough, clean
- * detach). SPDX-License-Identifier: GPL-2.0-or-later
+ * sim-facing debug seams (src/debug.ts) — M6-13 finding 3: popInput; M8-fix
+ * static-dummy seam: aiGate. The main.ts input wiring is a plain callback
+ * hook; headless asserts the seam contract (null while detached, hook
+ * result passthrough, clean detach). SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { describe, expect, it } from 'vitest';
 
@@ -25,6 +25,15 @@ describe('debugApi.popInput (M6-13 finding 3 seam)', () => {
     expect(debugApi.popInput()).toEqual({ events: 0, mouse: { x: -7, y: 2 } });
     attachPopInput(null);
     expect(debugApi.popInput()).toBeNull();
+  });
+});
+
+describe('debugApi.aiGate (M8-fix static-dummy seam)', () => {
+  it('nothing to gate while no simulation is attached', () => {
+    // Contract mirrors popInput's detached-null: the seam is state wiring,
+    // so pre-attach requests report false without throwing.
+    expect(debugApi.aiGate(true)).toBe(false);
+    expect(debugApi.aiGate(false)).toBe(false);
   });
 });
 

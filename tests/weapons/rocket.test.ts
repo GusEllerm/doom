@@ -23,8 +23,8 @@ import { resolveSfxId } from '../../src/sim/psound_stub';
 import { RNDTABLE } from '../../src/sim/prng';
 
 import {
-  boot, dmgEvents, of, pinInPlace, rederiveSplashFixed, sfxCount, trackPsprites,
-  type DmgEvent
+  boot, dmgEvents, of, pinInPlace, rederiveSplashFixed, sfxCount, staticDummies,
+  trackPsprites, type DmgEvent
 } from './harness';
 import type { Mobj } from '../../src/sim/p_mobj';
 import type { GameState } from '../../src/sim/state';
@@ -36,9 +36,10 @@ const RAISE_DONE = 14;
 const PRESS = 46; // latch-cleared press: 44/45 ready tics without attack
 
 function range(dummies: { x: number; type?: number }[]) {
-  const s = boot(weaponRangeSpec(
+  // M8-fix: static dummies (AI gate) — see fist.test.ts / harness.
+  const s = staticDummies(boot(weaponRangeSpec(
     dummies.map((d) => ({ x: d.x, type: d.type ?? 3004 }))
-  ));
+  )));
   for (const m of s.mobjs.mobjs) if (!m.removed && m.type !== 0) m.health = 1 << 20;
   const p = attachPsprFields(s.players[0]!);
   p.weaponowned[4] = 1; // WP_MISSILE

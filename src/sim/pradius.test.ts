@@ -54,6 +54,13 @@ function boot(spec: RectMapSpec): GameState {
   for (const m of s.mobjs.mobjs) {
     if ((m.flags & MF.MF_SHOOTABLE) !== 0 && m.playerRef === undefined) m.health = 1 << 20;
   }
+  // M8-fix static-dummy seam: these fixtures pin LOS zombies at fixed
+  // geometry (BFGSpray rays, splash targets). With monster AI live in the
+  // bundle (M8-12), A_Look would sight-wake them at the first tic; the
+  // hooks.aiGate keeps them STATIC (A_Look/A_Chase dispatch skipped —
+  // pain/death/damage actions untouched). Pre-M8-12 these bodies were
+  // simply unregistered here. See hooks.ts HookSlots.aiGate.
+  s.hooks.aiGate = () => true;
   return s;
 }
 

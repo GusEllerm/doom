@@ -22,7 +22,7 @@ import { AM_CELL, WP_PLASMA, attachPsprFields } from '../../src/sim/p_pspr';
 import { resolveSfxId } from '../../src/sim/psound_stub';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, pinInPlace, sfxCount, staticDummies, trackPsprites } from './harness';
 
 /** M8-05: the live P_DamageMobj adds the victim's painChance roll
  * (p_inter.c:894) AFTER the hit's own damage draw, and its kick pushes the
@@ -36,7 +36,8 @@ const RAISE_DONE = 14;
 const SWITCH_READY = 44; // pistol→plasma (weaponKey '6')
 
 function range() {
-  const s = boot(weaponRangeSpec([{ x: 192, type: 3004 }]));
+  // M8-fix: static dummies (AI gate) — see fist.test.ts / harness.
+  const s = staticDummies(boot(weaponRangeSpec([{ x: 192, type: 3004 }])));
   const dummy = of(s, MT.MT_POSSESSED)[0]!;
   dummy.health = 1 << 20;
   const p = attachPsprFields(s.players[0]!);

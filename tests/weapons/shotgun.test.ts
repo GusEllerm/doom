@@ -21,7 +21,7 @@ import { MT } from '../../src/wad/info/mobjinfo';
 import { SFX_SHOTGN, AM_SHELL, WP_SHOTGUN, attachPsprFields } from '../../src/sim/p_pspr';
 import { RNDTABLE } from '../../src/sim/prng';
 
-import { boot, dmgTo, of, pinInPlace, sfxCount, trackPsprites } from './harness';
+import { boot, dmgTo, of, pinInPlace, sfxCount, staticDummies, trackPsprites } from './harness';
 
 /** M8-05: the live P_DamageMobj kick (p_inter.c:805-832) adds ONE draw per
  * hit (the painChance roll, p_inter.c:894) and pushes the dummy — these
@@ -36,7 +36,8 @@ const SWITCH_READY = 44; // pistol→shotgun: 14 + 15 + 15
 const VOLLEY_TIC = SWITCH_READY + 3;
 
 function range() {
-  const s = boot(weaponRangeSpec([{ x: 192, type: 3004 }]));
+  // M8-fix: static dummies (AI gate) — see fist.test.ts / harness.
+  const s = staticDummies(boot(weaponRangeSpec([{ x: 192, type: 3004 }])));
   const dummy = of(s, MT.MT_POSSESSED)[0]!;
   dummy.health = 1 << 20;
   const p = attachPsprFields(s.players[0]!);

@@ -226,6 +226,12 @@ export interface DoomDebugApi {
    * tics after `pause(false)`. Returns what was dropped; null when the
    * main.ts input wiring is absent (headless/tests). */
   popInput(): { events: number; mouse: { x: number; y: number } } | null;
+  /** M8-fix static-dummy seam (hooks.aiGate): true installs the mobj AI
+   * gate on the attached state's hook slots — the A_Look/A_Chase state
+   * actions then skip dispatch (dummies stay STAND/static; pain, death and
+   * the damage bridge keep running), false clears it (production AI).
+   * Returns the new gate state; false when no simulation is attached. */
+  aiGate(on: boolean): boolean;
   /** Direct sim-core surface (M2-07): state access, noclip, tic stepping. */
   sim: SimDebugApi;
 }
