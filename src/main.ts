@@ -161,6 +161,15 @@ interface Boot {
    * per-map render assets when `state.map` changes identity). */
   wad: WadFile | null;
   mapName: string;
+  /** B-04 FIX: the RuntimeMap OBJECT the current world/mapView/sprites
+   * were built for. gSetupLevel (game.ts:320) REPLACES state.map AND
+   * state.sectors on every load (G_InitNew/G_DoLoadLevel/reborn), so the
+   * rebuild key MUST be object identity — a same-map New Game (E1M1 →
+   * E1M1) keeps `name` equal and the old name-keyed check left the world
+   * bound to the boot-time SoA (lifts never moved on screen; mid-ride the
+   * live viewz fell under the stale floor planes = the B-04 glitch).
+   * Mirrors stepTic's identity detector (`state.map !== lastLevelMap`). */
+  simMap: GameState['map'];
   readonly am: ReturnType<typeof amCreateState>;
   /** PLAYPAL banks + the current selection (M7-06: the I_SetPalette half —
    * the band index itself is computed sim-side, see sim/ppalette.ts). */
@@ -405,8 +414,9 @@ function render(): void {
   //    rebuild the per-map render assets exactly once (the sim-side
   //    loader already stashed pendingMd; M9-09 folds this into the
   //    D_Display composition).
-  if (boot.wad !== null && boot.mapName !== state.map.name && pendingMd !== null) {
+  if (boot.wad !== null && boot.simMap !== state.map && pendingMd !== null) {
     boot.mapName = state.map.name;
+    boot.simMap = state.map;
     boot.world = loadRenderWorld(pendingMd, texturesFromWad(boot.wad), flatsFromWad(boot.wad), state.sectors);
     boot.mapView = buildRenderMapView(pendingMd);
     boot.sprites = buildMapSprites({ md: pendingMd, map: boot.mapView, wad: boot.wad });
@@ -572,7 +582,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
   attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
-  boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites, wad, mapName: map.name };
+  boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites, wad, mapName: map.name, simMap: map };
 
   // ---- M9 UI-stack boot (M9-12 wiring; see the wiring block above) ----
   // vInit BEFORE stInit (the BG 320×32 canvas requirement, st_init) and
