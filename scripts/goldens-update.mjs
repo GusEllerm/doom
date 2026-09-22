@@ -149,7 +149,7 @@ const META = join(GOLDENS, 'meta.json');
 const REVIEW = join(ROOT, 'test-results', 'goldens', setName);
 // M9-11: a set may span several test files (m9 = m9hud + m9menus + m9wi);
 // dumps from ALL files merge into the shared dump dir (unique scene names).
-const TEST_FILES: string[] = Array.isArray(SET.testFile)
+const TEST_FILES = Array.isArray(SET.testFile)
   ? SET.testFile
   : [SET.testFile];
 if (check && !existsSync(META)) die(`no committed goldens to check against: ${META}`);
