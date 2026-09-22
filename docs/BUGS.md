@@ -29,4 +29,4 @@ Fixes: reference this ledger; update Status column with evidence per fix.
 | B-08 | Player still cannot damage/kill monsters via shooting in live play (worked for agent's harness-level ticcmd kill test) | TRIAGE |
 
 Class note: harness (game.ts + scripted runTics) says combat+AI work; the REAL rAF/real-time browser path disagrees. All prior AI/combat specs use runTics/warp seams — none drive a genuine 35Hz rAF session with real input into monsters. Gap: **browser-live soak spec**.
-| B-09 | Turning left/right feels like gaining forward momentum | TRIAGE |
+| B-09 | Turning left/right feels like gaining forward momentum | CLOSED: physics clean (mom-invariance theorems); rAF dx-batching fixed (per-tic apportionment, capture-time clamp) |
