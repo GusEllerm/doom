@@ -221,20 +221,46 @@ test.describe('M8-12 live monsters e2e', () => {
     }
     expect(corpse.flagsLite.solid, 'corpse no longer blocks').toBe(false);
 
-    // Walk-through smoke: line the player up 160 units west of the corpse
-    // and walk east THROUGH it — an alive MF_SOLID monster would stop the
-    // player at x = corpse.x − 29; the corpse must not.
+    // Walk-through smoke: line the player up beside the corpse ON THE
+    // SAME FLOOR — BUG-combat-t2 made the corpse's resting spot
+    // chase-dependent, and a fixed west offset can land against a
+    // >MAXSTEP sector step that would stop even a vanilla walker — so
+    // sweep 64…512 units west, then east, for the first spot whose
+    // settled floorz equals the corpse's floor (corpse.z with momz
+    // settled). Then walk THROUGH it: an alive MF_SOLID monster would
+    // stop the player ~29 units short; the corpse must not.
     const walk = await page.evaluate(
-      (v: { x: number; y: number }) => {
+      (v: { x: number; y: number; z: number }) => {
         const api = window.__doom!;
-        api.warp(v.x - 160 * 65536, v.y, undefined, 0);
-        api.sim.runTics(80, { forward: true });
-        const s = api.state() as DebugStateLive;
-        return s.player.x;
+        const F64 = 65536;
+        let ok = false;
+        let dir = -1;
+        // The corpse's FLOORZ (not its mid-fall z) is the ground truth
+        // for the walk line — a death-tic corpse can still be falling.
+        const st0 = api.sim.getState()!;
+        const cp = st0.mobjs.mobjs.find((m) => m.type === 1 && m.health <= 0)!;
+        for (let d = 64; d <= 512 && !ok; d += 64) {
+          for (const sgn of [-1, 1] as const) {
+            api.warp(v.x + sgn * d * F64, v.y, undefined, 0);
+            api.sim.runTics(8); // settle onto the floor
+            const st = api.sim.getState()!;
+            ok = st.players[0]!.mo.floorz === cp.floorz;
+            if (ok) {
+              dir = -sgn; // walk toward the corpse
+              break;
+            }
+          }
+        }
+        if (!ok) return { crossed: false };
+        api.sim.runTics(120, { forward: true });
+        const st = api.sim.getState()!;
+        const px = st.players[0]!.mo.x;
+        // crossed = player got 32 units past the corpse centre
+        return { crossed: (px - v.x) * dir > 32 * F64, px: px >> 16, cx: v.x >> 16 };
       },
-      { x: corpse.x, y: corpse.y }
+      { x: corpse.x, y: corpse.y, z: corpse.z }
     );
-    expect(walk, 'player walks through the corpse line unobstructed').toBeGreaterThan(corpse.x + 32 * F);
+    expect(walk.crossed, `player walks through the corpse line unobstructed ${JSON.stringify(walk)}`).toBe(true);
     expect(errors.filter((e) => !e.includes('favicon')).length).toBe(0);
   });
 
