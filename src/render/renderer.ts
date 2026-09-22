@@ -606,20 +606,18 @@ export interface DisplayResult {
   readonly barRefreshed: boolean;
 }
 
-/* D_Display's file-scope statics (d_main.c:196-200). */
-let dFulllscreen = false;
+/* D_Display's file-scope statics (d_main.c:196-200). The borderdrawcount /
+ * menuactivestate / viewactivestate statics are deliberately ABSENT — the
+ * B-01 fix replaced the 3-count erase with a per-frame ring restore
+ * (step 4), which needs no carry-forward state under our compositor. The
+ * fullscreen static is likewise gone — with every windowed frame a
+ * refresh frame (B-06), the fullscreen→windowed TRANSITION edge no
+ * longer feeds any decision. */
 let dOldGamestate = -1;
-let dBorderDrawCount = 0;
-let dMenuActiveState = false;
-let dViewActiveState = false;
 
 /** Test/boot hook: forget the statics (equivalent of process start). */
 export function resetDisplayStatics(): void {
-  dFulllscreen = false;
   dOldGamestate = -1;
-  dBorderDrawCount = 0;
-  dMenuActiveState = false;
-  dViewActiveState = false;
 }
 
 /**
@@ -637,12 +635,13 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
   if (fg === undefined || fg === null || fg.data !== deps.fb.indices) vInit(deps.fb.indices);
 
   // 1. setsizeneeded ⇒ R_ExecuteSetViewSize, force background redraw
-  //    (oldgamestate = -1), borderdrawcount = 3 (d_main.c:198-203).
+  //    (oldgamestate = -1) (d_main.c:198-203). The vanilla twin
+  //    `borderdrawcount = 3` is NOT ported — see step 4 for why the
+  //    3-count erase cannot express our compositor.
   const sizeChanged = consumeViewSetSizeNeeded();
   const vs = viewSize();
   if (sizeChanged) {
     dOldGamestate = -1; // force R_FillBackScreen below, exactly vanilla
-    dBorderDrawCount = 3;
   }
 
   const st = deps.state;
@@ -672,7 +671,6 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
     // reproduces exactly what vanilla's FG persistence showed. Wipe keeps
     // its force (d_main.c:243); fullscreen has no bar to keep.
     barRefreshed = deps.wipe === true || vs.viewheight !== 200;
-    dFulllscreen = vs.fullscreen;
   } else if (st.gamestate === GS_INTERMISSION) {
     if (displayHooks.wiDrawer !== undefined) displayHooks.wiDrawer();
     else displayStub('wiDrawer');
@@ -694,24 +692,38 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
     // 320x200 pass is CROP-BLIT into the view window (the 3D passes keep
     // the fullscreen projection constants; centering is exact on both
     // axes — crop x0 === viewwindowx, the row crop centers centery).
-    if (vs.viewheight !== 200 || vs.scaledviewwidth !== 320) {
+    // The AUTOMAP skips the crop: AM_clearFB + the AM draws already cover
+    // the FULL 320x200 buffer (drawAutomap, step 8 of renderFrame), and
+    // vanilla's automap is full-screen-over-the-bar by construction —
+    // cropping it would stamp a (200-h)/2-row-shifted duplicate square in
+    // the middle of the map (B-01's automap flavour of the same
+    // reorder-class artifact).
+    if ((vs.viewheight !== 200 || vs.scaledviewwidth !== 320) && !st.automapactive) {
       cropToWindow(deps.fb, vs.viewwindowx, vs.viewwindowy, vs.viewwidth, vs.viewheight);
     }
 
     // 4. border bookkeeping (d_main.c:276-296): refill the back screen on
-    //    GS_LEVEL entry (or forced resize), then the 3-count erase.
+    //    GS_LEVEL entry (or forced resize), then restore the ring. The
+    //    vanilla 3-count erase (borderdrawcount) is NOT portable: it is
+    //    an ERASE of stale menu junk, sufficient in vanilla because
+    //    R_RenderPlayerView NEVER LEAVES THE WINDOW — the ring is
+    //    untouched by the view pass and stays correct forever. Our
+    //    full-res 3D pass + crop-to-window compositor dirties the ring
+    //    EVERY frame: with the ported 3-count, frames 1-3 show the
+    //    border, then the ring silently becomes raw UNCROPPED 3D forever
+    //    (content shifted against the cropped window content by
+    //    (200-h)/2-(168-h)/2 = 16 rows), and each menu open/close,
+    //    resize or level entry flashes the 3-count border again before
+    //    the 3D eats it — the B-01 "square within the viewport being
+    //    eaten away as the game progresses". Faithful invariant: over a
+    //    windowed LEVEL frame the ring is the back screen, EVERY frame
+    //    (identical FINAL pixels to vanilla's untouched-ring state).
     if (dOldGamestate !== GS_LEVEL) {
-      dViewActiveState = false;
       if (deps.borders !== undefined) fillBackScreen(deps.borders.wad);
     }
     if (!st.automapactive && vs.scaledviewwidth !== 320) {
-      const menuActive = st.menuActive ?? false;
-      if (menuActive || dMenuActiveState || !dViewActiveState) dBorderDrawCount = 3;
-      if (dBorderDrawCount > 0) {
-        drawViewBorder();
-        borderDrawn = true;
-        dBorderDrawCount -= 1;
-      }
+      drawViewBorder();
+      borderDrawn = true;
     }
 
     // 4b. ST_Drawer (reordered AFTER the view/border half: our 3D pass
@@ -735,8 +747,6 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
   }
   if (displayHooks.mDrawer !== undefined) displayHooks.mDrawer();
 
-  dMenuActiveState = st.menuActive ?? false;
-  dViewActiveState = st.gamestate === GS_LEVEL ? st.viewactive : false;
   dOldGamestate = st.gamestate;
 
   return {

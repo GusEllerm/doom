@@ -345,8 +345,9 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
   // block above on the attach having run (unit-world stubs without the
   // field pack skip, exactly as pre-M7). The dead player never decays
   // here: the PST_DEAD branch returned above (P_DeathThink owns its own
-  // damagecount fades, p_user.c:196-224).
-  if ((p as Partial<PowerupPlayer>).damagecount !== undefined) {
+  // damagecount fades, p_user.c:196-224). The gate is the powers[] row
+  // (inventory attach) — damagecount/bonuscount live on Player itself.
+  if ((p as Partial<PowerupPlayer>).powers !== undefined) {
     pPowerThink(p as PowerupPlayer);
   }
 }
