@@ -363,7 +363,10 @@ describe('1000-tic determinism with noclip movement', () => {
     // then M8-02 (one-time, reason: 'M8 monster fields' — 9th mobj hash
     // word movedir|movecount|damage in the arena payloads):
     // 1954854581 → 2361268992.
-    expect(h1).toBe(2361268992);
+    // then BUG-combat-t2 (one-time, content truth: netgame-start markers
+    // never spawn — E1M1 roster minus 19 corpse ghosts, docs B-02/B-03):
+    // 2361268992 → 585198290.
+    expect(h1).toBe(585198290);
   });
 });
 

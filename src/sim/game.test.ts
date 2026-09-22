@@ -287,7 +287,10 @@ describe.skipIf(!hasWad)('M9-03 acceptance 2 — E1M1 hash stability', () => {
     // deliberately NOT recorded from the new code: equality here IS the
     // no-re-bless regression proof (the FIXMAP 1000-tic goldens above
     // cover the boot refactor in-suite too).
-    expect(h1).toBe(47732065);
+    // RE-BLESSED BUG-combat-t2 (one-time, content truth: netgame-start
+    // doomednums are start markers, never mobjs — E1M1 roster minus 19
+    // corpse ghosts; docs/BUGS.md B-02/B-03): 47732065 → 4030522611.
+    expect(h1).toBe(4030522611);
   });
 });
 
