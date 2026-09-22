@@ -66,7 +66,7 @@ import { attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug,
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
 import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
-import { buildMapSprites, displayFrame, getFrameCounters, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
+import { buildMapSprites, displayFrame, getFrameCounters, getSpritePassStats, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
 import { setViewSize } from './render/view';
 import { vInit } from './render/vvideo';
 import { wadWiPatches, wiDrawer as wiDrawFrame, type WiPatchSource } from './render/wiDraw';
@@ -604,7 +604,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   debugSim.attach(state); // __doom.sim drives the same live state
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
-  attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
+  attachRenderDebug({ indices: fb.indices, counters: getFrameCounters, sprites: getSpritePassStats });
   boot = { state, am, luts, palettePlayer, world, textures, flats, mapView, tables, sprites, wad, mapName: map.name, simMap: map };
 
   // ---- M9 UI-stack boot (M9-12 wiring; see the wiring block above) ----

@@ -449,14 +449,25 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
   // sees this frame's thinglists; useStatic keeps M4-M8 goldens exact).
   if (deps.mobjs !== undefined) ctx.overlay?.update(deps.mobjs);
   else ctx.overlay?.useStatic();
-  // B-07/B-08 seam: a cheap POSITION FINGERPRINT of exactly what the
-  // sprite pass is about to feed R_AddSprites this frame (count + the
-  // sums of map-unit coords). The browser-live regression spec compares it
-  // against the SIM's monster positions: pixel diffs are contaminated by
-  // sector-light thinkers (gunfire fog remaps every index), this channel
-  // is sprite-only — and it can only move if the caller actually wired
-  // deps.mobjs (the B-07 bug: useStatic every frame ⇒ a constant census
-  // fingerprint no matter what the monsters did). ~200 adds per frame.
+
+  // 3. M3 deviation D CLOSED — no fb.clear(0). Anything left unpainted by a
+  //    plane, wall, sprite or masked middle is the genuine void (sky/black),
+  //    never a cleared background.
+
+  // 4. The masked pass reads the world/view/tables through this context
+  //    (masked.ts holds no refs of its own between frames).
+  configureMaskedPass(ctx.maskedCtx);
+
+  // 5. R_RenderBSPNode (walker.walk defaults the root to bspRoot(map)) —
+  //    walls + visplane marks + R_AddSprites. validcount++ lives in bsp.walk
+  //    (the r_main.c:862 analogue).
+  ctx.walker.walk(ctx.view, ctx.cbs);
+
+  // B-07/B-08 seam (see the note at the 2.5 roster swap): the thing-list
+  // FINGERPRINT is read AFTER the BSP pass so it reflects what was
+  // ENQUEUED this frame (R_AddSprites dedupe included); reading it right
+  // at the swap would sample the PRE-SWAP arrays (update swaps them on
+  // exit — first live frame would fingerprint the stale census).
   {
     const th = ctx.overlay?.things;
     let drawn = 0;
@@ -472,18 +483,6 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
     lastSpriteStats = { drawn, sumX, sumY };
   }
 
-  // 3. M3 deviation D CLOSED — no fb.clear(0). Anything left unpainted by a
-  //    plane, wall, sprite or masked middle is the genuine void (sky/black),
-  //    never a cleared background.
-
-  // 4. The masked pass reads the world/view/tables through this context
-  //    (masked.ts holds no refs of its own between frames).
-  configureMaskedPass(ctx.maskedCtx);
-
-  // 5. R_RenderBSPNode (walker.walk defaults the root to bspRoot(map)) —
-  //    walls + visplane marks + R_AddSprites. validcount++ lives in bsp.walk
-  //    (the r_main.c:862 analogue).
-  ctx.walker.walk(ctx.view, ctx.cbs);
 
   // 6. R_DrawPlanes — visplane spans (flats through zlight, sky per column).
   drawPlanes(ctx.planeCtx);
