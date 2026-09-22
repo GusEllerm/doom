@@ -1,6 +1,6 @@
 # M9 Plan — Menus, HUD, statusbar, level transitions, interludes
 
-Status: planned (filled incrementally, 8 commits; skeleton 9b228ea rebased onto main 3616d32). Parent: docs/ROADMAP.md M9. Inputs: ARCHITECTURE.md, M8-plan (predecessor), ROADMAP M9 preview carry-overs (live-mobj sprite pass, G_ExitLevel wiring, damageBridge seam). Exit (from ROADMAP M9 row): Title→skill→play→exit→intermission tally→next map→end screen; menus keyboard+mouse operable; status bar + face + messages (L3 goldens).
+Status: CLOSED at M9-13 (2026-09-22; exit report in §5 + docs/reports/M9-13-exit-sweep.md). Originally: planned (filled incrementally, 8 commits; skeleton 9b228ea rebased onto main 3616d32). Parent: docs/ROADMAP.md M9. Inputs: ARCHITECTURE.md, M8-plan (predecessor), ROADMAP M9 preview carry-overs (live-mobj sprite pass, G_ExitLevel wiring, damageBridge seam). Exit (from ROADMAP M9 row): Title→skill→play→exit→intermission tally→next map→end screen; menus keyboard+mouse operable; status bar + face + messages (L3 goldens).
 
 ## 0. Source truths pinned this pass
 
@@ -168,7 +168,16 @@ Status: planned (filled incrementally, 8 commits; skeleton 9b228ea rebased onto 
 
 ## 5. Final report
 
-(filled at exit by M9-13; wave table below is the plan-of-record)
+**EXIT (M9-13, 2026-09-22): M9 CLOSED.** Gates: check 141 files/2812 tests,
+e2e 37 x2 consecutive, goldens --check drift-free (5 runner sets + 2 in-suite
+sets), mirror 62-.c. PRNG final reconciliation green FULL-SCOPE (recursive
+src manifest; st_face + wi streams) — the fresh-stream timing callout was
+REAL: M9-07's WI-anim asserts used mClearRandom absolutes, fixed + LIVE-stream
+pins (tests/sim/m9prng.test.ts). Re-bless ledger: 18 unique reasons / 7 sets /
+91 scenes, D017 = zero-golden-flip verified (docs/reports/M9-13-exit-sweep.md).
+D-list closed; D017 retired / D018 flipped cross-refed; D019-D023 ratified.
+L5 pack: goldens/screens/m9-exit-montage.png (18 blessed scenes tiled 3x6).
+Wave table below stays as the plan-of-record.
 
 | Wave | Tasks | One-liner |
 |---|---|---|
