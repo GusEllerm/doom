@@ -38,7 +38,7 @@ import {
 import { gameactionLog, resetGameactionLog, resetSfxStubLog, sfxStubLog } from './hooks';
 import { hashState, type GameState } from './state';
 import { emptyInput, type GameInput } from './ticcmd';
-import { mClearRandom } from './prng';
+import { mClearRandom, mRandom } from './prng';
 import { MRANDOM_SITE_CALLS, RANDOM_SITE_CALLS, scanMRandomSites, scanRandomSites } from './random-sites';
 import {
   gDoCompleted,
@@ -417,8 +417,16 @@ describe('ShowNextLoc → NoState → G_WorldDone (consumed ONCE)', () => {
 
 describe('animation timing determinism (wi_anim mRandom ledger)', () => {
   it('epsd0: 10 anims with random offsets (bcnt+1 + mRandom%11)', () => {
+    // M9-13 reconciliation (plan §M9-13: "WI anim timing asserts use the
+    // LIVE stream, not a fresh one"): NO mClearRandom here — the asserts are
+    // stream-POSITION-INVARIANT (ranges/distinctness), so they hold at any
+    // rndindex base, i.e. also after the LIVE `st_face` draws advanced the
+    // shared menu-stream during a level (§0.8/§0.9). The LIVE-stream pairing
+    // is pinned end-to-end in tests/sim/m9prng.test.ts.
     const st = freshState();
-    mClearRandom(st.rng);
+    // Shift the base like a live level would (200 st_face draws), proving
+    // invariance: a fresh-stream-only assert would bake base-0 numbers here.
+    for (let i = 0; i < 200; i++) mRandom(st.rng);
     enterIntermission(st, { kills: 0, leveltime: 0 });
     const snap = wiDrawSnapshot();
     expect(snap.anims.length).toBe(10);
@@ -445,15 +453,18 @@ describe('animation timing determinism (wi_anim mRandom ledger)', () => {
 
   it('epsd0 tally draws exactly 10 menu-stream numbers per state entry', () => {
     // WI_initAnimatedBack: one mRandom per ANIM_ALWAYS anim. Counting the
-    // rndindex delta proves the runtime draw count (the plan §0.9 ledger).
+    // rndindex DELTA (M9-13: the LIVE stream, not a mClearRandom-fresh one —
+    // plan §M9-13 callout) proves the runtime draw count (the plan §0.9
+    // ledger) independently of how far st_face advanced the shared stream.
     const st = freshState();
-    mClearRandom(st.rng);
+    for (let i = 0; i < 200; i++) mRandom(st.rng); // live-style stream shift
+    const base = st.rng.rndindex;
     enterIntermission(st, { kills: 0, leveltime: 0 });
-    expect(st.rng.rndindex).toBe(10); // entry 1: WI_initStats
+    expect(st.rng.rndindex - base).toBe(10); // entry 1: WI_initStats
     gTicker(st, { ...emptyInput(), attack: true }); // fast-forward
     gTicker(st, emptyInput());
     gTicker(st, { ...emptyInput(), attack: true }); // ⇒ ShowNextLoc
-    expect(st.rng.rndindex).toBe(20); // entry 2: WI_initShowNextLoc
+    expect(st.rng.rndindex - base).toBe(20); // entry 2: WI_initShowNextLoc
     // no ANIM_RANDOM table member ⇒ the ShowNextLoc/NoState loops draw 0
     const before = st.rng.rndindex;
     runTics(st, 150);

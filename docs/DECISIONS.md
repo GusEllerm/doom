@@ -66,6 +66,7 @@ GitHub origin (GusEllerm/doom) present; user authorized pushes. main pushed & tr
 ## D017 (RETIRED at M9-08 — replaced by faithful G_DoReborn full-level-restart; see M9-plan §M9-08) — In-place player reborn (deviation, revisited at M9)
 - gTicker reborn pass (g_game.c:629-640) implemented M7-11c WITHOUT vanilla's G_DoReborn level restart: dying reborns the player at the 1-player start while the WORLD persists (picked-up items stay gone, slaughtered monsters stay dead). Vanilla restarts the level via P_SetupLevel (everything respawns).
 - Accepted for M7 (death/respawn loop otherwise exact: states, latch, G_PlayerReborn clears, position/angle encoding). M9 (level transitions + gameaction plumbing) implements the faithful full-restart and RETIRES this deviation; e2e death test asserts respawn, and a world-persistence pin marks the deviated observable.
+- **M9-13 EXIT CROSS-REF (retirement VERIFIED):** src/sim/reborn.ts carries the faithful `G_DoReborn` (`!netgame ⇒ ga_loadlevel`) + `G_PlayerReborn` (frags/kill/item/secretcount preserved across the memset, pistol start); respawn census + preserved counters pinned in src/sim/reborn.test.ts and re-asserted live in e2e/m9-flow.spec.ts (die → E1M1 reborn, counters kept). Golden re-bless count for the flip: **ZERO** — audited via goldens/*/meta.json history (no M5-M8 scripted golden crosses a PLAYER death; D017 cross-check note in docs/reports/M9-13-exit-sweep.md).
 
 ## D018 — Monster motion strips compose the draw list test-side (2026-10, M8-13)
 The production renderer has no live-mobj sprite pass (rthings KIND_MONSTER was
@@ -78,3 +79,54 @@ truth (x/y/HP/state/PRNG deltas) exactly like the M6 SoA captions; meta.json
 records the substitution. Accepted as interim evidence (D016 review notes
 "plates, not pixels"); the production pass is an M9 render task and the strip
 generator flips to it with a re-bless.
+
+## D018 (FLIPPED at M9-09 — production monster pixels live; strips re-blessed)
+- **FLIPPED (M9-09; exit-verified at M9-13):** `rthings` KIND_MONSTER exclusion
+removed — the live-mobj sprite pass draws real IWAD sprite art through
+production deps (M4 8-rotation + clip path). Re-bless ledger rows 7/15 in
+docs/reports/M9-13-exit-sweep.md (3 mechanics m8-* strips + 4 monster-seeing
+E1M1 wall viewpoints); the M9-13 exit montage carries the evidence tile
+(monsters-sb9, busy-mix camera). Synthetic plates retired; the interim
+evidence mode above is history.
+
+## D019 — silent-M9 sfx policy: every sound SITE kept, body is a counter (2026-10, M9-04/05/07 → M9-13 ratified)
+- Every `S_StartSound/S_ChangeMusic/S_Stop` call site lands at its vanilla
+address as `hooks.sfxStub(name)` (counted, deterministic, zero audio) — 41
+call sites across menu/WI/finale/title at exit count. Boundary: ROADMAP M10
+exit criteria own sound BODIES (mixer, attenuation, panning, volumes);
+M10 replaces the stub body IN PLACE (no site moves), so the sfx ledger is
+M10's worklist. Face/intermission PRNG unaffected (sfx sites burn no
+P_Random/M_Random). Ratified at the M9 exit; see plan §3 D-0xx.
+
+## D020 — menu mouse via synthesized arrow/Enter keys (2026-10, M9-02 → M9-13 ratified)
+- Vanilla 1.10 menus contain ZERO ev_mouse consumers (m_menu.c grep, plan
+§0.7) — the OS layer faked arrow keys. The browser has no such layer, so
+`src/input/menuMouse.ts` synthesizes KEY_UP/DOWNARROW/KEY_ENTER keydown+
+keyup pairs from hover/click/wheel (16px item pitch, armed from
+menuState.itemBoxes(); main.ts wiring). Deviation is INPUT-STACK ONLY —
+zero deviation in menu.ts/sim; keyboard and mouse use the identical
+M_Responder path. e2e proves both operators (L4 real clicks/keys).
+
+## D021 — quit-yes maps to TITLE, not process exit (2026-10, M9-10 → M9-13 ratified)
+- Browser sandbox has no I_Quit; `M_QuitResponse('y')` keeps the vanilla
+quitsounds[(gametic>>2)&7] counter then routes through D_StartTitle
+(GS_DEMOSCREEN/TITLEPIC). Visible, testable, reversible; the F7 endgame-yes
+target shares the same seam. Plan §3 D-0zz.
+
+## D022 — shareware ad-divert kept as fidelity, gamemode constant is the lever (2026-10, M9-04 → M9-13 recorded)
+- Under the pinned shareware policy (src/sim/gamemode.ts; Freedoom data
+carries all 36 maps but the port POLICY clamps to episode 1, plan §0.12),
+`M_Episode` choice≠0 diverts to ReadDef1 (the HELP1 buy-us page, m_menu.c
+:919-943) instead of the skill menu. Kept VERBATIM (it is the source truth,
+not a stub): the divert is reachable in e2e and the M9-11 corpus censors
+EpiDef to 3 items. Flipping the policy constant (retail semantics) re-enables
+E2+ for the M12 corpus with zero menu-code change.
+
+## D023 — attract is TITLEPIC-only; .lmp demo playback deferred Post-M12 (2026-10, M9-10 → M9-13 recorded)
+- Vanilla D_DoAdvanceDemo cycles TITLEPIC/demo1/CREDIT/demo2/HELP2/demo3
+(d_main.c:456); demo1-3 need .lmp playback, which ROADMAP defers to the
+Post-M12 stretch list. M9 ships the REDUCED attract: TITLEPIC page
+(pagetic=170), any-key/mouse ⇒ M_StartControlPanel via the G_Responder demo
+branch (g_game.c:529-541), D_StartTitle as the endgame/quit target. The
+demosequence counter keeps its vanilla shape (-1 after D_StartTitle) so the
+full cycle drops in with the .lmp task.

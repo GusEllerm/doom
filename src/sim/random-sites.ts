@@ -78,6 +78,51 @@ export const MRANDOM_SITE_CALLS: Readonly<Record<string, number>> = {
   'statusbar.ts': 1,
 };
 
+/* ------------------------------------------------------------------ */
+/* M9-13 ADDITIVE: FULL-SCOPE (whole src/ tree, recursive) manifest     */
+/* ------------------------------------------------------------------ */
+
+/** M9-13 final reconciliation manifest: the SAME sites as
+ * MRANDOM_SITE_CALLS keyed by src-RELATIVE path (plan §M9-13: "PRNG final
+ * reconciliation — st_face M_Random + WI streams included, full-scope
+ * manifest test green"). The full-scope scan walks EVERY src subtree (sim,
+ * ui, render, input, wad, root files), so an mRandom draw anywhere in the
+ * tree — not just sim/ui — trips the manifest until ledgered. */
+export const MRANDOM_SITE_CALLS_ALL: Readonly<Record<string, number>> = {
+  'sim/wintermission.ts': 3, // = MRANDOM_SITE_CALLS['wintermission.ts']
+  'ui/statusbar.ts': 1, //   = MRANDOM_SITE_CALLS['statusbar.ts'] (st_face)
+};
+
+/** Recursively scan the WHOLE src tree for `<pattern>(` call occurrences;
+ * keys are src-relative POSIX paths. Same comment-stripping and
+ * RANDOM_SITE_SCAN_SKIP (by basename) semantics as scanMRandomSites. */
+export function scanCallTree(
+  pattern: 'mRandom' | 'pRandom',
+  root = fileURLToPath(new URL('../', import.meta.url)),
+): Record<string, number> {
+  const re = new RegExp(`\\b${pattern}\\(`, 'g');
+  const found: Record<string, number> = {};
+  for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.ts') || entry.name.endsWith('.test.ts')) continue;
+    if (RANDOM_SITE_SCAN_SKIP.includes(entry.name)) continue;
+    const full = `${entry.parentPath ?? (entry as { path?: string }).path}/${entry.name}`;
+    const rel = full.slice(root.length).replace(/^\/+/, '').replace(/\\/g, '/');
+    const src = readFileSync(full, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+    const n = (src.match(re) ?? []).length;
+    if (n > 0) found[rel] = (found[rel] ?? 0) + n;
+  }
+  return found;
+}
+
+/** Convenience: the mRandom full-scope scan (keys: src-relative paths). */
+export function scanMRandomSitesAll(root?: string): Record<string, number> {
+  return scanCallTree('mRandom', root ?? fileURLToPath(new URL('../', import.meta.url)));
+}
+
 /** Scan the UI + sim trees for mRandom call occurrences (test helper). The
  * default covers BOTH trees because the MENU stream is consumed by UI modules
  * (M9-07 intermission, M9-05 statusbar) as well as the sim — so the ledger's

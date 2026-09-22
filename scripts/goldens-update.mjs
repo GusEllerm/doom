@@ -94,11 +94,17 @@ const SETS = {
     // GS_DEMOSCREEN/GS_FINALE drawer seams (dPageDrawer = TITLEPIC via
     // D_StartTitle + one tic block; fDrawer stage 0 = FLOOR4_8 flood +
     // E1TEXT reveal at F_Ticker x200; stage 1 = HELP2 after the exact
-    // 1571-tic flip). WAD-GATED (all graphics lumps come from the pinned
-    // freedoom1.wad; no wad ⇒ no dumps, committed goldens untouched).
-    testFile: join('tests', 'render', 'screens.test.ts'),
+    // 1571-tic flip). M9-13 ADDS m9montage.test.ts — the consolidated
+    // exit pack `m9-exit-montage` (18 blessed m9 scenes tiled 3x6 at
+    // scale 1, §M9-13 task 3). WAD-GATED (all graphics lumps come from
+    // the pinned freedoom1.wad; no wad ⇒ no dumps, committed goldens
+    // untouched).
+    testFile: [
+      join('tests', 'render', 'screens.test.ts'),
+      join('tests', 'render', 'm9montage.test.ts')
+    ],
     pipeline:
-      'E1M1 gInitGame -> [dInit + gFlowTic | fStartFinale + F_Ticker xN] -> drawer seam (screens[FG], no framebuffer) double-draw byte-equal -> sha256(screens[FG].data) + montage (3 pages tiled 3x2 at 2x, 5x7 labels)'
+      'E1M1 gInitGame -> [dInit + gFlowTic | fStartFinale + F_Ticker xN] -> drawer seam (screens[FG], no framebuffer) double-draw byte-equal -> sha256(screens[FG].data) + montage (3 pages tiled 3x2 at 2x, 5x7 labels) + M9-13 m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x — title/menu/bar-matrix/msg/WI/finale/monsters/sb-pair, D016 exit pack)'
   },
   m9: {
     // M9-11 L3 golden corpus (plan §M9-11): THREE test files, one set —
