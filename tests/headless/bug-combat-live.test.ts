@@ -59,7 +59,7 @@ function warp(s: GameState, x: number, y: number, angle: number): void {
   mo.z = mo.floorz;
 }
 
-const NETGAME_STARTS = [10, 12, 13, 14, 15, 17, 18, 19, 20, 21];
+const NETGAME_STARTS = [10, 12, 13, 15, 17, 18, 19, 20, 21];
 
 describe.skipIf(!hasWad)('BUG-combat-t2: real-E1M1 live-path regressions', () => {
   it('B-03 boot roster purity: no netgame-start spawns, no corpse frames, no puffs/blood', () => {

@@ -52,6 +52,7 @@ import {
   MF_CORPSE,
   MF_INFLOAT,
   MF_SKULLFLY,
+  isNetGameStartMarker,
 } from './thinglinks';
 import { mobjFromSlot as hooksMobjFromSlot } from './hooks';
 import {
@@ -446,6 +447,13 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
     const s = bootFixture([]);
     let i = 0;
     for (const [dn, mt] of [...DOOMEDNUM_TO_MT]) {
+      if (isNetGameStartMarker(dn)) {
+        // B-02/B-03 gate: netgame-start doomednums are captured, never
+        // spawned (the table entry exists for the doomednum round-trip
+        // only — DOOM.EXE's spawn switch intercepted them first).
+        expect(pSpawnMapThing(s.mobjs, { x: 64 + (i % 12), y: 400 + (i % 7), angle: 0, type: dn, options: 15 }), `doomednum ${dn}`).toBeUndefined();
+        continue;
+      }
       const m = pSpawnMapThing(s.mobjs, { x: 64 + (i % 12), y: 400 + (i % 7), angle: 0, type: dn, options: 15 });
       expect(m, `doomednum ${dn}`).not.toBeUndefined();
       expect(m!.type, `doomednum ${dn}`).toBe(mt);
@@ -493,6 +501,7 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
         for (let i = 0; i < s.map.numThings; i++) {
           const t = mapThingAt(s.map, i);
           if (t.type <= 4 || t.type === 11) continue;
+          if (isNetGameStartMarker(t.type)) continue; // captured, never spawned (B-02/B-03)
           if (t.flags & 16) continue; // solo
           if (!(t.flags & bitFor(skill))) continue;
           if (!DOOMEDNUM_TO_MT.has(t.type)) continue;
@@ -515,6 +524,7 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
       for (let i = 0; i < s.map.numThings; i++) {
         const t = mapThingAt(s.map, i);
         if (t.type <= 4 || t.type === 11 || t.flags & 16 || !(t.flags & bitFor(2))) continue;
+        if (isNetGameStartMarker(t.type)) continue; // captured, never spawned (B-02/B-03)
         if (!DOOMEDNUM_TO_MT.has(t.type)) {
           brute.set(t.type, (brute.get(t.type) ?? 0) + 1);
           continue;
@@ -540,6 +550,7 @@ describe('P_SpawnMapThing / P_SpawnThings (acceptance: census + round-trip)', ()
       for (let i = 0; i < s.map.numThings; i++) {
         const t = mapThingAt(s.map, i);
         if (t.type <= 4 || t.type === 11) continue;
+        if (isNetGameStartMarker(t.type)) continue; // never spawned (B-02/B-03)
         if (t.flags & 16 || !(t.flags & bitFor(2))) continue;
         if (!(t.flags & MTF_AMBUSH)) continue;
         if (DOOMEDNUM_TO_MT.has(t.type)) ambush++;

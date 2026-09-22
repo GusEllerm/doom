@@ -195,7 +195,7 @@ export interface MobjRuntime {
    * record, vanilla's `if (!deathmatch) P_SpawnPlayer (mthing);`). Left
    * unset (standalone p_mobj tests) the capture-only behavior stands. */
   playerSpawnFn?: (rt: MobjRuntime, start: SpawnPoint) => void;
-  /** B-03 fix: doomednums 10/12/13/14 (players 2-5 starts) and
+  /** B-03 fix: doomednums 10/12/13 (player 2-4 starts) and
    * 15/17-21 (multiplayer start markers) are CAPTURED here, never spawned
    * (thinglinks.isNetGameStartMarker — the DOOM.EXE spawn-switch semantics
    * the 1.10 table scan lacks). Consumer: netgame respawn (M12). */
