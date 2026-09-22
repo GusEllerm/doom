@@ -219,3 +219,4 @@ re-bless only with a source-explained cause.
 | mechanics/m8-pain-death.png | shotgun burst: pain P states, blood specks, death X frames | PASS (corpse flat-sprite too small at 300u — frames covered by unit layer) |
 | screens/montage.png | TITLEPIC (full art, version stamp), finale reveal mid-tic-200 (matches 250+3n math), HELP2 credits page over dim art | PASS (M9-10 merge turn) |
 | mechanics/m8-infight.png (RE-BLESSED D018) | production sprites: imp+shotguy duel w/ KMALE/KMBST melee frames, correct scale/depth | PASS — first true-DOOM-pixel frame in motion evidence |
+| m9/bar-100-keys-arsenal.png | FULL classic layout: windowed view w/ FLOOR7_2 borders, blue numerics, ARMS grid, marine face, ARMOR 50%, 3 keys, ammo columns, caco in view | PASS — first full-screenshot-status frame in project history |
