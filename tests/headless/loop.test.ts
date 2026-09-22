@@ -126,6 +126,10 @@ describe.skipIf(!hasWad)('freedoom1.wad E1M1 sim loop', () => {
     // RE-BLESSED M8-02 (one-time, reason: 'M8 monster fields') — the 9th
     // mobj hash word (movedir|movecount|damage, p_mobj.syncMobj) joins
     // every live mobj's §3.4 payload; value 726751958 → 1617141227.
-    expect(h1).toBe(1617141227);
+    // RE-BLESSED BUG-combat-t2 (one-time, content truth: netgame-start
+    // doomednums 10/12/13/15/17-21 are captured, never spawned — E1M1's
+    // 19 corpse-ghost mobjs leave the roster; docs/BUGS.md B-02/B-03);
+    // value 1617141227 → 2987461369.
+    expect(h1).toBe(2987461369);
   });
 });

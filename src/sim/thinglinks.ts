@@ -138,7 +138,7 @@ export const MTF_NOTSINGLEPLAYER = 16;
  * Netgame/deathmatch START markers (B-03 fix): doomednums 10/12/13 =
  * player 2-4 starts, 15/17/18/19/20/21 = multiplayer start markers. 14 is
  * deliberately NOT gated: the table's doomednum-14 entry is Teleport
- * destination (MT_MISC30, NOBLOCKMAP, a REAL thing on every generation of
+ * destination (MT_TELEPORTMAN, NOBLOCKMAP, a REAL thing on every generation
  * map) and DOOM 1.x never used 14 as a spawn point. The
  * 1.10 info.c TABLE maps them onto inert corpse-decoration mobjs
  * (MT_MISC62 doomednum 15 = S_PLAY_DIE7, MT_MISC68/69 doomednum 10/12 =
