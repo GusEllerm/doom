@@ -99,6 +99,24 @@ const SETS = {
     testFile: join('tests', 'render', 'screens.test.ts'),
     pipeline:
       'E1M1 gInitGame -> [dInit + gFlowTic | fStartFinale + F_Ticker xN] -> drawer seam (screens[FG], no framebuffer) double-draw byte-equal -> sha256(screens[FG].data) + montage (3 pages tiled 3x2 at 2x, 5x7 labels)'
+  },
+  m9: {
+    // M9-11 L3 golden corpus (plan §M9-11): THREE test files, one set —
+    // tests/render/m9hud.test.ts (statusbar 8-variant matrix + HU message
+    // strip + sb9/sb11 viewport pair), m9menus.test.ts (TITLEPIC page +
+    // MainDef/NewGame/OptionsMenu screens) and m9wi.test.ts (intermission
+    // tallies 0/50/100 % + par/sucks time pages + ShowNextLoc blink pair +
+    // finale 3 phases). Every frame is the FULL production composition:
+    // the main.ts rAF driver (gFlowTic + gTicker + HU/ST tickers) then
+    // displayFrame (D_Display draw order, d_main.c:193-330) onto ONE shared
+    // framebuffer; 3D-bearing frames pin hom == 0. WAD-GATED like screens.
+    testFile: [
+      join('tests', 'render', 'm9hud.test.ts'),
+      join('tests', 'render', 'm9menus.test.ts'),
+      join('tests', 'render', 'm9wi.test.ts')
+    ],
+    pipeline:
+      'E1M1 gInitGame -> scripted player/wminfo state + tics (main.ts tic order) -> displayFrame D_Display composition (3D + crop + borders + ST bar + HU + WI/menu/finale drawers) x2-run byte-equal -> sha256(fb.indices), hom asserted 0 on every 3D frame'
   }
 };
 
@@ -129,7 +147,11 @@ const SET = SETS[setName];
 const GOLDENS = join(ROOT, 'tests', 'render', 'goldens', setName);
 const META = join(GOLDENS, 'meta.json');
 const REVIEW = join(ROOT, 'test-results', 'goldens', setName);
-const TEST_FILE = SET.testFile;
+// M9-11: a set may span several test files (m9 = m9hud + m9menus + m9wi);
+// dumps from ALL files merge into the shared dump dir (unique scene names).
+const TEST_FILES: string[] = Array.isArray(SET.testFile)
+  ? SET.testFile
+  : [SET.testFile];
 if (check && !existsSync(META)) die(`no committed goldens to check against: ${META}`);
 
 function die(msg) {
@@ -143,22 +165,24 @@ function die(msg) {
 
 const dumpDir = mkdtempSync(join(tmpdir(), 'goldens-dump-'));
 const vitestBin = join(ROOT, 'node_modules', 'vitest', 'vitest.mjs');
-const run = spawnSync(
-  process.execPath,
-  [vitestBin, 'run', TEST_FILE],
-  {
-    cwd: ROOT,
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      GOLDENS_DUMP_DIR: dumpDir,
-      GOLDENS_MODE: check ? 'check' : 'update'
+for (const testFile of TEST_FILES) {
+  const run = spawnSync(
+    process.execPath,
+    [vitestBin, 'run', testFile],
+    {
+      cwd: ROOT,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        GOLDENS_DUMP_DIR: dumpDir,
+        GOLDENS_MODE: check ? 'check' : 'update'
+      }
     }
+  );
+  if (run.status !== 0) {
+    rmSync(dumpDir, { recursive: true, force: true });
+    die(`golden pipeline run failed (${testFile}: vitest exit ${run.status ?? 'signal'})`);
   }
-);
-if (run.status !== 0) {
-  rmSync(dumpDir, { recursive: true, force: true });
-  die(`golden pipeline run failed (vitest exit ${run.status ?? 'signal'})`);
 }
 
 /* ------------------------------------------------------------------ */
