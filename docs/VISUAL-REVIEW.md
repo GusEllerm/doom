@@ -220,3 +220,4 @@ re-bless only with a source-explained cause.
 | screens/montage.png | TITLEPIC (full art, version stamp), finale reveal mid-tic-200 (matches 250+3n math), HELP2 credits page over dim art | PASS (M9-10 merge turn) |
 | mechanics/m8-infight.png (RE-BLESSED D018) | production sprites: imp+shotguy duel w/ KMALE/KMBST melee frames, correct scale/depth | PASS — first true-DOOM-pixel frame in motion evidence |
 | m9/bar-100-keys-arsenal.png | FULL classic layout: windowed view w/ FLOOR7_2 borders, blue numerics, ARMS grid, marine face, ARMOR 50%, 3 keys, ammo columns, caco in view | PASS — first full-screenshot-status frame in project history |
+| screens/m9-exit-montage.png | M9 pack 18 cells: TITLEPIC; menu over live world; 8-variant bar matrix (face states visibly distinct incl god/evil/death); green pickup msg; WI tallies 50%/par; finale text+HELP2; monster-pixels sb9; sb9-vs-sb11 border diff | PASS — M9 exit, 9/12 |
