@@ -91,6 +91,7 @@ test.describe('B-10 live New Game menu → E1M1 census, every skill', () => {
       await pickSkill(page, row);
       const out = await page.evaluate(() => {
         const st = window.__doom!.state();
+        if (!st.ready) throw new Error('state not ready');
         return { gameskill: st.screen.gameskill, monsters: (st as unknown as { monsters: DebugMonsters }).monsters };
       });
       const truth = E1M1_SKILL_ALIVE[row]!;
