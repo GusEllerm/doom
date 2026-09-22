@@ -128,6 +128,7 @@ function monstersSnapshot(state: GameState): DebugMonsters {
     if (views.length < 128) {
       views.push({
         type: m.type,
+        thinkerId: m.thinker.id,
         x: m.x,
         y: m.y,
         health: m.health,

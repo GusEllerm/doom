@@ -170,6 +170,12 @@ export interface DebugStateLive {
 export interface DebugMonsterView {
   /** MT_* index (mobjinfo array order) */
   type: number;
+  /** B-07/B-08 live-combat spec seam: the mobj's thinker id — the STABLE
+   * roster identity (spawn-order indices shift when mobjs are removed
+   * mid-scan, and linkSlot is promoted when a static-slot monster first
+   * moves — p_enemy.ts:298). Additive read-only; lets browser-live specs
+   * track one monster across wake/chase/death without identity drift. */
+  thinkerId: number;
   /** fixed */
   x: number;
   /** fixed */
