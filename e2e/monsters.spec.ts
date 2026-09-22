@@ -25,6 +25,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { enterPlay } from './playstart';
 
 import type { DebugMonsters, DebugMonsterView, DebugStateLive } from '../src/types/debug';
 
@@ -64,6 +65,9 @@ async function boot(page: Page): Promise<string[]> {
   const errors = trackConsole(page);
   await page.goto('/?test', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 60000 });
+  // M9 boot flow: boot is the TITLEPIC attract (world tics frozen there),
+  // so enter play BEFORE parking — the park watcher needs leveltime to run.
+  await enterPlay(page);
   const parked = await page.evaluate(
     () =>
       new Promise<number>((resolve) => {

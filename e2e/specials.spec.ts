@@ -28,6 +28,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { enterPlay } from './playstart';
 
 const F = 65536;
 
@@ -67,6 +68,10 @@ async function boot(page: Page): Promise<void> {
     null,
     { timeout: 30_000 }
   );
+  // M9 boot flow: title first — deterministic enter-play (e2e/playstart.ts)
+  // BEFORE the freeze below (its drain runs on a scripted tic; the world
+  // would tick NO tics in the attract state).
+  await enterPlay(page);
   await page.evaluate(() => window.__doom!.pause(true)); // freeze rAF stepper
 }
 

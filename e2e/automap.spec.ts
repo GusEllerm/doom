@@ -28,6 +28,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { enterPlay } from './playstart';
 
 async function wadMissing(page: Page): Promise<boolean> {
   const res = await page.request.get('/wads/freedoom1.wad');
@@ -145,15 +146,53 @@ function statePlayer(page: Page): Promise<{ x: number; y: number; hash: number }
 const playerAngleBam = (page: Page): Promise<number> =>
   page.evaluate(() => window.__doom!.sim.getState()!.players[0]!.mo.angle >>> 0);
 
+/**
+ * Resume, park at EXACTLY `target` leveltime and pause again (the
+ * physics.spec runTo pattern — the same-frame pause means no tic can
+ * interleave with the read). M9-fix: with enterPlay (not the page load)
+ * starting the world clock, this spec's byte-exact Tab round-trip must be
+ * pinned in TICS, not wall clock — the ST face widget repaints a
+ * different blink pose on some idle redraws (stTicker runs per LIVE tic,
+ * one art change measured at tic ~100), and any sample straddling one of
+ * those boundaries is a different frame. runTo freezes the face clock
+ * between every assertion (and the slow 28MB pixelStats LUT fetch —
+ * rendering keeps running under pause, §7).
+ */
+function runTo(page: Page, target: number): Promise<void> {
+  return page.evaluate(
+    (t: number) =>
+      new Promise<void>((resolve) => {
+        const api = window.__doom!;
+        const check = (): void => {
+          if ((api.sim.getState()?.leveltime ?? 0) >= t) {
+            api.pause(true);
+            resolve();
+          } else {
+            requestAnimationFrame(() => check());
+          }
+        };
+        api.pause(false);
+        check();
+      }),
+    target
+  );
+}
+
 async function boot(page: Page): Promise<void> {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
-  // Let the follow-mode recenter tic + a few tics run so the view settles.
-  await page.waitForTimeout(250);
+  // M9 boot flow: TITLEPIC first — deterministic enter-play (e2e/playstart.ts).
+  await enterPlay(page);
+  // Settle: live to a PINNED leveltime 24, paused there. The ST face
+  // paints its first real art at the first idle redraw (tic ~17, the
+  // M9-fix flake was a sample landing before it — blank vs face, 578 px
+  // inside the face rect); 24 is past it, and the pause stops the blink
+  // clock for everything below.
+  await runTo(page, 24);
   // M3-07 boot switch: the page boots into the 3D walls view (the M2
   // automap-by-default amStart call is gone) — TAB opens the automap.
   await page.keyboard.press('Tab');
-  await page.waitForTimeout(150); // > 4 tics: the open event is drained
+  await runTo(page, 28); // > 4 tics: the open event is drained
 }
 
 test.describe('automap boot + interaction', () => {
@@ -178,16 +217,17 @@ test.describe('automap boot + interaction', () => {
 
     // (3) TAB closes: the map-off frame is the 3D walls view (M3-07 boot
     // switch — the black placeholder buffer is gone; byte-exact
-    // walls↔automap round-trips live in e2e/walls.spec.ts).
+    // walls↔automap round-trips live in e2e/walls.spec.ts). The event is
+    // queued while paused and consumed by the pinned 6-tic run below.
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(150); // >5 tics
+    await runTo(page, 34); // > 4 tics: the close event is drained
     expect(await frameHash(page), 'Tab must change the frame').not.toBe(settled);
     expect((await pixelStats(page)).nonBlack, 'map-off = 3D walls frame').toBeGreaterThan(1000);
 
     // (4) TAB re-opens: AM_Start restores the saved scale+location — with an
     // unmoved player the frame must come back BYTE-EXACT.
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(150);
+    await runTo(page, 40); // > 4 tics: the open event is drained
     expect(await frameHash(page), 'Tab re-open must restore the exact saved view').toBe(settled);
 
     // (5) state() live + clean console
@@ -202,6 +242,10 @@ test.describe('automap boot + interaction', () => {
     const consoleErrors = trackConsole(page);
 
     await boot(page);
+    // The boot hands back a PAUSED world at leveltime 28 (test 1 pins its
+    // samples in tics) — this flow drives REAL held keys over wall-clock
+    // windows, so hand the live loop back.
+    await page.evaluate(() => window.__doom!.pause(false));
 
     // (1) zoom in well past the entry scale (hold '=' ⇒ 2%/tic,
     // M_ZOOMIN — ~6 s ≈ 1.02^210 ≈ 60x) so follow-mode tracking is provable

@@ -39,6 +39,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { enterPlay } from './playstart';
 
 /* ------------------------------------------------------------------ */
 /* Pinned constants + the in-test derivation oracle                     */
@@ -113,6 +114,10 @@ interface Snap {
 async function boot(page: Page): Promise<void> {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
+  // M9 boot flow: TITLEPIC first — deterministic enter-play
+  // (e2e/playstart.ts) or NO world tic (scripted runTics included,
+  // gTicker step-5) and no live key would ever reach the player.
+  await enterPlay(page);
   await page.waitForTimeout(250); // ≥ ~8 settling tics (spawn reactiontime 0)
 }
 
