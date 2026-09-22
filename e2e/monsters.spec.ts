@@ -230,7 +230,7 @@ test.describe('M8-12 live monsters e2e', () => {
     // settled). Then walk THROUGH it: an alive MF_SOLID monster would
     // stop the player ~29 units short; the corpse must not.
     const walk = await page.evaluate(
-      (v: { x: number; y: number; z: number }) => {
+      (v: { x: number; y: number }) => {
         const api = window.__doom!;
         const F64 = 65536;
         let ok = false;
@@ -258,7 +258,7 @@ test.describe('M8-12 live monsters e2e', () => {
         // crossed = player got 32 units past the corpse centre
         return { crossed: (px - v.x) * dir > 32 * F64, px: px >> 16, cx: v.x >> 16 };
       },
-      { x: corpse.x, y: corpse.y, z: corpse.z }
+      { x: corpse.x, y: corpse.y }
     );
     expect(walk.crossed, `player walks through the corpse line unobstructed ${JSON.stringify(walk)}`).toBe(true);
     expect(errors.filter((e) => !e.includes('favicon')).length).toBe(0);
