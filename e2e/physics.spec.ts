@@ -290,7 +290,12 @@ test.describe('live physics (M5-08)', () => {
     expect(
       await page.evaluate(() => {
         const s = window.__doom!.state();
-        return s.ready ? s.render : null;
+        // B-07/B-08: state().render also carries the sprite-pass
+        // fingerprint object; this assertion's contract is the 5 counters.
+        if (!s.ready) return null;
+        const { sprites, ...counters } = s.render;
+        void sprites;
+        return counters;
       }),
       'render counters live and 0 along the route'
     ).toEqual({ hom: 0, visplaneOverflow: 0, visspriteOverflow: 0, openingOverflow: 0, drawsegOverflow: 0 });

@@ -73,6 +73,13 @@ export interface RenderDebugSource {
     openingOverflow: number;
     drawsegOverflow: number;
   };
+  /** B-07/B-08: optional sprite-pass fingerprint source (renderer.ts
+   * getSpritePassStats; state().render.sprites, absent ⇒ zeros). */
+  sprites?(): {
+    drawn: number;
+    sumX: number;
+    sumY: number;
+  };
 }
 
 let renderSource: RenderDebugSource | null = null;
@@ -128,6 +135,7 @@ function monstersSnapshot(state: GameState): DebugMonsters {
     if (views.length < 128) {
       views.push({
         type: m.type,
+        thinkerId: m.thinker.id,
         x: m.x,
         y: m.y,
         health: m.health,
@@ -160,7 +168,7 @@ function pickCounters(c: {
   visspriteOverflow: number;
   openingOverflow: number;
   drawsegOverflow: number;
-}): DebugStateLive['render'] {
+}): Omit<DebugStateLive['render'], 'sprites'> {
   return {
     hom: c.hom,
     visplaneOverflow: c.visplaneOverflow,
@@ -176,6 +184,7 @@ const UNATTACHED_COUNTERS: DebugStateLive['render'] = {
   visspriteOverflow: -1,
   openingOverflow: -1,
   drawsegOverflow: -1,
+  sprites: { drawn: 0, sumX: 0, sumY: 0 },
 };
 
 /** Wire (or detach with null) the render source; called by main.ts once the
@@ -307,7 +316,13 @@ function liveSnapshot(state: GameState): DebugStateLive {
     // M3-07/M4-07: live renderer counters (−1 only pre-boot / pre-attach).
     // Shaped explicitly: the render source carries more (solidsegDrops),
     // state().render documents exactly hom + the four overflow caps.
-    render: renderSource === null ? { ...UNATTACHED_COUNTERS } : pickCounters(renderSource.counters()),
+    render:
+      renderSource === null
+        ? { ...UNATTACHED_COUNTERS }
+        : {
+          ...pickCounters(renderSource.counters()),
+          sprites: renderSource.sprites ? renderSource.sprites() : UNATTACHED_COUNTERS.sprites,
+        },
     screen: screenRead(state),
     hash: hashState(state)
   };

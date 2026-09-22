@@ -463,6 +463,27 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
   //    (the r_main.c:862 analogue).
   ctx.walker.walk(ctx.view, ctx.cbs);
 
+  // B-07/B-08 seam (see the note at the 2.5 roster swap): the thing-list
+  // FINGERPRINT is read AFTER the BSP pass so it reflects what was
+  // ENQUEUED this frame (R_AddSprites dedupe included); reading it right
+  // at the swap would sample the PRE-SWAP arrays (update swaps them on
+  // exit — first live frame would fingerprint the stale census).
+  {
+    const th = ctx.overlay?.things;
+    let drawn = 0;
+    let sumX = 0;
+    let sumY = 0;
+    if (th !== undefined) {
+      drawn = th.count;
+      for (let i = 0; i < drawn; i++) {
+        sumX += th.x[i]! >> 16;
+        sumY += th.y[i]! >> 16;
+      }
+    }
+    lastSpriteStats = { drawn, sumX, sumY };
+  }
+
+
   // 6. R_DrawPlanes — visplane spans (flats through zlight, sky per column).
   drawPlanes(ctx.planeCtx);
 
@@ -501,6 +522,21 @@ let lastVisspriteOverflow = 0;
  * snapshotted from the last completed frame (the pass zeroes it in its own
  * clear step, so reading it outside a frame needs this seam — vissprites.ts
  * is not M4-07-owned). */
+/** B-07/B-08: the sprite pass's position fingerprint from the LAST
+ * renderFrame (see the 2.5 block) — count + coordinate sums of the thing
+ * rows the pass fed R_AddSprites. (0,0,0) before the first 3D frame. */
+export interface SpritePassStats {
+  readonly drawn: number;
+  readonly sumX: number;
+  readonly sumY: number;
+}
+
+let lastSpriteStats: SpritePassStats = { drawn: 0, sumX: 0, sumY: 0 };
+
+export function getSpritePassStats(): SpritePassStats {
+  return lastSpriteStats;
+}
+
 export function getFrameCounters(): FrameCounters {
   return { ...getRenderCounters(), visspriteOverflow: lastVisspriteOverflow };
 }

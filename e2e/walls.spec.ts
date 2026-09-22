@@ -94,7 +94,9 @@ function captureStats(page: Page): Promise<CaptureStats> {
   });
 }
 
-/** Live state().render (all five counters; null while state() is not ready). */
+/** Live state().render COUNTERS (null while state() is not ready). The
+ * B-07/B-08 sprite fingerprint field (state().render.sprites) is
+ * deliberately excluded — this helper's contract is the five counters. */
 function renderCounters(page: Page): Promise<{
   hom: number;
   visplaneOverflow: number;
@@ -104,7 +106,10 @@ function renderCounters(page: Page): Promise<{
 } | null> {
   return page.evaluate(() => {
     const s = window.__doom!.state();
-    return s.ready ? s.render : null;
+    if (!s.ready) return null;
+    const { sprites, ...counters } = s.render;
+    void sprites;
+    return counters;
   });
 }
 

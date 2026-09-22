@@ -66,7 +66,7 @@ import { attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug,
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
 import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
-import { buildMapSprites, displayFrame, getFrameCounters, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
+import { buildMapSprites, displayFrame, getFrameCounters, getSpritePassStats, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
 import { setViewSize } from './render/view';
 import { vInit } from './render/vvideo';
 import { wadWiPatches, wiDrawer as wiDrawFrame, type WiPatchSource } from './render/wiDraw';
@@ -441,6 +441,20 @@ function render(): void {
     player: state.players[0]!,
     tables: boot.tables,
     sprites: boot.sprites,
+    // B-07/B-08 FIX (M9-09 wiring gap): the live-mobj roster for the
+    // sprite pass. Without this key the renderer's M9-09 overlay stays in
+    // useStatic mode EVERY frame (renderer.ts:451) — the browser then
+    // draws the boot-time static thing census: monsters frozen at spawn
+    // positions, later spawns (puffs/blood/missiles) invisible, deaths
+    // never shown, while the SIM underneath lived (melee/killcounts
+    // landed on the TRUE positions the visuals never tracked). Read
+    // LAZILY per frame through `state` — gSetupLevel REPLACES
+    // state.mobjs on New Game/reborn (game.ts:337), so no cached array
+    // reference here; the roster array itself is append-only per level
+    // (p_mobj.ts:369), which the overlay re-walks in full every frame.
+    // The sim Mobj rows satisfy LiveMobjView structurally (A-INT1: this
+    // file is the sim↔render bridge; the typecheck here is the gate).
+    mobjs: state.mobjs.mobjs,
     automap: { state: am, map: state.map, player: state.players[0]! },
     // M7-10: the live psprite layer (gun + muzzle flash over the world,
     // r_things.c R_DrawPlayerSprites) — resolved from the live sim rows
@@ -590,7 +604,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   debugSim.attach(state); // __doom.sim drives the same live state
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
-  attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
+  attachRenderDebug({ indices: fb.indices, counters: getFrameCounters, sprites: getSpritePassStats });
   boot = { state, am, luts, palettePlayer, world, textures, flats, mapView, tables, sprites, wad, mapName: map.name, simMap: map };
 
   // ---- M9 UI-stack boot (M9-12 wiring; see the wiring block above) ----
