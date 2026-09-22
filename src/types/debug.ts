@@ -28,12 +28,83 @@ export interface DebugStatePending {
  * (getRenderCounters().hom of the last renderFrame; −1 only while no
  * framebuffer has been attached — pre-boot).
  */
+/** d_main.h gamestate_t names (M9-12 seam: was the pinned 'GS_LEVEL' — the
+ * M9 flow makes all four states real, so the name tracks the live field;
+ * `screen.gamestate` carries the raw number). */
+export type DebugGamestateName =
+  | 'GS_LEVEL'
+  | 'GS_INTERMISSION'
+  | 'GS_FINALE'
+  | 'GS_DEMOSCREEN';
+
+/** Raw flow flags of the live GameState (M9-12 seam: pure field reads —
+ * gamestate/gameaction/paused/usergame/viewactive/advancedemo + the
+ * episode/map/skill selectors). */
+export interface DebugScreenRead {
+  gamestate: number;
+  gameaction: number;
+  paused: boolean;
+  usergame: boolean;
+  advancedemo: boolean;
+  viewactive: boolean;
+  gameepisode: number;
+  gamemap: number;
+  gameskill: number;
+}
+
+/** M9-12 seam: the UI-layer read bundle main.ts supplies through
+ * {@link DoomDebugApi.ui} (the attachUiDebug closure — SAME structural
+ * discipline as attachRenderDebug: debug.ts imports NOTHING from ui/).
+ * Every section is null while its layer is unregistered; `screen` is
+ * always present once a sim is attached (plain GameState reads). */
+export interface DebugUiRead {
+  screen: DebugScreenRead;
+  menu: {
+    active: boolean;
+    inHelpScreens: boolean;
+    menuName: string;
+    itemOn: number;
+    whichSkull: number;
+    messageToPrint: number;
+    screenBlocks: number;
+    mouseSensitivity: number;
+    detailLevel: number;
+    /** M_Drawer item boxes the menu-mouse synthesizer is armed with
+     * (null ⇒ disarmed — messages/help screens). */
+    itemBoxes: { x: number; y: number }[] | null;
+  } | null;
+  hud: {
+    /** ST face machine: 0..41 (ST_FACESX/Y = 143/168, 40x41 px lump),
+     * null ⇒ statusbar module not attached. */
+    faceIndex: number | null;
+    faceCount: number;
+    /** HU message line (w_message) + the showMessages flag. */
+    message: string;
+    showMessages: boolean;
+    /** statusbar on (ST_Drawer's statusbaron flag). */
+    statusbarOn: boolean;
+  } | null;
+  title: { demosequence: number; pagetic: number; pagename: string } | null;
+  finale: { stage: number; count: number } | null;
+  wi: {
+    active: boolean;
+    phase: string;
+    bcnt: number;
+    epsd: number;
+    accelerateStage: number;
+    /** wbs.spState (the SP tally counter machine — 10 = all counters done) */
+    spState: number;
+    last: number;
+    next: number;
+  } | null;
+}
+
 export interface DebugStateLive {
   ready: true;
   gametic: number;
   leveltime: number;
   map: string;
-  gamestate: 'GS_LEVEL';
+  gamestate: DebugGamestateName;
   player: {
     /** fixed (mo->x) */
     x: number;
@@ -89,6 +160,9 @@ export interface DebugStateLive {
   };
   /** §3.4 hashState() */
   hash: number;
+  /** M9-12 seam: raw flow flags of the live GameState (see
+   * DebugScreenRead; pure reads, nothing hashed). */
+  screen: DebugScreenRead;
 }
 
 /** One monster view (M8-plan §M8-12 `state().mobjs` field list:
@@ -234,4 +308,12 @@ export interface DoomDebugApi {
   aiGate(on: boolean): boolean;
   /** Direct sim-core surface (M2-07): state access, noclip, tic stepping. */
   sim: SimDebugApi;
+  /**
+   * M9-12 seam: the UI-layer read bundle (menu stack / HUD face+message /
+   * title demosequence / finale stage / intermission counters) plus the
+   * raw screen flags. main.ts supplies it through attachUiDebug as a
+   * plain closure — debug.ts holds NO ui import (attachRenderDebug
+   * discipline). null when the boot wiring is absent (headless/tests).
+   */
+  ui(): DebugUiRead | null;
 }

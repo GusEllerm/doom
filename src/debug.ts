@@ -17,7 +17,7 @@
  * stub once attached; −1 remains the pre-boot value).
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
-import { runHeadless } from './sim/game';
+import { runHeadless, GS } from './sim/game';
 import { pTeleportMove } from './sim/pmap';
 import {
   CF_GODMODE,
@@ -38,8 +38,11 @@ import type { PsprFields } from './sim/p_pspr';
 import { emptyInput, type GameInput } from './sim/ticcmd';
 import type {
   CaptureResult,
+  DebugGamestateName,
+  DebugScreenRead,
   DebugStateLive,
   DebugStateSnapshot,
+  DebugUiRead,
   DoomDebugApi,
   SimDebugApi
 } from './types/debug';
@@ -208,6 +211,50 @@ function setNoclipOnPlayer(state: GameState, enabled: boolean): boolean {
   return (p.cheats & CF_NOCLIP) !== 0;
 }
 
+/**
+ * M9-12 UI-read seam: main.ts registers a plain closure producing the
+ * menu/HUD/title/finale/WI read bundle — the SAME structural discipline
+ * as attachRenderDebug/attachPopInput (no ui/platform import lands in
+ * this file; the sim+types-only rule of this module's header stands).
+ */
+export type UiReadFn = () => DebugUiRead | null;
+
+let uiRead: UiReadFn | null = null;
+
+export function attachUiDebug(fn: UiReadFn | null): void {
+  uiRead = fn;
+}
+
+/** gamestate number → the §7 name (M9: all four states live). */
+function gamestateName(gs: number): DebugGamestateName {
+  switch (gs) {
+    case GS.INTERMISSION:
+      return 'GS_INTERMISSION';
+    case GS.FINALE:
+      return 'GS_FINALE';
+    case GS.DEMOSCREEN:
+      return 'GS_DEMOSCREEN';
+    default:
+      return 'GS_LEVEL';
+  }
+}
+
+/** Pure GameState field reads (no ui import — the debug.ts zone rule). */
+export function screenRead(state: GameState): DebugScreenRead {
+  return {
+    gamestate: state.gamestate,
+    gameaction: state.gameaction,
+    paused: state.paused,
+    usergame: state.usergame,
+    advancedemo: state.advancedemo,
+    viewactive: state.viewactive,
+    gameepisode: state.gameepisode,
+    gamemap: state.gamemap,
+    gameskill: state.gameskill
+  };
+}
+
+/** The §7 live snapshot (raw `screen` flags added by the M9-12 seam). */
 function liveSnapshot(state: GameState): DebugStateLive {
   const p = state.players[0]!;
   // M7 attaches these field packs in place (initPlayerInventory /
@@ -219,7 +266,7 @@ function liveSnapshot(state: GameState): DebugStateLive {
     gametic: state.gametic,
     leveltime: state.leveltime,
     map: state.map.name,
-    gamestate: 'GS_LEVEL',
+    gamestate: gamestateName(state.gamestate),
     player: {
       x: p.mo.x,
       y: p.mo.y,
@@ -261,6 +308,7 @@ function liveSnapshot(state: GameState): DebugStateLive {
     // Shaped explicitly: the render source carries more (solidsegDrops),
     // state().render documents exactly hom + the four overflow caps.
     render: renderSource === null ? { ...UNATTACHED_COUNTERS } : pickCounters(renderSource.counters()),
+    screen: screenRead(state),
     hash: hashState(state)
   };
 }
@@ -409,6 +457,11 @@ export const debugApi: DoomDebugApi = {
           ? new Uint8Array(src)
           : new Uint8Array(RENDER_WIDTH * RENDER_HEIGHT),
     };
+  },
+  ui(): DebugUiRead | null {
+    // M9-12: the ui read bundle (attachUiDebug closure; headless/tests
+    // without the boot wiring report null, exactly like popInput).
+    return uiRead === null ? null : uiRead();
   },
 };
 
