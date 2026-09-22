@@ -58,6 +58,7 @@ import {
   thingUnsetPosition,
   skillBit,
   MTF_AMBUSH,
+  isNetGameStartMarker,
   MTF_NOTSINGLEPLAYER,
 } from './thinglinks';
 import { pAddThinker, pRemoveThinker, type Thinker } from './ptick';
@@ -194,6 +195,11 @@ export interface MobjRuntime {
    * record, vanilla's `if (!deathmatch) P_SpawnPlayer (mthing);`). Left
    * unset (standalone p_mobj tests) the capture-only behavior stands. */
   playerSpawnFn?: (rt: MobjRuntime, start: SpawnPoint) => void;
+  /** B-03 fix: doomednums 10/12/13/14 (players 2-5 starts) and
+   * 15/17-21 (multiplayer start markers) are CAPTURED here, never spawned
+   * (thinglinks.isNetGameStartMarker — the DOOM.EXE spawn-switch semantics
+   * the 1.10 table scan lacks). Consumer: netgame respawn (M12). */
+  readonly netGameStarts: SpawnPoint[];
   readonly itemQue: SpawnPoint[]; // itemrespawnque[ITEMQUESIZE]
   readonly itemQueTime: number[]; // itemrespawntime[ITEMQUESIZE]
   iquehead: number;
@@ -228,6 +234,7 @@ export function createMobjRuntime(state: GameState): MobjRuntime {
     slotMobjs: new Map(),
     deathmatchStarts: [],
     playerStarts: [null, null, null, null],
+    netGameStarts: [],
     itemQue: [],
     itemQueTime: [],
     iquehead: 0,
@@ -637,6 +644,15 @@ export function pSpawnMapThing(rt: MobjRuntime, t: MapThingRec): Mobj | undefine
     if (rt.playerSpawnFn && !rt.deathmatch) rt.playerSpawnFn(rt, rt.playerStarts[t.type - 1]!);
     return undefined;
   }
+  // Netgame/deathmatch start markers: capture, never spawn (B-03 —
+  // DOOM.EXE handled these doomednums in the spawn switch BEFORE the
+  // mobjinfo table scan; spawning them put corpse-sprite "remains" on
+  // freedoom:1-style E1M1 floors. Intercepted BEFORE the solo/skill bits
+  // exactly where the switch sat.)
+  if (isNetGameStartMarker(t.type)) {
+    rt.netGameStarts.push(asSpawnPoint(t));
+    return undefined;
+  }
   if (!rt.netgame && (t.options & MTF_NOTSINGLEPLAYER) !== 0) return undefined;
   if ((t.options & skillBit(rt.state.skill)) === 0) return undefined;
 
@@ -700,6 +716,10 @@ export function pSpawnThings(rt: MobjRuntime): void {
       // p_mobj.c:730-734 (the inlined P_SpawnMapThing this pass mirrors):
       // `if (!deathmatch) P_SpawnPlayer (mthing);` — M7-03 playerSpawnFn.
       if (rt.playerSpawnFn) rt.playerSpawnFn(rt, rec);
+      continue;
+    }
+    if (isNetGameStartMarker(rec.type)) {
+      rt.netGameStarts.push(rec); // capture-only, never spawn (B-03; see pSpawnMapThing)
       continue;
     }
     if (!netgame && (rec.options & MTF_NOTSINGLEPLAYER) !== 0) continue;

@@ -134,6 +134,27 @@ export function skillBit(skill: number): number {
 export const MTF_AMBUSH = 8;
 export const MTF_NOTSINGLEPLAYER = 16;
 
+/**
+ * Netgame/deathmatch START markers (B-03 fix): doomednums 10/12/13/14 =
+ * player 2-5 starts, 15/17/18/19/20/21 = multiplayer start markers. The
+ * 1.10 info.c TABLE maps them onto inert corpse-decoration mobjs
+ * (MT_MISC62 doomednum 15 = S_PLAY_DIE7, MT_MISC68/69 doomednum 10/12 =
+ * S_PLAY_XDIE9, MT_MISC63/67/66/64 doomednum 18/19/20/21 = the monster
+ * DIE-final frames) — an artifact of the merged DOOM2 table: the DOOM.EXE
+ * spawn switch intercepted these doomednums as START POINTS before any
+ * table scan, so a single-player game NEVER spawned them. The
+ * GPL-1.10-source table scan has no such switch, so freedoom:1-style
+ * maps (whose E1M1 carries 10/12/15/17-21 things) showed "remains on the
+ * ground" — the B-03 field report. This gate restores the switch
+ * semantics: capture, never spawn (netgame respawn wiring is M12).
+ */
+export function isNetGameStartMarker(type: number): boolean {
+  return (
+    type === 10 || type === 12 || type === 13 || type === 14 || type === 15 ||
+    (type >= 17 && type <= 21)
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* ThingLinks storage                                                   */
 /* ------------------------------------------------------------------ */
@@ -235,6 +256,7 @@ export function buildThingLinks(
   for (let i = 0; i < map.numThings; i++) {
     const t = mapThingAt(map, i);
     if (t.type <= 4 || t.type === 11) continue; // start machinery, no mobj
+    if (isNetGameStartMarker(t.type)) continue; // netgame starts: capture-only (B-03)
     if (!netgame && (t.flags & MTF_NOTSINGLEPLAYER) !== 0) continue; // solo skip (p_mobj.c:740)
     if (!(t.flags & bit)) continue; // skill-gated spawn (p_mobj.c:744)
     const inf = info.get(t.type);

@@ -265,7 +265,7 @@ export function pMove(actor: Mobj): boolean {
  *  Import-injected lazily to keep the module graph acyclic-free: pmap.ts
  *  does NOT import p_enemy, so the direct import is safe at module eval. */
 import { pTryMove } from './pmap';
-import { allocThingSlot, thingUnsetPosition } from './thinglinks';
+import { allocThingSlot, thingSetPosition, thingUnsetPosition } from './thinglinks';
 function pTryMoveShim(actor: Mobj, x: number, y: number): boolean {
   promoteMoverSlot(actor); // port bridge, see below
   return pTryMove(actor.rt.state.pmap, actor, x, y);
@@ -296,6 +296,17 @@ function promoteMoverSlot(m: Mobj): void {
   links.doomednum[s] = links.doomednum[old]!;
   links.z[s] = m.z;
   m.linkSlot = s;
+  // Link the new slot NOW, at promotion — the p_inter_damage.ts:303 rule,
+  // extended to the chase path (B-02 fix): allocThingSlot hands out a
+  // zeroed, UNLINKED slot, and the pTryMove that follows the promotion can
+  // FAIL (blocked destination ⇒ no relink, no further SetThingPosition
+  // until some later step succeeds) — a promoted monster left unlinked is
+  // invisible to EVERY PIT query: PTR_ShootTraverse/PTR_AimTraverse (the
+  // live "gun shoots but nothing dies" bug), missile hits, touch specials,
+  // even the monster-vs-monster blocking. Linking at the CURRENT position
+  // is vanilla-true: P_CheckPosition's restore half re-runs
+  // P_SetThingPosition at the original x/y after a failed move, so a
+  // never-moved mobj always sits in its origin cell.
   m.rt.slotMobjs.delete(old);
   m.rt.slotMobjs.set(s, m);
 }
