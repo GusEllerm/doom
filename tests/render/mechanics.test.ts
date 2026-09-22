@@ -44,17 +44,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FRACUNIT } from '../../src/core/constants';
 import { loadMap } from '../../src/wad/mapdata';
 import { WadFile } from '../../src/wad/wadfile';
-import { buildPatchFromColumns } from '../../src/wad/patch';
-import { MF, MT, mobjinfo } from '../../src/wad/info/mobjinfo';
-import { FF_FRAMEMASK } from '../../src/wad/info/states';
-import { sprnames } from '../../src/wad/info/sprnames';
+import { MT, mobjinfo } from '../../src/wad/info/mobjinfo';
 import { buildMapFromData } from '../../src/sim/map';
 import { gInitGame, gTicker } from '../../src/sim/game';
 import { pTeleportMove } from '../../src/sim/pmap';
 import { puserGlobals } from '../../src/sim/puser';
 import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
 import { asMobj, ONFLOORZ, pSpawnMobj } from '../../src/sim/p_mobj';
-import { sectorAtPoint } from '../../src/sim/bsp';
 import { pNoiseAlert, registerEnemyHooks } from '../../src/sim/p_enemy';
 import { registerFamilyAActions } from '../../src/sim/amon_poss';
 import { registerFamilyCActions } from '../../src/sim/amon_bruiser';
@@ -63,7 +59,6 @@ import { pPlayerDamage } from '../../src/sim/pplayer';
 import { damageBridgeBody, installDamageBridge } from '../../src/sim/p_inter_damage';
 import { installPsprSfxSlot } from '../../src/sim/psound_stub';
 import { RNDTABLE } from '../../src/sim/prng';
-import { WadBuilder } from '../fixtures/wadWriter';
 import { Framebuffer } from '../../src/render/framebuffer';
 import { initLightTables } from '../../src/render/lights';
 import { flatsFromWad, loadRenderWorld } from '../../src/render/rdata';
@@ -79,6 +74,7 @@ import type { RenderWorld } from '../../src/render/rdata';
 import type { RenderMapView } from '../../src/render/view';
 import type { LightTables } from '../../src/render/lights';
 import type { SpriteTables } from '../../src/render/renderer';
+import type { LiveMobjView } from '../../src/render/rthings';
 import type { RectRoomSpec, LineTriggerSpec } from '../fixtures/mapBuilder';
 
 /* strip layout — motion.test.ts geometry, carried verbatim (additive set) */
@@ -98,6 +94,27 @@ const REVIEW_DIR =
   fileURLToPath(new URL('../../test-results/mechanics-strip/', import.meta.url));
 const DUMP_DIR = process.env['GOLDENS_DUMP_DIR'] ?? null;
 const MODE = process.env['GOLDENS_MODE'] ?? '';
+
+/* IWAD discovery (M9-09 D018 flip: the m8 monster strips render the REAL
+ * sprite art through the production deps.mobjs wiring ⇒ those scenes are
+ * skipIf-no-wad; the m6 strips stay fixture-only). */
+const WAD_PATH = [
+  process.env['DOOM_WAD'],
+  process.env['FREEDOOM1_WAD'],
+  fileURLToPath(new URL('../../wads/freedoom1.wad', import.meta.url)),
+].find((p): p is string => p !== undefined && existsSync(p));
+const hasWad = WAD_PATH !== undefined;
+
+let iwadCache: WadFile | null = null;
+function iwadSpriteWad(): WadFile {
+  if (iwadCache === null) {
+    const b = readFileSync(WAD_PATH!);
+    iwadCache = WadFile.parse(
+      b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer,
+    );
+  }
+  return iwadCache;
+}
 
 /* ------------------------------------------------------------------ */
 /* 3×5 pixel font (motion.test.ts idiom, carried verbatim — test files */
@@ -159,13 +176,16 @@ interface Scene {
   readonly events?: readonly { readonly tic: number; readonly fn: (s: GameState) => void }[];
   /** caption override (≤ CAPTIONS_PER_ROW chars) replacing the SoA line */
   readonly caption?: (s: GameState, tic: number) => string;
-  /** true ⇒ per capture frame the draw list = static things + LIVE mobjs
-   * (test-side R_AddSprites composition — the production renderer is
-   * still mobj-less: rthings KIND_MONSTER 'excluded until M8', the
-   * FINDING note in the m8 SCENE section below records this). */
+  /** true ⇒ the capture frames pass the LIVE mobj roster as the
+   * renderer's deps.mobjs (M9-09 D018 flip: the production rthings
+   * mobj-overlay thinglist replaces the old test-side injectMobs
+   * composition — the thinglist the BSP walk sees IS the live one). */
   readonly mobs?: boolean;
-  /** synthetic monster-sprite WAD source for {@link mobs} scenes */
+  /** sprite ART source for {@link mobs} scenes (M9-09: the real IWAD
+   * S_START roster; fixture WADs have no sprite lumps) */
   readonly spriteWad?: () => WadFile;
+  /** true ⇒ the scene needs the IWAD present (skip without it) */
+  readonly requiresWad?: boolean;
   /** per-generate reset for scene-owned capture traces */
   readonly reset?: () => void;
 }
@@ -386,15 +406,15 @@ function generate(scene: Scene): { indices: Uint8Array; frames: FrameRec[]; stat
   pTeleportMove(s.pmap, p.mo, scene.warp.x * FRACUNIT, scene.warp.y * FRACUNIT);
   p.mo.z = p.mo.floorz;
   p.mo.angle = Math.floor(scene.warp.angleDeg * (0x100000000 / 360)) >>> 0;
-  // M8-13: monster strips draw live mobjs — the sprite tables come from
-  // the synthetic lump roster, the thing list is rebuilt per capture
-  // frame with the mobj state/positions appended (test-side composition).
+  // M9-09 D018 FLIP: the monster strips render through the PRODUCTION
+  // live-mobj wiring — deps.mobjs feeds the rthings mobj overlay (the
+  // live thinglist SUPERSEDES the static census in R_AddSprites). The
+  // sprite ART is the real IWAD roster (scene.spriteWad).
   const mobSprites =
     scene.mobs && scene.spriteWad
       ? buildMapSprites({ md: bundle.md, map: bundle.view, wad: scene.spriteWad() })
       : null;
-  const spritesOf = (): SpriteTables =>
-    mobSprites === null ? bundle.sprites : injectMobs(s, mobSprites);
+  const spritesOf = (): SpriteTables => mobSprites === null ? bundle.sprites : mobSprites;
   scene.spawn?.(s);
 
   let taggedSec = -1;
@@ -412,7 +432,8 @@ function generate(scene: Scene): { indices: Uint8Array; frames: FrameRec[]; stat
     const fb = new Framebuffer();
     const c = renderFrame({
       fb, world, map: bundle.view, player: { mo: p.mo, viewz: p.viewz },
-      tables: bundle.tables, sprites: spritesOf()
+      tables: bundle.tables, sprites: spritesOf(),
+      ...(scene.mobs ? { mobjs: liveViews(s) } : {}),
     });
     expect(c.hom, `tic ${t}: hom`).toBe(0);
     expect(c.drawsegOverflow, `tic ${t}: drawsegs`).toBe(0);
@@ -449,16 +470,16 @@ function u(n: number): string {
 /* ================================================================== */
 /* M8-13 — MONSTER MOTION STRIPS (plan §M8-13, exit criterion §5.5)    */
 /*                                                                     */
-/* FINDING (report-only, src untouched): the PRODUCTION renderer is    */
-/* still mobj-less — rthings.ts KIND_MONSTER 'excluded until M8' — so  */
-/* these strips compose the draw list TEST-SIDE: per capture frame the */
-/* static thing list is extended with the live mobjs (position, state */
-/* sprite/frame, z) — a faithful R_AddSprites analogue built ONLY     */
-/* from exported src primitives; monster PIXELS are synthetic labelled */
-/* plates (family tone + state-letter bitmap), not the real art (the   */
-/* fixture WAD has no sprite lumps). The captions carry the sim truth  */
-/* (x/y/HP/state/PRNG-draw deltas) exactly like the M6 SoA captions    */
-/* carried sector heights. Live-mobj RENDER wiring is an M9 follow-up. */
+/* M9-09 D018 FLIP (supersedes the M8-13 FINDING this section used to  */
+/* carry): the production renderer now OWNS the live-mobj pass — the   */
+/* strips pass `deps.mobjs` (rthings createMobjOverlay; the live       */
+/* thinglist SUPERSEDES the static census in R_AddSprites, never       */
+/* merges) and draw the REAL IWAD sprite art (scene.spriteWad ⇒ the    */
+/* S_START roster; the fixture WADs have no sprite lumps ⇒ these three */
+/* strips skip cleanly when no IWAD is present). The M8 synthetic       */
+/* labelled plates and the test-side injectMobs composition are gone.  */
+/* The captions keep carrying the sim truth (x/y/HP/state/PRNG-draw    */
+/* deltas) exactly like the M6 SoA captions carry sector heights.      */
 /* ================================================================== */
 
 registerEnemyHooks();
@@ -466,91 +487,20 @@ registerFamilyAActions();
 registerFamilyCActions();
 registerDeathActions();
 
-/* ---- synthetic monster sprite roster (labelled plates) ------------ */
+/* ---- deps.mobjs rows (the production LiveMobjView contract) -------- */
 
-const MOB_SPRITES: readonly { readonly n4: string; readonly letters: number; readonly w: number; readonly h: number; readonly tone: number }[] = [
-  { n4: 'POSS', letters: 22, w: 24, h: 56, tone: 100 },
-  { n4: 'TROO', letters: 22, w: 24, h: 56, tone: 170 },
-  { n4: 'SARG', letters: 14, w: 32, h: 56, tone: 60 },
-  { n4: 'BAL1', letters: 4, w: 12, h: 12, tone: 230 }
-];
-
-function mobPlate(spr: (typeof MOB_SPRITES)[number], letter: number): Uint8Array {
-  const rows = 5;
-  const cols = 3;
-  const glyph = FONT[String.fromCharCode(65 + letter)] ?? FONT['0']!;
-  const columns: number[][] = [];
-  for (let c = 0; c < spr.w; c++) {
-    const col: number[] = [];
-    for (let r = 0; r < spr.h; r++) {
-      const edge = c < 2 || c >= spr.w - 2 || r < 2 || r >= spr.h - 2;
-      let v = edge ? Math.max(1, spr.tone - 50) : spr.tone;
-      const gr = r - 4;
-      const gc = c - (spr.w >> 2) - 1;
-      if (gr >= 0 && gr < rows && gc >= 0 && gc < cols) {
-        if (glyph[gr * cols + gc] === '1') v = 255;
-      }
-      col.push(v);
-    }
-    columns.push(col);
-  }
-  return buildPatchFromColumns(columns, spr.w >> 1, spr.h);
-}
-
-let mobWad: WadFile | null = null;
-function mobSpriteWad(): WadFile {
-  if (mobWad !== null) return mobWad;
-  const wb = new WadBuilder('IWAD');
-  wb.addLumpMarker('S_START');
-  for (const spr of MOB_SPRITES) {
-    for (let L = 0; L < spr.letters; L++) {
-      wb.addLump(`${spr.n4}${String.fromCharCode(65 + L)}0`, mobPlate(spr, L));
-    }
-  }
-  wb.addLumpMarker('S_END');
-  mobWad = WadFile.parse(u8ToBuf(wb.build()));
-  return mobWad;
-}
-
-/* ---- live-mobj thing-list composition ----------------------------- */
-
-function injectMobs(s: GameState, base: SpriteTables): SpriteTables {
-  const t = base.things;
-  const mobs = s.mobjs.mobjs.filter(
-    (m) =>
-      !m.removed &&
-      m.playerRef === undefined &&
-      (m.flags & MF.MF_NOSECTOR) === 0 &&
-      (sprnames[m.sprite] ?? '') !== '' &&
-      base.sprites.indexOf.has(sprnames[m.sprite] ?? ''),
-  );
-  const n = t.count + mobs.length;
-  const x = Int32Array.from({ length: n }, (_, i) => t.x[i] ?? 0);
-  const y = Int32Array.from({ length: n }, (_, i) => t.y[i] ?? 0);
-  const angle = Uint32Array.from({ length: n }, (_, i) => t.angle[i] ?? 0);
-  const spriteNum = Int32Array.from({ length: n }, (_, i) => t.spriteNum[i] ?? -1);
-  const frame = Uint8Array.from({ length: n }, (_, i) => t.frame[i] ?? 0);
-  const floorZ = Int32Array.from({ length: n }, (_, i) => t.floorZ[i] ?? 0);
-  const thing = Int32Array.from({ length: n }, (_, i) => t.thing[i] ?? -1);
-  const next = Int32Array.from({ length: n }, (_, i) => t.next[i] ?? -1);
-  const sectorHead = Int32Array.from(t.sectorHead);
-  mobs.forEach((m, k) => {
-    const i = t.count + k;
-    x[i] = m.x;
-    y[i] = m.y;
-    angle[i] = m.angle;
-    spriteNum[i] = base.sprites.indexOf.get(sprnames[m.sprite]!)!;
-    frame[i] = m.frame & FF_FRAMEMASK;
-    floorZ[i] = m.z;
-    thing[i] = -1;
-    const sec = sectorAtPoint(s.map, m.x, m.y);
-    next[i] = sectorHead[sec]!;
-    sectorHead[sec] = i;
-  });
-  return {
-    ...base,
-    things: { ...t, count: n, x, y, angle, spriteNum, frame, floorZ, thing, next, sectorHead },
-  };
+function liveViews(s: GameState): LiveMobjView[] {
+  return s.mobjs.mobjs.map((m) => ({
+    x: m.x,
+    y: m.y,
+    z: m.z,
+    angle: m.angle,
+    sprite: m.sprite,
+    frame: m.frame,
+    flags: m.flags,
+    removed: m.removed,
+    playerRef: m.playerRef,
+  }));
 }
 
 /* ---- capture traces (scene-owned, reset per generate) ------------- */
@@ -658,9 +608,9 @@ const m8Scenes: Scene[] = [
   {
     name: 'm8-chase-corner',
     title: 'M8 CHASE CORNERING: IMP VS PILLAR',
-    subtitle: 'NOISEALERT WAKE P_NEWWCHASEDIR PLATES=SYNTH',
+    subtitle: 'NOISEALERT WAKE P_NEWWCHASEDIR DEPS.MOBJS+IWAD ART',
     script:
-      'FIXMAP pillar (896x384 ring | solid c0 pillar 128x128 @448,128) -> warp (256,192,0deg) -> spawn TROO (768,192) + P_NoiseAlert (A_Look wake tic 9) -> imp closes, P_NewChaseDir random-search draws (D-stat) corner it around the pillar (plates = synthetic state-letter sprites; captions x/y/HP/state) -> 8 frames t=0..160',
+      'FIXMAP pillar (896x384 ring | solid c0 pillar 128x128 @448,128) -> warp (256,192,0deg) -> spawn TROO (768,192) + P_NoiseAlert (A_Look wake tic 9) -> imp closes, P_NewChaseDir random-search draws (D-stat) corner it around the pillar real IWAD TROO art via deps.mobjs (M9-09 flip); captions x/y/HP/state) -> 8 frames t=0..160',
     spec: PILLAR_SPEC,
     stat: 'light',
     ticCount: 160,
@@ -668,7 +618,8 @@ const m8Scenes: Scene[] = [
     inputAt: () => emptyInput(),
     warp: { x: 256, y: 192, angleDeg: 0 },
     mobs: true,
-    spriteWad: mobSpriteWad,
+    requiresWad: true,
+    spriteWad: iwadSpriteWad,
     reset: () => {
       MOB_TRACE.set('chase', []);
       MOB_RNG_AT.delete('chase');
@@ -702,9 +653,9 @@ const m8Scenes: Scene[] = [
   {
     name: 'm8-pain-death',
     title: 'M8 PAIN TO XDEATH: POSS SHOTGUN BURST',
-    subtitle: 'PDAMAGEMOBJ PAINCHAIN 187/188 XDEATH 194+',
+    subtitle: 'PDAMAGEMOBJ PAINCHAIN 187/188 XDEATH 194+ IWAD ART',
     script:
-      'FIXMAP room 512x256 -> warp (64,128,0deg) -> POSS at (300,128) -> tic 40 P_DamageMobj 8 (prndindex pinned < painChance 200: A_Pain states 187/188) -> tic 70 P_DamageMobj 45 (health -33 < -spawnhealth 20 => XDEATH chain 194.., A_XScream/A_Fall, gib-tics draw) -> plates + HP/state captions -> 8 frames t=0..110',
+      'FIXMAP room 512x256 -> warp (64,128,0deg) -> POSS at (300,128) -> tic 40 P_DamageMobj 8 (prndindex pinned < painChance 200: A_Pain states 187/188) -> tic 70 P_DamageMobj 45 (health -33 < -spawnhealth 20 => XDEATH chain 194.., A_XScream/A_Fall, gib-tics draw) -> IWAD POSS art via deps.mobjs + HP/state captions -> 8 frames t=0..110',
     spec: PAIN_SPEC,
     stat: 'light',
     ticCount: 110,
@@ -712,7 +663,8 @@ const m8Scenes: Scene[] = [
     inputAt: () => emptyInput(),
     warp: { x: 64, y: 128, angleDeg: 0 },
     mobs: true,
-    spriteWad: mobSpriteWad,
+    requiresWad: true,
+    spriteWad: iwadSpriteWad,
     reset: () => {
       MOB_TRACE.set('pain', []);
       MOB_RNG_AT.delete('pain');
@@ -766,7 +718,8 @@ const m8Scenes: Scene[] = [
     inputAt: () => emptyInput(),
     warp: { x: 64, y: 128, angleDeg: 0 },
     mobs: true,
-    spriteWad: mobSpriteWad,
+    requiresWad: true,
+    spriteWad: iwadSpriteWad,
     reset: () => {
       MOB_TRACE.set('infight', []);
       MOB_RNG_AT.delete('infight');
@@ -861,7 +814,8 @@ function dump(scene: Scene, indices: Uint8Array, frames: FrameRec[], paletteRgb:
 }
 
 function sceneCase(scene: Scene): void {
-  it(`${scene.name}: mechanics strip renders deterministically vs committed sha`, () => {
+  const caseIt = scene.requiresWad === true && !hasWad ? it.skip : it;
+  caseIt(`${scene.name}: mechanics strip renders deterministically vs committed sha`, () => {
     const gen = generate(scene);
     const again = generate(scene);
     expect(sha256Hex(again.indices), `${scene.name}: double-run byte-identical`).toBe(
