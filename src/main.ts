@@ -295,6 +295,18 @@ canvas.addEventListener('mousedown', (e) => {
   }
   if (e.button === 0) mouseFireDown = true; // ev_mouse → key_fire mirror
 });
+// The pointer-lock 'click' half (input/mouse.ts attach, canvas listener)
+// only makes sense over a LIVE level; outside it (menu panel, WI, attract)
+// a lock request is pure noise — headless chromium even rejects it with a
+// console error (WrongDocumentError), which would poison the zero-error
+// gate. Registered FIRST (this block runs before mouseInput.attach below)
+// so stopImmediatePropagation can silence it exactly when the wiring owns
+// the click. Play-state clicks keep the M5 lock behavior untouched.
+canvas.addEventListener('click', (e) => {
+  const st = boot?.state;
+  if (st === undefined) return;
+  if (menuState.menuActive() || st.gamestate !== GS.LEVEL) e.stopImmediatePropagation();
+});
 window.addEventListener('mouseup', (e) => {
   if (e.button === 0) mouseFireDown = false;
 });
@@ -643,6 +655,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
         bcnt: w.bcnt,
         epsd: w.epsd,
         accelerateStage: w.accelerateStage,
+        spState: w.spState,
         last: w.last,
         next: w.next
       }

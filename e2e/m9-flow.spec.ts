@@ -94,6 +94,55 @@ async function canvasPt(page: Page, x: number, y: number): Promise<{ x: number; 
   );
 }
 
+/**
+ * Drive `frames` rAF cycles (FRAME-DRIVEN, not sleeping): headless-chromium
+ * under CDP generates compositor frames while the debug connection is IDLE,
+ * so a raw command sequence starves the 35 Hz accumulator — queued keydowns
+ * would pile up unconsumed. Registering an rAF callback from an evaluate
+ * forces exactly one frame ⇒ exactly the tics that drain the event queue.
+ * The 500ms timeout is a hang guard for a frame that never comes, not a
+ * pacing sleep (plan §M9-12: pins, not sleeps).
+ */
+async function settle(page: Page, frames = 3): Promise<void> {
+  for (let i = 0; i < frames; i++) {
+    await page.evaluate(
+      () =>
+        Promise.race([
+          new Promise((r) => requestAnimationFrame(() => r(1))),
+          new Promise((r) => setTimeout(() => r(0), 500))
+        ])
+    );
+  }
+}
+
+/**
+ * Die→reborn consumes a BT_USE PRESS in P_DeathThink — real Space taps,
+ * each followed by frames (the press must land on a tic where the death
+ * think samples cmd; frames pump the tics, no sleeping).
+ */
+async function rebornByUseTaps(
+  page: Page, want: { map: string | null; under: number }
+): Promise<void> {
+  for (let i = 0; i < 12; i++) {
+    const st = await page.evaluate(() => {
+      const s = window.__doom!.state();
+      return s.ready ? { lt: s.leveltime, map: s.map } : null;
+    });
+    if (st !== null && st.lt < want.under && (want.map === null || st.map === want.map)) return;
+    await page.keyboard.down('Space');
+    await settle(page, 2); // hold across two tics (BT_USE sampled per tic)
+    await page.keyboard.up('Space');
+    await settle(page, 1);
+  }
+  throw new Error('reborn never observed after 12 use taps');
+}
+
+/** real key press + the frames that consume it (queue drain is per-tic) */
+const pressKey = async (page: Page, key: string, frames = 3): Promise<void> => {
+  await page.keyboard.press(key);
+  await settle(page, frames);
+};
+
 /** distinct palette indices inside a framebuffer rect (blank probe). */
 const distinctRect = (page: Page, r: { x0: number; x1: number; y0: number; y1: number }): Promise<number> =>
   page.evaluate((rect) => {
@@ -139,7 +188,7 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
   });
 
   test('stage 2 — real Esc arms the menu; real ↓/↑+Enter pick Hurt me', async () => {
-    await page.keyboard.press('Escape');
+    await pressKey(page, 'Escape');
     await page.waitForFunction(
       () => window.__doom!.ui()!.menu!.active && window.__doom!.ui()!.menu!.menuName === 'MainDef',
       null,
@@ -147,13 +196,13 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
     );
     await shot(page, '02-mainmenu.png');
 
-    await page.keyboard.press('Enter'); // New Game
+    await pressKey(page, 'Enter'); // New Game
     await page.waitForFunction(
       () => window.__doom!.ui()!.menu!.menuName === 'EpiDef',
       null,
       { timeout: 5_000 }
     );
-    await page.keyboard.press('Enter'); // E1
+    await pressKey(page, 'Enter'); // E1
     await page.waitForFunction(
       () => window.__doom!.ui()!.menu!.menuName === 'NewDef',
       null,
@@ -161,13 +210,13 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
     );
     // REAL arrow keys (wiring forwards menu-mode arrows as vanilla
     // keydown/keyup pairs): down lands violence, up lands Hurt me again.
-    await page.keyboard.press('ArrowDown');
+    await pressKey(page, 'ArrowDown');
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.itemOn === 3, null, { timeout: 5_000 });
-    await page.keyboard.press('ArrowUp');
+    await pressKey(page, 'ArrowUp');
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.itemOn === 2, null, { timeout: 5_000 });
     await shot(page, '03-skill-hurtme.png');
 
-    await page.keyboard.press('Enter'); // Hurt me → gDeferedInitNew drains next tic
+    await pressKey(page, 'Enter'); // Hurt me → gDeferedInitNew drains next tic
     await page.waitForFunction(
       () => {
         const u = window.__doom!.ui()!;
@@ -204,16 +253,20 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
   });
 
   test('stage 4 — Esc menu + REAL mouse click picks Options (menuMouse)', async () => {
-    await page.keyboard.press('Escape');
+    await pressKey(page, 'Escape');
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.active, null, { timeout: 5_000 });
     // Options is MainDef item 1 → (97, 112); hover first (synth arrows move
     // the skull), then the REAL click synthesizes the Enter pair.
     const boxes = (await ui(page)).menu!.itemBoxes!;
-    expect(boxes[1]!.y).toBe(112);
+    expect(boxes.length).toBe(6); // MainDef: NewGame..QuitDOOM
+    expect(boxes[1]!.x, 'Options row (MainDef y 64 + 16, m_menu.c:259)').toBe(97);
+    expect(boxes[1]!.y).toBe(80);
     const pt = await canvasPt(page, 110, boxes[1]!.y + 8);
     await page.mouse.move(pt.x, pt.y);
+    await settle(page, 2);
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.itemOn === 1, null, { timeout: 5_000 });
-    await page.mouse.click(pt.x, pt.y);
+    await page.mouse.click(pt.x, pt.y); // mousedown ⇒ menuMouse synth Enter
+    await settle(page, 3);
     await page.waitForFunction(
       () => window.__doom!.ui()!.menu!.menuName === 'OptionsDef',
       null,
@@ -223,32 +276,31 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
   });
 
   test('stage 5 — Options thermo ←/→ + the = resize', async () => {
+    // walk to the M_MSENS row (OptionsDef item 5, status 2 — arrows ok);
+    // every press is CONSUMED (frames pumped) before the next is decided,
+    // so the skull never overshoots the row
+    for (let guard = 0; guard < 10; guard++) {
+      if ((await ui(page)).menu!.itemOn === 5) break;
+      await page.keyboard.press('ArrowDown');
+      await settle(page, 3);
+    }
+    expect((await ui(page)).menu!.itemOn, 'M_MSENS row').toBe(5);
     const base = (await ui(page)).menu!.mouseSensitivity; // 5 (m_misc.c)
-    await page.keyboard.press('ArrowLeft');
-    await page.waitForFunction(
-      (b) => window.__doom!.ui()!.menu!.mouseSensitivity === b - 1,
-      base,
-      { timeout: 5_000 }
-    );
-    await page.keyboard.press('ArrowRight'); // restore (thermo pin stays 5)
-    await page.waitForFunction(
-      (b) => window.__doom!.ui()!.menu!.mouseSensitivity === b,
-      base,
-      { timeout: 5_000 }
-    );
+    await pressKey(page, 'ArrowLeft');
+    expect((await ui(page)).menu!.mouseSensitivity, 'thermo −1 by ←').toBe(base - 1);
+    await shot(page, '05b-thermo.png');
+    await pressKey(page, 'ArrowRight');
+    expect((await ui(page)).menu!.mouseSensitivity, 'thermo restored by →').toBe(base);
+
     // '=' resizes THROUGH the closed-panel M_Responder branch: Esc first.
-    await page.keyboard.press('Escape');
+    await pressKey(page, 'Escape');
     await page.waitForFunction(() => !window.__doom!.ui()!.menu!.active, null, { timeout: 5_000 });
     const sb = (await ui(page)).menu!.screenBlocks; // 9 (m_misc.c:279)
-    await page.keyboard.press('Equal');
-    await page.waitForFunction((b) => window.__doom!.ui()!.menu!.screenBlocks === b + 1, sb, {
-      timeout: 5_000
-    });
+    await pressKey(page, 'Equal');
+    expect((await ui(page)).menu!.screenBlocks, 'the = key grows the view').toBe(sb + 1);
     await shot(page, '06-resize-sb10.png');
-    await page.keyboard.press('Minus'); // restore sb9
-    await page.waitForFunction((b) => window.__doom!.ui()!.menu!.screenBlocks === b, sb, {
-      timeout: 5_000
-    });
+    await pressKey(page, 'Minus'); // restore sb9
+    expect((await ui(page)).menu!.screenBlocks, '- restores').toBe(sb);
   });
 
   test('stage 6 — scripted exit route → LIVE intermission + REAL accel click', async () => {
@@ -286,33 +338,57 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
     const u = await ui(page);
     expect(u.wi!.active).toBe(true);
     expect(u.wi!.phase).toBe('StatCount');
-    expect(u.wi!.next, 'next map = E1M2 (map number 2)').toBe(2);
+    expect(u.wi!.next, 'next map = E1M2 (wminfo.next is 0-biased)').toBe(1);
     await shot(page, '07-intermission.png');
 
-    // REAL click on the canvas ⇒ ev_mouse → key_fire → the accelerate
-    // rising edge (WI_CheckForAccelerate, the vanilla "click to skip").
+    // REAL clicks on the canvas ⇒ ev_mouse → key_fire → the accelerate
+    // rising edge (WI_CheckForAccelerate — vanilla "click to skip"). The
+    // stage flag is CONSUMED inside the same tic's update (wintermission
+    // :330/:389), so the observable is the tally machine, not the flag:
+    // click 1 fast-forwards every counter (spState → 10 within one tic;
+    // naturally ≥5×TICRATE of counter pauses), click 2 leaves the tally
+    // page (WI_initShowNextLoc, skipping its 70 tics too).
     const mid = await canvasPt(page, 160, 100);
     await page.mouse.move(mid.x, mid.y);
-    await page.mouse.down();
-    await page.mouse.up();
-    await page.waitForFunction(() => window.__doom!.ui()!.wi!.accelerateStage === 1, null, {
-      timeout: 5_000
-    });
+    // click until the state machine ACKNOWLEDGES each stage (a human mashes
+    // the mouse on the tally; every rising edge is a legal vanilla skip, so
+    // repeats are semantics-preserving and sampling-race immune)
+    for (let i = 0; i < 6; i++) {
+      if ((await ui(page)).wi!.spState === 10) break;
+      await page.mouse.down();
+      await settle(page, 2); // HOLD across ≥1 tic — the edge lives there
+      await page.mouse.up();
+      await settle(page, 1);
+    }
+    expect((await ui(page)).wi!.spState, 'accelerated tally: counters done').toBe(10);
 
-    // scripted completion of the accelerated tally (exact tics), landing
-    // E1M2 through the worlddone drain INSIDE the scripted loop.
+    for (let i = 0; i < 6; i++) {
+      if ((await ui(page)).wi!.phase !== 'StatCount') break;
+      await page.mouse.down();
+      await settle(page, 2);
+      await page.mouse.up();
+      await settle(page, 1);
+    }
+
+    // scripted run-out of the ACCELERATED sequence (exact tics — the pin:
+    // natural StatCount pauses + 70 ShowNextLoc tics ≥ ~250; accelerated
+    // lands E1M2 in a small fraction of that)
     const landed = await page.evaluate(() => {
       const sim = window.__doom!.sim;
-      for (let t = 0; t < 6000; t++) {
+      for (let t = 0; t < 4000; t++) {
         sim.runTics(1);
         const s = sim.getState()!;
         if (s.gamestate === 0 && s.map.name === 'E1M2') {
-          return { map: s.map.name, lt: s.leveltime, ok: true };
+          return { map: s.map.name, lt: s.leveltime, ok: true, t };
         }
       }
-      return { map: sim.getState()!.map.name, lt: sim.getState()!.leveltime, ok: false };
+      return { map: sim.getState()!.map.name, lt: sim.getState()!.leveltime, ok: false, t: 4000 };
     });
-    expect(landed.ok, 'WI run-out reaches E1M2 (never a sleep — 6000 scripted tics)').toBe(true);
+    // 70 ShowNextLoc + 35 NoState tics is the ACCELERATED floor; a natural
+    // tally adds ≥5×TICRATE counter pauses (~175) on top — 200 separates
+    const tBudget = 200;
+    expect(landed.t, `accelerate pin: <${tBudget} scripted tics (natural ≥ ~250)`).toBeLessThan(tBudget);
+    expect(landed.ok, 'WI run-out reaches E1M2 (exact tics, never a sleep)').toBe(true);
     seams.e1m2Hash = await simHash(page);
     expect(landed.map).toBe('E1M2');
     expect((await ui(page)).screen.gamemap).toBe(2);
@@ -366,24 +442,7 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
     await page.evaluate(() => window.__doom!.sim.killPlayer());
     await pauseSim(page, false);
     await popInput(page);
-    for (let i = 0; i < 6; i++) {
-      await page.keyboard.down('Space');
-      await page.keyboard.up('Space');
-      try {
-        await page.waitForFunction(
-          () => {
-            const d = window.__doom!;
-            const s = d.state();
-            return s.ready && s.leveltime < 10 && s.map === 'E1M2' && d.ui()!.screen.gamestate === 0;
-          },
-          null,
-          { timeout: 8_000 }
-        );
-        break;
-      } catch {
-        if (i === 5) throw new Error('reborn never observed after 6 use taps');
-      }
-    }
+    await rebornByUseTaps(page, { map: 'E1M2', under: 10 });
     const c2 = await census();
     expect(c2.alive, 'D017 retired: respawn census == pre-death census').toBe(c0.alive);
     expect(c2.killcount, 'per-level counters reset by P_SetupLevel').toBe(0);
@@ -407,47 +466,29 @@ test.describe('M9-12 whole loop — TITLEPIC to title with real input', () => {
     // face during play (alive, hurt tier possible) vs the dead face:
     const alive = await ui(page);
     expect(alive.hud!.statusbarOn).toBe(true);
-    await pauseSim(page, true);
-    const deadPixels = await page.evaluate(() => {
-      const sim = window.__doom!.sim;
-      sim.killPlayer();
-      sim.runTics(35); // the death window opens (P_DeathThink)
-      return { faceIndex: window.__doom!.ui()!.hud!.faceIndex };
-    });
+    // The face machine is DISPLAY-side (stTicker runs in the rAF tic, not
+    // in scripted runTics): kill on the LIVE loop and pump frames — from
+    // the first dead tic on, R1dead re-fires EVERY tic (priority<10 &&
+    // !health, st_statusbar.c:765-772) so faceIndex pins to ST_DEADFACE.
+    await page.evaluate(() => window.__doom!.sim.killPlayer());
+    await settle(page, 4);
     // ST_DEADFACE lives above the pain tiers (ST_GODFACE+1 = 41)
-    expect(deadPixels.faceIndex).toBe(41);
-    await pauseSim(page, false);
+    expect((await ui(page)).hud!.faceIndex).toBe(41);
     // the corpse face is state, not a stuck frame: pixels distinct (not blank)
     expect(await distinctRect(page, FACE), 'dead-face pixels').toBeGreaterThan(2);
     // and the use-tap restarts the level again (same observable as stage 7)
-    for (let i = 0; i < 6; i++) {
-      await page.keyboard.down('Space');
-      await page.keyboard.up('Space');
-      try {
-        await page.waitForFunction(
-          () => {
-            const s = window.__doom!.state();
-            return s.ready && s.leveltime < 5;
-          },
-          null,
-          { timeout: 8_000 }
-        );
-        break;
-      } catch {
-        if (i === 5) throw new Error('reborn never observed (stage 8)');
-      }
-    }
+    await rebornByUseTaps(page, { map: null, under: 5 });
   });
 
   test('stage 9 — REAL F7 endgame → y → TITLEPIC returns', async () => {
-    await page.keyboard.press('F7');
+    await pressKey(page, 'F7');
     await page.waitForFunction(
       () => window.__doom!.ui()!.menu!.messageToPrint === 1,
       null,
       { timeout: 5_000 }
     );
     await shot(page, '10-endgame.png');
-    await page.keyboard.press('y');
+    await pressKey(page, 'y');
     await page.waitForFunction(
       () => {
         const u = window.__doom!.ui()!;

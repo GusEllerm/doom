@@ -92,6 +92,8 @@ export interface DebugUiRead {
     bcnt: number;
     epsd: number;
     accelerateStage: number;
+    /** wbs.spState (the SP tally counter machine — 10 = all counters done) */
+    spState: number;
     last: number;
     next: number;
   } | null;
