@@ -449,6 +449,28 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
   // sees this frame's thinglists; useStatic keeps M4-M8 goldens exact).
   if (deps.mobjs !== undefined) ctx.overlay?.update(deps.mobjs);
   else ctx.overlay?.useStatic();
+  // B-07/B-08 seam: a cheap POSITION FINGERPRINT of exactly what the
+  // sprite pass is about to feed R_AddSprites this frame (count + the
+  // sums of map-unit coords). The browser-live regression spec compares it
+  // against the SIM's monster positions: pixel diffs are contaminated by
+  // sector-light thinkers (gunfire fog remaps every index), this channel
+  // is sprite-only — and it can only move if the caller actually wired
+  // deps.mobjs (the B-07 bug: useStatic every frame ⇒ a constant census
+  // fingerprint no matter what the monsters did). ~200 adds per frame.
+  {
+    const th = ctx.overlay?.things;
+    let drawn = 0;
+    let sumX = 0;
+    let sumY = 0;
+    if (th !== undefined) {
+      drawn = th.count;
+      for (let i = 0; i < drawn; i++) {
+        sumX += th.x[i]! >> 16;
+        sumY += th.y[i]! >> 16;
+      }
+    }
+    lastSpriteStats = { drawn, sumX, sumY };
+  }
 
   // 3. M3 deviation D CLOSED — no fb.clear(0). Anything left unpainted by a
   //    plane, wall, sprite or masked middle is the genuine void (sky/black),
@@ -501,6 +523,21 @@ let lastVisspriteOverflow = 0;
  * snapshotted from the last completed frame (the pass zeroes it in its own
  * clear step, so reading it outside a frame needs this seam — vissprites.ts
  * is not M4-07-owned). */
+/** B-07/B-08: the sprite pass's position fingerprint from the LAST
+ * renderFrame (see the 2.5 block) — count + coordinate sums of the thing
+ * rows the pass fed R_AddSprites. (0,0,0) before the first 3D frame. */
+export interface SpritePassStats {
+  readonly drawn: number;
+  readonly sumX: number;
+  readonly sumY: number;
+}
+
+let lastSpriteStats: SpritePassStats = { drawn: 0, sumX: 0, sumY: 0 };
+
+export function getSpritePassStats(): SpritePassStats {
+  return lastSpriteStats;
+}
+
 export function getFrameCounters(): FrameCounters {
   return { ...getRenderCounters(), visspriteOverflow: lastVisspriteOverflow };
 }

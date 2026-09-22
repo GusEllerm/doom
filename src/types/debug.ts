@@ -157,6 +157,17 @@ export interface DebugStateLive {
     visspriteOverflow: number;
     openingOverflow: number;
     drawsegOverflow: number;
+    /** B-07/B-08 live-combat spec seam: the sprite pass's position
+     * fingerprint from the LAST 3D frame (count + map-unit coordinate sums
+     * of the thing rows fed to R_AddSprites). Sprite-only, so sector-light
+     * thinkers cannot move it — a constant (0,0,0) means no live roster
+     * was wired at all; a CONSTANT nonzero fingerprint while monsters move
+     * is the frozen-census class (the renderer drew useStatic). */
+    sprites: {
+      drawn: number;
+      sumX: number;
+      sumY: number;
+    };
   };
   /** §3.4 hashState() */
   hash: number;
