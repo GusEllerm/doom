@@ -48,6 +48,7 @@ import type { PMapWorld } from './pmap';
 import './pslide'; // M5-06: loads pslide's self-registration of pmoveHooks.slideMove
 import { boundSpecialsWorld, feetCounts, pPlayerInSpecialSector } from './pspec';
 import { pUseLines } from './pswitch';
+import { pPowerThink, type PowerupPlayer } from './ppalette';
 import { BT_CHANGE, BT_USE } from './ticcmd';
 import {
   CF_NOMOMENTUM,
@@ -323,10 +324,7 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
     p.usedown = false;
   }
 
-  // powerup counters (p_user.c:336-360): no subjects yet — the parallel
-  // powerups task registers them; intentionally absent, not faked.
-
-  // P_MovePsprites (p_user.c:381) — M7-03 wiring of the M7-01 p_pspr
+  // P_MovePsprites (p_user.c:334, linuxdoom-1.10) — M7-03 wiring of the M7-01 p_pspr
   // machine: the gun/flash psprites spawned by P_SpawnPlayer →
   // P_SetupPsprites tick every LIVE tic (the PST_DEAD path ticks its own
   // copy inside P_DeathThink, p_user.c:186). Players without the attached
@@ -334,5 +332,22 @@ export function pPlayerThink(world: PMapWorld, p: Player, leveltime: number): vo
   // attachPsprFields, called from pplayer's level bind/spawn.
   if ((p as Partial<PsprPlayer>).psprites !== undefined) {
     pMovePsprites(p as PsprPlayer, leveltime);
+  }
+
+  // powerup counters (p_user.c:336-359 "Counters, time dependend power
+  // ups", immediately AFTER the psprite cycle at :334 — B-05 fix): the
+  // per-tic countdown of powers[] AND the damagecount/bonuscount decays
+  // (p_user.c:355-359) that ST_doPaletteStuff reads — plus the
+  // fixedcolormap select (p_user.c:361-383). The transcription lives in
+  // ppalette.pPowerThink (M7-06's file split, header there); THIS is its
+  // one call site — the M7-06 wiring the LIVE loop never got (B-05:
+  // damagecount latched the red band forever). Gated like the psprite
+  // block above on the attach having run (unit-world stubs without the
+  // field pack skip, exactly as pre-M7). The dead player never decays
+  // here: the PST_DEAD branch returned above (P_DeathThink owns its own
+  // damagecount fades, p_user.c:196-224). The gate is the powers[] row
+  // (inventory attach) — damagecount/bonuscount live on Player itself.
+  if ((p as Partial<PowerupPlayer>).powers !== undefined) {
+    pPowerThink(p as PowerupPlayer);
   }
 }

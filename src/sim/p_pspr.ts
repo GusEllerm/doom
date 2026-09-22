@@ -116,9 +116,13 @@ export const AM_MISL = AMMO.am_misl;
 export const NUMAMMO = 4;
 export const AM_NOAMMO = AMMO.am_noammo;
 
-/** doomdef.h powerentype (pw_strength = 0; berserk). */
-export const PW_STRENGTH = 0;
-export const PW_INVISIBILITY = 1;
+/** doomdef.h:214-223 powertype_t (pw_invulnerability, pw_strength, …) —
+ * pw_strength = 1 (berserk). (Was 0 here, disagreeing with the enum and
+ * with this repo's own PW table in p_inter_pickup.ts / PW_INVULNERABILITY=0
+ * in pplayer.ts / pspriteview.ts PW_INVISIBILITY=2; the fist suite hid the
+ * slot mix-up because powers never decayed before pPowerThink was wired.) */
+export const PW_STRENGTH = 1;
+export const PW_INVISIBILITY = 2;
 export const NUMPOWERS = 6;
 
 /** sounds.h sfxenum_t indices of the sfx p_pspr.c names (M7-06/M10 owns the

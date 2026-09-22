@@ -95,7 +95,7 @@ describe('fist — melee punches at a zombie 48 units away', () => {
     const dummy = of(s, MT.MT_POSSESSED)[0]!;
     const spawnPrnd = s.rng.prndindex;
     const p = attachPsprFields(s.players[0]!);
-    p.powers[0] = 1; // pw_strength (perma while >0)
+    p.powers[1] = 1; // pw_strength (doomdef.h enum index 1; perma while >0)
     // The 20..200 punch kicks a POSS (mass 100) with up to 25 units of
     // momentum — vanilla-true knockback, and out of MELEERANGE after ~1
     // swing (measured: 1 hit unpinned). This suite derives the DAMAGE half

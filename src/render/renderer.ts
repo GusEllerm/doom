@@ -549,8 +549,10 @@ export interface DisplayHooks {
    * buffer including the bar rows, so the hook (or the boot wiring) MUST
    * restore the BG→FG bar rows (ui/statusbar stRefreshBackground, which is
    * what vanilla's ST_doRefresh copy does) whenever !fullscreen, or the
-   * bar would show 3D pixels. Restoring via BG (not refresh=true) keeps
-   * the widget diff/erase semantics byte-faithful. */
+   * bar would show 3D pixels. Passing refresh=true for EVERY windowed
+   * frame (the B-06 fix, step 2 below) makes stDoRefresh itself run
+   * ST_refreshBackground + a full widget redraw — the hook's extra
+   * restore is then redundant-but-harmless (BG→FG twice = once). */
   stDrawer?: (fullscreen: boolean, refresh: boolean) => void;
   /** HU_Drawer (d_main.c:270) — messages overlay AFTER the 3D view. */
   huDrawer?: (automapactive: boolean) => void;
@@ -604,20 +606,24 @@ export interface DisplayResult {
   readonly barRefreshed: boolean;
 }
 
-/* D_Display's file-scope statics (d_main.c:196-200). */
-let dFulllscreen = false;
+/* D_Display's file-scope statics (d_main.c:196-200). The borderdrawcount /
+ * menuactivestate / viewactivestate statics are deliberately ABSENT — the
+ * B-01 fix replaced the 3-count erase with a per-frame ring restore
+ * (step 4), which needs no carry-forward state under our compositor. The
+ * fullscreen static is likewise gone — with every windowed frame a
+ * refresh frame (B-06), the fullscreen→windowed TRANSITION edge no
+ * longer feeds any decision. */
 let dOldGamestate = -1;
-let dBorderDrawCount = 0;
-let dMenuActiveState = false;
-let dViewActiveState = false;
+
+/** Observability for the compositor branches (never hashed): crop calls
+ * per boot epoch — the B-01 automap invariant asserts it stays flat while
+ * the automap is up (vanilla's map ignores the view window entirely). */
+export const displayStatics = { cropCalls: 0 };
 
 /** Test/boot hook: forget the statics (equivalent of process start). */
 export function resetDisplayStatics(): void {
-  dFulllscreen = false;
   dOldGamestate = -1;
-  dBorderDrawCount = 0;
-  dMenuActiveState = false;
-  dViewActiveState = false;
+  displayStatics.cropCalls = 0;
 }
 
 /**
@@ -635,12 +641,13 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
   if (fg === undefined || fg === null || fg.data !== deps.fb.indices) vInit(deps.fb.indices);
 
   // 1. setsizeneeded ⇒ R_ExecuteSetViewSize, force background redraw
-  //    (oldgamestate = -1), borderdrawcount = 3 (d_main.c:198-203).
+  //    (oldgamestate = -1) (d_main.c:198-203). The vanilla twin
+  //    `borderdrawcount = 3` is NOT ported — see step 4 for why the
+  //    3-count erase cannot express our compositor.
   const sizeChanged = consumeViewSetSizeNeeded();
   const vs = viewSize();
   if (sizeChanged) {
     dOldGamestate = -1; // force R_FillBackScreen below, exactly vanilla
-    dBorderDrawCount = 3;
   }
 
   const st = deps.state;
@@ -653,15 +660,23 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
 
   if (st.gamestate === GS_LEVEL && st.gametic !== 0) {
     // redrawsbar = wipe || (viewheight != MAXHEIGHT && fullscreen)
-    // (d_main.c:243-246) VERBATIM. The reorder's FG-bar-dirtied-by-3D
-    // problem is solved caller-side: the registered hook restores the
-    // BG→FG bar rows (ui/statusbar stRefreshBackground — what vanilla's
-    // ST_doRefresh copy does) every windowed frame, so widgets keep the
-    // vanilla diff/erase semantics (forcing refresh=true here would
-    // re-erase the widget boxes EVERY frame — an artifact vanilla only
-    // ever shows on genuine refresh frames).
-    barRefreshed = deps.wipe === true || (vs.viewheight !== 200 && dFulllscreen);
-    dFulllscreen = vs.fullscreen;
+    // (d_main.c:243-246) IN VANILLA — and vanilla can afford diff-draw
+    // because its FG statusbar rows PERSIST between frames: the view pass
+    // never leaves the window, and STlib multicons/binicons/%-sign redraw
+    // ONLY on value change (st_lib.c:208-234/:256-292/:179-187). Our
+    // reorder dirties the WHOLE buffer every frame and the stDrawer hook
+    // restores the bar rows from BG (stRefreshBackground) — an erase the
+    // widget diffs CANNOT see (their values are unchanged), so a windowed
+    // refresh=false frame shows a bar whose face/ARMS/keys/% widgets were
+    // just erased and will not return until their VALUE changes: the
+    // B-06 "face flickers, then it is gone" (soak: face box == BG within
+    // one frame of every change; the %-sign never returns after frame 1).
+    // Under the reorder a windowed frame therefore ALWAYS refreshes — the
+    // refresh path re-draws every widget over the fresh BG and its
+    // per-widget erase is itself a BG→FG copy (invisible), which
+    // reproduces exactly what vanilla's FG persistence showed. Wipe keeps
+    // its force (d_main.c:243); fullscreen has no bar to keep.
+    barRefreshed = deps.wipe === true || vs.viewheight !== 200;
   } else if (st.gamestate === GS_INTERMISSION) {
     if (displayHooks.wiDrawer !== undefined) displayHooks.wiDrawer();
     else displayStub('wiDrawer');
@@ -683,24 +698,39 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
     // 320x200 pass is CROP-BLIT into the view window (the 3D passes keep
     // the fullscreen projection constants; centering is exact on both
     // axes — crop x0 === viewwindowx, the row crop centers centery).
-    if (vs.viewheight !== 200 || vs.scaledviewwidth !== 320) {
+    // The AUTOMAP skips the crop: AM_clearFB + the AM draws already cover
+    // the FULL 320x200 buffer (drawAutomap, step 8 of renderFrame), and
+    // vanilla's automap is full-screen-over-the-bar by construction —
+    // cropping it would stamp a (200-h)/2-row-shifted duplicate square in
+    // the middle of the map (B-01's automap flavour of the same
+    // reorder-class artifact).
+    if ((vs.viewheight !== 200 || vs.scaledviewwidth !== 320) && !st.automapactive) {
+      displayStatics.cropCalls += 1;
       cropToWindow(deps.fb, vs.viewwindowx, vs.viewwindowy, vs.viewwidth, vs.viewheight);
     }
 
     // 4. border bookkeeping (d_main.c:276-296): refill the back screen on
-    //    GS_LEVEL entry (or forced resize), then the 3-count erase.
+    //    GS_LEVEL entry (or forced resize), then restore the ring. The
+    //    vanilla 3-count erase (borderdrawcount) is NOT portable: it is
+    //    an ERASE of stale menu junk, sufficient in vanilla because
+    //    R_RenderPlayerView NEVER LEAVES THE WINDOW — the ring is
+    //    untouched by the view pass and stays correct forever. Our
+    //    full-res 3D pass + crop-to-window compositor dirties the ring
+    //    EVERY frame: with the ported 3-count, frames 1-3 show the
+    //    border, then the ring silently becomes raw UNCROPPED 3D forever
+    //    (content shifted against the cropped window content by
+    //    (200-h)/2-(168-h)/2 = 16 rows), and each menu open/close,
+    //    resize or level entry flashes the 3-count border again before
+    //    the 3D eats it — the B-01 "square within the viewport being
+    //    eaten away as the game progresses". Faithful invariant: over a
+    //    windowed LEVEL frame the ring is the back screen, EVERY frame
+    //    (identical FINAL pixels to vanilla's untouched-ring state).
     if (dOldGamestate !== GS_LEVEL) {
-      dViewActiveState = false;
       if (deps.borders !== undefined) fillBackScreen(deps.borders.wad);
     }
     if (!st.automapactive && vs.scaledviewwidth !== 320) {
-      const menuActive = st.menuActive ?? false;
-      if (menuActive || dMenuActiveState || !dViewActiveState) dBorderDrawCount = 3;
-      if (dBorderDrawCount > 0) {
-        drawViewBorder();
-        borderDrawn = true;
-        dBorderDrawCount -= 1;
-      }
+      drawViewBorder();
+      borderDrawn = true;
     }
 
     // 4b. ST_Drawer (reordered AFTER the view/border half: our 3D pass
@@ -724,8 +754,6 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
   }
   if (displayHooks.mDrawer !== undefined) displayHooks.mDrawer();
 
-  dMenuActiveState = st.menuActive ?? false;
-  dViewActiveState = st.gamestate === GS_LEVEL ? st.viewactive : false;
   dOldGamestate = st.gamestate;
 
   return {

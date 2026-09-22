@@ -11,7 +11,7 @@
       "height": 200,
       "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7",
       "png": "finale-help2.png",
-      "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+      "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
       "updatedAt": "2026-09-22",
       "history": [
         {
@@ -21,6 +21,16 @@
         },
         {
           "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+          "at": "2026-09-22",
+          "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
+        },
+        {
+          "reason": "B-05 re-bless propagation: m9-exit-montage bar-god-invul cell now shows the faithful inverted invulnerability view (fixedcolormap reached the render via the wired powerup countdown)",
+          "at": "2026-09-22",
+          "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
+        },
+        {
+          "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
           "at": "2026-09-22",
           "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
         }
@@ -33,7 +43,7 @@
       "height": 200,
       "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad",
       "png": "finale-text-200.png",
-      "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+      "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
       "updatedAt": "2026-09-22",
       "history": [
         {
@@ -43,6 +53,16 @@
         },
         {
           "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+          "at": "2026-09-22",
+          "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
+        },
+        {
+          "reason": "B-05 re-bless propagation: m9-exit-montage bar-god-invul cell now shows the faithful inverted invulnerability view (fixedcolormap reached the render via the wired powerup countdown)",
+          "at": "2026-09-22",
+          "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
+        },
+        {
+          "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
           "at": "2026-09-22",
           "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
         }
@@ -55,7 +75,7 @@
       "height": 832,
       "indexSha256": "e69eccd0f436c7ac56ecd118e1f6564f04ca5d0003f18e55a40e456fa1301ab8",
       "png": "montage.png",
-      "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+      "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
       "updatedAt": "2026-09-22",
       "history": [
         {
@@ -65,6 +85,16 @@
         },
         {
           "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+          "at": "2026-09-22",
+          "indexSha256": "e69eccd0f436c7ac56ecd118e1f6564f04ca5d0003f18e55a40e456fa1301ab8"
+        },
+        {
+          "reason": "B-05 re-bless propagation: m9-exit-montage bar-god-invul cell now shows the faithful inverted invulnerability view (fixedcolormap reached the render via the wired powerup countdown)",
+          "at": "2026-09-22",
+          "indexSha256": "e69eccd0f436c7ac56ecd118e1f6564f04ca5d0003f18e55a40e456fa1301ab8"
+        },
+        {
+          "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
           "at": "2026-09-22",
           "indexSha256": "e69eccd0f436c7ac56ecd118e1f6564f04ca5d0003f18e55a40e456fa1301ab8"
         }
@@ -77,7 +107,7 @@
       "height": 200,
       "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045",
       "png": "title-pic.png",
-      "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+      "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
       "updatedAt": "2026-09-22",
       "history": [
         {
@@ -89,6 +119,16 @@
           "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
           "at": "2026-09-22",
           "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
+        },
+        {
+          "reason": "B-05 re-bless propagation: m9-exit-montage bar-god-invul cell now shows the faithful inverted invulnerability view (fixedcolormap reached the render via the wired powerup countdown)",
+          "at": "2026-09-22",
+          "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
+        },
+        {
+          "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
+          "at": "2026-09-22",
+          "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
         }
       ]
     },
@@ -97,15 +137,25 @@
       "script": "M9 consolidated D016 pack: title + menu-main + bar matrix x8 (BAR_VARIANTS/barScene) + msg strip + WI tally/par + finale reveal/HELP2 + monster-pixels (busy-mix, D018) + sb9/sb11 pair — 18 blessed scenes TILED 1x (3 cols x 6 rows, 5x7 labels, 960x1260)",
       "width": 960,
       "height": 1260,
-      "indexSha256": "f5405a6c974996603203f5ffcc6fe1f78448a694eaf9d67c406dc4cb4caa56a9",
+      "indexSha256": "f9d4fa432e835b0f0a6b44e3819a1268551487719f17ff9a12e8ea0852338bfd",
       "png": "m9-exit-montage.png",
-      "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
+      "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-13 L5 exit pack: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone review sheet); existing screens pages unmoved",
           "at": "2026-09-22",
           "indexSha256": "f5405a6c974996603203f5ffcc6fe1f78448a694eaf9d67c406dc4cb4caa56a9"
+        },
+        {
+          "reason": "B-05 re-bless propagation: m9-exit-montage bar-god-invul cell now shows the faithful inverted invulnerability view (fixedcolormap reached the render via the wired powerup countdown)",
+          "at": "2026-09-22",
+          "indexSha256": "f9d4fa432e835b0f0a6b44e3819a1268551487719f17ff9a12e8ea0852338bfd"
+        },
+        {
+          "reason": "B-01 propagation: montage border cells now show the restored ring (the montage cells must equal their blessed scene sources)",
+          "at": "2026-09-22",
+          "indexSha256": "f9d4fa432e835b0f0a6b44e3819a1268551487719f17ff9a12e8ea0852338bfd"
         }
       ]
     }

@@ -12,11 +12,21 @@
       "height": 200,
       "indexSha256": "a23010e7163f2f29277c843026b4164390da7a3ca84fe36850d3d5e98b6a2c2a",
       "png": "bar-025-shells.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "a23010e7163f2f29277c843026b4164390da7a3ca84fe36850d3d5e98b6a2c2a"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "a23010e7163f2f29277c843026b4164390da7a3ca84fe36850d3d5e98b6a2c2a"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "a23010e7163f2f29277c843026b4164390da7a3ca84fe36850d3d5e98b6a2c2a"
         }
@@ -30,11 +40,21 @@
       "height": 200,
       "indexSha256": "58065abf136709308263a94a48e728b9cf8153d1d42e77f23fd4dfa80a50502d",
       "png": "bar-050-cells.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "58065abf136709308263a94a48e728b9cf8153d1d42e77f23fd4dfa80a50502d"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "58065abf136709308263a94a48e728b9cf8153d1d42e77f23fd4dfa80a50502d"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "58065abf136709308263a94a48e728b9cf8153d1d42e77f23fd4dfa80a50502d"
         }
@@ -48,11 +68,21 @@
       "height": 200,
       "indexSha256": "35df2d216e06091e0480244f6d2b83e0ba3bd258cc1692aaaf12c0844a97c40b",
       "png": "bar-075-armor-clip.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "35df2d216e06091e0480244f6d2b83e0ba3bd258cc1692aaaf12c0844a97c40b"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "35df2d216e06091e0480244f6d2b83e0ba3bd258cc1692aaaf12c0844a97c40b"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "35df2d216e06091e0480244f6d2b83e0ba3bd258cc1692aaaf12c0844a97c40b"
         }
@@ -66,11 +96,21 @@
       "height": 200,
       "indexSha256": "ab969b8fe090f64eb1d5c224cb42c64ed53a87dd13dae138a9cff2f9a5ba57c6",
       "png": "bar-100-keys-arsenal.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "ab969b8fe090f64eb1d5c224cb42c64ed53a87dd13dae138a9cff2f9a5ba57c6"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "ab969b8fe090f64eb1d5c224cb42c64ed53a87dd13dae138a9cff2f9a5ba57c6"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "ab969b8fe090f64eb1d5c224cb42c64ed53a87dd13dae138a9cff2f9a5ba57c6"
         }
@@ -84,11 +124,21 @@
       "height": 200,
       "indexSha256": "4251721cbb1b07018c4ffd1689b1966c90b35aeebcb5749b4ca7969e56ebec3b",
       "png": "bar-attacked-left.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "4251721cbb1b07018c4ffd1689b1966c90b35aeebcb5749b4ca7969e56ebec3b"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "4251721cbb1b07018c4ffd1689b1966c90b35aeebcb5749b4ca7969e56ebec3b"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "4251721cbb1b07018c4ffd1689b1966c90b35aeebcb5749b4ca7969e56ebec3b"
         }
@@ -102,11 +152,21 @@
       "height": 200,
       "indexSha256": "c69554cf2ab428f7755ff993758c89b4ed07483b12b76b4a6691020cc51a75c6",
       "png": "bar-dead-fist.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "c69554cf2ab428f7755ff993758c89b4ed07483b12b76b4a6691020cc51a75c6"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "c69554cf2ab428f7755ff993758c89b4ed07483b12b76b4a6691020cc51a75c6"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "c69554cf2ab428f7755ff993758c89b4ed07483b12b76b4a6691020cc51a75c6"
         }
@@ -118,15 +178,25 @@
       "hom": 0,
       "width": 320,
       "height": 200,
-      "indexSha256": "561fdd3f72e6ce9f440d20d2f3c8fd3633ed19697742f25a71055ee273f07cbd",
+      "indexSha256": "b3c0149bfe0dc5e45cfbe84aad08bd7886a0c3eaa0581c145a3e9392a610e71a",
       "png": "bar-god-invul.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
           "at": "2026-09-22",
           "indexSha256": "561fdd3f72e6ce9f440d20d2f3c8fd3633ed19697742f25a71055ee273f07cbd"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "b3c0149bfe0dc5e45cfbe84aad08bd7886a0c3eaa0581c145a3e9392a610e71a"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
+          "at": "2026-09-22",
+          "indexSha256": "b3c0149bfe0dc5e45cfbe84aad08bd7886a0c3eaa0581c145a3e9392a610e71a"
         }
       ]
     },
@@ -138,11 +208,21 @@
       "height": 200,
       "indexSha256": "4069d3c309d237d2fed2192b5b2f378ded30013a8972f9aecaaaf8e15b81b58f",
       "png": "bar-grin-weapon.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "4069d3c309d237d2fed2192b5b2f378ded30013a8972f9aecaaaf8e15b81b58f"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "4069d3c309d237d2fed2192b5b2f378ded30013a8972f9aecaaaf8e15b81b58f"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "4069d3c309d237d2fed2192b5b2f378ded30013a8972f9aecaaaf8e15b81b58f"
         }
@@ -155,11 +235,21 @@
       "height": 200,
       "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7",
       "png": "fin-help2-t1571.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "8459d81c13a94b2513f1b893c06a9b2d563c55400bf47e55d116eea40ff229d7"
         }
@@ -172,11 +262,21 @@
       "height": 200,
       "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad",
       "png": "fin-text-200.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "5b2c0b538d3f5d2aef25b8860d3ba7139dec6e127cebb4aff8321d593d3933ad"
         }
@@ -189,11 +289,21 @@
       "height": 200,
       "indexSha256": "28eaa4ed831d3f109e1d27e23f4d7fab935b77a23a714b56b85f97179346767e",
       "png": "fin-text-full-t900.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "28eaa4ed831d3f109e1d27e23f4d7fab935b77a23a714b56b85f97179346767e"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "28eaa4ed831d3f109e1d27e23f4d7fab935b77a23a714b56b85f97179346767e"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "28eaa4ed831d3f109e1d27e23f4d7fab935b77a23a714b56b85f97179346767e"
         }
@@ -207,11 +317,21 @@
       "height": 200,
       "indexSha256": "8b91fd52002e0a173afcbb82eb6dd2ed4f00284bfe49530698ba262c62423f93",
       "png": "menu-main.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "8b91fd52002e0a173afcbb82eb6dd2ed4f00284bfe49530698ba262c62423f93"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "8b91fd52002e0a173afcbb82eb6dd2ed4f00284bfe49530698ba262c62423f93"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "8b91fd52002e0a173afcbb82eb6dd2ed4f00284bfe49530698ba262c62423f93"
         }
@@ -225,11 +345,21 @@
       "height": 200,
       "indexSha256": "b2baf2d411467b9e29d1945b4f3687b36df2bda6357af0f6bd8121f03a209a7d",
       "png": "menu-newgame.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "b2baf2d411467b9e29d1945b4f3687b36df2bda6357af0f6bd8121f03a209a7d"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "b2baf2d411467b9e29d1945b4f3687b36df2bda6357af0f6bd8121f03a209a7d"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "b2baf2d411467b9e29d1945b4f3687b36df2bda6357af0f6bd8121f03a209a7d"
         }
@@ -243,11 +373,21 @@
       "height": 200,
       "indexSha256": "a510d1ab1cc9817bf7e2a2733928c9972bb224ed8a86b6569060a2654433a385",
       "png": "menu-options.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "a510d1ab1cc9817bf7e2a2733928c9972bb224ed8a86b6569060a2654433a385"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "a510d1ab1cc9817bf7e2a2733928c9972bb224ed8a86b6569060a2654433a385"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "a510d1ab1cc9817bf7e2a2733928c9972bb224ed8a86b6569060a2654433a385"
         }
@@ -261,11 +401,21 @@
       "height": 200,
       "indexSha256": "d193875cce9777c7f884f1c0242b148d124b78fd00dda23b2b2961e4a162226f",
       "png": "msg-gone-t144.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "d193875cce9777c7f884f1c0242b148d124b78fd00dda23b2b2961e4a162226f"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "d193875cce9777c7f884f1c0242b148d124b78fd00dda23b2b2961e4a162226f"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "d193875cce9777c7f884f1c0242b148d124b78fd00dda23b2b2961e4a162226f"
         }
@@ -279,11 +429,21 @@
       "height": 200,
       "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1",
       "png": "msg-hold-t105.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1"
         }
@@ -297,11 +457,21 @@
       "height": 200,
       "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1",
       "png": "msg-show-t4.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "b26496c7919140001a2a0626f823dbab49f2c47a74f372210dce61f385e160d1"
         }
@@ -314,11 +484,21 @@
       "height": 200,
       "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045",
       "png": "title-page.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "72e5ae84b17f22ed083d6985f2b5a015774f737f747741f8509c60855e808045"
         }
@@ -332,11 +512,21 @@
       "height": 200,
       "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad",
       "png": "view-sb11-spawn-east.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad"
         }
@@ -350,11 +540,21 @@
       "height": 200,
       "indexSha256": "f0fa9c5a8ea647bbb28ec941976aa3d8e35e3a68e658c09e69196e4a3cdf217c",
       "png": "view-sb9-spawn-east.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "f0fa9c5a8ea647bbb28ec941976aa3d8e35e3a68e658c09e69196e4a3cdf217c"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "f0fa9c5a8ea647bbb28ec941976aa3d8e35e3a68e658c09e69196e4a3cdf217c"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "f0fa9c5a8ea647bbb28ec941976aa3d8e35e3a68e658c09e69196e4a3cdf217c"
         }
@@ -367,11 +567,21 @@
       "height": 200,
       "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c",
       "png": "wi-shownext-off.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c"
         }
@@ -384,11 +594,21 @@
       "height": 200,
       "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c",
       "png": "wi-shownext-on.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "a5b2baeae09af7f985d7e5cd7e54c6cb0b64d5ee7cf1e465077fa5ca60d9e13c"
         }
@@ -401,11 +621,21 @@
       "height": 200,
       "indexSha256": "4bee562b28d8874cba6a1fc69d8b64e6720be54f8f59ca8404fcefffc1f4af8a",
       "png": "wi-tally-0-t70.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "4bee562b28d8874cba6a1fc69d8b64e6720be54f8f59ca8404fcefffc1f4af8a"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "4bee562b28d8874cba6a1fc69d8b64e6720be54f8f59ca8404fcefffc1f4af8a"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "4bee562b28d8874cba6a1fc69d8b64e6720be54f8f59ca8404fcefffc1f4af8a"
         }
@@ -418,11 +648,21 @@
       "height": 200,
       "indexSha256": "c4333a53fa9514a04b0f05b7dfba1d3a772b93e5bea3861cfed84d105426d4f5",
       "png": "wi-tally-100-t200.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "c4333a53fa9514a04b0f05b7dfba1d3a772b93e5bea3861cfed84d105426d4f5"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "c4333a53fa9514a04b0f05b7dfba1d3a772b93e5bea3861cfed84d105426d4f5"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "c4333a53fa9514a04b0f05b7dfba1d3a772b93e5bea3861cfed84d105426d4f5"
         }
@@ -435,11 +675,21 @@
       "height": 200,
       "indexSha256": "9ac44b1b158c97a71e8e617e34226d2e1128134fdc853513be477a5b0daf77ea",
       "png": "wi-tally-50-t70.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "9ac44b1b158c97a71e8e617e34226d2e1128134fdc853513be477a5b0daf77ea"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "9ac44b1b158c97a71e8e617e34226d2e1128134fdc853513be477a5b0daf77ea"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "9ac44b1b158c97a71e8e617e34226d2e1128134fdc853513be477a5b0daf77ea"
         }
@@ -452,11 +702,21 @@
       "height": 200,
       "indexSha256": "a98e9efd4058d0e9c4fdb54e3d62e2e793fc16540a2643c8cdcb25f78f68fce6",
       "png": "wi-time-par.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "a98e9efd4058d0e9c4fdb54e3d62e2e793fc16540a2643c8cdcb25f78f68fce6"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "a98e9efd4058d0e9c4fdb54e3d62e2e793fc16540a2643c8cdcb25f78f68fce6"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "a98e9efd4058d0e9c4fdb54e3d62e2e793fc16540a2643c8cdcb25f78f68fce6"
         }
@@ -469,11 +729,21 @@
       "height": 200,
       "indexSha256": "e359fad71923828bf7958d61104cb048dd6168007074c3ebfc207898b2189282",
       "png": "wi-time-sucks.png",
-      "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+      "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
       "updatedAt": "2026-09-22",
       "history": [
         {
           "reason": "M9-11 initial bless: L3 golden corpus for HUD/menus/intermission (plan section M9-11) - statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases",
+          "at": "2026-09-22",
+          "indexSha256": "e359fad71923828bf7958d61104cb048dd6168007074c3ebfc207898b2189282"
+        },
+        {
+          "reason": "B-05: pPowerThink wired — invul countdown + fixedcolormap=32 now reach the m9hud bar-god-invul view (faithful inverted view; blessed pixels predate the wiring)",
+          "at": "2026-09-22",
+          "indexSha256": "e359fad71923828bf7958d61104cb048dd6168007074c3ebfc207898b2189282"
+        },
+        {
+          "reason": "B-01: windowed frames restore the border ring every frame (reorder-faithful) + automap skips the window crop — blessed m9 frames previously captured the post-3D 'ring eaten' state on their LAST frame",
           "at": "2026-09-22",
           "indexSha256": "e359fad71923828bf7958d61104cb048dd6168007074c3ebfc207898b2189282"
         }
