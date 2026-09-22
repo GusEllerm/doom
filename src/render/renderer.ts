@@ -615,9 +615,15 @@ export interface DisplayResult {
  * longer feeds any decision. */
 let dOldGamestate = -1;
 
+/** Observability for the compositor branches (never hashed): crop calls
+ * per boot epoch — the B-01 automap invariant asserts it stays flat while
+ * the automap is up (vanilla's map ignores the view window entirely). */
+export const displayStatics = { cropCalls: 0 };
+
 /** Test/boot hook: forget the statics (equivalent of process start). */
 export function resetDisplayStatics(): void {
   dOldGamestate = -1;
+  displayStatics.cropCalls = 0;
 }
 
 /**
@@ -699,6 +705,7 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
     // the middle of the map (B-01's automap flavour of the same
     // reorder-class artifact).
     if ((vs.viewheight !== 200 || vs.scaledviewwidth !== 320) && !st.automapactive) {
+      displayStatics.cropCalls += 1;
       cropToWindow(deps.fb, vs.viewwindowx, vs.viewwindowy, vs.viewwidth, vs.viewheight);
     }
 

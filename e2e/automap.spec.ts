@@ -60,6 +60,26 @@ async function frameHash(page: Page): Promise<string> {
   });
 }
 
+/** Hash of the DRAWING territory only — rows 0..167 (the automap covers
+ * them; the status bar lives below and legitimately re-rolls the idle
+ * face every ST_STRAIGHTFACECOUNT=17 tics, so a full-frame hash is NOT
+ * the right equality class for "the map came back byte-exact"). */
+async function viewHash(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) throw new Error('no canvas');
+    const sy = Math.round(canvas.height / 200);
+    const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, 168 * sy).data;
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < data.length; i += 4) {
+      h = Math.imul(h ^ data[i]!, 16777619);
+      h = Math.imul(h ^ data[i + 1]!, 16777619);
+      h = Math.imul(h ^ data[i + 2]!, 16777619);
+    }
+    return (h >>> 0).toString(16);
+  });
+}
+
 /** {index counts} for red-family / WHITE(=209, player arrow) / total black pixels. */
 async function pixelStats(page: Page): Promise<{ reds: number; whites: number; nonBlack: number; total: number }> {
   const lut = await page.evaluate(async () => {
@@ -207,13 +227,18 @@ test.describe('automap boot + interaction', () => {
     const s1 = await pixelStats(page);
     expect(s1.nonBlack).toBeGreaterThan(1000);
     expect(s1.reds, `red-family pixel count out of range: ${s1.reds}`).toBeGreaterThan(900);
-    expect(s1.reds).toBeLessThan(2500);
+    // B-01 fix: the automap ignores the view window (no crop stamp) — the
+    // uncropped full-width map paints slightly more wall red than the
+    // pre-fix 16-row-shifted crop did (measured 2738 at spawn).
+    expect(s1.reds).toBeLessThan(3200);
     expect(s1.whites, 'player arrow (WHITE) must be visible').toBeGreaterThan(0);
 
-    // (2) stability: the settled follow view must not flicker between frames
-    const settled = await frameHash(page);
+    // (2) stability: the settled follow view must not flicker between
+    // frames (over the map territory — the bar's idle-face re-roll is not
+    // part of the automap frame identity).
+    const settled = await viewHash(page);
     await page.waitForTimeout(120);
-    expect(await frameHash(page), 'settled automap view must be stable').toBe(settled);
+    expect(await viewHash(page), 'settled automap view must be stable').toBe(settled);
 
     // (3) TAB closes: the map-off frame is the 3D walls view (M3-07 boot
     // switch — the black placeholder buffer is gone; byte-exact
@@ -221,14 +246,15 @@ test.describe('automap boot + interaction', () => {
     // queued while paused and consumed by the pinned 6-tic run below.
     await page.keyboard.press('Tab');
     await runTo(page, 34); // > 4 tics: the close event is drained
-    expect(await frameHash(page), 'Tab must change the frame').not.toBe(settled);
+    expect(await viewHash(page), 'Tab must change the frame').not.toBe(settled);
     expect((await pixelStats(page)).nonBlack, 'map-off = 3D walls frame').toBeGreaterThan(1000);
 
-    // (4) TAB re-opens: AM_Start restores the saved scale+location — with an
-    // unmoved player the frame must come back BYTE-EXACT.
+    // (4) TAB re-opens: AM_Start restores the saved scale+location — with
+    // an unmoved player the map view must come back BYTE-EXACT (rows
+    // 0..167; the status bar above keeps its own 17-tic face cadence).
     await page.keyboard.press('Tab');
     await runTo(page, 40); // > 4 tics: the open event is drained
-    expect(await frameHash(page), 'Tab re-open must restore the exact saved view').toBe(settled);
+    expect(await viewHash(page), 'Tab re-open must restore the exact saved view').toBe(settled);
 
     // (5) state() live + clean console
     const st = await statePlayer(page);

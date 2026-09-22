@@ -224,6 +224,8 @@ const RNG_ROOM = {
 
 describe('feet — pw_ironfeet gate and the randBypass draw', () => {
   const withPowers = (s: GameState, ironfeet: number): void => {
+    // ironfeet is a COUNTDOWN (p_user.c:347 `if (p) p--` — B-05 wiring) —
+    // pin it high for the whole run (a real SUIT gives IRONTICS=2100).
     (s.players[0] as unknown as { powers?: number[] }).powers =
       [0, 0, ironfeet, 0, 0, 0];
   };
@@ -231,7 +233,7 @@ describe('feet — pw_ironfeet gate and the randBypass draw', () => {
   it('ironfeet blocks specials 5/7 completely — and draws NO P_Random', () => {
     for (const room of ['slime', 'nukage'] as const) {
       const s = stateFromNamed(FEET_RNG_SPEC, 'FIXMAP');
-      withPowers(s, 1);
+      withPowers(s, 10000);
       place(s, RNG_ROOM[room][0], RNG_ROOM[room][1]);
       runHeadless(s, 96);
       expect(s.hooks.damage.count).toBe(0);
@@ -243,7 +245,7 @@ describe('feet — pw_ironfeet gate and the randBypass draw', () => {
      'hand-table: idx0=0<5 hits @0, idx32=212 misses @32, idx64=141 misses @64)',
   () => {
     const s = stateFromNamed(FEET_RNG_SPEC, 'FIXMAP');
-    withPowers(s, 1);
+    withPowers(s, 10000);
     s.rng.prndindex = 255; // first draw lands on rndtable[0] = 0 (<5)
     place(s, RNG_ROOM.superSlime[0], RNG_ROOM.superSlime[1]);
     runHeadless(s, 96);

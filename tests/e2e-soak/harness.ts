@@ -36,7 +36,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
-import { amCreateState, amTicker } from '../../src/sim/amMap';
+import { amCreateState, amTicker, type AutomapState } from '../../src/sim/amMap';
 import {
   gExitLevel,
   gFlowTic,
@@ -159,6 +159,13 @@ export interface LiveSoak {
   injectDamage(amount: number): void;
   /** Script the ticcmd for subsequent tics (null = emptyInput). */
   setInput(fn: ((tic: number) => GameInput) | null): void;
+  /** FORCE the automap on/off straight on the live am state (the keyboard
+   * event path is e2e's job; B-01 pins the automap/skip-crop interaction
+   * at this level). The harness mirrors am.automapactive into stCtx and
+   * display deps exactly like stepTic/render do. */
+  setAutomap(on: boolean): void;
+  /** The live automap state (reference for drawAutomap replay checks). */
+  readonly am: AutomapState;
 }
 
 /** Boot ONE live instance in main.ts order, entering play immediately (no
@@ -373,17 +380,23 @@ export function createLiveSoak(): LiveSoak {
     inputFn = fn;
   }
 
+  function setAutomap(on: boolean): void {
+    am.automapactive = on;
+  }
+
   return {
     state,
     fb,
     luts,
     frames,
+    am,
     cycle,
     soak,
     sampleGrid,
     hashRect: rectSha,
     injectDamage,
-    setInput
+    setInput,
+    setAutomap
   };
 }
 

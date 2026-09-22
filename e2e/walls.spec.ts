@@ -144,7 +144,11 @@ function diffAgainstStashed(page: Page, key: string): Promise<{
     for (let i = 0; i < now.length; i++) {
       if (now[i] === before[i]) continue;
       differing++;
-      if (before[i] !== 0) {
+      // Rows 168+ belong to the STATUSBAR drawer, not the 3D pass — and
+      // ST legitimately re-rolls the idle face every
+      // ST_STRAIGHTFACECOUNT=17 tics (vanilla P_Random & 3). The 3D
+      // round-trip contract below is only about rows 0..167.
+      if (before[i] !== 0 && Math.floor(i / 320) < 168) {
         overPainted++;
         if (samples.length < 6) samples.push(`r${Math.floor(i / 320)}c${i % 320}:${before[i]}->${now[i]}`);
       }
