@@ -30,3 +30,4 @@ Fixes: reference this ledger; update Status column with evidence per fix.
 
 Class note: harness (game.ts + scripted runTics) says combat+AI work; the REAL rAF/real-time browser path disagrees. All prior AI/combat specs use runTics/warp seams — none drive a genuine 35Hz rAF session with real input into monsters. Gap: **browser-live soak spec**.
 | B-09 | Turning left/right feels like gaining forward momentum | CLOSED: physics clean (mom-invariance theorems); rAF dx-batching fixed (per-tic apportionment, capture-time clamp) |
+| B-10 | Only ~1 enemy findable in E1M1 live; kill-door unopenable (user: "spawning outside the level"?) | TRIAGE |
