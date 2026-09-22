@@ -544,7 +544,13 @@ export interface DisplayState {
  */
 export interface DisplayHooks {
   /** ST_Drawer(fullscreen, refresh) — fullscreen ⇔ viewheight==200
-   * (d_main.c:252). Draws into screens[0]/BG via ui/stlib's vvideo calls. */
+   * (d_main.c:252). Draws into screens[0]/BG via ui/stlib's vvideo calls.
+   * REORDER CONTRACT (this file's header): our 3D pass covers the FULL
+   * buffer including the bar rows, so the hook (or the boot wiring) MUST
+   * restore the BG→FG bar rows (ui/statusbar stRefreshBackground, which is
+   * what vanilla's ST_doRefresh copy does) whenever !fullscreen, or the
+   * bar would show 3D pixels. Restoring via BG (not refresh=true) keeps
+   * the widget diff/erase semantics byte-faithful. */
   stDrawer?: (fullscreen: boolean, refresh: boolean) => void;
   /** HU_Drawer (d_main.c:270) — messages overlay AFTER the 3D view. */
   huDrawer?: (automapactive: boolean) => void;
@@ -646,9 +652,14 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
   let borderDrawn = false;
 
   if (st.gamestate === GS_LEVEL && st.gametic !== 0) {
-    // redrawsbar = wipe || (viewheight != 200 && fullscreen) (d_main.c:
-    // 243-246); the ST DRAW itself runs after the 3D pass below (region-
-    // disjoint reorder, file comment).
+    // redrawsbar = wipe || (viewheight != MAXHEIGHT && fullscreen)
+    // (d_main.c:243-246) VERBATIM. The reorder's FG-bar-dirtied-by-3D
+    // problem is solved caller-side: the registered hook restores the
+    // BG→FG bar rows (ui/statusbar stRefreshBackground — what vanilla's
+    // ST_doRefresh copy does) every windowed frame, so widgets keep the
+    // vanilla diff/erase semantics (forcing refresh=true here would
+    // re-erase the widget boxes EVERY frame — an artifact vanilla only
+    // ever shows on genuine refresh frames).
     barRefreshed = deps.wipe === true || (vs.viewheight !== 200 && dFulllscreen);
     dFulllscreen = vs.fullscreen;
   } else if (st.gamestate === GS_INTERMISSION) {
