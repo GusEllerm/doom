@@ -170,5 +170,5 @@ Future tasks will be added as architects decompose milestones.
 | M9-09 | Renderer: viewport+composition | M9 | 04-07 | done (merged, verified — D018 flipped) |
 | M9-10 | Title + finale | M9 | 04 | done (merged, verified) |
 | M9-11 | L3 golden corpus HUD/menu/WI | M9 | 08-10 | done (merged, verified, 27 goldens reviewed-spot) |
-| M9-12 | Flow e2e + debug seams | M9 | 08-10 | dispatching |
-| M9-13 | M9 exit docs + bless ledger | M9 | 11,12 | queued |
+| M9-12 | Flow e2e + debug seams | M9 | 08-10 | done (merged + boot-adapt fix, stable x2) |
+| M9-13 | M9 exit docs + bless ledger | M9 | 11,12 | dispatched (agent 4f600a27) |

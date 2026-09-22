@@ -260,3 +260,4 @@ RESUME QUEUE: M6-07/08/10/12 (parallelizable) → M6-11 (switches/cards) → M6-
 - M9-10 visual pack reviewed PASS: TITLEPIC pristine; finale mid-reveal matches derived tic math visibly; HELP2 page correct.
 - M9-09 merged: D018 FLIPPED — monsters render production sprites (m8 strips re-blessed, infight strip now genuinely looks like DOOM); sb9 windowed default + borders live; 28 new viewtests.
 - M9-11 merged: 27-scene L3 corpus blessed once. HEADLINE: bar-100-keys-arsenal reviewed with eyes — windowed view + borders + full statusbar + face + keys + caco — THE project's first pixel-faithful DOOM screenshot.
+- M9-12 + boot-adapt merged (2nd boot-flip incident closed with double-run stability proof). M9-13 exit dispatched. Seeds planted for M10/M12: deterministic stream-in-attract seam, face-probe flash race lesson.
