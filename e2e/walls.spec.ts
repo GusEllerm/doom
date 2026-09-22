@@ -34,6 +34,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { enterPlay } from './playstart';
 
 import { VIEWPOINTS } from '../tests/render/viewpoints';
 
@@ -155,6 +156,9 @@ function diffAgainstStashed(page: Page, key: string): Promise<{
 async function boot(page: Page): Promise<void> {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
+  // M9 boot flow: TITLEPIC attract first — enter play so the warp/capture
+  // pins and the Tab overlay below run against the LIVE 3D game.
+  await enterPlay(page);
   // A few settling frames/tics at the spawn point before pinning.
   await page.waitForTimeout(250);
 }

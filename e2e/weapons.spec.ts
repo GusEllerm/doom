@@ -11,6 +11,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import { enterPlay } from './playstart';
 
 async function wadMissing(page: Page): Promise<boolean> {
   const res = await page.request.get('/wads/freedoom1.wad');
@@ -30,6 +31,9 @@ async function boot(page: Page): Promise<string[]> {
   const errors = trackConsole(page);
   await page.goto('/?test', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 60000 });
+  // M9 boot flow: TITLEPIC ticks no world — enter play or runTics/giveWeapon
+  // would drive a frozen attract world.
+  await enterPlay(page);
   return errors;
 }
 
