@@ -106,7 +106,7 @@ import {
 import { dInit, dPageDrawer, dSetWad, gResponderDemo, titleState } from './ui/title';
 import { fDrawer, fResponder, fSetWad, finaleState } from './ui/finale';
 import { buildPspriteFrameInput } from './pspriteview';
-import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
+import { flatsFromWad, loadRenderWorld, type FlatSource, type RenderWorld } from './render/rdata';
 import { buildRenderMapView, type RenderMapView } from './render/view';
 import { initLightTables, type LightTables } from './render/lights';
 import { fetchWad, WadLoadError } from './platform/wadload';
@@ -181,6 +181,13 @@ interface Boot {
    * world/mapView/sprites are per-MAP and rebuilt by the display block
    * when a level load changes state.map; tables/luts are per-IWAD. */
   world: RenderWorld;
+  /** B-04 perf: the PER-IWAD texture/flat decode, computed once at boot.
+   * loadRenderWorld only indexes these (texByName is per-world), so a
+   * same-map reload (death reborn) re-decodes ~66 ms of TEXTURE1/2 lumps
+   * for zero change — hoisting keeps the reload hitch at ~30 ms (the
+   * per-MAP halves only). */
+  readonly textures: ReturnType<typeof texturesFromWad>;
+  readonly flats: readonly FlatSource[];
   mapView: RenderMapView;
   readonly tables: LightTables;
   /** M4-07: the once-per-map static thing/sprite tables (rthings census +
@@ -417,7 +424,7 @@ function render(): void {
   if (boot.wad !== null && boot.simMap !== state.map && pendingMd !== null) {
     boot.mapName = state.map.name;
     boot.simMap = state.map;
-    boot.world = loadRenderWorld(pendingMd, texturesFromWad(boot.wad), flatsFromWad(boot.wad), state.sectors);
+    boot.world = loadRenderWorld(pendingMd, boot.textures, boot.flats, state.sectors);
     boot.mapView = buildRenderMapView(pendingMd);
     boot.sprites = buildMapSprites({ md: pendingMd, map: boot.mapView, wad: boot.wad });
   }
@@ -569,7 +576,9 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // and light thinkers mutate state.sectors in place, every frame sees
   // them with zero copy. Static frames stay byte-identical (live ==
   // static until a special runs; liveview/walls goldens unmoved).
-  const world = loadRenderWorld(md, texturesFromWad(wad), flatsFromWad(wad), state.sectors);
+  const textures = texturesFromWad(wad);
+  const flats = flatsFromWad(wad);
+  const world = loadRenderWorld(md, textures, flats, state.sectors);
   const mapView = buildRenderMapView(md);
   const tables = initLightTables(decodeColormap(wad.readLumpByName('COLORMAP')));
   const sprites = buildMapSprites({ md, map: mapView, wad });
@@ -582,7 +591,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
   attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
-  boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites, wad, mapName: map.name, simMap: map };
+  boot = { state, am, luts, palettePlayer, world, textures, flats, mapView, tables, sprites, wad, mapName: map.name, simMap: map };
 
   // ---- M9 UI-stack boot (M9-12 wiring; see the wiring block above) ----
   // vInit BEFORE stInit (the BG 320×32 canvas requirement, st_init) and

@@ -29,17 +29,30 @@ import { expect, test } from '@playwright/test';
 
 import { enterPlay } from './playstart';
 
-async function frameHash(page: import('@playwright/test').Page): Promise<string> {
-  return await page.evaluate(() => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d')!;
-    const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+const rawHash = (page: import('@playwright/test').Page): Promise<string> =>
+  page.evaluate(() => {
+    const c = window.__doom!.capture();
     let h = 2166136261;
-    for (let i = 0; i < d.length; i += 4) {
-      h = ((h ^ d[i]!) * 16777619) >>> 0;
-    }
+    for (let i = 0; i < c.indices.length; i++) h = ((h ^ c.indices[i]!) * 16777619) >>> 0;
     return h.toString(16);
   });
+
+/** Settle: the cross-level WIPE advances per DRAW (vanilla D_Display
+ * timing) — frames transiently differ after any load. Poll until three
+ * consecutive draws agree before asserting anything about pixels. */
+async function stableHash(page: import('@playwright/test').Page): Promise<string> {
+  let prev = '';
+  let same = 0;
+  for (let i = 0; i < 120; i++) {
+    const h = await rawHash(page);
+    same = h === prev ? same + 1 : 0;
+    if (same >= 2) return h;
+    prev = h;
+    await page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    );
+  }
+  throw new Error('frame never stabilized (wipe/animation loop?)');
 }
 
 test('E1M1 elevator: stateful ride + live display sync (B-04)', async ({ page }) => {
@@ -72,25 +85,27 @@ test('E1M1 elevator: stateful ride + live display sync (B-04)', async ({ page })
   expect(phases[1]![1], 'bottom reached (down phase complete)').toBe(-124);
   expect(phases[2]![1], 'still parked ~90 tics into the 105-tic wait').toBe(-124);
 
-  // mid-pause the canvas must TRACK the live SoA (decisive staleness probe)
-  const canvasA = await frameHash(page);
+  // mid-pause the canvas must TRACK the live SoA (decisive staleness
+  // probe). With the pre-fix NAME key the render world still points at
+  // the boot-time SoA: the live floorZ below changes NOTHING on screen
+  // (canvasB === canvasA once the wipe settles) — the exact "lifts are
+  // not stateful" failure. Fixed: the rebuild is identity-keyed, the
+  // world shares state.sectors, the write repaints.
+  const canvasA = await stableHash(page);
   const countersA = await page.evaluate(() => {
     const s = window.__doom!.state();
     if (!s.ready) throw new Error('state not ready');
     return s.render;
   });
   expect(countersA.hom, 'hom stays 0 mid-wait').toBe(0);
-  const canvasB = await page.evaluate(() => {
-    const st = window.__doom!.sim.getState()!;
-    st.sectors.floorZ[98] = 12 * 65536; // teleport the floor (no thinker active… yet)
-    return new Promise<string>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res('x'))));
-  });
-  void canvasB;
-  const canvasA2 = await frameHash(page);
-  expect(canvasA2, 'render world shares state.sectors (B-04 stale-world guard)').not.toBe(canvasA);
+  expect(countersA.visplaneOverflow).toBe(0);
   await page.evaluate(() => {
-    const st = window.__doom!.sim.getState()!;
-    st.sectors.floorZ[98] = -124 * 65536; // restore the parked value
+    window.__doom!.sim.getState()!.sectors.floorZ[98] = 12 * 65536; // teleport the floor
+  });
+  const canvasB = await stableHash(page);
+  expect(canvasB, 'render world shares state.sectors (B-04 stale-world guard)').not.toBe(canvasA);
+  await page.evaluate(() => {
+    window.__doom!.sim.getState()!.sectors.floorZ[98] = -124 * 65536; // restore
   });
 
   // let the cycle finish (wait expiry → up → self-remove), then 500-tic
