@@ -490,12 +490,14 @@ describe('M4-07 pipeline — static things (M4THNG)', () => {
 
   it('sprite pixels land at the predicted octant columns', () => {
     const bundle = SCENES.find((s) => s.name === 'M4THNG')!.bundle();
-    // The sprite roster must actually resolve (no missing-sprite skips).
-    expect(bundle.sprites.things.skipped.missingSprite, 'fixture sprites must install').toBe(0);
-    // 8 ring items + the pair, minus the two 3001 rows: doomednum 3001 is
-    // the TROOP spawn (KIND_MONSTER ⇒ excluded until M8, plan §4).
-    expect(bundle.sprites.things.skipped.monster, 'monster doomednums skipped').toBe(2);
-    expect(bundle.sprites.things.count, 'ring + pair − 2 monster rows').toBe(8);
+    // The sprite roster must actually resolve the RING items; the two
+    // 3001 rows draw… as far as the LUMP LOOKUP: doomednum 3001 is
+    // MT_TROOP, and the M9-09 KIND_MONSTER flip lets monster rows reach
+    // the sprite-table step — the fixture ships no TROO lumps, so they
+    // land in skipped.missingSprite instead of skipped.monster.
+    expect(bundle.sprites.things.skipped.missingSprite, 'TROO rows: no fixture lumps').toBe(2);
+    expect(bundle.sprites.things.skipped.monster, 'KIND_MONSTER exclusion removed').toBe(0);
+    expect(bundle.sprites.things.count, 'ring + pair (no lumps ⇒ no TROO pixels)').toBe(8);
     expect(bundle.sprites.things.unknownTypes, 'no unknown doomednums').toEqual([]);
 
     const cls = classify(bundle, VIEW_FRONT);
@@ -544,8 +546,8 @@ describe('M4-07 pipeline — static things (M4THNG)', () => {
   it('the table maps the doomednums the fixture uses', () => {
     // m4Fixtures calls 3001 "barrel-family", but info.c has doomednum 3001
     // = MT_TROOP (a monster) and 2035 = the explosive BARREL. The fixture's
-    // drawable statics are therefore all BAR1, and the two 3001 rows are
-    // skipped as monsters (plan §4: invisible until M8).
+    // drawable statics are therefore all BAR1; the two 3001 rows are
+    // DRAW-ELIGIBLE since the M9-09 flip but unresolvable (no TROO lumps).
     expect(THING_SPRITE4[thingTypeIndex(THING_SHORT)!]).toBe('BAR1');
     expect(THING_SPRITE4[thingTypeIndex(THING_TALL)!]).toBe('TROO');
   });

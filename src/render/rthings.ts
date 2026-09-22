@@ -32,10 +32,11 @@
  *    no mobjs (plan §0.8/§4): {@link THING_TYPES} below is the static
  *    subset of `mobjinfo[]` — doomednum → spawnstate sprite 4CC + frame
  *    (`frame & FF_FRAMEMASK`, r_things.h FF_FULLBRIGHT 0x8000 masked off —
- *    fullbright handling stays deferred per plan §4). Excluded: all
- *    monsters (`MF_COUNTKILL`, plus MT_SKULL 3006 — skull has NO
- *    MF_COUNTKILL and is special-cased in P_SpawnMapThing's -nomonsters —
- *    and MT_BOSSBRAIN 88) → M8; invisible `MF_NOSECTOR` markers 14/87/89
+ *    fullbright handling stays deferred per plan §4). M9-09 FLIP (D018): /
+ *    monsters are NO LONGER excluded — KIND_MONSTER THINGS draw their
+ *    spawnstate frame (the live-mobj path supersedes them when a roster
+ *    drives the frame, {@link createMobjOverlay}); invisible
+ *    `MF_NOSECTOR` markers 14/87/89
  *    (they never enter a `sec->thinglist`, so R_AddSprites can never see
  *    them); player starts 1-4 and DM starts 11 (handled before the table
  *    lookup); and the plan's marker exclusions 2001-2005 (see DEVIATION
@@ -89,6 +90,9 @@ import { thingAt, thingCount } from '../wad/mapdata';
 import { NF_SUBSECTOR, type RenderMapView } from './view';
 import { pointOnSideXY } from './bsp';
 import { ANG45 } from '../core/constants';
+import { sprnames } from '../wad/info/sprnames';
+import { FF_FRAMEMASK } from '../wad/info/states';
+import { MF } from '../wad/info/mobjinfo';
 
 /* ------------------------------------------------------------------ */
 /* Sprite tables (R_InitSpriteDefs output, SoA)                         */
@@ -229,7 +233,15 @@ export function thingAngleDegrees(deg: number): number {
 /** `THING_TYPES` entry classes. */
 export const KIND_STATIC = 0; // drawable static (item/decoration/weapon pickup), spawnstate frame
 export const KIND_MARKER = 1; // never drawn: MF_NOSECTOR markers + plan-listed 2001-2005
-export const KIND_MONSTER = 2; // excluded until M8 (plan §4)
+/**
+ * M9-09 FLIP (D018 retirement, plan §M9-09): monster THINGS are DRAWN
+ * (spawnstate frames via the M4 sprite tables + 8-rotation projection/
+ * clipping). The kind stays as the classifier for the live-mobj overlay
+ * ({@link createMobjOverlay}): when a live mobj roster drives the frame,
+ * the map-thing rows are superseded and the mobjs draw instead — the
+ * vanilla thinglist truth.
+ */
+export const KIND_MONSTER = 2;
 
 /**
  * Sorted doomednums the table answers for (everything spawnable by type
@@ -488,10 +500,9 @@ export function buildStaticThings(
       continue;
     }
     const kind = THING_KINDS[row]!;
-    if (kind === KIND_MONSTER) {
-      skipped.monster += 1; // M8 (plan §4)
-      continue;
-    }
+    // M9-09: KIND_MONSTER is NO LONGER excluded (D018 flip) — monster
+    // THINGS draw their spawnstate frame like any static thing; skipped
+    // .monster stays at 0 (the field is kept for shape stability).
     if (kind === KIND_MARKER) {
       skipped.marker += 1; // MF_NOSECTOR / plan-listed ids
       continue;
@@ -539,3 +550,209 @@ export function buildStaticThings(
     warnings,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Live-mobj thinglist overlay (M9-09 — D018 flip, the production      */
+/* live-sprite pass the M8-13 finding left test-side)                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The per-frame mobj fields R_AddSprites/R_ProjectSprite need (p_mobj.h
+ * `mobj_t` subset, structurally satisfied by the sim Mobj rows — the
+ * render zone reads mobj data ONLY through this shape, A-INT1). `sprite`
+ * is the sprnames index (m.sprite), `frame` the raw states[] frame word
+ * (the FF_FULLBRIGHT/rot bits are masked here, matching the static
+ * table's mask-off deviation).
+ */
+export interface LiveMobjView {
+  /** fixed */
+  readonly x: number;
+  readonly y: number;
+  /** fixed; the mobj's live z (already ONFLOORZ-resolved by the sim). */
+  readonly z: number;
+  /** BAM u32 */
+  readonly angle: number;
+  /** sprnames index */
+  readonly sprite: number;
+  /** states.ts frame word */
+  readonly frame: number;
+  /** MF_* bits (mobjinfo.ts); only MF_NOSECTOR is consulted (the thing
+   * list gate, r_things.c R_AddSprites walk precondition). */
+  readonly flags?: number;
+  /** P_RemoveMobj done — vanilla frees the mobj and the thinglist link
+   * unlinks it; the roster keeps it flagged, we skip it. */
+  readonly removed?: boolean;
+  /** Present on PLAYER mobjs (the sim's back-reference). Single-player
+   * truth: skipping them all matches vanilla — the display player is at
+   * the view origin (never projected), there are no other players. */
+  readonly playerRef?: unknown;
+}
+
+/** update() classification counters. */
+export interface MobjOverlayStats {
+  drawn: number;
+  skippedRemoved: number;
+  skippedNosector: number;
+  skippedPlayer: number;
+  skippedMissingSprite: number;
+}
+
+export interface MobjOverlay {
+  /** Stable identity to hand the sprite pass (renderer.ts); the fields
+   * are swapped/rewritten per frame — vissprites.ts reads every array
+   * through property access at draw time, never destructured. */
+  readonly things: StaticThings;
+  /** Rebuild the thinglist FROM the live roster (vanilla truth: with
+   * mobjs in the world the sector thinglists ARE the mobjs — every map
+   * thing was spawned through P_SpawnMapThing, so the static census rows
+   * are superseded, never merged: no double-draw). */
+  update(mobjs: Iterable<LiveMobjView>): MobjOverlayStats;
+  /** Restore the base static census (the mobj-less golden mode). */
+  useStatic(): void;
+}
+
+type MutableStaticThings = { -readonly [K in keyof StaticThings]: StaticThings[K] };
+
+/**
+ * Build the overlay around a once-built base list. `sprites` resolves
+ * sprnames 4CCs; capacity growth reallocs the live rows (the pass sees
+ * the swap through the stable `things` identity).
+ */
+export function createMobjOverlay(
+  base: StaticThings,
+  view: RenderMapView,
+  sprites: InstalledSprites,
+  options: { readonly capacity?: number } = {},
+): MobjOverlay {
+  const headLen = base.sectorHead.length;
+  const st: MutableStaticThings = {
+    count: base.count,
+    x: base.x,
+    y: base.y,
+    angle: base.angle,
+    spriteNum: base.spriteNum,
+    frame: base.frame,
+    floorZ: base.floorZ,
+    thing: base.thing,
+    next: base.next,
+    sectorHead: base.sectorHead,
+    skipped: base.skipped,
+    unknownTypes: base.unknownTypes,
+    warnings: base.warnings,
+  };
+
+  let cap = Math.max(options.capacity ?? 128, 16);
+  let lx = new Int32Array(cap);
+  let ly = new Int32Array(cap);
+  let lz = new Int32Array(cap);
+  let la = new Uint32Array(cap);
+  let ls = new Int32Array(cap);
+  let lf = new Uint8Array(cap);
+  let lnext = new Int32Array(cap);
+  const head = new Int32Array(headLen);
+  let live = false;
+
+  function grow(n: number): void {
+    while (cap <= n) cap *= 2;
+    const nx = new Int32Array(cap);
+    nx.set(lx);
+    lx = nx;
+    const ny = new Int32Array(cap);
+    ny.set(ly);
+    ly = ny;
+    const nz = new Int32Array(cap);
+    nz.set(lz);
+    lz = nz;
+    const na = new Uint32Array(cap);
+    na.set(la);
+    la = na;
+    const ns = new Int32Array(cap);
+    ns.set(ls);
+    ls = ns;
+    const nf = new Uint8Array(cap);
+    nf.set(lf);
+    lf = nf;
+    const nn = new Int32Array(cap);
+    nn.set(lnext);
+    lnext = nn;
+  }
+
+  return {
+    things: st,
+
+    update(mobjs: Iterable<LiveMobjView>): MobjOverlayStats {
+      const stats: MobjOverlayStats = {
+        drawn: 0,
+        skippedRemoved: 0,
+        skippedNosector: 0,
+        skippedPlayer: 0,
+        skippedMissingSprite: 0,
+      };
+      head.fill(-1);
+      let n = 0;
+      for (const m of mobjs) {
+        if (m.removed === true) {
+          stats.skippedRemoved += 1;
+          continue;
+        }
+        if (m.playerRef !== undefined) {
+          stats.skippedPlayer += 1;
+          continue;
+        }
+        if ((m.flags ?? 0) & MF.MF_NOSECTOR) {
+          stats.skippedNosector += 1;
+          continue;
+        }
+        const name4 = sprnames[m.sprite] ?? '';
+        const sn = name4 === '' ? undefined : sprites.indexOf.get(name4);
+        if (sn === undefined) {
+          stats.skippedMissingSprite += 1; // bullets/puffs w/o lumps etc.
+          continue;
+        }
+        if (n >= cap) grow(n);
+        lx[n] = m.x | 0;
+        ly[n] = m.y | 0;
+        lz[n] = m.z | 0;
+        la[n] = m.angle >>> 0;
+        ls[n] = sn;
+        lf[n] = (m.frame & FF_FRAMEMASK) & 0xff;
+        const sector = view.subsectors.sector[bspSubsectorAt(view, m.x | 0, m.y | 0)]!;
+        lnext[n] = head[sector]!; // prepend; sort pass fixes draw order
+        head[sector] = n;
+        n += 1;
+        stats.drawn = n;
+      }
+      st.count = n;
+      st.x = lx;
+      st.y = ly;
+      st.angle = la;
+      st.spriteNum = ls;
+      st.frame = lf.subarray(0, n);
+      st.floorZ = lz;
+      st.thing = EMPTY_THING_IDX;
+      st.next = lnext;
+      st.sectorHead = head;
+      live = true;
+      return stats;
+    },
+
+    useStatic(): void {
+      if (!live) return;
+      st.count = base.count;
+      st.x = base.x;
+      st.y = base.y;
+      st.angle = base.angle;
+      st.spriteNum = base.spriteNum;
+      st.frame = base.frame;
+      st.floorZ = base.floorZ;
+      st.thing = base.thing;
+      st.next = base.next;
+      st.sectorHead = base.sectorHead;
+      live = false;
+    },
+  };
+}
+
+/** StaticThings.thing placeholder for live rows (no THINGS record; the
+ * field is debug/traceability-only in vissprites' draw path). */
+const EMPTY_THING_IDX = new Int32Array(0);

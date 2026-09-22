@@ -11,7 +11,8 @@
  *     (r_things.c:522-523) vs hand-computed octants, incl. the unsigned
  *     wrap-around cases.
  *  3. E1M1 (skipIf): thing list counts per the P_SpawnMapThing classification
- *     (zero monsters, markers skipped, committed unknown-id list EMPTY),
+ *     (monsters DRAWN — M9-09 KIND_MONSTER flip, markers skipped, committed
+ *     unknown-id list EMPTY),
  *     `floorZ` = containing sector floor for 1000 sampled things via the
  *     merged BSP point locator, sector linked lists consistent.
  *  4. Zero-allocation steady state on the per-frame lookup paths
@@ -37,6 +38,7 @@ import { buildRenderMapView } from './view';
 import {
   buildStaticThings,
   bspSubsectorAt,
+  createMobjOverlay,
   frameFlip,
   frameLump,
   frameRotates,
@@ -51,10 +53,12 @@ import {
   THING_TYPES,
   KIND_MARKER,
   KIND_MONSTER,
-  KIND_STATIC,
   ROTATION_BIAS,
   type InstalledSprites,
+  type LiveMobjView,
 } from './rthings';
+import { sprnames } from '../wad/info/sprnames';
+import { MF } from '../wad/info/mobjinfo';
 import { ANG180, ANG45, FRACUNIT } from '../core/constants';
 
 /* ------------------------------------------------------------------ */
@@ -321,15 +325,15 @@ describe('buildStaticThings — fixture map', () => {
       { x: 100, y: 100, type: 1, flags: 7 }, // player start
       { x: 101, y: 100, type: 11, flags: 7 }, // deathmatch start
       { x: 102, y: 100, type: 14, flags: 7 }, // teleportman (NOSECTOR marker)
-      { x: 103, y: 100, type: 3004, flags: 7 }, // knight (monster)
       { x: 104, y: 100, type: 2005, flags: 7 }, // chainsaw (plan marker list)
       { x: 105, y: 100, type: 4096, flags: 7 }, // unknown id
       { x: 106, y: 100, type: 2014, flags: 16 | 2 }, // solo-skip (options&16)
       { x: 107, y: 100, type: 2015, flags: 1 }, // easy-skill-only at skill 3
       { x: 640, y: 128, type: 2015, angle: 225, flags: 6 }, // bonus, room 1, skill ok
+      { x: 103, y: 100, type: 3004, flags: 7 }, // zombie trooper (M9-09: DRAWS)
     ],
   };
-  const wad = fixtureWadWithThings(spec, ['BAR1A0', 'ARM1A0', 'BON2A0']);
+  const wad = fixtureWadWithThings(spec, ['BAR1A0', 'ARM1A0', 'BON2A0', 'POSSA0']);
   const md = loadMap(wad, 'FIXMAP');
   const view = buildRenderMapView(md);
   const tables = installSprites(buildSpriteDefs(wad));
@@ -337,13 +341,13 @@ describe('buildStaticThings — fixture map', () => {
 
   it('classifies every thing, in P_SpawnMapThing order', () => {
     expect(thingCount(md)).toBe(11);
-    expect(st.count).toBe(3);
+    expect(st.count).toBe(4); // M9-09 flip: the zombie trooper DRAWS (spawnstate frame)
     expect(st.skipped).toEqual({
       playerStart: 1,
       dmStart: 1,
       solo: 1,
       skill: 1,
-      monster: 1,
+      monster: 0, // KIND_MONSTER exclusion removed (D018 flip)
       marker: 2, // teleportman + plan-excluded chainsaw
       unknown: 1,
       missingSprite: 0,
@@ -382,21 +386,113 @@ describe('buildStaticThings — fixture map', () => {
   });
 
   it('missing sprite lumps are counted + warned, never crash', () => {
-    const noArm = installSprites(buildSpriteDefs(fixtureWadWithThings(spec, ['BAR1A0', 'BON2A0'])));
+    const noArm = installSprites(
+      buildSpriteDefs(fixtureWadWithThings(spec, ['BAR1A0', 'BON2A0', 'POSSA0']))
+    );
     const st2 = buildStaticThings(md, view, noArm);
-    expect(st2.count).toBe(2);
+    expect(st2.count).toBe(3);
     expect(st2.skipped.missingSprite).toBe(1);
     expect(st2.warnings.some((w) => w.includes('ARM1'))).toBe(true);
   });
 
-  it('monster roster never draws: table kinds are consistent', () => {
-    // The fixture knight (3004) is gone; every table monster row is kind 2.
+  it('monster roster DRAWS (M9-09 flip): kind classification stays consistent', () => {
+    // The fixture zombie trooper (3004) is row 3 of the draw list; every table
+    // monster row keeps kind 2 (the overlay takeover classifier).
+    expect(st.spriteNum[3]).toBe(tables.indexOf.get('POSS'));
+    expect(st.frame[3]).toBe(THING_FRAMES[thingTypeIndex(3004)!]);
     expect(thingTypeIndex(3004)).toBeGreaterThanOrEqual(0);
     expect(THING_KINDS[thingTypeIndex(3004)!]).toBe(KIND_MONSTER);
     expect(thingTypeIndex(87)).toBeGreaterThanOrEqual(0); // NOSECTOR boss target
     expect(THING_KINDS[thingTypeIndex(87)!]).toBe(KIND_MARKER);
     expect(thingTypeIndex(11)).toBe(-1); // DM starts precede the table scan
     expect(thingTypeIndex(4)).toBe(-1);
+  });
+});
+
+describe('createMobjOverlay — live-mobj thinglist (§M9-09 D018 flip)', () => {
+  const spec2: RectMapSpec = {
+    rooms: [
+      { x: 0, y: 0, w: 256, h: 256, floorHeight: 0 },
+      { x: 512, y: 0, w: 256, h: 256, floorHeight: 64 },
+    ],
+    things: [
+      { x: 128, y: 128, type: 2035, angle: 90, flags: 7 }, // barrel
+      { x: 600, y: 128, type: 3004, angle: 0, flags: 7 }, // zombie trooper (static)
+    ],
+  };
+  const wad2 = fixtureWadWithThings(spec2, ['BAR1A0', 'POSSA0']);
+  const md2 = loadMap(wad2, 'FIXMAP');
+  const view2 = buildRenderMapView(md2);
+  const tables2 = installSprites(buildSpriteDefs(wad2));
+  const base2 = buildStaticThings(md2, view2, tables2);
+
+  const mobj = (over: Partial<LiveMobjView>): LiveMobjView => ({
+    x: 60 * FRACUNIT,
+    y: 60 * FRACUNIT,
+    z: 0,
+    angle: 0,
+    sprite: sprnames.indexOf('POSS'),
+    frame: 0,
+    flags: MF.MF_SOLID,
+    ...over,
+  });
+
+  it('starts in static mode: the base census is visible verbatim', () => {
+    const o = createMobjOverlay(base2, view2, tables2);
+    expect(o.things.count).toBe(base2.count);
+    expect(o.things.x).toBe(base2.x); // field identity swapped, zero copy
+    expect(o.things.sectorHead).toBe(base2.sectorHead);
+    expect(base2.count).toBe(2); // barrel + zombie trooper (M9-09 flip)
+  });
+
+  it('update() SUPERSEDES the census with the live roster (no double-draw)', () => {
+    const o = createMobjOverlay(base2, view2, tables2);
+    const stats = o.update([
+      mobj({}),
+      mobj({ removed: true }),
+      mobj({ playerRef: {} }),
+      mobj({ flags: MF.MF_NOSECTOR }),
+      mobj({ sprite: sprnames.indexOf('TLMP') }), // no lumps in fixture
+      mobj({ x: 600 * FRACUNIT, y: 128 * FRACUNIT, frame: 2 | 0x8000 }),
+    ]);
+    expect(o.things.count).toBe(stats.drawn); // sum of kinds === input
+    expect(stats.drawn).toBe(2);
+    expect(stats.skippedRemoved).toBe(1);
+    expect(stats.skippedPlayer).toBe(1);
+    expect(stats.skippedNosector).toBe(1);
+    expect(stats.skippedMissingSprite).toBe(1);
+    expect(o.things.x[0]).toBe(60 * FRACUNIT);
+    expect(o.things.floorZ[1]).toBe(0);
+    expect(o.things.frame[1]).toBe(2); // FF_FULLBRIGHT (0x8000) masked off, static encoding
+    // sector chains visit each live row exactly once
+    const seen = new Set<number>();
+    for (let s = 0; s < o.things.sectorHead.length; s++) {
+      for (let k = o.things.sectorHead[s]!; k !== -1; k = o.things.next[k]!) {
+        expect(seen.has(k)).toBe(false);
+        seen.add(k);
+      }
+    }
+    expect(seen.size).toBe(2);
+    // the live rows live in the sectors of their POSITIONS
+    expect(
+      o.things.sectorHead[
+        view2.subsectors.sector[bspSubsectorAt(view2, 600 * FRACUNIT, 128 * FRACUNIT)]!
+      ]
+    ).toBeGreaterThanOrEqual(0);
+  });
+
+  it('useStatic() restores the census identity; growth keeps the identity', () => {
+    const o = createMobjOverlay(base2, view2, tables2, { capacity: 4 });
+    const rows: LiveMobjView[] = [];
+    for (let i = 0; i < 6; i++) rows.push(mobj({ x: (64 + i * 8) * FRACUNIT }));
+    const stats = o.update(rows); // exceeds capacity 4 → grows
+    expect(stats.drawn).toBe(6);
+    expect(o.things.x[5]).toBe((64 + 5 * 8) * FRACUNIT);
+    const liveThings = o.things;
+    o.useStatic();
+    expect(liveThings.count).toBe(base2.count);
+    expect(liveThings.x).toBe(base2.x);
+    expect(liveThings.sectorHead).toBe(base2.sectorHead);
   });
 });
 
@@ -445,15 +541,15 @@ describe.skipIf(!hasWad)('freedoom1 E1M1 static thing list', () => {
     expect(tables.count).toBeGreaterThan(100);
   });
 
-  it('counts: 292 things classify with zero monsters and an EMPTY unknown list', () => {
+  it('counts: 292 things classify, monsters INCLUDED (M9-09 flip), unknown list EMPTY', () => {
     expect(thingCount(md)).toBe(292);
-    expect(st.count).toBe(179);
+    expect(st.count).toBe(208); // 179 non-monster + 29 monster things (D018 flip)
     expect(st.skipped).toEqual({
       playerStart: 4,
       dmStart: 8,
       solo: 28,
       skill: 43, // default skill 3 (sk_medium), vanilla option bits
-      monster: 29,
+      monster: 0, // M9-09: KIND_MONSTER THINGS draw their spawnstate frame
       marker: 1, // the doomednum-2005 chainsaw (plan marker exclusion)
       unknown: 0,
       missingSprite: 0,
@@ -475,12 +571,18 @@ describe.skipIf(!hasWad)('freedoom1 E1M1 static thing list', () => {
     expect(sum).toBe(thingCount(md));
   });
 
-  it('zero monsters in the draw list (plan §4: monsters arrive with M8)', () => {
+  it('the 29 surviving monster THINGS are in the draw list (M9-09 D018 flip)', () => {
+    let monsters = 0;
+    let markers = 0;
     for (let i = 0; i < st.count; i++) {
       const type = thingAt(md, st.thing[i]!).type;
-      expect(THING_KINDS[thingTypeIndex(type)!], `thing type ${type}`).toBe(KIND_STATIC);
+      const kind = THING_KINDS[thingTypeIndex(type)!];
+      if (kind === KIND_MARKER) markers += 1;
+      if (kind === KIND_MONSTER) monsters += 1;
     }
-    expect(st.skipped.monster).toBe(29);
+    expect(monsters).toBe(29);
+    expect(markers).toBe(0); // markers stay excluded
+    expect(st.skipped.monster).toBe(0);
   });
 
   it('floorZ == containing sector floor for 1000 sampled things (bsp point loc)', () => {

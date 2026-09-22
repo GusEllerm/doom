@@ -71,6 +71,7 @@ import type { WadFile } from '../wad/wadfile';
 import { drawAutomap, type AutomapGeom, type AutomapMap, type AutomapPlayer } from './automap';
 import { createBspWalker, type BspWalker, type WalkCallbacks } from './bsp';
 import { clearDrawsegs } from './drawsegs';
+import { drawViewBorder, fillBackScreen } from './borders';
 import {
   configureMaskedPass,
   drawMasked,
@@ -88,8 +89,11 @@ import {
 import type { RenderWorld } from './rdata';
 import {
   buildStaticThings,
+  createMobjOverlay,
   installSprites,
   type InstalledSprites,
+  type LiveMobjView,
+  type MobjOverlay,
   type StaticThings,
 } from './rthings';
 import {
@@ -111,12 +115,15 @@ import {
   type SpritePatch,
 } from './vissprites';
 import {
+  consumeViewSetSizeNeeded,
   createViewState,
   setupView,
+  viewSize,
   VIEWWIDTH,
   type RenderMapView,
   type ViewState,
 } from './view';
+import { screens, vInit } from './vvideo';
 
 /** sim/player.ts ONFLOORZ (MININT token — see file header for why inline). */
 const ONFLOORZ_TOKEN = -2147483648;
@@ -228,6 +235,16 @@ export interface FrameDeps {
    * by construction; when present the pass draws LAST of the 3D passes
    * (r_things.c:985, after drawMasked, before the automap overlay). */
   readonly psprites?: PspriteFrameInput;
+  /**
+   * M9-09 LIVE-MOBJ roster (the D018 flip, plan §M9-09): when present,
+   * R_AddSprites walks the LIVE thinglist (rthings createMobjOverlay —
+   * the mobjs SUPERSEDE the static census, never merge, so nothing is
+   * drawn twice: every map thing already spawned an mobj through the
+   * P_SpawnMapThing analogue). OMITTED ⇒ the mobj-less static census
+   * (every M4-M8 golden stays byte-identical by construction — the
+   * overlay stays in useStatic mode).
+   */
+  readonly mobjs?: Iterable<LiveMobjView>;
 }
 
 /** Per-frame psprite bundle (views row order = vanilla psp loop order:
@@ -268,6 +285,9 @@ interface FrameCtx {
    * decode; deps.psprites presence is checked per FRAME, not here, since
    * the views change every frame without any identity to cache on). */
   readonly pspPass: PspritePass | null;
+  /** M9-09: live-mobj thinglist overlay around sprites.things (null ⇒ no
+   * sprite pass at all). renderFrame swaps live/static mode per FRAME. */
+  readonly overlay: MobjOverlay | null;
   /** Reinstalled as masked.ts' frame context every frame (ref store, zero
    * alloc; masked.ts owns the draw's globals). */
   readonly maskedCtx: MaskedContext;
@@ -312,6 +332,10 @@ function getCtx(deps: FrameDeps): FrameCtx {
     const view = createViewState();
     const segs = createSegCallbacks(deps.fb, deps.world, view, deps.map, tables);
     const sprites = deps.sprites ?? null;
+    // M9-09: the pass draws through the OVERLAY's stable `things`
+    // identity; live/static mode is a per-frame field swap inside it.
+    const overlay =
+      sprites === null ? null : createMobjOverlay(sprites.things, deps.map, sprites.sprites);
     const pass = sprites === null
       ? null
       : createSpritePass({
@@ -319,7 +343,7 @@ function getCtx(deps: FrameDeps): FrameCtx {
         view,
         world: deps.world,
         lights: tables,
-        things: sprites.things,
+        things: overlay!.things,
         sprites: sprites.sprites,
         patches: sprites.patches,
         // M4-04's real R_RenderMaskedSegRange (vissprites.ts defaults to a
@@ -353,6 +377,7 @@ function getCtx(deps: FrameDeps): FrameCtx {
         ? segs
         : { ...segs, addSectorSprites: (sector: number): void => pass!.addSectorSprites(sector) },
       sprites,
+      overlay,
       pass,
       maskedCtx: {
         indices: deps.fb.indices,
@@ -420,6 +445,11 @@ export function renderFrame(deps: FrameDeps): FrameCounters {
   ctx.pass?.clearSprites();
   resetRenderCounters();
 
+  // 2.5 M9-09 live-mobj roster swap (before the BSP pass so R_AddSprites
+  // sees this frame's thinglists; useStatic keeps M4-M8 goldens exact).
+  if (deps.mobjs !== undefined) ctx.overlay?.update(deps.mobjs);
+  else ctx.overlay?.useStatic();
+
   // 3. M3 deviation D CLOSED — no fb.clear(0). Anything left unpainted by a
   //    plane, wall, sprite or masked middle is the genuine void (sky/black),
   //    never a cleared background.
@@ -477,3 +507,275 @@ export function getFrameCounters(): FrameCounters {
 
 /** Re-export the golden-suite/e2e counter entry (plan §M3-07 Produces). */
 export { getRenderCounters };
+
+/* ================================================================== */
+/* D_Display composition (M9-09 — plan §M9-09, d_main.c:193-330)       */
+/* ================================================================== */
+
+/* d_main.h gamestate_t (doomdef.h:128-133) — numeric truth mirrored so
+ * the render zone never imports sim/game (A-INT1; the caller passes
+ * GameState.gamestate straight through). */
+export const GS_LEVEL = 0;
+export const GS_INTERMISSION = 1;
+export const GS_FINALE = 2;
+export const GS_DEMOSCREEN = 3;
+
+/** The d_main.c D_Display globals the composition reads (a structural
+ * read-view of the M9-03 GameState fields — the live GameState satisfies
+ * it for the flow half; automapactive lives in the automap STATE, so the
+ * caller assembles it here). */
+export interface DisplayState {
+  readonly gamestate: number;
+  readonly gametic: number;
+  readonly automapactive: boolean;
+  readonly viewactive: boolean;
+  readonly paused: boolean;
+  /** menuactive (d_main.c:285 borderdrawcount gate; M9-04's menu owns the
+   * real flag — optional, default false). */
+  readonly menuActive?: boolean;
+}
+
+/**
+ * Registrable per-state drawers ("merged hooks", the game.ts idiom): the
+ * UI modules (M9-04..10) are wired by the boot layer WITHOUT the render
+ * zone importing them (the zone graph forbids render→ui; the ui modules
+ * import render, never the reverse). Every hook is optional; unregistered
+ * state drawers are counted in displayStubHits instead of throwing.
+ */
+export interface DisplayHooks {
+  /** ST_Drawer(fullscreen, refresh) — fullscreen ⇔ viewheight==200
+   * (d_main.c:252). Draws into screens[0]/BG via ui/stlib's vvideo calls.
+   * REORDER CONTRACT (this file's header): our 3D pass covers the FULL
+   * buffer including the bar rows, so the hook (or the boot wiring) MUST
+   * restore the BG→FG bar rows (ui/statusbar stRefreshBackground, which is
+   * what vanilla's ST_doRefresh copy does) whenever !fullscreen, or the
+   * bar would show 3D pixels. Restoring via BG (not refresh=true) keeps
+   * the widget diff/erase semantics byte-faithful. */
+  stDrawer?: (fullscreen: boolean, refresh: boolean) => void;
+  /** HU_Drawer (d_main.c:270) — messages overlay AFTER the 3D view. */
+  huDrawer?: (automapactive: boolean) => void;
+  /** WI_Drawer (GS_INTERMISSION). */
+  wiDrawer?: () => void;
+  /** F_Drawer (GS_FINALE, M9-10). */
+  finaleDrawer?: () => void;
+  /** D_PageDrawer = V_DrawPatch(0,0,pagename) (GS_DEMOSCREEN, M9-10). */
+  pageDrawer?: () => void;
+  /** M_Drawer LAST — "menu is drawn even on top of everything" (:327). */
+  mDrawer?: () => void;
+  /** M_PAUSE stamp at the view-window top (d_main.c:310-316). */
+  pausedPatch?: (x: number, y: number) => void;
+}
+
+const displayHooks: DisplayHooks = {};
+export const displayStubHits = { count: 0, byName: new Map<string, number>() };
+
+export function resetDisplayStubHits(): void {
+  displayStubHits.count = 0;
+  displayStubHits.byName.clear();
+}
+
+/** Merge drawer implementations into the registry (undefined stays inert). */
+export function registerDisplayHooks(h: Partial<DisplayHooks>): void {
+  Object.assign(displayHooks, h);
+}
+
+export function resetDisplayHooks(): void {
+  for (const k of Object.keys(displayHooks) as (keyof DisplayHooks)[]) delete displayHooks[k];
+}
+
+/** displayFrame inputs: the full 3D FrameDeps plus the flow read-view and
+ * the optional border source (the IWAD holding FLOOR7_2 + brdr_*). */
+export interface DisplayDeps extends FrameDeps {
+  readonly state: DisplayState;
+  readonly borders?: { readonly wad: WadFile };
+  /** the wipe sentinel (M9-03 takeWipeRequest) — the melt BODY is M9-01/
+   * later wiring; for the composition it only forces the bar refresh. */
+  readonly wipe?: boolean;
+}
+
+export interface DisplayResult {
+  /** the R_RenderPlayerView counters (undefined ⇒ no 3D pass this frame:
+   * non-LEVEL state, automap… the automap still overlays inside
+   * renderFrame when active, mirroring the merged M2-M8 behavior). */
+  readonly counters?: FrameCounters;
+  readonly viewheight: number;
+  readonly fullscreen: boolean;
+  readonly borderDrawn: boolean;
+  readonly barRefreshed: boolean;
+}
+
+/* D_Display's file-scope statics (d_main.c:196-200). */
+let dFulllscreen = false;
+let dOldGamestate = -1;
+let dBorderDrawCount = 0;
+let dMenuActiveState = false;
+let dViewActiveState = false;
+
+/** Test/boot hook: forget the statics (equivalent of process start). */
+export function resetDisplayStatics(): void {
+  dFulllscreen = false;
+  dOldGamestate = -1;
+  dBorderDrawCount = 0;
+  dMenuActiveState = false;
+  dViewActiveState = false;
+}
+
+/**
+ * D_Display (d_main.c:193-330), composition half — no wipes (M9-03 owns
+ * the sentinel), no I_* blit calls (platform owns those). Order deviation
+ * documented: the ST bar draws AFTER the 3D pass (vanilla draws it before
+ * R_RenderPlayerView because the view pass only ever touches the window;
+ * our 3D pass is full-buffer, so the DISJOINT bar/border regions paint
+ * over it afterwards — pixel-identical result, order-safe by region).
+ */
+export function displayFrame(deps: DisplayDeps): DisplayResult {
+  // screens[0] must alias the framebuffer for every V_* drawer (vvideo
+  // header's integration seam). Re-bind only on fb identity change.
+  const fg = screens[0];
+  if (fg === undefined || fg === null || fg.data !== deps.fb.indices) vInit(deps.fb.indices);
+
+  // 1. setsizeneeded ⇒ R_ExecuteSetViewSize, force background redraw
+  //    (oldgamestate = -1), borderdrawcount = 3 (d_main.c:198-203).
+  const sizeChanged = consumeViewSetSizeNeeded();
+  const vs = viewSize();
+  if (sizeChanged) {
+    dOldGamestate = -1; // force R_FillBackScreen below, exactly vanilla
+    dBorderDrawCount = 3;
+  }
+
+  const st = deps.state;
+
+  // 2. per-state drawers (the buffered half — menus/HU draw AFTER in
+  //    vanilla's order below; wipe capture is M9-03's sentinel consumer).
+  let counters: FrameCounters | undefined;
+  let barRefreshed = false;
+  let borderDrawn = false;
+
+  if (st.gamestate === GS_LEVEL && st.gametic !== 0) {
+    // redrawsbar = wipe || (viewheight != MAXHEIGHT && fullscreen)
+    // (d_main.c:243-246) VERBATIM. The reorder's FG-bar-dirtied-by-3D
+    // problem is solved caller-side: the registered hook restores the
+    // BG→FG bar rows (ui/statusbar stRefreshBackground — what vanilla's
+    // ST_doRefresh copy does) every windowed frame, so widgets keep the
+    // vanilla diff/erase semantics (forcing refresh=true here would
+    // re-erase the widget boxes EVERY frame — an artifact vanilla only
+    // ever shows on genuine refresh frames).
+    barRefreshed = deps.wipe === true || (vs.viewheight !== 200 && dFulllscreen);
+    dFulllscreen = vs.fullscreen;
+  } else if (st.gamestate === GS_INTERMISSION) {
+    if (displayHooks.wiDrawer !== undefined) displayHooks.wiDrawer();
+    else displayStub('wiDrawer');
+  } else if (st.gamestate === GS_FINALE) {
+    if (displayHooks.finaleDrawer !== undefined) displayHooks.finaleDrawer();
+    else displayStub('finaleDrawer');
+  } else if (st.gamestate === GS_DEMOSCREEN) {
+    if (displayHooks.pageDrawer !== undefined) displayHooks.pageDrawer();
+    else displayStub('pageDrawer');
+  }
+
+  // 3. R_RenderPlayerView — the 3D pass (automap overlay lives INSIDE
+  //    renderFrame here, the merged M2+ behavior; vanilla skips the view
+  //    over the automap, AM_clearFB covering the same pixels).
+  if (st.gamestate === GS_LEVEL && st.gametic !== 0) {
+    counters = renderFrame(deps);
+
+    // 3b. windowed presentation (port deviation, view.ts header): the
+    // 320x200 pass is CROP-BLIT into the view window (the 3D passes keep
+    // the fullscreen projection constants; centering is exact on both
+    // axes — crop x0 === viewwindowx, the row crop centers centery).
+    if (vs.viewheight !== 200 || vs.scaledviewwidth !== 320) {
+      cropToWindow(deps.fb, vs.viewwindowx, vs.viewwindowy, vs.viewwidth, vs.viewheight);
+    }
+
+    // 4. border bookkeeping (d_main.c:276-296): refill the back screen on
+    //    GS_LEVEL entry (or forced resize), then the 3-count erase.
+    if (dOldGamestate !== GS_LEVEL) {
+      dViewActiveState = false;
+      if (deps.borders !== undefined) fillBackScreen(deps.borders.wad);
+    }
+    if (!st.automapactive && vs.scaledviewwidth !== 320) {
+      const menuActive = st.menuActive ?? false;
+      if (menuActive || dMenuActiveState || !dViewActiveState) dBorderDrawCount = 3;
+      if (dBorderDrawCount > 0) {
+        drawViewBorder();
+        borderDrawn = true;
+        dBorderDrawCount -= 1;
+      }
+    }
+
+    // 4b. ST_Drawer (reordered AFTER the view/border half: our 3D pass
+    // covers the full buffer, so the bar/border regions must paint last;
+    // vanilla needs no reorder because its view pass never leaves the
+    // window). fullscreen ⇔ viewheight==200 (d_main.c:252).
+    if (displayHooks.stDrawer !== undefined) displayHooks.stDrawer(vs.fullscreen, barRefreshed);
+    else displayStub('stDrawer');
+  }
+
+  // 5. HU_Drawer + paused stamp + M_Drawer last (d_main.c:268-327).
+  if (st.gamestate === GS_LEVEL && st.gametic !== 0) {
+    if (displayHooks.huDrawer !== undefined) displayHooks.huDrawer(st.automapactive);
+    else displayStub('huDrawer');
+  }
+  if (st.paused) {
+    const y = st.automapactive ? 4 : vs.viewwindowy + 4;
+    if (displayHooks.pausedPatch !== undefined) {
+      displayHooks.pausedPatch(vs.viewwindowx + (vs.scaledviewwidth - 68) / 2, y);
+    }
+  }
+  if (displayHooks.mDrawer !== undefined) displayHooks.mDrawer();
+
+  dMenuActiveState = st.menuActive ?? false;
+  dViewActiveState = st.gamestate === GS_LEVEL ? st.viewactive : false;
+  dOldGamestate = st.gamestate;
+
+  return {
+    counters,
+    viewheight: vs.viewheight,
+    fullscreen: vs.fullscreen,
+    borderDrawn,
+    barRefreshed,
+  };
+}
+
+function displayStub(name: string): void {
+  displayStubHits.count += 1;
+  displayStubHits.byName.set(name, (displayStubHits.byName.get(name) ?? 0) + 1);
+}
+
+/**
+ * Crop-blit of the centered (320−w)/2 × (200−h)/2 window into the view
+ * window (the port deviation the view.ts header pins). Rows move as
+ * whole 320-wide units; direction chosen so a shift never clobbers an
+ * unread source row.
+ */
+function cropToWindow(
+  fb: Framebuffer,
+  wx: number,
+  wy: number,
+  w: number,
+  h: number,
+): void {
+  const px = fb.indices;
+  const srcX0 = (320 - w) >> 1; // === wx by construction (r_draw math)
+  const srcY0 = (200 - h) >> 1;
+  const shift = wy - srcY0;
+  if (shift === 0) {
+    if (srcX0 !== wx) {
+      for (let r = 0; r < h; r += 1) {
+        const row = r * 320;
+        const tmp = px.slice(row + srcX0, row + srcX0 + w);
+        px.set(tmp, row + wx);
+      }
+    }
+    return;
+  }
+  // shift < 0: destination rows ABOVE sources → sweep top-down;
+  // shift > 0: below → sweep bottom-up. Row spans never overlap
+  // themselves (r ≠ r + shift), a slice+set per row is safe.
+  const step = shift < 0 ? 1 : -1;
+  for (let r = shift < 0 ? 0 : h - 1; r >= 0 && r < h; r += step) {
+    const dst = (wy + r) * 320;
+    const src = (srcY0 + r) * 320 + srcX0;
+    px.set(px.slice(src, src + w), dst + wx);
+  }
+}

@@ -117,12 +117,17 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "faf01aed2e22123699cd91a1073392cd3f34b7ff14d82655d89a72320d4e258e"
         }
       ]
     },
     "m6-lift-through": {
       "kind": "mechanics",
-      "script": "FIXMAP lift (corridor | tagged plat f0, sump f-24) -> warp (48,128,0deg) -> walk fwd until x≥520 (cross W1 plat trigger @x512 ~tic 63), momentum-stop ON the shaft -> floor -24 under the rider, PLATWAIT 105, raise -> player RIDES the special (SF/Z captions) -> 8 frames t=0/30/60/80/120/160/190/215",
+      "script": "FIXMAP lift (corridor | tagged plat f0, sump f-24) -> warp (48,128,0deg) -> walk fwd until x\u2265520 (cross W1 plat trigger @x512 ~tic 63), momentum-stop ON the shaft -> floor -24 under the rider, PLATWAIT 105, raise -> player RIDES the special (SF/Z captions) -> 8 frames t=0/30/60/80/120/160/190/215",
       "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
       "updatedAt": "2026-09-21",
       "png": "m6-lift-through.png",
@@ -233,12 +238,17 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "c26bc5c31fe5697788555229986730ab64437136fa8bec8dff940811442923fd"
         }
       ]
     },
     "m6-light-paint": {
       "kind": "mechanics",
-      "script": "FIXMAP light (corridor | tagged room light 40) -> warp (48,128,0deg) -> walk fwd <=105 tics, cross W1 lightOn(255) trigger @x512 (~tic 66) -> tagged light SoA 40→255, room ahead repaints at full brightness (SL caption) -> 8 frames t=0..105",
+      "script": "FIXMAP light (corridor | tagged room light 40) -> warp (48,128,0deg) -> walk fwd <=105 tics, cross W1 lightOn(255) trigger @x512 (~tic 66) -> tagged light SoA 40\u2192255, room ahead repaints at full brightness (SL caption) -> 8 frames t=0..105",
       "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
       "updatedAt": "2026-09-21",
       "png": "m6-light-paint.png",
@@ -349,12 +359,17 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "6d99a667bde8e3129436e1d3ace9c9a3b589c49ae1495c06cdf890a94430df42"
         }
       ]
     },
     "m6-door-through": {
       "kind": "mechanics",
-      "script": "FIXMAP door (corridor | trigger edge x448 | tagged slab c0 | hall beyond, ring c128) -> warp (48,128,0deg) -> walk fwd, cross W1 doorRaise trigger @x448 (~tic 55, EV_DoDoor normal LIVE) -> slab SoA 0→124 @2/tic (topheight 128−4), player blocked at the closed slab then walks THROUGH (>56 headroom ~tic 84) -> 8 frames t=0..150 (VDOORWAIT 150 keeps it open)",
+      "script": "FIXMAP door (corridor | trigger edge x448 | tagged slab c0 | hall beyond, ring c128) -> warp (48,128,0deg) -> walk fwd, cross W1 doorRaise trigger @x448 (~tic 55, EV_DoDoor normal LIVE) -> slab SoA 0\u2192124 @2/tic (topheight 128\u22124), player blocked at the closed slab then walks THROUGH (>56 headroom ~tic 84) -> 8 frames t=0..150 (VDOORWAIT 150 keeps it open)",
       "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
       "updatedAt": "2026-09-21",
       "png": "m6-door-through.png",
@@ -460,14 +475,19 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "11337c1193c36309fa4582494d1b307e1aa9823ce72b1799b32bb2de7969982e"
         }
       ]
     },
     "m8-chase-corner": {
       "kind": "mechanics",
-      "script": "FIXMAP pillar (896x384 ring | solid c0 pillar 128x128 @448,128) -> warp (256,192,0deg) -> spawn TROO (768,192) + P_NoiseAlert (A_Look wake tic 9) -> imp closes, P_NewChaseDir random-search draws (D-stat) corner it around the pillar (plates = synthetic state-letter sprites; captions x/y/HP/state) -> 8 frames t=0..160",
-      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
-      "updatedAt": "2026-09-21",
+      "script": "FIXMAP pillar (896x384 ring | solid c0 pillar 128x128 @448,128) -> warp (256,192,0deg) -> spawn TROO (768,192) + P_NoiseAlert (A_Look wake tic 9) -> imp closes, P_NewChaseDir random-search draws (D-stat) corner it around the pillar real IWAD TROO art via deps.mobjs (M9-09 flip); captions x/y/HP/state) -> 8 frames t=0..160",
+      "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+      "updatedAt": "2026-09-22",
       "png": "m8-chase-corner.png",
       "width": 1310,
       "height": 442,
@@ -552,10 +572,10 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "02e88d185f7ae94a4d9714f340ab10e8ba04ae8ec4868e49b0b97a665d27f84c"
+          "frameSha": "989ba7a6fb8cc689933dd28ad133bf18d6befb2fb4819a9d7b801a3f069828ec"
         }
       ],
-      "indexSha256": "2b0ecb3fc341233052673950f893d6784899e958c5262b4a4e2c798fd9997bb7",
+      "indexSha256": "f8c37df3b48b958ee0ceac2d1964494660b2c505763da802cf0d3595c2b5d24a",
       "history": [
         {
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
@@ -566,14 +586,19 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "2b0ecb3fc341233052673950f893d6784899e958c5262b4a4e2c798fd9997bb7"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "f8c37df3b48b958ee0ceac2d1964494660b2c505763da802cf0d3595c2b5d24a"
         }
       ]
     },
     "m8-infight": {
       "kind": "mechanics",
-      "script": "FIXMAP corridor 1024x256 -> warp (64,128,0deg) -> SPOS B at (448,128), TROO A at (768,128), both woken by one P_NoiseAlert (target player) -> FINDING: the plan scripted imp-vs-imp, but PIT_CheckThing (p_map.c:301-315, pmissiles.ts missileThingCheck) explodes same-species missiles with ZERO damage — the species pair is the minimal honest infight rig -> A fireballs catch B (X@ captions) -> p_inter.c:911: B.target := A, threshold := 100 -> B shotguns back THROUGH A (hitscan has no species rule) -> retarget + damage exchange -> 8 frames t=0..420",
-      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
-      "updatedAt": "2026-09-21",
+      "script": "FIXMAP corridor 1024x256 -> warp (64,128,0deg) -> SPOS B at (448,128), TROO A at (768,128), both woken by one P_NoiseAlert (target player) -> FINDING: the plan scripted imp-vs-imp, but PIT_CheckThing (p_map.c:301-315, pmissiles.ts missileThingCheck) explodes same-species missiles with ZERO damage \u2014 the species pair is the minimal honest infight rig -> A fireballs catch B (X@ captions) -> p_inter.c:911: B.target := A, threshold := 100 -> B shotguns back THROUGH A (hitscan has no species rule) -> retarget + damage exchange -> 8 frames t=0..420",
+      "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+      "updatedAt": "2026-09-22",
       "png": "m8-infight.png",
       "width": 1310,
       "height": 442,
@@ -595,7 +620,7 @@
           "zU": 0,
           "viewzU": 0,
           "statU": 12582912,
-          "frameSha": "48d608a62788cd7bda44d6d4ccb2677b1d67db4092df37e4e028912f3b698542"
+          "frameSha": "d40e9065704b82b338baf180090bf95d395aaa29dec27c3a72217dc33dec5a13"
         },
         {
           "tic": 60,
@@ -604,7 +629,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "e486531e867ca24b22cf5a725c9b083da90d01dabcf0634091c99cf670bb718e"
+          "frameSha": "2a5e57dc907cd1d793fdc59cca3520ad56b4de308645ddd3998442176cf061d7"
         },
         {
           "tic": 120,
@@ -613,7 +638,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "ac44c25971de5dd513e863baa01c31dbca78f899fcfe7a7db05ac8cb92147a74"
+          "frameSha": "d2d5735e758e50523172ef9a880a17f82768ee8f7cfd720d7b4cc90ca62c0631"
         },
         {
           "tic": 180,
@@ -622,7 +647,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "79b50b949f4a4faf1c2d6871f5f1dae93248988949b2b61e0424a89547e741e9"
+          "frameSha": "7bcccdeabe2d574bf2d822630e1c261efcc0d2363717836cea1118c82fbfe50c"
         },
         {
           "tic": 240,
@@ -631,7 +656,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "9e67dec0c5ee694afd4a3660a97a60aa4f6c24c0efa9813e9d5c5080235848d1"
+          "frameSha": "202c8ae89fd575f16ef97218b63259cbfec49d0809051b6810c8a1a970e8d1b4"
         },
         {
           "tic": 300,
@@ -640,7 +665,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "805ccaa487786258d0f3f8fce0da4a9a6e4bab65f52b0e7e1d0df85ee679769a"
+          "frameSha": "2e5dec72fc007e0bdfb01ca46ef494978328e867e8fcb796a6ccd1b34934a7dd"
         },
         {
           "tic": 360,
@@ -649,7 +674,7 @@
           "zU": 0,
           "viewzU": 393216,
           "statU": 12582912,
-          "frameSha": "9c077dc4aba4e6cdb697b359f98e9ee35757cc5817794e7eb2cbf446569bf388"
+          "frameSha": "799cf61c062c9664133eceeffb05a352aa1e364807c97e69e62660d10a058057"
         },
         {
           "tic": 420,
@@ -658,10 +683,10 @@
           "zU": 0,
           "viewzU": 393216,
           "statU": 12582912,
-          "frameSha": "5f73318e3bd7e5cea813f71204656474bd09cba6275bd898e9fc5b70d5ad30f8"
+          "frameSha": "fca94d42639a5897da1e9780f7d5b97baccb34674edf6020ae3eaa60066c3eb5"
         }
       ],
-      "indexSha256": "b12136343b31c8e02892e6e12057e724591ecca67aed9a372c8254410ad61c35",
+      "indexSha256": "5fb544f00fd5783165794d3fe17651d1cd22dbc249f927c00c38e2648aa98d1b",
       "history": [
         {
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
@@ -672,14 +697,19 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "b12136343b31c8e02892e6e12057e724591ecca67aed9a372c8254410ad61c35"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "5fb544f00fd5783165794d3fe17651d1cd22dbc249f927c00c38e2648aa98d1b"
         }
       ]
     },
     "m8-pain-death": {
       "kind": "mechanics",
-      "script": "FIXMAP room 512x256 -> warp (64,128,0deg) -> POSS at (300,128) -> tic 40 P_DamageMobj 8 (prndindex pinned < painChance 200: A_Pain states 187/188) -> tic 70 P_DamageMobj 45 (health -33 < -spawnhealth 20 => XDEATH chain 194.., A_XScream/A_Fall, gib-tics draw) -> plates + HP/state captions -> 8 frames t=0..110",
-      "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
-      "updatedAt": "2026-09-21",
+      "script": "FIXMAP room 512x256 -> warp (64,128,0deg) -> POSS at (300,128) -> tic 40 P_DamageMobj 8 (prndindex pinned < painChance 200: A_Pain states 187/188) -> tic 70 P_DamageMobj 45 (health -33 < -spawnhealth 20 => XDEATH chain 194.., A_XScream/A_Fall, gib-tics draw) -> IWAD POSS art via deps.mobjs + HP/state captions -> 8 frames t=0..110",
+      "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+      "updatedAt": "2026-09-22",
       "png": "m8-pain-death.png",
       "width": 1310,
       "height": 442,
@@ -701,7 +731,7 @@
           "zU": 0,
           "viewzU": 0,
           "statU": 12582912,
-          "frameSha": "ccd55a1168e788c8ebb43abc39b06f0e04369499793f4201cfe53465cb944fec"
+          "frameSha": "f085e2f0ff17e4deb73a22cd3900dc0a43a745b881c6556705dee7f58c4d337d"
         },
         {
           "tic": 30,
@@ -710,7 +740,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "03d9dd255821ef2973459d48f74b539708116bf075165fc1dee5ac6a049f82c0"
+          "frameSha": "8f859f8a0eea62c368ed12df9affa1f55d20790f08ef3bb9eb7c7d1ddf9ce794"
         },
         {
           "tic": 41,
@@ -719,7 +749,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "456c2def9da9cf31de1435186ebfab1278a54e4ffa1c6f2a94f4e2cb6b339ac6"
+          "frameSha": "3507e6807d77b744551df48277cc160ee2fed2459c75351ddd1386a0a5c74f25"
         },
         {
           "tic": 44,
@@ -728,7 +758,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "456c2def9da9cf31de1435186ebfab1278a54e4ffa1c6f2a94f4e2cb6b339ac6"
+          "frameSha": "3507e6807d77b744551df48277cc160ee2fed2459c75351ddd1386a0a5c74f25"
         },
         {
           "tic": 69,
@@ -737,7 +767,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "03d9dd255821ef2973459d48f74b539708116bf075165fc1dee5ac6a049f82c0"
+          "frameSha": "207dc1227eb962404f4d5c0e38348cf028aac64ec1afdf3287cfdfedc538f97e"
         },
         {
           "tic": 72,
@@ -746,7 +776,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "327192285fb79f6068fab02e4bd7b3d857318ccf13d9f4aefa5d57133f58e5e7"
+          "frameSha": "c9f65cb4bc3c193db22d9751d1ba26e12c175ba691e21e9bc5de0ce9aeeb0cfb"
         },
         {
           "tic": 78,
@@ -755,7 +785,7 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "5960aa12d8cb7c8195dbaf255eaf30ef030ee6f702aa38e1230e29076ccf8b13"
+          "frameSha": "0607df2a22c17745e54b74600c46008f38af291bb6e9a3b4c61f181d0c5ff6bd"
         },
         {
           "tic": 110,
@@ -764,10 +794,10 @@
           "zU": 0,
           "viewzU": 2686976,
           "statU": 12582912,
-          "frameSha": "f3e36e8abd4aaeefe050782e2ea63e37542afb375e1375ab564d31bebcb9ee32"
+          "frameSha": "f12004a7af022d6422e2e54a9206c923788f0da760a3da40a721a258cf072134"
         }
       ],
-      "indexSha256": "a3bb61136359c2fbdf95d5ea6a7a5eef2040f9654ace41857afb84476440eec1",
+      "indexSha256": "13a6af87f9c328e69c62a6065623853d58bf70c6e549bd2daa03621d474f941f",
       "history": [
         {
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition; m6 frames unmoved)",
@@ -778,6 +808,11 @@
           "reason": "M8-13 L5: +m8-chase-corner / m8-pain-death / m8-infight monster strips (synthetic plate sprites + live-mobj thinglist composition, x/y captions; m6 frames unmoved)",
           "at": "2026-09-21",
           "indexSha256": "a3bb61136359c2fbdf95d5ea6a7a5eef2040f9654ace41857afb84476440eec1"
+        },
+        {
+          "reason": "M9-09 D018 flip: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired)",
+          "at": "2026-09-22",
+          "indexSha256": "13a6af87f9c328e69c62a6065623853d58bf70c6e549bd2daa03621d474f941f"
         }
       ]
     }
