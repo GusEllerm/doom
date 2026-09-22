@@ -26,7 +26,7 @@ import { buildFixtureMapWad, type RectMapSpec } from '../fixtures/mapBuilder';
 import { gInitGame, gTicker } from '../../src/sim/game';
 import { buildMapFromData } from '../../src/sim/map';
 import { pTeleportMove } from '../../src/sim/pmap';
-import { ANGLETURN, emptyInput, FORWARDMOVE, SLOWTURNTICS, TICDUP, type GameInput, type Ticcmd } from '../../src/sim/ticcmd';
+import { ANGLETURN, emptyInput, FORWARDMOVE, SLOWTURNTICS, type GameInput, type Ticcmd } from '../../src/sim/ticcmd';
 import { MOVE_THRUST_SCALE, type Player } from '../../src/sim/player';
 import type { GameState } from '../../src/sim/state';
 
