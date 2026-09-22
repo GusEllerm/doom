@@ -39,6 +39,7 @@ import { decodeColormap, decodePlaypal } from '../../src/wad/palettes';
 import { texturesFromWad } from '../../src/wad/texture';
 import { buildMapFromData, type RuntimeMap } from '../../src/sim/map';
 import {
+  gExitLevel,
   gFlowTic,
   gInitGame,
   gTicker,
@@ -55,6 +56,7 @@ import { flatsFromWad, loadRenderWorld, type RenderWorld } from '../../src/rende
 import {
   buildMapSprites,
   displayFrame,
+  displayStubHits,
   registerDisplayHooks,
   resetDisplayHooks,
   resetDisplayStatics,
@@ -63,6 +65,24 @@ import {
   type DisplayState,
   type SpriteTables,
 } from '../../src/render/renderer';
+import { wadWiPatches, wiDrawer } from '../../src/render/wiDraw';
+import {
+  mDrawer,
+  mResponder,
+  mReset,
+  mStartControlPanel,
+  mTicker,
+} from '../../src/ui/menu';
+import { dInit, dPageDrawer, dRegisterFlow, dReset, dSetWad } from '../../src/ui/title';
+import { fDrawer, fReset, fSetWad, fStartFinale, fTicker } from '../../src/ui/finale';
+import {
+  gDoCompleted,
+  wiDrawSnapshot,
+  wiPeek,
+  wiResetPlayerFlags,
+  wiTicker,
+} from '../../src/sim/wintermission';
+import type { PickupPlayer } from '../../src/sim/p_inter_inventory';
 import { buildRenderMapView, executeSetViewSize, setViewSize } from '../../src/render/view';
 import { resetBorderStats } from '../../src/render/borders';
 import { vInit } from '../../src/render/vvideo';
@@ -384,4 +404,303 @@ export class M9Driver {
 
 export function m9Describe(name: string, fn: () => void): void {
   describe.skipIf(!hasWad)(name, fn);
+}
+
+/* ------------------------------------------------------------------ */
+/* M9-13 SCENE LIBRARY (D016 montage pack support)                       */
+/*                                                                      */
+/* The m9*.test.ts scene builders, lifted VERBATIM to this shared        */
+/* fixture so the M9-13 exit montage tiles the EXACT blessed scenes      */
+/* (provenance: cell region hash == blessed scene sha). Behaviour,       */
+/* statics resets and draw order are unchanged — the golden corpus       */
+/* re-hashes byte-identical after the move.                              */
+/* ------------------------------------------------------------------ */
+
+/** No D_Display drawer hook was missing during the composed frame. */
+export function expectNoMissingDrawer(): void {
+  expect(displayStubHits.count, 'all D_Display drawers registered').toBe(0);
+}
+
+/** The LIVE player object carries the inventory slice (p_inter_inventory);
+ * sim/state's view type splits the fields across interfaces, so scripted
+ * mutations bind through this (type-only) intersection. */
+export type ScenePlayer = PickupPlayer;
+
+export type BarMutator = (p: ScenePlayer, t: number) => void;
+
+/** statusbar 8-variant matrix (m9hud scene table; order == bless order). */
+export const BAR_VARIANTS: readonly (readonly [string, number, BarMutator])[] = [
+  // health tier 0 + all six keys + pistol/shotgun/chaigun, shells+cells
+  [
+    'bar-100-keys-arsenal',
+    5,
+    (p) => {
+      p.health = 100;
+      p.cards.fill(1);
+      p.weaponowned[0] = 1;
+      p.weaponowned[1] = 1;
+      p.weaponowned[2] = 1;
+      p.weaponowned[3] = 1;
+      p.readyweapon = 2;
+      p.ammo[1] = 36;
+      p.ammo[2] = 120;
+      p.armorpoints = 50;
+    },
+  ],
+  // tier 1 (75) + green armor + full bullets (chaingun ready)
+  [
+    'bar-075-armor-clip',
+    5,
+    (p) => {
+      p.health = 75;
+      p.armorpoints = 100;
+      p.weaponowned[1] = 1;
+      p.weaponowned[3] = 1;
+      p.readyweapon = 3;
+      p.ammo[0] = 50;
+    },
+  ],
+  // tier 2 (50) + plasma rifle + cells (maxammo widget nonzero)
+  [
+    'bar-050-cells',
+    5,
+    (p) => {
+      p.health = 50;
+      p.weaponowned[1] = 1;
+      p.weaponowned[5] = 1;
+      p.readyweapon = 5;
+      p.ammo[2] = 12;
+      p.maxammo[2] = 300;
+    },
+  ],
+  // tier 3 (25) + shotgun, 8 shells (low-ammo widget)
+  [
+    'bar-025-shells',
+    5,
+    (p) => {
+      p.health = 25;
+      p.weaponowned[1] = 1;
+      p.weaponowned[2] = 1;
+      p.readyweapon = 2;
+      p.ammo[1] = 8;
+    },
+  ],
+  // evil grin (face rule R2): bonuscount + freshly-owned weapon
+  [
+    'bar-grin-weapon',
+    5,
+    (p, t) => {
+      p.health = 100;
+      if (t >= 2) p.weaponowned[2] = 1; // ownership flip after ST_Start
+      p.bonuscount = 11;
+    },
+  ],
+  // attacked turn face (R3): tier 3 + live attacker off to the left
+  [
+    'bar-attacked-left',
+    4,
+    (p) => {
+      p.health = 25;
+      p.damagecount = 50;
+      p.attacker = {
+        x: p.mo.x - 128 * 65536,
+        y: p.mo.y + 128 * 65536,
+        angle: 0,
+      } as unknown as ScenePlayer['attacker'];
+    },
+  ],
+  // god face (R6): invulnerability power + rocket launcher, rockets 5
+  [
+    'bar-god-invul',
+    5,
+    (p) => {
+      p.health = 100;
+      p.powers[0] = 2000; // pw_invulnerability
+      p.weaponowned[1] = 1;
+      p.weaponowned[4] = 1;
+      p.readyweapon = 4;
+      p.ammo[3] = 5;
+    },
+  ],
+  // dead face (R1): health 0, fist ready (the post-death bar)
+  [
+    'bar-dead-fist',
+    5,
+    (p) => {
+      p.health = 0;
+      p.weaponowned[0] = 1;
+      p.readyweapon = 0;
+    },
+  ],
+];
+
+/** Script the LIVE player through the widget/face-machine reads; the
+ * mutate runs EVERY tic before the tickers so the scripted state survives
+ * whatever the (deterministic) world does in between. */
+export function barScene(
+  tics: number,
+  mutate: BarMutator,
+): () => SceneFrame {
+  return () => {
+    const b = bundle_();
+    const d = new M9Driver(b, VIEWPOINTS['spawn-east'], { sb: 9 });
+    for (let t = 0; t < tics; t++) {
+      mutate(d.state.players[0] as ScenePlayer, t);
+      d.tic();
+    }
+    const frame = d.frame();
+    expectNoMissingDrawer();
+    return frame;
+  };
+}
+
+/** HU message strip: player.message set @tic2, captured at captureAt. */
+export function msgScene(captureAt: number): () => SceneFrame {
+  return () => {
+    const b = bundle_();
+    const d = new M9Driver(b, VIEWPOINTS['spawn-east'], { sb: 9 });
+    for (let t = 0; t < captureAt; t++) {
+      if (t === 2) d.state.players[0]!.message = 'GOTMEDINEED';
+      d.tic();
+    }
+    const frame = d.frame();
+    expectNoMissingDrawer();
+    return frame;
+  };
+}
+
+/** sb-variant viewport pair (and the monster-pixel strip via a warp). */
+export function viewScene(sb: number, warp: Warp = VIEWPOINTS['spawn-east']): () => SceneFrame {
+  return () => {
+    const b = bundle_();
+    const d = new M9Driver(b, warp, { sb });
+    for (let t = 0; t < 5; t++) d.tic();
+    const frame = d.frame();
+    expectNoMissingDrawer();
+    return frame;
+  };
+}
+
+/** TITLEPIC page through the D_Display demoscreen branch (no 3D pass). */
+export function titleScene(): () => SceneFrame {
+  return () => {
+    const b = bundle_();
+    const d = new M9Driver(b, VIEWPOINTS['spawn-east'], { bar: false, hu: false });
+    dReset(b.wad);
+    dRegisterFlow();
+    dSetWad(b.wad);
+    dInit(d.state); // D_StartTitle arms advancedemo
+    d.flowTic(); // the tic block consumes it -> TITLEPIC page (d_main.c:454)
+    registerDisplayHooks({ pageDrawer: dPageDrawer });
+    const r = d.display();
+    expect(r.counters, 'demoscreen draws no 3D pass').toBeUndefined();
+    expectNoMissingDrawer();
+    return d.capture(); // pageDrawer draws the full 320x200 page, no 3D
+  };
+}
+
+/** Boot, open the control panel, run a key script, settle 6 skull tics,
+ * capture the composed frame (menu drawn LAST over the live level). */
+export function menuScene(keys: readonly number[]): () => SceneFrame {
+  return () => {
+    const b = bundle_();
+    const d = new M9Driver(b, VIEWPOINTS['spawn-east'], { sb: 9 });
+    for (let t = 0; t < 5; t++) d.tic();
+    mReset(b.wad); // full cross-scene reset (menu table statics,
+    // lastOn cursors, screenblocks) + mInit inside
+    registerGameFlowHooks({ mTicker: (st) => mTicker(st) });
+    registerDisplayHooks({ mDrawer });
+    mStartControlPanel(d.state);
+    for (const k of keys) {
+      mResponder(d.state, { type: 'keydown', data1: k });
+      mResponder(d.state, { type: 'keyup', data1: k });
+    }
+    for (let t = 0; t < 6; t++) d.flowTic(); // M_Ticker ONLY (sim frozen)
+    const r = d.display({ menuActive: true });
+    expectNoMissingDrawer();
+    return {
+      ...d.capture(),
+      ...(r.counters === undefined ? {} : { hom: r.counters.hom }),
+    };
+  };
+}
+
+export interface Tally {
+  readonly kills?: number;
+  readonly items?: number;
+  readonly secrets?: number;
+  readonly leveltime?: number;
+  readonly totalkills?: number;
+  readonly totalitems?: number;
+  readonly totalsecret?: number;
+}
+
+/** Boot E1M1, stage the census the way P_SetupLevel would, exit; the
+ * returned driver sits in GS_INTERMISSION with the wiDrawer hook wired
+ * (FRESH wadWiPatches source per frame — sidesteps the wiLoadData back-
+ * buffer cache across scenes, see the wiDraw.ts seam contract). */
+export function wiBoot(tally: Tally): M9Driver {
+  const b: Bundle = bundle_();
+  const d = new M9Driver(b, VIEWPOINTS['spawn-east'], {
+    bar: false,
+    hu: false,
+    flow: { wiTicker, doCompleted: gDoCompleted },
+  });
+  wiResetPlayerFlags();
+  const p = d.state.players[0]!;
+  d.state.mobjs.totalkills = tally.totalkills ?? 100;
+  d.state.mobjs.totalitems = tally.totalitems ?? 100;
+  d.state.totalsecret = tally.totalsecret ?? 1;
+  p.killcount = tally.kills ?? 0;
+  p.itemcount = tally.items ?? 0;
+  d.state.secretcount = tally.secrets ?? 0;
+  if (tally.leveltime !== undefined) d.state.leveltime = tally.leveltime;
+  gExitLevel(d.state);
+  d.tic(); // the drain tic: G_DoCompleted -> WI_Start (BCNT=1)
+  registerDisplayHooks({
+    wiDrawer: () => wiDrawer(wadWiPatches(b.wad), wiDrawSnapshot()),
+  });
+  return d;
+}
+
+/** No-3D capture of the shared framebuffer (WI/finale pages). */
+export function wiCapture(d: M9Driver): SceneFrame {
+  const r = d.display();
+  expect(r.counters, 'this state draws no 3D pass').toBeUndefined();
+  expect(displayStubHits.count, 'all D_Display drawers registered').toBe(0);
+  return { bytes: sharedFb.indices.slice() };
+}
+
+/** StatCount page at tic `tics` of the tally. */
+export function wiTallyScene(tally: Tally, tics: number): () => SceneFrame {
+  return () => {
+    const d = wiBoot(tally);
+    for (let t = 1; t < tics; t++) d.tic();
+    return wiCapture(d);
+  };
+}
+
+/** Final StatCount page (run until spState 10 — par/sucks pair). */
+export function wiTimeScene(tally: Tally): () => SceneFrame {
+  return () => {
+    const d = wiBoot(tally);
+    let guard = 0;
+    while (wiPeek().spState !== 10 && guard++ < 4000) d.tic();
+    expect(wiPeek().spState, 'reached the final StatCount state').toBe(10);
+    return wiCapture(d);
+  };
+}
+
+/** Finale page after `tics` of F_Ticker (reveal / hold / HELP2). */
+export function finaleScene(tics: number): () => SceneFrame {
+  return () => {
+    const b = bundle_();
+    const d = new M9Driver(b, VIEWPOINTS['spawn-east'], { bar: false, hu: false });
+    fReset(b.wad);
+    fSetWad(b.wad);
+    fStartFinale(d.state); // ga_victory case body (f_finale.c:96-135)
+    for (let t = 0; t < tics; t++) fTicker(d.state, emptyInput());
+    registerDisplayHooks({ finaleDrawer: fDrawer });
+    return wiCapture(d);
+  };
 }

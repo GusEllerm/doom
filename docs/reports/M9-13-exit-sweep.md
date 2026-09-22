@@ -26,7 +26,7 @@ a LIVE (st_face-advanced) stream — the fresh-stream `mClearRandom` + absolute
 "fix if not" case the plan predicted; replaced by delta-based + live-shifted
 pins (wi_stuff.c:517 ranges are position-invariant).
 
-## Re-bless ledger (every historical reason once; 7 sets, 90 scenes)
+## Re-bless ledger (every historical reason once; 7 sets, 91 scenes)
 
 | # | Set | Reason (from goldens/*/meta.json) | Scenes |
 |---|---|---|---|
@@ -47,10 +47,14 @@ pins (wi_stuff.c:517 ranges are position-invariant).
 | 15 | mechanics | **M9-09 D018 flip**: m8 monster strips render through production deps.mobjs live-mobj overlay + real IWAD sprite art (synthetic plates retired) | 7 |
 | 16 | screens | M9-10 new set first bless: TITLEPIC page, finale E1TEXT reveal t=200, HELP2 hold | 4 |
 | 17 | m9 | M9-11 initial bless: L3 corpus — statusbar 8-variant matrix + HU message strip + sb9/sb11 pair + title/menu screens + WI tallies/par/sucks/blink + finale 3 phases | 27 |
+| 18 | screens | **M9-13 L5 exit pack**: +m9-exit-montage (18 blessed m9 scenes tiled 3x6 at 1x, D016 milestone sheet); the 4 existing screens pages re-ran byte-identical (run-reason stamp, same shas) | 5* |
 
 *Row 7: the reason documents that only the 4 monster-seeing E1M1 frames
 actually changed; rows 13/14 are the same M8-13 bless event whose meta reason
-string was reworded mid-wave (history retains both). **D017 retirement
+string was reworded mid-wave (history retains both). Row 18: the bless tool
+stamps the run reason on every scene of the set (the established walls-D018
+convention) — only the NEW m9-exit-montage.png is a first bless; the 4
+screens pages kept identical shas. **D017 retirement
 cross-check: zero golden re-blesses for the death-restart flip** — no
 M5-M8 motion/mechanics scripted run crosses a PLAYER death (the only scripted
 deaths are monster xdeath in m8-pain-death; the player-restart evidence lives
