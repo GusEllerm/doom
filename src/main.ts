@@ -46,8 +46,10 @@ import {
   type AutomapEvent
 } from './sim/amMap';
 import {
+  gExitLevel,
   gFlowTic,
   gInitGame,
+  gSecretExitLevel,
   gTicker,
   GS,
   registerGameFlowHooks,
@@ -338,6 +340,17 @@ function stepTic(): void {
   // ticking, matching gTicker — the menu never freezes the sim here).
   let ticInput: GameInput = input;
   if (menuState.menuActive()) ticInput = emptyInput();
+
+  // D013(e) drain (M6 hooks.ts: "M9 drains it into a real level change"
+  // — the wiring seam game.ts never grew): the latched exitRequest becomes
+  // the real gameaction at the TOP of the next tic, exactly where vanilla
+  // G_ExitLevel would have left ga_completed for the gTicker step-2 drain.
+  if (state.exitRequest !== 'none') {
+    const kind = state.exitRequest;
+    state.exitRequest = 'none';
+    if (kind === 'secret') gSecretExitLevel(state);
+    else gExitLevel(state);
+  }
 
   // d_main.c:381-383 (tic block, before G_Ticker): advancedemo flag
   // consumer + M_Ticker slot (game.ts gFlowTic; M9-04 registers the
