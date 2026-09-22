@@ -222,3 +222,39 @@ export const WAD_CENSUS_TOTALS: Readonly<Record<number, CensusCell>> = {
   3003: { raw: 4, alive: 4 },
   2035: { raw: 96, alive: 94 }
 };
+
+/**
+ * B-10 regression fixture: E1M1 ALIVE-by-skill table, keyed by the INTERNAL
+ * 0-based skill (`state.skill`; doomdef.h sk_baby=0..sk_nightmare=4 — the
+ * menu's 1-based deferred-init raw N maps to index N-1 via
+ * `skillToInternal`). Measured with `censusThings` on the pinned
+ * freedoom1.wad through the p_mobj.c:741-748 bit map (baby/easy -> 1,
+ * medium -> 2, hard -> 4, nightmare -> 4: P_SpawnMapThing has NO
+ * nightmare-specific extra-spawn rule — the nightmare halves live in
+ * respawnmonsters/state tics/shot speed, g_game.c:1416-1429, §4-stubbed
+ * in this port), so nightmare's census equals hard's BY CONSTRUCTION.
+ * The 2035 row is the shootable-barrel bookkeeping (counted separately
+ * from monsters by every consumer; WAD-identical at all five skills).
+ * The `monsters` field is the doomednum-sum of the monster rows — the
+ * number the live `state().monsters.alive` seam must equal after the
+ * G_DeferedInitNew(raw,…) menu drain (see tests/headless/spawn-skill.test.ts
+ * and e2e/spawn-skill.spec.ts).
+ */
+export interface SkillAliveRow {
+  readonly byDoomednum: Readonly<Record<number, number>>;
+  readonly monsters: number;
+  readonly barrels: number;
+}
+
+export const E1M1_SKILL_ALIVE: readonly SkillAliveRow[] = [
+  // sk_baby (bit 1)
+  { byDoomednum: { 3004: 9, 9: 2, 3001: 4, 3002: 2 }, monsters: 17, barrels: 22 },
+  // sk_easy (bit 1)
+  { byDoomednum: { 3004: 9, 9: 2, 3001: 4, 3002: 2 }, monsters: 17, barrels: 22 },
+  // sk_medium (bit 2)
+  { byDoomednum: { 3004: 4, 9: 10, 3001: 10, 3002: 5 }, monsters: 29, barrels: 22 },
+  // sk_hard (bit 4)
+  { byDoomednum: { 3004: 5, 9: 13, 3001: 18, 3002: 9, 58: 1 }, monsters: 46, barrels: 22 },
+  // sk_nightmare (bit 4 — p_mobj.c:743-744)
+  { byDoomednum: { 3004: 5, 9: 13, 3001: 18, 3002: 9, 58: 1 }, monsters: 46, barrels: 22 }
+];
