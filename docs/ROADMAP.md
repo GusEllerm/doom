@@ -16,22 +16,33 @@ Refined by the Phase-2 architect; per-milestone leaf plans live in docs/design/M
 | M6 | Level mechanics | Per-special fixture-map L2 tests: doors/locked keys/lifts/crushers/stairs/switches/teleporters/lights/damage floors/secrets/exits (R05 tables 100% covered); E1M1 integration: reach exit via keys (L4 scripted route) | M5 | [x] |
 | M7 | Items & weapons | Every pickup + weapon via state tables; hitscan/projectile/autoaim/splash L2 goldens; powerups + palette flashes visible (L3 viewpoint diffs, L4 fire-weapon keys) | M6 | [x] |
 | M8 | Monsters (+ DEHACKED fullbright task, A-02) | Full Phase-1 roster from state tables; wake on sight/sound, melee/missile, pain/death/gib, infighting, barrels — L2 per-family fixtures + random-site counts; L5 death-state screenshot review | M7 | [x] |
-| M9 | Game flow & UI | Title→skill→play→exit→intermission tally→next map→end screen (all original/Freedoom text); menus keyboard+mouse operable (L4 real clicks/keys, zero console errors); status bar + face + messages (L3 goldens) | M7 | [ ] |
+| M9 | Game flow & UI | Title→skill→play→exit→intermission tally→next map→end screen (all original/Freedoom text); menus keyboard+mouse operable (L4 real clicks/keys, zero console errors); status bar + face + messages (L3 goldens) | M7 | [x] |
 | M10 | Audio (SMF synth task per A-03; MUS behind flag) | SFX with priority/attenuation/panning (L1 mixer unit tests + offline-mix golden buffers); SMF music plays in e2e without console errors; volume settings take effect (L4) | M9 (any sim≥M7) | [ ] |
 | M11 | Persistence & options (IndexedDB task per A-10) | F6/F9 + menu save/load round-trip in browser: `state().hash` equals pre-save (L4 in-browser IDB test); bindings/sensitivity/volumes persisted across reload; raw-buffer serialize/deserialize L1 goldens | M9 | [ ] |
 | M12 | Full-episode hardening | Every Freedoom P1 map loads + renders at ≥8 sampled viewpoints with HOM=0 and no single-color/anomaly flags (L3 corpus); reachable exit per map (L2/L4 route); scripted playthrough of E1M1 + one map per episode (L4); perf log: 35 Hz sim + 60 fps on mid-range laptop | M1–M11 | [ ] |
 | P4 | Fidelity audits (see below) | ≥2 audit rounds; final round with zero high-severity findings; playtest sweep report clean | M12 | [ ] |
 | P5 | Release + stretch | DONE_REPORT.md maps every §3 criterion to evidence; README; then stretch milestones below | P4 | [ ] |
 
-## M9 preview (post-M8 carry-overs the exit sweep recorded)
-- **Live-mobj sprite pass in the renderer**: rthings still skips KIND_MONSTER
-  ('excluded until M8'); the M8-13 monster strips compose the draw list
-  TEST-SIDE (see D018). Production monster pixels are an M9 render task.
-- **G_ExitLevel / A_BossDeath level-exit wiring** (M8 registered the action;
-  the floor-move + exit trigger is M9 game flow, plan §3 open decision).
-- **pPlayerDamage at the damageBridge (D-m1)**: player-target monster hits
-  are record-only at the bridge; the e2e/pacing suites install the
-  player-aware seam — production wiring lands with M9's game loop.
+## M9 — CLOSED (M9-13 exit sweep green; see STATUS "M9 exit state" + docs/reports/M9-13-exit-sweep.md)
+All three M9-preview carry-overs landed: production monster pixels (D018
+flipped, M9-09), G_ExitLevel/A_BossDeath → ga_completed → WI routing (M9-03/
+08, E1M8⇒finale + E1M9⇒E1M4 pins), damageBridge production wiring (live
+combat through the loop; e2e m9-flow). D017 retired; D019-D023 ratified.
+
+## M10 preview (post-M9 carry-overs the exit sweep recorded)
+- **SFX bodies at the 41 kept sites** (`hooks.sfxStub` → real mixer): the
+silent-M9 ledger (docs/reports/M9-13-exit-sweep.md D-list) IS the worklist;
+D-0xx boundary = sites never move, bodies land in place. Priority/
+attenuation/panning per S_StartSound (sfx.c/p_sfx.c), volumes wired to the
+SoundDef thermos state (currently stored, silent).
+- **Music**: mus_intro (title), mus_victor (finale), mus_read/mus_nlink
+slots are sfxStub counters already at their vanilla call addresses
+(title.ts/finale.ts/wintermission.ts); SMF synth per A-03, MUS behind flag.
+- **Quit-yes target** is D_StartTitle (D021) — if M10+ adds a real page-
+exit/reload affordance it attaches at the same mQuitResponse seam.
+- Menu mouse + keyboard stay as-is (D020); volume/sensitivity persistence
+is M11 (IndexedDB A-10), cheats + save/load + chat remain registered
+no-op stubs until M11.
 
 ## Cross-cutting task placement
 - Fixture tooling chain (A-04): T01 (M0 WAD writer) → M1-05 (graphics fixtures) → M2-01/M2-02 (rectangle-spec maps + BSP property test) → feature-per-fixture maps in M5-M8 plans.

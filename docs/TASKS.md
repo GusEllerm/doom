@@ -152,23 +152,18 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M9-plan | Menus/HUD/transitions plan | M9 | M8 | done (real tip merged; skeleton decoy superseded — worktree ref fallback noted) |
-## M9 tasks
-
-| ID | Title | Milestone | Deps | Status |
-|---|---|---|---|---|
-| M9-plan | Screens & transitions plan | M9 | M8 | done (merged) |
+| M9-plan | Menus/HUD/transitions plan | M9 | M8 | done (real tip merged; skeleton decoy superseded — both in history, theirs won) |
 | M9-01 | Patch blitter + screen layers | M9 | M8 | done (merged, verified) |
 | M9-02 | Keyboard events + menu mouse | M9 | M8 | done (merged, verified) |
 | M9-03 | Gamestate routing + plumbing | M9 | M8 | done (merged, verified — zero re-bless proof) |
-| M9-04..13 | (see docs/design/M9-plan.md) | M9 | waves | planned |
-
+| M9-04 | Menu stack + screens | M9 | M9-01/02/03 | done (merged, verified) |
 | M9-05 | Statusbar widgets + face | M9 | M9-01/03 | done (merged, verified) |
-| M9-07 | Intermission WI | M9 | M9-01/03 | done (merged, verified) |
 | M9-06 | HU messages | M9 | M9-01/03 | done (merged, verified) |
-| M9-08 | G_DoReborn faithful (D017 retired) | M9 | M9-03 | done (merged — D017 RETIRED) |
-| M9-09 | Renderer: viewport+composition | M9 | 04-07 | done (merged, verified — D018 flipped) |
-| M9-10 | Title + finale | M9 | 04 | done (merged, verified) |
-| M9-11 | L3 golden corpus HUD/menu/WI | M9 | 08-10 | done (merged, verified, 27 goldens reviewed-spot) |
-| M9-12 | Flow e2e + debug seams | M9 | 08-10 | dispatching |
-| M9-13 | M9 exit docs + bless ledger | M9 | 11,12 | queued |
+| M9-07 | Intermission WI | M9 | M9-01/03 | done (merged, verified — anim timing asserts re-pinned on LIVE stream at M9-13) |
+| M9-08 | G_DoReborn faithful (D017 retired) | M9 | M9-03 | done (merged — D017 RETIRED, zero golden re-bless) |
+| M9-09 | Renderer: viewport + composition + monster pixels | M9 | 04-07 | done (merged, verified — D018 FLIPPED, salvage re-run after 502 outage) |
+| M9-10 | Title + finale | M9 | 04 | done (merged, verified — finisher salvage of 502-outage victim) |
+| M9-11 | L3 golden corpus HUD/menu/WI | M9 | 08-10 | done (merged, verified, 27 goldens; scene library lifted to fixtures at M9-13) |
+| M9-12 | Flow e2e + debug seams | M9 | 08-10 | done (merged 905b1dd + M9-fix boot adaptation 40b6283) |
+| M9-12-fix | Legacy e2e boot adaptation (TITLEPIC boot) | M9 | 12 | done (merged — e2e 37/37 x2, production boot untouched) |
+| M9-13 | Exit sweep + docs + montage + PRNG final | M9 | 11,12 | done (this branch — M9 CLOSED) |
