@@ -29,6 +29,13 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { createKeyboardInput } from './input/keyboard';
+import {
+  KEY_DOWNARROW,
+  KEY_LEFTARROW,
+  KEY_RIGHTARROW,
+  KEY_UPARROW
+} from './input/keyboard';
+import { createMenuMouse } from './input/menuMouse';
 import { createMouseInput } from './input/mouse';
 import {
   amCreateState,
@@ -42,18 +49,60 @@ import {
   gFlowTic,
   gInitGame,
   gTicker,
+  GS,
   registerGameFlowHooks,
   takeWipeRequest,
   TICS_PER_SECOND
 } from './sim/game';
 import { mapNameFor } from './sim/gamemode';
 import { buildMapFromData } from './sim/map';
+import { rPointToAngle2 } from './sim/p_shoot';
 import type { GameState } from './sim/state';
-import { attachRenderDebug, attachMouseInjection, attachPopInput, debugApi, debugSim, installDebugApi } from './debug';
+import { emptyInput, type GameInput } from './sim/ticcmd';
+import { wiDrawSnapshot, wiPeek } from './sim/wintermission';
+import { attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug, debugApi, debugSim, installDebugApi, screenRead } from './debug';
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
 import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
-import { buildMapSprites, getFrameCounters, renderFrame, type FrameDeps, type SpriteTables } from './render/renderer';
+import { buildMapSprites, displayFrame, getFrameCounters, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
+import { setViewSize } from './render/view';
+import { vInit } from './render/vvideo';
+import { wadWiPatches, wiDrawer as wiDrawFrame, type WiPatchSource } from './render/wiDraw';
+import {
+  menuSeams,
+  menuState,
+  mDrawer,
+  mInit,
+  mRegisterFlow,
+  mResponder,
+  mSetWad
+} from './ui/menu';
+import {
+  huDrawer,
+  huRegisterMenu,
+  huResponder,
+  huSetWad,
+  huStart,
+  huState,
+  huStop,
+  huTicker,
+  huMessageText
+} from './ui/humessage';
+import {
+  stDrawer,
+  stFaceIndex,
+  stInit,
+  stRefreshBackground,
+  stStart,
+  stStatusbarOn,
+  stStop,
+  stTicker,
+  ST_NUMFACES,
+  type StContext,
+  type StPlayerView
+} from './ui/statusbar';
+import { dInit, dPageDrawer, dSetWad, gResponderDemo, titleState } from './ui/title';
+import { fDrawer, fResponder, fSetWad, finaleState } from './ui/finale';
 import { buildPspriteFrameInput } from './pspriteview';
 import { flatsFromWad, loadRenderWorld, type RenderWorld } from './render/rdata';
 import { buildRenderMapView, type RenderMapView } from './render/view';
@@ -83,6 +132,9 @@ if (canvas.width !== 320 || canvas.height !== 200) {
 
 /** WAD URL override (?wad=...), same convention as the viewer page. */
 const wadUrl = new URLSearchParams(location.search).get('wad') ?? '/wads/freedoom1.wad';
+
+/** Typed alias of the guarded canvas element (closure-friendly). */
+const canvasEl: HTMLCanvasElement = canvas;
 
 const status = document.createElement('div');
 status.dataset['testId'] = 'boot-status';
@@ -157,21 +209,119 @@ registerGameFlowHooks({
   }
 });
 
+/* ------------------------------------------------------------------ */
+/* M9 UI-stack wiring (M9-plan §M9-03 "main.ts wiring" half — the      */
+/* responder chain, D_Display drawer registration and the boot→title    */
+/* call landed HERE in M9-12; the modules were merged wired-for-this).  */
+/* ------------------------------------------------------------------ */
+
+/** Menu-mode mouse→key synth (D-0yy): hover/click feed the SAME event
+ * queue the physical keyboard feeds (vanilla d_loop.c D_ProcessEvents
+ * side); the synthesizer arms from menuState.itemBoxes() via
+ * menuSeams.mouseArm. */
+const menuMouse = createMenuMouse({
+  onEvent: (ev) => eventQueue.push(ev),
+  currentIndex: () => menuState.itemOn()
+});
+menuSeams.setViewSize = (blocks, detail) => setViewSize(blocks, detail);
+menuSeams.automapActive = () => boot?.am.automapactive ?? false;
+menuSeams.mouseArm = (boxes, current) => {
+  if (boxes === null || boxes.length === 0) menuMouse.setItems([]);
+  else {
+    menuMouse.setItems(boxes);
+    menuMouse.setIndex(current());
+  }
+};
+huRegisterMenu(); // menuSeams.showMessages ↔ huState (M9-06 wiring note)
+
+/** Statusbar context (per-Level ST_Start; the LIVE rng/player objects). */
+let stCtx: StContext | null = null;
+let wiSrc: WiPatchSource | null = null;
+/** Level-reload detector (ST_Start/HU_Start per G_DoLoadLevel, vanilla
+ * g_game.c:759/:795 — identity change of state.map = a fresh P_SetupLevel). */
+let lastLevelMap: unknown = null;
+let lastGamestate = -1;
+/** ev_mouse BUTTON mirror (g_game.c:579-580 eats mouse buttons into
+ * gamekeydown[key_fire]; the polled channel models held keys — this flag
+ * is that model's mouse half: true between mousedown/mouseup). Drives
+ * the intermission accelerate rising edge (WI_CheckForAccelerate) and
+ * firing in play, exactly like the fire key. */
+let mouseFireDown = false;
+
+/** Menu-mode arrow forwarding: bound movement codes NEVER fire event_t
+ * packets (keyboard.ts held-channel model) — vanilla's menu arrows ARE
+ * those events, so while the menu panel is open the wiring forwards
+ * DOM arrow keydown/keyup pairs into the queue (keyup never eaten,
+ * g_game.c:571). Typematic repeats fire pairs exactly like the DOS
+ * keyboard repeat the vanilla menu relies on. */
+const MENU_ARROW_KEYS: Readonly<Record<string, number>> = {
+  ArrowUp: KEY_UPARROW,
+  ArrowDown: KEY_DOWNARROW,
+  ArrowLeft: KEY_LEFTARROW,
+  ArrowRight: KEY_RIGHTARROW
+};
+window.addEventListener('keydown', (e) => {
+  if (!menuState.menuActive()) return;
+  const key = MENU_ARROW_KEYS[e.code ?? ''];
+  if (key !== undefined) eventQueue.push(keydown(key), keyup(key));
+});
+
+/** Canvas coords → the 320×200 screen space the menu boxes live in. */
+function toScreen(e: MouseEvent): { x: number; y: number } {
+  const r = canvasEl.getBoundingClientRect();
+  return {
+    x: ((e.clientX - r.left) * 320) / r.width,
+    y: ((e.clientY - r.top) * 200) / r.height
+  };
+}
+canvas.addEventListener('mousemove', (e) => {
+  if (!menuState.menuActive()) return;
+  const p = toScreen(e);
+  menuMouse.hover(p.x, p.y);
+});
+canvas.addEventListener('mousedown', (e) => {
+  const st = boot?.state;
+  if (menuState.menuActive()) {
+    const p = toScreen(e);
+    menuMouse.click(p.x, p.y, e.button);
+    return;
+  }
+  if (st !== undefined && st.gamestate === GS.DEMOSCREEN) {
+    // G_Responder demo branch on ev_mouse button-down (g_game.c:524-529)
+    // — any mouse button arms the control panel over the attract screen.
+    if (gResponderDemo(st, { type: 'mouse', data1: 1 << e.button })) return;
+  }
+  if (e.button === 0) mouseFireDown = true; // ev_mouse → key_fire mirror
+});
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) mouseFireDown = false;
+});
+
 function stepTic(): void {
   if (boot === null) return;
   const { state, am } = boot;
   const player = state.players[0]!;
   const world = { map: state.map, player };
 
-  // D_ProcessEvents half: AM_Responder sees every event first (vanilla
-  // d_main.c order); consumed events never reach G_Responder. Movement is
-  // the separate polled-GameInput seam (M2-07 design) — DEVIATION, pinned
-  // in the task report: in FREE map mode vanilla also swallows the arrow
-  // keys from movement, here the polled channel stays live; in FOLLOW mode
-  // (the default) behavior matches vanilla because AM_Responder itself
-  // returns rc=false for arrows while following.
+  // D_ProcessEvents half — the FULL G_Responder chain (d_main.c:326-355,
+  // M9-12 wiring): automap first (vanilla d_main.c order; every event, AM
+  // eats only its own keys while GS_LEVEL), then the G_Responder demo
+  // branch (title.ts — any key arms the control panel on the attract
+  // screen), the finale passthrough (f_finale.c:198 — false until the
+  // absent cast), the menu stack, then the HU responder (Enter refreshes
+  // a message). Consumed events never reach the later stations; keyups
+  // are forwarded everywhere (g_game.c:571 never-eat line).
   while (eventQueue.length > 0) {
-    amResponder(am, eventQueue.shift()!, world);
+    const ev = eventQueue.shift()!;
+    if (amResponder(am, ev, world)) continue;
+    // The demo-screen branch arms the panel on the FIRST key (g_game.c
+    // :522-535); once the panel is open the branch must stop eating or
+    // the menu would never receive keys (the same net effect vanilla
+    // reaches via demoplayback stopping when the panel takes over).
+    if (!menuState.menuActive() && gResponderDemo(state, ev)) continue;
+    if (state.gamestate === GS.FINALE && fResponder()) continue;
+    if (mResponder(state, ev)) continue;
+    huResponder(ev);
   }
 
   // M5-07: mouse channels merge into the same per-tic snapshot — vanilla
@@ -181,14 +331,44 @@ function stepTic(): void {
   const mouse = mouseInput.sample();
   input.mouseX = mouse.mouseX;
   input.mouseY = mouse.mouseY;
+  // ev_mouse button mirror (g_game.c:579: mouse1 → gamekeydown[key_fire]).
+  if (mouseFireDown) input.attack = true;
+  // Menu panel open ⇒ the ticcmd is blank (d_loop.c D_LocalUser2Cmd —
+  // vanilla zeroes the command while menuactive; the world itself keeps
+  // ticking, matching gTicker — the menu never freezes the sim here).
+  let ticInput: GameInput = input;
+  if (menuState.menuActive()) ticInput = emptyInput();
 
   // d_main.c:381-383 (tic block, before G_Ticker): advancedemo flag
   // consumer + M_Ticker slot (game.ts gFlowTic; M9-04 registers the
   // skull ticker, M9-10 the attract body — no main.ts re-edit needed).
   gFlowTic(state);
 
-  gTicker(state, input);
+  gTicker(state, ticInput);
   amTicker(am, player); // G_Ticker GS_LEVEL automap item (g_game.c)
+
+  // G_Ticker's UI tick halves (g_game.c:729-733: ST_Ticker/HU_Ticker run
+  // OUTSIDE the paused gate, every GS_LEVEL tic — the st_face M_Random
+  // draw lives in stTicker and is LEDGERED (M9-plan §0.8): exactly ONE
+  // call per GS_LEVEL tic, never outside it.
+  if (state.gamestate === GS.LEVEL && stCtx !== null) {
+    stTicker(stCtx);
+    stCtx.automapActive = am.automapactive;
+  }
+  if (state.gamestate === GS.LEVEL) huTicker(state.players[0]!);
+
+  // ST_Start/HU_Start per G_DoLoadLevel (g_game.c:759/:795) + ST_Stop/
+  // HU_Stop when the level ends (G_DoCompleted/S_* leave GS_LEVEL).
+  if (state.gamestate === GS.LEVEL && state.map !== lastLevelMap && stCtx !== null) {
+    lastLevelMap = state.map;
+    stStart(stCtx);
+    huStart(state.gameepisode, state.gamemap);
+  }
+  if (state.gamestate !== GS.LEVEL && lastGamestate === GS.LEVEL) {
+    stStop();
+    huStop();
+  }
+  lastGamestate = state.gamestate;
 }
 
 function render(): void {
@@ -206,15 +386,13 @@ function render(): void {
     boot.mapView = buildRenderMapView(pendingMd);
     boot.sprites = buildMapSprites({ md: pendingMd, map: boot.mapView, wad: boot.wad });
   }
-  // 2) wipe sentinel — consumed EXACTLY ONCE per gamestate change
-  //    (takeWipeRequest returns true on the consuming frame only; the
-  //    f_wipe melt body registers via the game.ts `wipe` hook, M9-01/09).
-  takeWipeRequest(state);
-
-  // §4.1 frame pipeline (renderer.ts): 3D walls always run; the automap
-  // overlays afterwards ONLY when its state is active (Tab toggles the
-  // state through amResponder in stepTic — the drawing path is stateless).
-  const deps: FrameDeps = {
+  // §4.1 frame pipeline — M9-09 D_Display composition (displayFrame runs
+  // the 3D pass + automap overlay, the window crop, the border halves and
+  // the per-state/ST/HU/M drawers through the hooks registered in
+  // afterLoad; d_main.c:193-330).
+  const wipe = takeWipeRequest(state);
+  if (stCtx !== null) stCtx.automapActive = am.automapactive;
+  const deps: DisplayDeps = {
     fb,
     world: boot.world,
     map: boot.mapView,
@@ -226,8 +404,18 @@ function render(): void {
     // r_things.c R_DrawPlayerSprites) — resolved from the live sim rows
     // through the src/pspriteview.ts seam (same one the goldens use).
     psprites: buildPspriteFrameInput(state.map, state.players[0]!, boot.sprites.sprites),
+    state: {
+      gamestate: state.gamestate,
+      gametic: state.gametic,
+      automapactive: am.automapactive,
+      viewactive: state.viewactive,
+      paused: state.paused,
+      menuActive: menuState.menuActive()
+    },
+    borders: boot.wad !== null ? { wad: boot.wad } : undefined,
+    wipe
   };
-  renderFrame(deps);
+  displayFrame(deps);
   // ST_doPaletteStuff half (st_stuff.c:1000-1050): the band is a sim value,
   // the LUT swap is the I_SetPalette — and, like vanilla, only on a change.
   boot.luts.setBank(paletteBand(palettePlayer));
@@ -360,6 +548,103 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // state().render (renderer.ts getFrameCounters seam).
   attachRenderDebug({ indices: fb.indices, counters: getFrameCounters });
   boot = { state, am, luts, palettePlayer, world, mapView, tables, sprites, wad, mapName: map.name };
+
+  // ---- M9 UI-stack boot (M9-12 wiring; see the wiring block above) ----
+  // vInit BEFORE stInit (the BG 320×32 canvas requirement, st_init) and
+  // BEFORE the FG alias binding displayFrame re-checks every frame.
+  vInit(fb.indices);
+  mSetWad(wad);
+  mInit(); // M_Init (+ shareware EpiDef censor) — before mRegisterFlow
+  mRegisterFlow(); // the d_main.c:382 M_Ticker slot
+  dSetWad(wad);
+  fSetWad(wad);
+  huSetWad(wad);
+  stInit(wad); // ST_loadGraphics (faces/widgets/numbers) — per-IWAD, once
+  const st: StContext = {
+    rng: state.rng,
+    // The LIVE player object: initPlayerInventory/attachPsprFields/gInitGame
+    // attach the StPlayerView field pack in place (debug.ts reads the same
+    // fields structurally) — the cast is the typing seam, not a copy.
+    player: state.players[0] as unknown as StPlayerView,
+    automapActive: false,
+    pointToAngle2: rPointToAngle2,
+    setPaletteBand: (band) => luts.setBank(band) // I_SetPalette half
+  };
+  stCtx = st;
+  wiSrc = wadWiPatches(wad);
+  registerDisplayHooks({
+    // REORDER CONTRACT (renderer.ts DisplayHooks): the 3D pass covers the
+    // bar rows, so the wiring restores BG→FG every windowed frame — what
+    // vanilla's ST_refreshBackground copy does (widget diff/erase stays
+    // byte-faithful; forcing refresh here would not).
+    stDrawer: (fullscreen, refresh) => {
+      if (stCtx === null) return;
+      if (!fullscreen) stRefreshBackground(stCtx);
+      stDrawer(stCtx, fullscreen, refresh);
+    },
+    huDrawer: (automapactive) => huDrawer(automapactive),
+    wiDrawer: () => {
+      if (wiSrc !== null) wiDrawFrame(wiSrc, wiDrawSnapshot());
+    },
+    finaleDrawer: () => fDrawer(),
+    pageDrawer: () => dPageDrawer(),
+    mDrawer: () => mDrawer()
+    // pausedPatch (M_PAUSE stamp) unregistered: freedoom carries no
+    // M_PAUSE and no M9 module owns the stamp — d_main.c:310-316 visual,
+    // M10+ (displayStubHits never counts an undefined hook).
+  });
+  attachUiDebug(() => {
+    const st = boot?.state;
+    if (st === undefined) return null;
+    const w = wiPeek();
+    return {
+      screen: screenRead(st),
+      menu: {
+        active: menuState.menuActive(),
+        inHelpScreens: menuState.inHelpScreens(),
+        menuName: menuState.currentMenuName(),
+        itemOn: menuState.itemOn(),
+        whichSkull: menuState.whichSkull(),
+        messageToPrint: menuState.messageToPrint(),
+        screenBlocks: menuState.screenBlocks(),
+        mouseSensitivity: menuState.mouseSensitivity(),
+        detailLevel: menuState.detailLevel(),
+        itemBoxes: menuState.itemBoxes()
+      },
+      hud: {
+        faceIndex: stFaceIndex(),
+        faceCount: ST_NUMFACES,
+        message: huMessageText(),
+        showMessages: huState.showMessages,
+        statusbarOn: stStatusbarOn()
+      },
+      title: {
+        demosequence: titleState.demosequence(),
+        pagetic: titleState.pagetic(),
+        pagename: titleState.pagename()
+      },
+      finale: { stage: finaleState.finalestage(), count: finaleState.finalecount() },
+      wi: {
+        active: w.active,
+        phase: w.phase,
+        bcnt: w.bcnt,
+        epsd: w.epsd,
+        accelerateStage: w.accelerateStage,
+        last: w.last,
+        next: w.next
+      }
+    };
+  });
+  // Vanilla boot order mirror: G_InitNew (ST_Start + HU_Start happened
+  // inside gInitGame's path for the loaded E1M1) BEFORE D_StartTitle, the
+  // D_DoomMain tail (d_main.c:1166) — the attract takes over on the FIRST
+  // consumed tic (gFlowTic → D_DoAdvanceDemo → TITLEPIC, pagetic 170).
+  stStart(st);
+  huStart(state.gameepisode, state.gamemap);
+  lastLevelMap = state.map;
+  lastGamestate = state.gamestate;
+  dInit(state);
+
   status.hidden = true;
   picker.hidden = true;
   console.info(`doom-ts: booted ${map.name} from ${src}`);
