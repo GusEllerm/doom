@@ -549,8 +549,10 @@ export interface DisplayHooks {
    * buffer including the bar rows, so the hook (or the boot wiring) MUST
    * restore the BG→FG bar rows (ui/statusbar stRefreshBackground, which is
    * what vanilla's ST_doRefresh copy does) whenever !fullscreen, or the
-   * bar would show 3D pixels. Restoring via BG (not refresh=true) keeps
-   * the widget diff/erase semantics byte-faithful. */
+   * bar would show 3D pixels. Passing refresh=true for EVERY windowed
+   * frame (the B-06 fix, step 2 below) makes stDoRefresh itself run
+   * ST_refreshBackground + a full widget redraw — the hook's extra
+   * restore is then redundant-but-harmless (BG→FG twice = once). */
   stDrawer?: (fullscreen: boolean, refresh: boolean) => void;
   /** HU_Drawer (d_main.c:270) — messages overlay AFTER the 3D view. */
   huDrawer?: (automapactive: boolean) => void;
@@ -653,14 +655,23 @@ export function displayFrame(deps: DisplayDeps): DisplayResult {
 
   if (st.gamestate === GS_LEVEL && st.gametic !== 0) {
     // redrawsbar = wipe || (viewheight != MAXHEIGHT && fullscreen)
-    // (d_main.c:243-246) VERBATIM. The reorder's FG-bar-dirtied-by-3D
-    // problem is solved caller-side: the registered hook restores the
-    // BG→FG bar rows (ui/statusbar stRefreshBackground — what vanilla's
-    // ST_doRefresh copy does) every windowed frame, so widgets keep the
-    // vanilla diff/erase semantics (forcing refresh=true here would
-    // re-erase the widget boxes EVERY frame — an artifact vanilla only
-    // ever shows on genuine refresh frames).
-    barRefreshed = deps.wipe === true || (vs.viewheight !== 200 && dFulllscreen);
+    // (d_main.c:243-246) IN VANILLA — and vanilla can afford diff-draw
+    // because its FG statusbar rows PERSIST between frames: the view pass
+    // never leaves the window, and STlib multicons/binicons/%-sign redraw
+    // ONLY on value change (st_lib.c:208-234/:256-292/:179-187). Our
+    // reorder dirties the WHOLE buffer every frame and the stDrawer hook
+    // restores the bar rows from BG (stRefreshBackground) — an erase the
+    // widget diffs CANNOT see (their values are unchanged), so a windowed
+    // refresh=false frame shows a bar whose face/ARMS/keys/% widgets were
+    // just erased and will not return until their VALUE changes: the
+    // B-06 "face flickers, then it is gone" (soak: face box == BG within
+    // one frame of every change; the %-sign never returns after frame 1).
+    // Under the reorder a windowed frame therefore ALWAYS refreshes — the
+    // refresh path re-draws every widget over the fresh BG and its
+    // per-widget erase is itself a BG→FG copy (invisible), which
+    // reproduces exactly what vanilla's FG persistence showed. Wipe keeps
+    // its force (d_main.c:243); fullscreen has no bar to keep.
+    barRefreshed = deps.wipe === true || vs.viewheight !== 200;
     dFulllscreen = vs.fullscreen;
   } else if (st.gamestate === GS_INTERMISSION) {
     if (displayHooks.wiDrawer !== undefined) displayHooks.wiDrawer();
