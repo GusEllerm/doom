@@ -177,6 +177,24 @@ describe('teleport destination list', () => {
     expect(teleportCounts.noDestination).toBe(1);
   });
 
+  // B-10 regression: sk_baby (internal skill 0) must read the bit-1 gate
+  // (p_mobj.c:741 `if (gameskill == sk_baby) bit = 1;`). The old local
+  // skillBit fell through to `1 << (0 - 1)` = `1 << -1` — JS masks the
+  // shift mod 32 (1<<31, negative), so bit matched NOTHING and every
+  // doomednum-14 destination silently vanished at Come get some!.
+  it('skill 0 (sk_baby) reads the bit-1 gate (p_mobj.c:741) — no negative shift', () => {
+    const spec: RectMapSpec = {
+      rooms: [{ x: 0, y: 0, w: 256, h: 256, tag: 5 }],
+      things: [
+        { x: 64, y: 64, angle: 0, type: 1 },
+        { x: 128, y: 128, angle: 0, type: THING_TELEPORT_DEST, flags: 0x1 }
+      ]
+    };
+    const baby = stateFor(spec, 0);
+    expect(teleportDestinations(baby).dests).toHaveLength(1);
+    expect(teleportDestinations(baby).skippedSkill).toBe(0);
+  });
+
   it('selection equivalence: firstInSector == the verbatim chain scan', () => {
     const s = stateFor({
       rooms: [
