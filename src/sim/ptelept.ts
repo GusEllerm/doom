@@ -247,9 +247,15 @@ interface TeleportHost {
 const destCache = new WeakMap<SpecWorld, TeleportDestinations>();
 const worldCache = new WeakMap<SpecWorld, PMapWorld>();
 
-/** p_mobj.c:737-745 spawn-skill bit (same mapping as thinglinks.ts). */
+/** p_mobj.c:737-748 spawn-skill bit (same mapping as thinglinks.ts):
+ * sk_baby(0)/sk_easy(1) → 1, sk_medium(2) → 2, sk_hard(3) → 1<<2 = 4,
+ * sk_nightmare(4) → 4 (p_mobj.c:743 `else if (gameskill == sk_nightmare)
+ * bit = 4;`). The previous `skill === 1 ? 1 : … : 1 << (skill - 1)` made
+ * skill 0 compute `1 << -1` — JS masks the shift count mod 32 (→ 1<<31,
+ * negative), so the AND never matched and EVERY destination was filtered
+ * out at Come get some! (B-10 filter-family audit). */
 function skillBit(skill: number): number {
-  return skill === 1 ? 1 : skill >= 4 ? 4 : 1 << (skill - 1);
+  return skill === 0 || skill === 1 ? 1 : skill >= 4 ? 4 : 1 << (skill - 1);
 }
 
 /**
