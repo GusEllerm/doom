@@ -297,16 +297,18 @@ function promoteMoverSlot(m: Mobj): void {
   links.z[s] = m.z;
   m.linkSlot = s;
   // Link the new slot NOW, at promotion — the p_inter_damage.ts:303 rule,
-  // extended to the chase path (B-02 fix): allocThingSlot hands out a
-  // zeroed, UNLINKED slot, and the pTryMove that follows the promotion can
-  // FAIL (blocked destination ⇒ no relink, no further SetThingPosition
-  // until some later step succeeds) — a promoted monster left unlinked is
-  // invisible to EVERY PIT query: PTR_ShootTraverse/PTR_AimTraverse (the
-  // live "gun shoots but nothing dies" bug), missile hits, touch specials,
-  // even the monster-vs-monster blocking. Linking at the CURRENT position
-  // is vanilla-true: P_CheckPosition's restore half re-runs
-  // P_SetThingPosition at the original x/y after a failed move, so a
-  // never-moved mobj always sits in its origin cell.
+  // extended to the chase path: allocThingSlot hands out a zeroed,
+  // UNLINKED slot, and the damage-side twin already covers its blocked
+  // P_TryMove; here the assumed "next P_TryMove relinks" is FALSE when the
+  // chase step is blocked (our stateless CheckPosition lacks vanilla's
+  // restore-half SetThingPosition), stranding the promoted mover outside
+  // every PIT query until some later move succeeds. Linking at the CURRENT
+  // position matches vanilla's net effect — after a failed move
+  // P_CheckPosition re-runs P_SetThingPosition at the ORIGINAL x/y, so an
+  // mobj is never absent from its cell. Defensive hardening: never
+  // observed as a live failure (docs/BUGS.md B-02: the demonstrated root
+  // cause is the netgame-start decor, fixed in thinglinks/p_mobj).
+  thingSetPosition(links, s, m.x, m.y);
   m.rt.slotMobjs.delete(old);
   m.rt.slotMobjs.set(s, m);
 }
