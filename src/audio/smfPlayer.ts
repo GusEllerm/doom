@@ -90,6 +90,8 @@ interface VoiceRec {
   ch: number;
   note: number;
   startT: Rational;
+  /** Allocation order — the LRU key (startT can tie for same-tick notes). */
+  usedSeq: number;
   releaseT: Rational | null;
   /** Envelope release length (µs) applied once released. */
   releaseUs: number;
@@ -217,17 +219,18 @@ export function planMusic(smf: Smf): MusicPlan {
         if (vi === -1) {
           const active = (v: VoiceRec | null | undefined): v is VoiceRec =>
             v != null && (v.endT === null || rationalCmp(v.endT, t) > 0);
+          const older = (a: VoiceRec, b: VoiceRec): boolean => a.usedSeq < b.usedSeq;
           let best = -1;
           for (let i = 0; i < voices.length; i++) {
             const v = voices[i];
             if (!active(v) || v.ch !== ev.channel) continue; // per-channel LRU first
-            if (best === -1 || rationalCmp(v.startT, voices[best]!.startT) < 0) best = i;
+            if (best === -1 || older(v, voices[best]!)) best = i;
           }
           if (best === -1) {
             for (let i = 0; i < voices.length; i++) {
               const v = voices[i];
               if (!active(v)) continue;
-              if (best === -1 || rationalCmp(v.startT, voices[best]!.startT) < 0) best = i;
+              if (best === -1 || older(v, voices[best]!)) best = i;
             }
           }
           if (best === -1) {
@@ -240,8 +243,9 @@ export function planMusic(smf: Smf): MusicPlan {
           steals += 1;
         }
         const recIdx = records.length;
+        const noteSeq = seq++;
         const rec: NoteRec = {
-          seq: seq++,
+          seq: noteSeq,
           voice: vi,
           channel: ev.channel,
           note: ev.note & 0x7f,
@@ -264,6 +268,7 @@ export function planMusic(smf: Smf): MusicPlan {
           ch: ev.channel,
           note: ev.note & 0x7f,
           startT: t,
+          usedSeq: noteSeq,
           releaseT: isDrum ? t : null, // drums auto-release at note start
           releaseUs: rec.releaseUs,
           endT: null,
@@ -452,7 +457,7 @@ export class SmfPlayer {
 
   resume(nowSec: number): void {
     if (this.pausedAt !== null) {
-      this.base -= nowSec - this.pausedAt;
+      this.base += nowSec - this.pausedAt; // freeze the timeline keeping the schedule
       this.pausedAt = null;
     }
   }

@@ -187,12 +187,12 @@ export function oscCount(f: Family): number {
  * GM program → family (plan §M10-07 "GM program→family map (subset)"): the
  * GM 16-family octave layout, `family = program >> 3`. Programs cited by
  * usage in the fixture corpus + the FM/lead/pad corners: 0/4 (grand/EP
- * piano) → detunedTri, 19/20 (harmonica/organ drawn from organ rows 16-23)
- * → tri, 24/25/27 (acoustic/electric/clean guitar) → saw, 32/33/35
- * (acoustic/electric/fret bass) → tri, 48/49 (string ens 1/2) → detunedSaw,
- * 56/57 (trumpet/trombone) → saw, 64/65 (soprano/alto sax) → square,
- * 80/81 (DS/fifths saw lead) → saw, 88/89 (new-age/warm pad) →
- * detunedSquare, 105/106 (guitarish/synth FX) → square.
+ * piano) → detunedTri, 16-23 (drawbar organ) → tri, 24/25/29 (acoustic/
+ * electric/jazz guitar) → saw, 32/33/35 (acoustic/electric/fret bass) →
+ * tri, 40-55 (strings/ensemble) → detunedSaw, 56/57 (trumpet/trombone) →
+ * saw, 64/65 (soprano/alto sax) → square, 80/81 (DS/fifths saw lead) →
+ * saw, 88/89 (new-age/warm pad) → detunedSquare, 96/97 (FX 2/3) → square,
+ * 104/105 (agogo/maracas, ethnic row) → tri.
  */
 const GM_FAMILIES: readonly Family[] = [
   'detunedTri', // 0-7    piano / EP / harpsichord / clav
@@ -620,15 +620,16 @@ export class Synth {
       const aS = us2s(a.attackUs);
       const dS = us2s(a.decayUs);
       const rS = us2s(a.releaseUs);
+      const relT = Math.max(rel, when + aS + dS); // automation must stay monotonic
       env.gain.linearRampToValueAtTime(1, when + aS);
       env.gain.linearRampToValueAtTime(a.sustain, when + aS + dS);
-      env.gain.setValueAtTime(a.sustain, rel);
-      env.gain.linearRampToValueAtTime(0.0001, rel + rS);
+      env.gain.setValueAtTime(a.sustain, relT);
+      env.gain.linearRampToValueAtTime(0.0001, relT + rS);
       for (const s of sources) {
         (s as OscLike).start(when);
-        (s as OscLike).stop(rel + rS + 0.001);
+        (s as OscLike).stop(relT + rS + 0.001);
       }
-      endT = rel + rS + 0.001;
+      endT = relT + rS + 0.001;
     } else {
       const decay = us2s(DRUM_DECAY_US[note.drum]);
       const src = this.ctx.createBufferSource();
