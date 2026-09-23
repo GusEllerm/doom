@@ -134,6 +134,10 @@ export interface BusSet {
    * (null until the graph is built). Optional — the offline harness BusSet
    * needs no source wiring. */
   sfxNode?(): GainNodeLike | null;
+  /** M10-10-A additive: the music-bus GainNode (the Synth's musicIn);
+   * null until the graph is built. Optional like sfxNode (offline
+   * harness BusSets need no source wiring). */
+  musicNode?(): GainNodeLike | null;
   setSfx(v: number): void;
   setMusic(v: number): void;
   /** Direct master control (gesture unmute / test mute); respects mute flags. */
@@ -265,6 +269,7 @@ export const busSet: BusSet = {
   music: () => musicBus.value,
   master: () => masterBus.value,
   sfxNode: () => sfxBus.node,
+  musicNode: () => musicBus.node,
   setSfx: (v) => sfxBus.set(v, ctx),
   setMusic: (v) => musicBus.set(musicPaused ? 0 : v, ctx),
   setMaster: (v) => masterBus.set(testMute ? 0 : v, ctx),

@@ -41,7 +41,7 @@ import { emptyInput, type GameInput } from './sim/ticcmd';
 // wiring.ts (its read-only thermos pump), never direct here. main.ts owns
 // the production install (M10-06's installAudio site) — until that lands
 // this file installs the wiring for dev/test boots only.
-import { audioWiringState, installAudioWiring } from './audio/wiring';
+import { audioWiringState, installAudioWiring, installSfxBridges } from './audio/wiring';
 import type {
   CaptureResult,
   DebugGamestateName,
@@ -342,6 +342,11 @@ function liveSnapshot(state: GameState): DebugStateLive {
 export const debugSim: SimDebugApi = {
   attach(state: GameState): GameState {
     attached = state;
+    // M10-10-3: the headless/dev attach path installs the SAME sfx bridges
+    // production does (the shared wiring.ts export — bridge parity between
+    // the main.ts boot and every state attached here; idempotent when
+    // main.ts already installed them on this same state).
+    installSfxBridges(state);
     return state;
   },
   detach(): void {

@@ -69,10 +69,7 @@ import {
   resetHookSlots,
   type LiveSfxOrigin,
 } from '../../src/sim/hooks';
-import {
-  installPickupSfxBridge,
-  installPsprSfxSlot,
-} from '../../src/sim/psound_stub';
+import { installSfxBridges } from '../../src/audio/wiring';
 import { AM_CLIP, WP_PISTOL } from '../../src/sim/p_pspr';
 import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
 
@@ -459,10 +456,9 @@ function runMusicGolden(opts: MusicGoldenOpts): void {
 export function bootE1M1(): GameState {
   const state = gInitGame(buildMapFromData(loadMap(iwad(), 'E1M1')));
   resetHookSlots(state.hooks);
-  // Mirror main.ts:586-587 — the production sfx-slot install for the
-  // headless scripted runs (weapon-fire + pickup emits reach sfxSlot).
-  installPickupSfxBridge(state.hooks, () => state.leveltime);
-  installPsprSfxSlot(state.hooks, () => state.leveltime);
+  // M10-10-3: the SAME exported composer installer main.ts calls (no local
+  // mirror) — production and headless sfx logs are produced by one code path.
+  installSfxBridges(state);
   return state;
 }
 
