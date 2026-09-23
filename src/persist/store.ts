@@ -48,8 +48,8 @@ export const EMPTY_SLOT_TEXT = 'empty slot';
 /** Payload-container version (M11-02's DBP1 codec starts at 1). */
 export const CODEC_VERSION = 1;
 
-export const SAVE_STORE: 'saves' = 'saves';
-export const SETTINGS_STORE: 'settings' = 'settings';
+export const SAVE_STORE = 'saves' as const;
+export const SETTINGS_STORE = 'settings' as const;
 
 /** Header-field mirror (§0.1 offsets 40/41/42 + 47..49). */
 export interface SaveGameInfo {
