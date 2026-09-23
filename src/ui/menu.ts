@@ -31,8 +31,11 @@
  * keydown/keyup arrow/Enter pairs consumed by mResponder verbatim, so
  * the ev_mouse branch is intentionally NOT transcribed (deviation).
  *
- * SFX policy D-0xx: every S_StartSound site lands as hooks.sfxStub(name)
- * (counted, silent M9). QUIT: I_Quit maps to the D_StartTitle browser
+ * SFX policy D-0xx (CLOSED by M10-04): every S_StartSound site lands as
+ * hooks.sfxSink(name) — counted + recorded per-tic event emission onto
+ * the uiSfxLog ledger with live-listener fan-out (playback is M10-06's
+ * driver; byte-identical to the M9 stub with no listener registered).
+ * QUIT: I_Quit maps to the D_StartTitle browser
  * target (D-0zz) via the game.ts `startTitle` flow hook.
  *
  * SKILL DOMAIN: vanilla passes 0-based game-skills to
@@ -68,7 +71,7 @@ import {
 import type { MenuItemBox } from '../input/menuMouse';
 import { lumpPatch, vDrawPatchDirect, FG, type VPatch } from '../render/vvideo';
 import type { WadFile } from '../wad/wadfile';
-import { sfxStub } from '../sim/hooks';
+import { sfxSink } from '../sim/hooks';
 import { GAME_MODE } from '../sim/gamemode';
 import { gDeferedInitNew, gStartTitle, registerGameFlowHooks } from '../sim/game';
 import type { GameState } from '../sim/state';
@@ -548,7 +551,7 @@ function mEndGameResponse(ch: number): void {
 /** M_EndGame (:1005-1021): !usergame ⇒ sfx_oof; else ENDGAME confirm. */
 function mEndGame(): void {
   if (!gs?.usergame) {
-    sfxStub('sfx_oof');
+    sfxSink('sfx_oof');
     return;
   }
   mStartMessage(ENDGAME, mEndGameResponse, true);
@@ -567,7 +570,7 @@ function mFinishReadThis(): void {
 
 /** quitsounds[8] (:1054-1063) — episodic (non-commercial) table; the
  * commercial quitsounds2 (:1066) is unreached under the shareware
- * policy. Names transcribed for the silent-M9 sfxStub ledger. */
+ * policy. Names flow through hooks.sfxSink (M10-04 event emission). */
 const quitsounds = [
   'sfx_pldeth', 'sfx_dmpain', 'sfx_popain', 'sfx_slop',
   'sfx_telept', 'sfx_posit1', 'sfx_posit3', 'sfx_sgtatk',
@@ -579,7 +582,7 @@ const quitsounds = [
 function mQuitResponse(ch: number): void {
   if (ch !== ord('y')) return;
   const gametic = gs?.gametic ?? 0;
-  sfxStub(quitsounds[(gametic >> 2) & 7]!);
+  sfxSink(quitsounds[(gametic >> 2) & 7]!);
   mClearMenus();
   if (gs) gStartTitle(gs); // D-0zz: I_Quit ⇒ title in the browser
 }
@@ -674,7 +677,7 @@ function mLoadGame(): void {
 function mSaveGame(choice: number): void {
   // M_SaveGame's !choice && !usergame ⇒ sfx_oof half (m_menu.c:640-643)
   if (!choice && !gs?.usergame) {
-    sfxStub('sfx_oof');
+    sfxSink('sfx_oof');
     return;
   }
   menuStub('M_SaveGame');
@@ -939,7 +942,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
     messageToPrint = 0;
     messageRoutine?.(ch);
     menuactive = false;
-    sfxStub('sfx_swtchx');
+    sfxSink('sfx_swtchx');
     return true;
   }
 
@@ -952,13 +955,13 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
       case KEY_MINUS: // Screen size down
         if (menuSeams.automapActive?.() || menuSeams.chatOn?.()) return false;
         mSizeDisplay(0);
-        sfxStub('sfx_stnmov');
+        sfxSink('sfx_stnmov');
         return true;
 
       case KEY_EQUALS: // Screen size up
         if (menuSeams.automapActive?.() || menuSeams.chatOn?.()) return false;
         mSizeDisplay(1);
-        sfxStub('sfx_stnmov');
+        sfxSink('sfx_stnmov');
         return true;
 
       case KEY_F1: {
@@ -967,21 +970,21 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
         // retail ⇒ ReadDef2, else ReadDef1 (:1527-1530)
         currentMenu = GAME_MODE === 'retail' ? ReadDef2 : ReadDef1;
         itemOn = 0;
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         armMouse();
         return true;
       }
 
       case KEY_F2: // Save (M11 slot)
         mStartControlPanel();
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         mSaveGame(0);
         armMouse();
         return true;
 
       case KEY_F3: // Load (M11 slot)
         mStartControlPanel();
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         mLoadGame();
         armMouse();
         return true;
@@ -990,39 +993,39 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
         mStartControlPanel();
         currentMenu = SoundDef;
         itemOn = sound_e.sfx_vol;
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         armMouse();
         return true;
 
       case KEY_F5: // Detail toggle
         mChangeDetail();
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         return true;
 
       case KEY_F6: // Quicksave (M11)
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         mQuickSave();
         armMouse();
         return true;
 
       case KEY_F7: // End game
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         mEndGame();
         return true;
 
       case KEY_F8: // Toggle messages (flag = M9-06's, seam)
         mChangeMessages();
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         return true;
 
       case KEY_F9: // Quickload (M11)
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         mQuickLoad();
         armMouse();
         return true;
 
       case KEY_F10: // Quit DOOM
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         mQuitDOOM();
         return true;
 
@@ -1044,7 +1047,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
   if (!menuactive) {
     if (ch === KEY_ESCAPE) {
       mStartControlPanel();
-      sfxStub('sfx_swtchn');
+      sfxSink('sfx_swtchn');
       armMouse();
       return true;
     }
@@ -1058,7 +1061,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
       do {
         if (itemOn + 1 > currentMenu.numitems - 1) itemOn = 0;
         else itemOn++;
-        sfxStub('sfx_pstop');
+        sfxSink('sfx_pstop');
       } while (items[itemOn]!.status === -1);
       armMouse();
       return true;
@@ -1067,14 +1070,14 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
       do {
         if (!itemOn) itemOn = currentMenu.numitems - 1;
         else itemOn--;
-        sfxStub('sfx_pstop');
+        sfxSink('sfx_pstop');
       } while (items[itemOn]!.status === -1);
       armMouse();
       return true;
 
     case KEY_LEFTARROW:
       if (items[itemOn]!.routine && items[itemOn]!.status === 2) {
-        sfxStub('sfx_stnmov');
+        sfxSink('sfx_stnmov');
         items[itemOn]!.routine!(0);
         armMouse();
       }
@@ -1082,7 +1085,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
 
     case KEY_RIGHTARROW:
       if (items[itemOn]!.routine && items[itemOn]!.status === 2) {
-        sfxStub('sfx_stnmov');
+        sfxSink('sfx_stnmov');
         items[itemOn]!.routine!(1);
         armMouse();
       }
@@ -1093,10 +1096,10 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
         currentMenu.lastOn = itemOn;
         if (items[itemOn]!.status === 2) {
           items[itemOn]!.routine!(1); // right arrow
-          sfxStub('sfx_stnmov');
+          sfxSink('sfx_stnmov');
         } else {
           items[itemOn]!.routine!(itemOn);
-          sfxStub('sfx_pistol');
+          sfxSink('sfx_pistol');
         }
         armMouse();
       }
@@ -1105,7 +1108,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
     case KEY_ESCAPE:
       currentMenu.lastOn = itemOn;
       mClearMenus();
-      sfxStub('sfx_swtchx');
+      sfxSink('sfx_swtchx');
       return true;
 
     case KEY_BACKSPACE:
@@ -1113,7 +1116,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
       if (currentMenu.prevMenu) {
         currentMenu = currentMenu.prevMenu;
         itemOn = currentMenu.lastOn;
-        sfxStub('sfx_swtchn');
+        sfxSink('sfx_swtchn');
         armMouse();
       }
       return true;
@@ -1125,7 +1128,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
       for (let i = itemOn + 1; i < currentMenu.numitems; i++) {
         if (items[i]!.alphaKey === ch) {
           itemOn = i;
-          sfxStub('sfx_pstop');
+          sfxSink('sfx_pstop');
           armMouse();
           return true;
         }
@@ -1133,7 +1136,7 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
       for (let i = 0; i <= itemOn; i++) {
         if (items[i]!.alphaKey === ch) {
           itemOn = i;
-          sfxStub('sfx_pstop');
+          sfxSink('sfx_pstop');
           armMouse();
           return true;
         }

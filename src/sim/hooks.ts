@@ -225,11 +225,18 @@ export function damageSlot(
   }
 }
 
-/** S_StartSound stand-in (M10 audio replaces the body). */
+/** S_StartSound stand-in. M10-04: the RECORD half is unchanged (entry
+ * shape byte-identical); ADDITIVELY it now notifies the optional live
+ * listener (below) AFTER recording, carrying the optional origin read-
+ * ref `origin` (psound_stub.ts passes the SfxOrigin through; direct sfxSlot
+ * call sites keep 6 args and arrive with origin = null + world coords).
+ * With no listener registered the behavior is byte-identical to M9. */
 export function sfxSlot(
-  h: HookSlots, id: number, x: number, y: number, z: number, tic: number
+  h: HookSlots, id: number, x: number, y: number, z: number, tic: number,
+  origin?: LiveSfxOrigin | null
 ): void {
   record(h.sfx, { id, x, y, z, tic }, id);
+  liveSfx?.(id, origin ?? null, x, y, z, tic);
 }
 
 /** player->message stand-in (M9 HUD/messages replace the body). */
@@ -281,7 +288,152 @@ export function sfxStub(name: string): void {
 export function resetSfxStubLog(): void {
   sfxStubLog.count = 0;
   sfxStubLog.byName.clear();
+  // M10-04: the sink ledgers are reset with the counter they replace.
+  uiSfxLog.count = 0;
+  uiSfxLog.entries.length = 0;
+  uiSfxLog.byId?.clear();
+  musicLog.count = 0;
+  musicLog.entries.length = 0;
+  musicLog.byId?.clear();
 }
+
+/* ------------------------------------------------------------------ */
+/* M10-04 ADDITIVE: the sfxSink/musicSlot seams + live listeners       */
+/* (D-0xx closure: the 41 UI sfxStub bodies become EVENT EMISSION)     */
+/* ------------------------------------------------------------------ */
+
+/** Origin read-view for the live seam — structurally satisfied by the
+ * mobj runtime objects and by psound_stub.ts's SfxOrigin (hooks.ts
+ * imports NOTHING, A-06). `o` is the thinker-arena id when the emitter
+ * carries one (S_StartSound origin identity for the M10-05 allocator's
+ * one-sound-per-mobj rule); absent ⇒ position-only origin. */
+export interface LiveSfxOrigin {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly o?: number;
+}
+
+/** Live SFX listener — the playback half (M10-06 driver, M10-05 mixer).
+ * `sfx` is the NUMERIC id for sim-side emits (sounds.h sfxenum via
+ * psound_stub) and the `sfx_*` NAME for UI-side emits (m_menu.c /
+ * wi_stuff.c sites carry the symbol; the consumer resolves it through the
+ * sfxinfo table — src/audio/sfxinfo.ts). Coords follow the NULL-origin
+ * rule: 0/0/0 = listener position (s_sound.c S_StartSound). */
+export type LiveSfxFn = (
+  sfx: number | string, origin: LiveSfxOrigin | null,
+  x: number, y: number, z: number, tic: number,
+) => void;
+
+/** d_ssound.h-ish music kinds for the M10-08 consumer (s_sound.c:649-703
+ * S_ChangeMusic sites). 'level' is reserved for M10-08's S_Start site
+ * (p_setup.c:607) — no call site exists before that task. */
+export type MusicKind = 'level' | 'intermission' | 'finale' | 'title';
+
+/** s_sound.c S_ChangeMusic/S_StartMusic event: WHICH song-role started
+ * and whether it loops (§0.6: level/inter/finale loop, title is
+ * ONE-SHOT per d_main.c:477 S_StartMusic). */
+export interface MusicEvent {
+  readonly kind: MusicKind;
+  readonly loop: boolean;
+  readonly tic: number;
+}
+
+/** Live music listener (consumer M10-08's musicSelect/driver). */
+export type LiveMusicFn = (kind: MusicKind, loop: boolean, tic: number) => void;
+
+/* Module-level seams (UI sites have no GameState handle at the call —
+ * same module-scope idiom as sfxStubLog above). NOT cleared by
+ * resetHookSlots or resetSfxStubLog — audio-owned, M8 aiGate idiom;
+ * register(… , null) clears. Registration is REPLACE = idempotent. */
+let liveSfx: LiveSfxFn | null = null;
+let liveMusic: LiveMusicFn | null = null;
+let sfxClock: (() => number) | null = null;
+
+/** Install (or with null, clear) the live SFX listener. Idempotent. */
+export function registerLiveSfx(fn: LiveSfxFn | null): void {
+  liveSfx = fn;
+}
+
+/** Install (or with null, clear) the live music listener. Idempotent. */
+export function registerLiveMusic(fn: LiveMusicFn | null): void {
+  liveMusic = fn;
+}
+
+/** Source of the CURRENT tic for UI-side events (gametic / menu tic —
+ * the s_sound.c S_StartSound envelope stamps `leveltime`/gametic at the
+ * call). Wired by main.ts's M10-06 audio plumbing; unset ⇒ tic 0. */
+export function setSfxEventClock(getTic: (() => number) | null): void {
+  sfxClock = getTic;
+}
+
+/** Deterministic per-tic RECORD ledger for UI-zone S_StartSound events
+ * (the sfxStub COUNTER stays as the legacy counting layer; this is the
+ * event half the M10 driver/ledgers consume). `sfx` keeps the raw name
+ * or id (resolution is the audio side's job — sfxinfo table). */
+export interface UiSfxEvent {
+  readonly sfx: string | number;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly tic: number;
+}
+
+export const uiSfxLog: SlotLog<UiSfxEvent> = { count: 0, entries: [], byId: new Map() };
+
+/** The music event ledger (consumer M10-08). Same SlotLog discipline. */
+export const musicLog: SlotLog<MusicEvent> = { count: 0, entries: [], byId: new Map() };
+
+/**
+ * The ONE function the UI files call for S_StartSound (replaces the
+ * silent-M9 sfxStub bodies AT THEIR ADDRESSES — M6-plan §0.10 doctrine).
+ * Order: legacy counter (menu/wintermission count tests untouched) →
+ * uiSfxLog record → live listener. Zero PRNG, zero platform (A-06).
+ */
+export function sfxSink(sfx: string | number, origin?: LiveSfxOrigin | null): void {
+  const tic = sfxClock !== null ? sfxClock() : 0;
+  const x = origin ? origin.x : 0;
+  const y = origin ? origin.y : 0;
+  const z = origin ? origin.z : 0;
+  sfxStub(typeof sfx === 'string' ? sfx : `sfx#${sfx}`);
+  record(uiSfxLog, { sfx, x, y, z, tic }, sfx);
+  liveSfx?.(sfx, origin ?? null, x, y, z, tic);
+}
+
+/**
+ * The ONE function the UI files call for S_ChangeMusic/S_StartMusic
+ * (wintermission mus_inter, title mus_intro, finale mus_victor — the
+ * 3 former sfxStub music addresses). Records to musicLog, notifies the
+ * live listener. NOT a sim-stream sound ⇒ no sfxStub/uiSfxLog entry.
+ */
+export function musicSlot(kind: MusicKind, loop: boolean): void {
+  const tic = sfxClock !== null ? sfxClock() : 0;
+  record(musicLog, { kind, loop, tic }, kind);
+  liveMusic?.(kind, loop, tic);
+}
+
+/**
+ * Auto-scan manifest for the UI-side emission sites (the sim-side
+ * authority stays psound_stub.ts's SFX_SITE_LEDGER, unchanged — drift
+ * there is red via ppalette.test.ts). Counts per NON-TEST source file:
+ * `sfxSink(` calls and `musicSlot(` calls. hooks.ts itself (the seam
+ * definitions) is skipped by the scan. The numbers mirror m_menu.c /
+ * wi_stuff.c / d_main.c / f_finale.c per M10-plan §0.9; a call site
+ * added/removed anywhere fails hooks.test.ts's scan, both directions.
+ */
+export const SFX_UI_SITE_LEDGER: Readonly<Record<string, { sfx: number; music: number }>> = {
+  // m_menu.c's S_StartSound sites (30 textual; our quit sites collapse
+  // the quitsounds[] pair, the read-this arms share M_ReadThis routines)
+  // ⇒ 28 emit statements after M9-05/M9-06 transcription.
+  'menu.ts': { sfx: 28, music: 0 },
+  // wi_stuff.c: the 10 sfx_barexp/pistol/sgcock tally sites + the ONE
+  // S_ChangeMusic(mus_inter,true) site (:1509-1514).
+  'wintermission.ts': { sfx: 10, music: 1 },
+  // d_main.c:477/:498 S_StartMusic(mus_intro) — ONE site (case 0).
+  'title.ts': { sfx: 0, music: 1 },
+  // f_finale.c:114 S_ChangeMusic(mus_victor,true).
+  'finale.ts': { sfx: 0, music: 1 }
+};
 
 /** g_game.c G_Ticker gameaction-drain record (d_event.h gameaction_t
  * value + the gametic it drained at). */

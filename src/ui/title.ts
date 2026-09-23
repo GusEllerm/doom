@@ -14,7 +14,7 @@
 // slots (1/3/5) call the counted gDeferedPlayDemo stub (Post-M12 `.lmp`
 // stretch, ROADMAP §Stretch) and the CREDIT/HELP2 pages ride with them
 // (§4 "D_DoAdvanceDemo demos" deferred). mus_intro lands at the case-0
-// S_StartMusic site (:477) via the D-0xx counted stub.
+// S_StartMusic site (:477) via hooks.musicSlot('title', false) (M10-04; consumer M10-08).
 //
 // D-0zz (deviation, DECISIONS-pending): the browser has no process exit,
 // so vanilla's I_Quit target (m_menu.c M_QuitResponse 'y' → I_Quit) is
@@ -41,7 +41,7 @@ import {
   type FlowActFn,
   type FlowTicFn
 } from '../sim/game';
-import { sfxStub } from '../sim/hooks';
+import { musicSlot } from '../sim/hooks';
 import { PST_LIVE } from '../sim/player';
 import { FG, lumpPatch, vDrawPatch } from '../render/vvideo';
 import type { WadFile } from '../wad/wadfile';
@@ -155,7 +155,7 @@ export const dPageTicker: FlowTicFn = (state) => {
  * gDeferedPlayDemo stub and EVERY page lands TITLEPIC with the case-0
  * pins — pagetic=170 (:473), gamestate=GS_DEMOSCREEN, pagename TITLEPIC
  * (:475); mus_intro at the case-0 music site (:477) via the counted
- * sfx stub. Faithful-but-unreachable: demo1/2/3 (G_DeferedPlayDemo),
+ * music ledger (M10-04 swap). Faithful-but-unreachable: demo1/2/3 (G_DeferedPlayDemo),
  * case-2 CREDIT/200 (:487-490) and case-4 HELP2/200 (:496-509).
  */
 export const dDoAdvanceDemo: FlowActFn = (state) => {
@@ -169,7 +169,7 @@ export const dDoAdvanceDemo: FlowActFn = (state) => {
 
   switch (demosequence) {
     case 0: // TITLEPIC (:468-478)
-      sfxStub('mus_intro'); // :477 S_StartMusic(mus_intro) — D-0xx
+      musicSlot('title', false); // :477 S_StartMusic(mus_intro) — ONE-SHOT (§0.6)
       break;
     case 1: // demo1 (:480-483)
       deferPlayDemo('demo1');
