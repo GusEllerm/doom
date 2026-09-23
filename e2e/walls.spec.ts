@@ -150,8 +150,13 @@ function runTo(page: Page, target: number): Promise<void> {
     (t: number) =>
       new Promise<void>((resolve) => {
         const api = window.__doom!;
+        const start = api.sim.getState()?.leveltime ?? 0;
         const check = (): void => {
-          if ((api.sim.getState()?.leveltime ?? 0) >= t) {
+          const lt = api.sim.getState()?.leveltime ?? 0;
+          // `lt > start` guarantees ≥ 1 live tic per call — a queued key
+          // event ALWAYS drains (a bare `lt >= t` park could resume and
+          // re-pause inside a single rAF and strand the event forever).
+          if (lt >= t && lt > start) {
             api.pause(true);
             resolve();
           } else {
