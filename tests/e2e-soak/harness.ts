@@ -21,9 +21,21 @@
  *    per-render `luts.setBank(paletteBand(player))` half (the stDrawer hook
  *    runs the same ST_doPaletteStuff gate INSIDE displayFrame).
  *  bootToPlay() mirrors main.ts afterLoad (gInitGame + attachPowerupFields +
- *    vInit + stInit + stStart + huStart) WITHOUT the D_StartTitle attract
+ *    vInit + stInit + stStart + huStart + the M9 boot wiring halves main.ts
+ *    does for EVERY live game: mSetWad/mInit/mRegisterFlow, dSetWad/fSetWad,
+ *    the wi/finale/page/M drawer hooks) WITHOUT the D_StartTitle attract
  *    (the e2e/playstart.ts deterministic enter-play idea at vitest level:
  *    GS_LEVEL from gInitGame, gametic/leveltime anchored at 0).
+ *  M12-05 EXTENSIONS (level rotation + menu visits, still main.ts parity):
+ *    - display() runs the SAME level-rebuild guard main.ts:492-501 runs —
+ *      key = state.map OBJECT IDENTITY (B-04 rule), rebuilding world/
+ *      mapView/sprites from the levelLoader's pendingMd (textures/flats
+ *      are per-IWAD, cached like main.ts boot.textures/boot.flats);
+ *    - stepTic zeroes the command while the menu panel is open (main.ts
+ *      :437 `if (menuState.menuActive()) ticInput = emptyInput()`) and
+ *      render mirrors menuState.menuActive() into the deps bundle;
+ *    - menuKey(ch) injects an m_menu keyboard event (main.ts's event
+ *      queue forwards the SAME packets to mResponder).
  *
  * The stDrawer hook is registered VERBATIM as main.ts registers it today
  * (BG restore + diff draw) — fixing a bug here means fixing the wiring in
@@ -91,6 +103,20 @@ import {
   type StContext
 } from '../../src/ui/statusbar';
 import { WadFile } from '../../src/wad/wadfile';
+import { huRegisterMenu } from '../../src/ui/humessage';
+import {
+  mDrawer,
+  mInit,
+  mRegisterFlow,
+  mReset,
+  mResponder,
+  mSetWad,
+  menuState
+} from '../../src/ui/menu';
+import { dPageDrawer, dReset, dSetWad } from '../../src/ui/title';
+import { fDrawer, fReset, fSetWad } from '../../src/ui/finale';
+import { wiDrawSnapshot } from '../../src/sim/wintermission';
+import { wadWiPatches, wiDrawer as wiDrawFrame } from '../../src/render/wiDraw';
 
 export function findWad(): string | undefined {
   const candidates = [
@@ -115,6 +141,19 @@ export function sharedWad(): WadFile {
     cachedWad = WadFile.parse(toArrayBuffer(readFileSync(WAD_PATH)));
   }
   return cachedWad;
+}
+
+// Per-IWAD render inputs (main.ts boot.textures / boot.flats — built ONCE,
+// loadRenderWorld only indexes them; M12-05 level rotation re-uses them).
+let cachedTextures: ReturnType<typeof texturesFromWad> | null = null;
+let cachedFlats: ReturnType<typeof flatsFromWad> | null = null;
+function sharedTextures(wad: WadFile): NonNullable<typeof cachedTextures> {
+  if (cachedTextures === null) cachedTextures = texturesFromWad(wad);
+  return cachedTextures;
+}
+function sharedFlats(wad: WadFile): NonNullable<typeof cachedFlats> {
+  if (cachedFlats === null) cachedFlats = flatsFromWad(wad);
+  return cachedFlats;
 }
 
 /** A full live-loop cycle: tics tics (main.ts stepTic each), then ONE
@@ -157,8 +196,12 @@ export interface LiveSoak {
   /** Hash an arbitrary rect of the index buffer. */
   hashRect(x: number, y: number, w: number, h: number): string;
   injectDamage(amount: number): void;
-  /** Script the ticcmd for subsequent tics (null = emptyInput). */
+  /** Script the ticcmd for subsequent tics (null = emptyInput). Called
+   * ONCE PER TIC from stepTic — M12-05 runs the per-tic invariants there. */
   setInput(fn: ((tic: number) => GameInput) | null): void;
+  /** Inject an m_menu keyboard event packet (main.ts event-queue mirror:
+   * data1 = ASCII 27 ESC / 13 ENTER / 200 up / 208 down). */
+  menuKey(ch: number): void;
   /** FORCE the automap on/off straight on the live am state (the keyboard
    * event path is e2e's job; B-01 pins the automap/skip-crop interaction
    * at this level). The harness mirrors am.automapactive into stCtx and
@@ -196,11 +239,26 @@ export function createLiveSoak(): LiveSoak {
 
   const fb = new Framebuffer();
   vInit(fb.indices); // screens[0] ALIASES fb.indices (main.ts afterLoad)
-  const world = loadRenderWorld(md, texturesFromWad(wad), flatsFromWad(wad), state.sectors);
-  const mapView = buildRenderMapView(md);
+  const textures = sharedTextures(wad);
+  const flats = sharedFlats(wad);
+  let mdRef = md;
+  let world = loadRenderWorld(mdRef, textures, flats, state.sectors);
+  let mapView = buildRenderMapView(mdRef);
   const tables = initLightTables(decodeColormap(wad.readLumpByName('COLORMAP')));
-  const sprites: SpriteTables = buildMapSprites({ md, map: mapView, wad });
+  let sprites: SpriteTables = buildMapSprites({ md: mdRef, map: mapView, wad });
+  let mapRef: unknown = state.map; // B-04 rebuild key: OBJECT identity
   const am = amCreateState();
+
+  // main.ts boot menu/title/finale wiring (afterLoad halves that are NOT
+  // attract: the drawer hooks + M_Init + the M_Ticker slot + the HU-menu
+  // seam). M12-05 menu visits drive mResponder/mDrawer over LIVE levels.
+  const wiSrc = wadWiPatches(wad);
+  mSetWad(wad);
+  mInit(); // M_Init (+ shareware EpiDef censor) — before mRegisterFlow
+  mRegisterFlow(); // the d_main.c:382 M_Ticker slot
+  dSetWad(wad);
+  fSetWad(wad);
+  huRegisterMenu(); // menuSeams.showMessages ↔ huState (main.ts:298)
 
   stInit(wad);
   const stCtx: StContext = {
@@ -212,14 +270,20 @@ export function createLiveSoak(): LiveSoak {
   };
   huSetWad(wad);
 
-  // The EXACT main.ts stDrawer wiring (the reorder contract hook).
+  // The EXACT main.ts stDrawer wiring (the reorder contract hook) + the
+  // M9 per-state drawers main.ts registers (M12-05: WI/finale/page frames
+  // join the soak once level rotation reaches an intermission).
   resetDisplayHooks();
   registerDisplayHooks({
     stDrawer: (fullscreen, refresh) => {
       if (!fullscreen) stRefreshBackground(stCtx);
       stDrawer(stCtx, fullscreen, refresh);
     },
-    huDrawer: (automapactive) => huDrawer(automapactive)
+    huDrawer: (automapactive) => huDrawer(automapactive),
+    wiDrawer: () => wiDrawFrame(wiSrc, wiDrawSnapshot()),
+    finaleDrawer: () => fDrawer(),
+    pageDrawer: () => dPageDrawer(),
+    mDrawer: () => mDrawer()
   });
   resetDisplayStatics();
 
@@ -227,7 +291,7 @@ export function createLiveSoak(): LiveSoak {
   huStart(state.gameepisode, state.gamemap);
   let lastLevelMap: unknown = state.map;
   let lastGamestate = state.gamestate;
-  void pendingMd; // (levelLoader is only exercised by a level change)
+  void pendingMd; // (levelLoader feeds the display() rebuild guard below)
 
   const frames: SoakFrame[] = [];
   let inputFn: ((tic: number) => GameInput) | null = null;
@@ -235,8 +299,12 @@ export function createLiveSoak(): LiveSoak {
   function stepTic(): void {
     const player = state.players[0]!;
 
-    // (no DOM event queue in the harness — the drained queue stays empty)
-    const input = inputFn === null ? emptyInput() : inputFn(state.gametic);
+    // (no DOM event queue in the harness — the drained queue stays empty;
+    // menuKey() injects m_menu packets straight, mirroring main.ts's queue
+    // forward). main.ts:437 parity: vanilla zeroes the command while the
+    // menu panel is open (the world keeps ticking — g_game.c:569-573).
+    let input = inputFn === null ? emptyInput() : inputFn(state.gametic);
+    if (menuState.menuActive()) input = emptyInput();
 
     if (state.exitRequest !== 'none') {
       const kind = state.exitRequest;
@@ -267,6 +335,16 @@ export function createLiveSoak(): LiveSoak {
   }
 
   function display(): DisplayResult {
+    // main.ts:492-501 level-rebuild guard — key is state.map OBJECT
+    // IDENTITY (B-04: a same-map New Game keeps `name` equal).
+    if (state.map !== mapRef && pendingMd !== null) {
+      mapRef = state.map;
+      mdRef = pendingMd;
+      pendingMd = null;
+      world = loadRenderWorld(mdRef, textures, flats, state.sectors);
+      mapView = buildRenderMapView(mdRef);
+      sprites = buildMapSprites({ md: mdRef, map: mapView, wad });
+    }
     const wipe = takeWipeRequest(state);
     stCtx.automapActive = am.automapactive;
     const deps: DisplayDeps = {
@@ -284,7 +362,7 @@ export function createLiveSoak(): LiveSoak {
         automapactive: am.automapactive,
         viewactive: state.viewactive,
         paused: state.paused,
-        menuActive: false
+        menuActive: menuState.menuActive()
       },
       borders: { wad },
       wipe
@@ -384,6 +462,13 @@ export function createLiveSoak(): LiveSoak {
     am.automapactive = on;
   }
 
+  /** Inject an m_menu keyboard event (event_t.data1 = the ASCII key —
+   * 27 ESC / 13 ENTER / 200·208 arrows). keyups are NEVER eaten
+   * (g_game.c:571-577) — mResponder ignores them, keydown-only is exact. */
+  function menuKey(ch: number): void {
+    mResponder(state, { type: 'keydown', data1: ch });
+  }
+
   return {
     state,
     fb,
@@ -396,7 +481,8 @@ export function createLiveSoak(): LiveSoak {
     hashRect: rectSha,
     injectDamage,
     setInput,
-    setAutomap
+    setAutomap,
+    menuKey
   };
 }
 
@@ -412,4 +498,9 @@ export function resetSoakModules(): void {
   resetDisplayHooks();
   resetBorderStats();
   huSetWad(null);
+  // M12-05: the menu/title/finale statics join the fresh-process contract
+  // (createLiveSoak re-runs the main.ts boot wiring on top of these).
+  mReset();
+  dReset();
+  fReset();
 }
