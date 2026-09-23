@@ -11,6 +11,10 @@ import tseslint from 'typescript-eslint';
 //   render/**    may import core + wad + read-only sim state (sim/state*);
 //                never platform; no DOM/wall-clock globals (platform owns them)
 //   platform/**  top of the wiring graph: may import everything; never debug.ts
+//   persist/**   (M11-plan D-11g) IndexedDB zone: sim imports NOTHING from
+//                it; it may reach sim only through sim/state read-views
+//                (same convention as render/); it may use `indexedDB`,
+//                Date and timers, but no other DOM/wall-clock globals.
 //   (src/debug.ts and src/main.ts live at src/ root and are outside zones.)
 //
 // `group` globs below are matched against the raw import specifier with the
@@ -23,7 +27,7 @@ import tseslint from 'typescript-eslint';
 /** @param {string} zoneName */
 const zone = (zoneName) => [`**/${zoneName}`, `**/${zoneName}/**`];
 
-const ZONE_LIST = ['core', 'wad', 'sim', 'render', 'platform'];
+const ZONE_LIST = ['core', 'wad', 'sim', 'render', 'platform', 'persist'];
 
 // src/debug.ts (the window.__doom installer) must never be imported by zone
 // code (it is the wiring endpoint, and would cycle); src/types/debug.ts
@@ -153,8 +157,8 @@ export default tseslint.config(
         'error',
         {
           // Pure decoders: bytes in, typed data out. core allowed (tables/
-          // constants); sim/render/platform forbidden.
-          patterns: importPatterns(['sim', 'render', 'platform'])
+          // constants); sim/render/platform/persist forbidden.
+          patterns: importPatterns(['sim', 'render', 'platform', 'persist'])
         }
       ],
       ...deterministicRules
@@ -168,8 +172,10 @@ export default tseslint.config(
         'error',
         {
           // HARD rule (ARCHITECTURE §1): the deterministic core never imports
-          // render/ or platform/; it may import core/ and wad/ (load-time data).
-          patterns: importPatterns(['render', 'platform'])
+          // render/ or platform/; it may import core/ and wad/ (load-time
+          // data). persist/ too (M11-plan D-11g): the sim knows NOTHING about
+          // storage — capture/restore cross the boundary as pure bytes.
+          patterns: importPatterns(['render', 'platform', 'persist'])
         }
       ],
       ...deterministicRules
@@ -182,7 +188,7 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          patterns: importPatterns(['platform'], [
+          patterns: importPatterns(['platform', 'persist'], [
             {
               // Read-only convention (ARCHITECTURE §1.3): render may reach sim
               // only through the state module (read-views live there); every
@@ -213,6 +219,48 @@ export default tseslint.config(
           patterns: importPatterns([])
         }
       ]
+    }
+  },
+  {
+    name: 'doom/zones/persist',
+    files: ['src/persist/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          // IndexedDB zone (M11-plan D-11g): it may import core/ and wad/
+          // and reach sim through READ-VIEWS ONLY (sim/state — same
+          // convention as render/); never render/ or platform/; and sim
+          // imports NOTHING from it (enforced in the sim zone above).
+          patterns: importPatterns(['render', 'platform'], [
+            {
+              group: ['**/sim/**', '!**/sim/state', '!**/sim/state.*'],
+              message:
+                'persist/ may import sim only through sim/state read-views '
+                + '(M11-plan §M11-01/D-11g; same convention as render/).'
+            }
+          ])
+        }
+      ],
+      // indexedDB is this zone's reason to exist; Date (save mtimes) and
+      // timers (settings write-debounce, M11-07) are storage-adjacent. No
+      // other DOM/wall-clock global belongs here; Math.random stays banned
+      // so persisted bytes remain reproducible in tests.
+      'no-restricted-globals': [
+        'error',
+        ...PLATFORM_ONLY_GLOBALS.filter(
+          (g) =>
+            ![
+              'indexedDB',
+              'Date',
+              'setTimeout',
+              'setInterval',
+              'clearTimeout',
+              'clearInterval'
+            ].includes(g.name)
+        )
+      ],
+      'no-restricted-syntax': ['error', NO_MATH_RANDOM]
     }
   }
 );
