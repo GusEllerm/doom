@@ -44,11 +44,16 @@ function serveWads(): Plugin {
 export default defineConfig({
   plugins: [serveWads()],
   build: {
-    // Multi-page: the game page plus the dev-only WAD viewer (M1-08).
+    // M12-06 (plan §M12-06a): the PRODUCTION build ships the GAME ONLY
+    // (index.html). The dev-only WAD viewer (M1-08) is not a build entry —
+    // it stays reachable in `vite dev` only, where the dev server serves
+    // any root .html on request (viewer.spec.ts runs against dev, so no
+    // `build:viewer` companion script is needed — the simpler option the
+    // plan allows). Consequence asserted in e2e/build.spec.ts: dist carries
+    // no viewer.html and no viewer-*.js.
     rollupOptions: {
       input: {
         main: resolve(process.cwd(), 'index.html'),
-        viewer: resolve(process.cwd(), 'viewer.html'),
       },
     },
   },
