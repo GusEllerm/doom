@@ -17,7 +17,7 @@ Refined by the Phase-2 architect; per-milestone leaf plans live in docs/design/M
 | M7 | Items & weapons | Every pickup + weapon via state tables; hitscan/projectile/autoaim/splash L2 goldens; powerups + palette flashes visible (L3 viewpoint diffs, L4 fire-weapon keys) | M6 | [x] |
 | M8 | Monsters (+ DEHACKED fullbright task, A-02) | Full Phase-1 roster from state tables; wake on sight/sound, melee/missile, pain/death/gib, infighting, barrels — L2 per-family fixtures + random-site counts; L5 death-state screenshot review | M7 | [x] |
 | M9 | Game flow & UI | Title→skill→play→exit→intermission tally→next map→end screen (all original/Freedoom text); menus keyboard+mouse operable (L4 real clicks/keys, zero console errors); status bar + face + messages (L3 goldens) | M7 | [x] |
-| M10 | Audio (SMF synth task per A-03; MUS behind flag) | SFX with priority/attenuation/panning (L1 mixer unit tests + offline-mix golden buffers); SMF music plays in e2e without console errors; volume settings take effect (L4) | M9 (any sim≥M7) | [ ] |
+| M10 | Audio (SMF synth task per A-03; MUS behind flag) | SFX with priority/attenuation/panning (L1 mixer unit tests + offline-mix golden buffers); SMF music plays in e2e without console errors; volume settings take effect (L4) | M9 (any sim≥M7) | [x] |
 | M11 | Persistence & options (IndexedDB task per A-10) | F6/F9 + menu save/load round-trip in browser: `state().hash` equals pre-save (L4 in-browser IDB test); bindings/sensitivity/volumes persisted across reload; raw-buffer serialize/deserialize L1 goldens | M9 | [ ] |
 | M12 | Full-episode hardening | Every Freedoom P1 map loads + renders at ≥8 sampled viewpoints with HOM=0 and no single-color/anomaly flags (L3 corpus); reachable exit per map (L2/L4 route); scripted playthrough of E1M1 + one map per episode (L4); perf log: 35 Hz sim + 60 fps on mid-range laptop | M1–M11 | [ ] |
 | P4 | Fidelity audits (see below) | ≥2 audit rounds; final round with zero high-severity findings; playtest sweep report clean | M12 | [ ] |
@@ -28,6 +28,37 @@ All three M9-preview carry-overs landed: production monster pixels (D018
 flipped, M9-09), G_ExitLevel/A_BossDeath → ga_completed → WI routing (M9-03/
 08, E1M8⇒finale + E1M9⇒E1M4 pins), damageBridge production wiring (live
 combat through the loop; e2e m9-flow). D017 retired; D019-D023 ratified.
+
+## M10 — CLOSED (M10-12 exit sweep green; see STATUS “M10 exit state”)
+All exit criteria landed: mixer goldens + 8 offline-mix buffers + E1M1
+firefight golden drift-free; the 41-site silent-M9 ledger swapped IN PLACE
+(`sfxStub(` outside hooks.ts == 0) with ZERO stream/golden regression
+(D-10a proof in tests/audio/regression.test.ts); SMF music plays per level /
+title / intermission / finale in e2e with zero console errors ×2; volume
+thermos move the real bus gains (L4, D-10d law). D-10a..f closed;
+corrections register in DECISIONS.md.
+
+## M11 preview (post-M10 carry-overs the exit sweep recorded)
+- **Persistence (A-10)**: F6/F9 + menu save/load round-trip in browser
+  (`state().hash` equals pre-save, in-browser IDB e2e); raw-buffer
+  serialize/deserialize L1 goldens. R11’s tagged-binary design is the base.
+- **Key bindings + sensitivity** menu (M_bind/M_ControlPanel rows) — bindings
+  and sensitivity persisted across reload (volumes ride the SAME save).
+- **Volume PERSISTENCE rides saves**: M10 ships SESSION-ONLY volumes
+  (plan §3 deferred note — default.cfg ≡ IndexedDB is explicitly M11 scope).
+- **Cheats**: the idmus<nn> music-switch slot is reserved at the M9 cheat
+  deferral note; chat sfx (hu_stuff radio/tink — the sfx_radio path) joins
+  the cheat/chat suite.
+- **Demos**: the attract keeps the full D_DoAdvanceDemo shape (D023) —
+  demo-recording plumbing lands with the .lmp playback task (playback
+  remains Post-M12 stretch per ROADMAP stretch list); title-music one-shot
+  re-arm already matches the cycle.
+- **Pause-music: N/A-faithful** — vanilla 1.10’s S_PauseSound call site is
+  dead code (no pause key; g_game.c:705-712 unreachable). The sPause/
+  sResumeMusic latch is PORTED (M10-08) but unwired by design; `__doom
+  .pause()` keeps music playing. If M11 adds a pause affordance, the latch
+  attaches at that seam (e2e/m10-audio.spec.ts header states this openly —
+  not silently passed).
 
 ## M10 preview (post-M9 carry-overs the exit sweep recorded)
 - **SFX bodies at the 41 kept sites** (`hooks.sfxStub` → real mixer): the

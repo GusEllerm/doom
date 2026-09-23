@@ -130,3 +130,73 @@ Post-M12 stretch list. M9 ships the REDUCED attract: TITLEPIC page
 branch (g_game.c:529-541), D_StartTitle as the endgame/quit target. The
 demosequence counter keeps its vanilla shape (-1 after D_StartTitle) so the
 full cycle drops in with the .lmp task.
+
+## D-10a..f — M10 (audio) decisions of record (plan of record: M10-plan §3; all CLOSED-IMPLEMENTED at M10-12)
+- **D-10a — pitch jitter WITHOUT `M_Random`** (M10-05): linuxdoom-1.10 burns one
+  menu-stream `M_Random()` per `S_StartSound` (s_sound.c:330/:340) — adopting it
+  would shift `st_face`/WI stream values and re-bless goldens for a ±1/16 pitch
+  wobble no golden can see. We keep the DISTRIBUTION (saw family ±8, others ±16,
+  itemup/tink none — plan §0.2) from a sound-owned `splitmix(tic, sfxId,
+  originId)` (src/audio/mixerCore.ts:121-135/:415) — deterministic, NOT
+  player-timing-dependent. **CLOSED with the zero-stream proof**:
+  tests/audio/regression.test.ts (a) asserts the `mRandom` CALL-TREE manifest
+  (scanCallTree, whole src incl. the audio zone) == the M9 blessed manifest —
+  zero new keys — and (c) hook-log parity vs a muted boot; the full motion/
+  golden suite passed UNCHANGED across the whole milestone (zero re-blesses).
+  `random-sites.ts` gained NO new key, as promised (plan §1).
+- **D-10b — golden = TS software mix, playback = WebAudio nodes** (M10-05):
+  OfflineAudioContext runs are not stable across browser builds, so the goldens
+  certify the PLAN + the exact i_sound.c int law via `renderMix` (mixerCore);
+  the browser path mirrors the same decisions through GainNode chains (linear
+  `v/127` ≡ `vol_lookup` linearity, i_sound.c:421-423). **Deviation surface**:
+  WebAudio's own source-node resampler for non-native sample rates — audible-
+  tolerance item, playtest-checked (ear-only rows in docs/reports/M10-playtest.md).
+- **D-10c — 8 sfx channels of record** (M10-05): NOT 1.10's shipped
+  `snd_channels=3` artifact (m_misc.c:282) and not a Chocolate claim — 8 is the
+  i_sound.c mixer width (NUM_CHANNELS 8, :94), OUR mixer width too, with vanilla
+  allocator semantics (free → same-origin steal → priority-evict-or-drop,
+  s_sound.c:827-875). Implemented in mixerCore's ChannelState pool.
+- **D-10d — volume law restores `*8`** (M10-01): 1.10 passes the 0..15 thermo
+  raw (the `/* *8 */` commented call sites, m_misc.c:830/:847, m_menu.c:830/:847,
+  d_main.c:1107) — functionally near-silent beyond point-blank. We restore
+  DOS-era `internal = thermo*8` (0..15 → 0..120); sfx bus gain `internal/127`,
+  music bus `internal/127 × MUSIC_TRIM`. L4-proven: e2e/m10-audio.spec.ts
+  (thermo ⇒ gain moved BY THE LAW; 0 ⇒ silent graph).
+- **D-10e — live per-tic param updates** (M10-05/06): the mirror's
+  `I_UpdateSoundParams` is a documented NO-OP (i_sound.c:675-688 — pan/vol
+  freeze at start); we re-apply S_AdjustSoundParams per tic (`updateSounds` +
+  the driver tick; Chocolate behavior, roadmap-exit semantics
+  “attenuation/panning” as a live property).
+- **D-10f — frame-time → tic-time scheduling** (M10-06): vanilla updates sounds
+  per FRAME (d_main.c:392) on a wall-clock device; our sim events are
+  tic-stamped — sfxDriver schedules at the AudioContext time recorded at each
+  tic boundary (ring of 8) with the 100 ms lookahead absorbing rAF jitter.
+  Determinism lives in the event ledger (UNCHANGED); audible output has
+  sub-frame jitter by design, like vanilla.
+
+## M10-era corrections register (truth corrections banked in JOURNAL, distilled at the exit)
+1. **Music-in-WAD correction chain** (M10-08, 3 steps — see JOURNAL): plan §0.10
+   claimed 41 `D_*` SMF lumps → the orchestrator's merge-turn “correction”
+   claimed ZERO music lumps + pivoted to companion-OGG fetches (the text now
+   stamped at M10-plan §0.x) → the implementer MEASURED: the 41 lumps ARE in the
+   pinned WAD, **all MThd/SMF, zero MUS, zero OGG** (re-verified at THIS exit:
+   D_E1M1/D_INTER/D_VICTOR/D_BUNNY headers + the tests/audio WAD-music census
+   golden). THE PLAN WAS RIGHT; the orchestrator's correction was WRONG —
+   lesson: orchestration-level “corrections” need measurement too, and the
+   agent that checked instead of trusting the brief was correct. The
+   companion-OGG machinery landed as a precedence hook with ZERO pinned entries
+   (musicSelect `setOggSource`/`makeOggSource`, negative-cached probes); MUS
+   transcription stays CANCELLED (`musDecoder=false`). The JOURNAL line's
+   “embedded OGG (OGGVORB)” parenthetical was itself a wording slip — exit-time
+   byte check says MThd.
+2. **`m_musicvol` real-row** (M10-09): the plan carried a no-op premise for the
+   music thermo row; the SoundDef rows for BOTH sfx and music volumes are REAL
+   live rows in 1.10 (m_menu.c:820-849) — corrected against source; defaults 8/8
+   (m_misc.c:237-238), wired live through wiring.ts (D-10d law).
+3. **The 41-site ledger WAS exactly the worklist** (D019 → M10-04): the M9
+   silent-M9 D-list (menu 28 / wintermission 11 / finale 1 / title 1) turned out
+   to be complete — the swap touched ZERO call sites beyond it (evidence grep at
+   exit: `sfxStub(` outside src/sim/hooks.ts == 0; sim-side ledger files
+   untouched), and the 3 `mus_*` stub bodies were the only music addresses plus
+   the ONE new sim-side call site (`musicSlot('level', true)` at
+   game.ts:389, the P_SetupLevel tail per p_setup.c:607).

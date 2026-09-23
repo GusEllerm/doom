@@ -172,14 +172,17 @@ Future tasks will be added as architects decompose milestones.
 
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
-| M10-plan | Audio milestone plan | M10 | M9 | dispatched (agent a9dfef50) |
+| M10-plan | Audio milestone plan | M10 | M9 | done (merged) |
 | M10-01 | Audio context + buses | M10 | M9 | done (merged) |
 | M10-02 | S_sfx table + DS decode | M10 | M10-01 | done (merged — 123/123 decode) |
 | M10-03 | SMF decoder | M10 | — | done (merged) |
-| M10-04..12 | (see docs/design/M10-plan.md) | M10 | waves | planned |
-| M10-04 | 41-site swap + event ledger | M8 | M10-01/02 | done (merged) |
+| M10-04..12 | (see docs/design/M10-plan.md) | M10 | waves | done (all landed — M10 CLOSED at M10-12) |
+| M10-04 | 41-site swap + event ledger | M10 | M10-01/02 | done (merged) — `sfxStub(` outside hooks.ts == 0 |
 | M10-05 | Mixer core | M10 | M10-01/02 | done (merged) |
 | M10-07 | GM synth + SMF player | M10 | M10-01/03 | done (merged) |
-| M10-08 | Music lifecycle + OGG fetch | M10 | M10-04/07 | done (merged — music from WAD lumps) |
+| M10-08 | Music lifecycle + OGG fetch | M10 | M10-04/07 | done (merged — music from WAD lumps; correction chain banked in DECISIONS corrections register) |
 | M10-06 | WebAudio sfx driver | M10 | M10-04/05 | done (merged) — SFX AUDIBLE |
-| M10-09 | Volume options wiring | M10 | M10-01 | done (merged) |
+| M10-09 | Volume options wiring | M10 | M10-01 | done (merged) — thermos are real 1.10 rows (correction) |
+| M10-10 | Audio golden corpus + zero-stream proofs | M10 | 05/06/07/08 | done (merged, 13 audio scenes + regression proofs; findings fixed in M10-fix wave: production music composer + bridge-parity installer + walls.spec Tab-overlay flake root-caused/fixed 3x-green) |
+| M10-11 | Dual-profile browser audio e2e + playtest checklist | M10 | 10 | done (merged 4550e31 + merge 7f8f8ea — e2e green x2; human ear session PENDING) |
+| M10-12 | Exit sweep + docs | M10 | 10/11 | done (this task — gates fresh green: check 163f/3086t, e2e 53, goldens 6 sets + audio drift-free; M10 CLOSED) |
