@@ -355,3 +355,4 @@ NOTE: /tmp mirror self-healed by plan agent (was gutted by OS temp cleanup); 62-
 - M11-07 merged: 41-row variable set, truth corrections (gamma not settable in 1.10, mouse0 dead key, messages default ON, no gamma/menumove/vid_wait/heartbeats in cfg).
 - Session restart killed M11-08 mid-flight (silent-death #10). SALVAGE: dead worktree had stub commit + 5 uncommitted test files; committed to branch salvage/M11-08 (25/50 passing; author's own pending edits recovered from transcript: drop captureLog import, evDoDoor extra-arg, req() typing). WIP briefly merged then REVERTED to keep main green — finisher re-dispatch (t2) works from the salvage branch.
 - M11-10 merged: persistence boots (hydrate never rejects; url>warp>defaults precedence; thermos pump can't clobber hydrated volumes), cheats live in the event chain, debug seams for e2e.
+- M11-11 dispatched (reload-persistence e2e: save→reload page→load→continue + settings survival + first live-cheat-on-page proof).
