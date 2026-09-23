@@ -123,6 +123,18 @@ const SETS = {
     ],
     pipeline:
       'E1M1 gInitGame -> scripted player/wminfo state + tics (main.ts tic order) -> displayFrame D_Display composition (3D + crop + borders + ST bar + HU + WI/menu/finale drawers) x2-run byte-equal -> sha256(fb.indices), hom asserted 0 on every 3D frame'
+  },
+  audio: {
+    // M10-10 L1 audio golden corpus (plan §M10-10): tests/audio/goldens.test.ts.
+    // ARTIFACT CLASS DIFFERS from every visual set: the subject is an
+    // interleaved little-endian Int16 STEREO mix (`<name>.bin`), NOT a PNG
+    // frame — big streams (the E1M1 firefight, the music/census records)
+    // bless the sha ONLY (`bin: null`). The goldens tree lives under
+    // tests/audio/goldens (task-mandated path), not tests/render/goldens.
+    testFile: join('tests', 'audio', 'goldens.test.ts'),
+    goldensDir: join('tests', 'audio', 'goldens'),
+    pipeline:
+      'scripted offline-mix scenes (createMixer/renderMix int law, exact-binary fixtures) + E1M1 2000-tic live-ledger firefight (IWAD-gated) + hand-built SMF songs through decodeSmf→planMusic→renderPlanOffline records; every scene double-run byte-equal, artifact = sha256(Int16 LE bytes) (+ `<name>.bin` where compact)'
   }
 };
 
@@ -150,7 +162,9 @@ if (!check && (reason === null || reason.trim() === '')) {
 }
 
 const SET = SETS[setName];
-const GOLDENS = join(ROOT, 'tests', 'render', 'goldens', setName);
+const GOLDENS = SET.goldensDir
+  ? join(ROOT, SET.goldensDir)
+  : join(ROOT, 'tests', 'render', 'goldens', setName);
 const META = join(GOLDENS, 'meta.json');
 const REVIEW = join(ROOT, 'test-results', 'goldens', setName);
 // M9-11: a set may span several test files (m9 = m9hud + m9menus + m9wi);
@@ -199,9 +213,10 @@ const dumps = {};
 for (const f of readdirSorted(join(dumpDir))) {
   if (!f.endsWith('.json')) continue;
   const j = JSON.parse(readFileSync(join(dumpDir, f), 'utf8'));
-  j.bin = readFileSync(join(dumpDir, `${j.name}.bin`));
-  const sha = sha256(j.bin);
-  if (sha !== j.indexSha256) die(`${j.name}: dump bin/sha mismatch (corrupt dump)`);
+  j.bin = existsSync(join(dumpDir, `${j.name}.bin`))
+    ? readFileSync(join(dumpDir, `${j.name}.bin`))
+    : null; // audio sha-only scenes carry no bin artifact
+  if (j.bin !== null && sha256(j.bin) !== j.indexSha256) die(`${j.name}: dump bin/sha mismatch (corrupt dump)`);
   dumps[j.name] = j;
 }
 function readdirSorted(d) {
@@ -242,6 +257,20 @@ for (const name of names) {
       failed = true;
       continue;
     }
+    if (dump.format) {
+      // M10-10 audio artifact class: bytes (when committed) must match the
+      // sha-pinned bin file; sha-only scenes were just proven by the sha.
+      if (entry.bin) {
+        const binPath = join(GOLDENS, entry.bin);
+        if (!existsSync(binPath) || (dump.bin === null || !readFileSync(binPath).equals(dump.bin))) {
+          console.error(`DRIFT  ${name} audio bin bytes differ from ${entry.bin ?? 'blessed bin'}`);
+          failed = true;
+          continue;
+        }
+      }
+      console.log(`ok     ${name}${dump.bin ? '' : ' (sha-only)'}`);
+      continue;
+    }
     const pngPath = join(GOLDENS, entry.png ?? `${name}.png`);
     if (!existsSync(pngPath)) {
       console.error(`DRIFT  ${name} blessed PNG missing: ${pngPath}`);
@@ -269,6 +298,27 @@ for (const name of names) {
   }
 
   // update (or new scene in update mode)
+  const prevAudio = meta.scenes?.[name];
+  if (dump.format) {
+    // audio artifact class — no PNG, no width/height; bin file when compact.
+    meta.scenes[name] = {
+      kind: dump.kind,
+      script: dump.script,
+      format: dump.format,
+      sampleRate: dump.sampleRate,
+      frames: dump.frames,
+      mixHash: dump.mixHash,
+      indexSha256: dump.indexSha256,
+      bin: dump.bin !== null ? `${name}.bin` : null,
+      ...(dump.kind === 'iwad' ? { wad: { file: 'freedoom1.wad', sha256: dump.wadSha256 } } : {}),
+      reason,
+      updatedAt: today,
+      history: [...(prevAudio?.history ?? []), { reason, at: today, indexSha256: dump.indexSha256 }]
+    };
+    if (dump.bin !== null) writeFileSync(join(GOLDENS, `${name}.bin`), dump.bin);
+    console.log(`bless  ${name} → ${dump.bin !== null ? `${name}.bin` : '(sha-only)'}`);
+    continue;
+  }
   const pngName = entry?.png ?? `${name}.png`;
   const prev = meta.scenes?.[name];
   meta.scenes[name] = {
@@ -299,6 +349,10 @@ mkdirp(REVIEW);
 for (const name of names) {
   const dump = dumps[name];
   if (!dump) continue;
+  if (dump.format) {
+    if (dump.bin !== null) writeFileSync(join(REVIEW, `${name}.bin`), dump.bin);
+    continue;
+  }
   const png = pngFromIndexed(dump.width, dump.height, dump.bin, dump.indexSha256, dump.paletteRgb);
   writeFileSync(join(REVIEW, `${name}.png`), png);
 }

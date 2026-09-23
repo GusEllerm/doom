@@ -27,7 +27,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { expect } from 'vitest';
+import { expect, it } from 'vitest';
 
 import {
   addsfxSplit,
@@ -69,6 +69,10 @@ import {
   resetHookSlots,
   type LiveSfxOrigin,
 } from '../../src/sim/hooks';
+import {
+  installPickupSfxBridge,
+  installPsprSfxSlot,
+} from '../../src/sim/psound_stub';
 import { AM_CLIP, WP_PISTOL } from '../../src/sim/p_pspr';
 import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
 
@@ -156,6 +160,10 @@ export interface AudioGoldenOpts {
  * (toFloat32) shares the same sha domain — the Int16 bytes ARE the golden.
  */
 export function audioGolden(opts: AudioGoldenOpts): void {
+  it(opts.name, () => runAudioGolden(opts));
+}
+
+function runAudioGolden(opts: AudioGoldenOpts): void {
   const mixA = opts.render();
   const mixB = opts.render();
   const a = mixToBytes(mixA);
@@ -175,11 +183,16 @@ export function audioGolden(opts: AudioGoldenOpts): void {
     ...(opts.kind === 'iwad' ? { wadSha256: iwadSha256() } : {}),
   };
 
-  if (MODE === 'update' && DUMP_DIR !== null) {
-    writeFileSync(`${DUMP_DIR}/${opts.name}.json`, JSON.stringify({ name: opts.name, ...record }));
+  if (DUMP_DIR !== null) {
+    // update AND check modes both dump (check mode compares the dumps
+    // against the committed goldens in scripts/goldens-update.mjs)
+    writeFileSync(
+      `${DUMP_DIR}/${opts.name}.json`,
+      JSON.stringify({ name: opts.name, indexSha256: sha, ...record }),
+    );
     if (opts.artifact !== 'none') writeFileSync(`${DUMP_DIR}/${opts.name}.bin`, a);
-    return;
   }
+  if (MODE === 'update') return;
   if (!existsSync(META_PATH)) {
     throw new Error(
       `audio goldens not blessed (no ${META_PATH}); run: node scripts/goldens-update.mjs --set audio --reason "..."`,
@@ -390,6 +403,10 @@ export interface MusicGoldenOpts {
 /** Decode → canonical(plan) sha + offline-render checksum, ALL double-run
  * asserted byte-equal, then dump-or-assert. */
 export function musicGolden(opts: MusicGoldenOpts): void {
+  it(opts.name, () => runMusicGolden(opts));
+}
+
+function runMusicGolden(opts: MusicGoldenOpts): void {
   const work = (): string => {
     const smf: Smf = decodeSmf(opts.smf());
     const plan = planMusic(smf);
@@ -416,7 +433,7 @@ export function musicGolden(opts: MusicGoldenOpts): void {
   const w1 = work();
   const w2 = work();
   expect(w2, `${opts.name}: double-run equality`).toBe(w1);
-  audioGolden({
+  runAudioGolden({
     name: opts.name,
     kind: opts.kind,
     script: opts.script,
@@ -442,6 +459,10 @@ export function musicGolden(opts: MusicGoldenOpts): void {
 export function bootE1M1(): GameState {
   const state = gInitGame(buildMapFromData(loadMap(iwad(), 'E1M1')));
   resetHookSlots(state.hooks);
+  // Mirror main.ts:586-587 — the production sfx-slot install for the
+  // headless scripted runs (weapon-fire + pickup emits reach sfxSlot).
+  installPickupSfxBridge(state.hooks, () => state.leveltime);
+  installPsprSfxSlot(state.hooks, () => state.leveltime);
   return state;
 }
 
@@ -476,6 +497,9 @@ export function scriptedE1M1Run(opts: {
   plan?: (tic: number) => Partial<GameInput>;
   pistolStart?: boolean;
   consumer?: boolean;
+  /** Also attach a REAL mixerCore Mixer as the consumer's second half
+   * (the audio pipeline really consumes the ledger; hash must not move). */
+  mixer?: boolean;
 }): ScriptedRun {
   const state = bootE1M1();
   if (opts.pistolStart) {
@@ -502,9 +526,21 @@ export function scriptedE1M1Run(opts: {
   run.listener.push({ tic: 0, x: mo0.x, y: mo0.y, angle: (mo0.angle ?? 0) >>> 0, self: selfId });
 
   if (opts.consumer ?? true) {
+    let mixer: ReturnType<typeof createMixer> | null = null;
+    if (opts.mixer) mixer = createMixer({ buffers: (id: number) => sfxDataById(iwad(), id) });
     registerLiveSfx((sfx, origin, x, y, z, tic) => {
       const id = typeof sfx === 'number' ? sfx : -1;
       run.events.push({ tic, id, x, y, z, origin: originKey(origin, ids, next) });
+      if (mixer !== null) {
+        const mo = state.players[0]!.mo;
+        mixer.start(id, origin === null ? null : (originKey(origin, ids, next) ?? null), x, y, tic);
+        mixer.updateSounds(tic, {
+          x: mo.x,
+          y: mo.y,
+          angle: (mo.angle ?? 0) >>> 0,
+          self: selfId,
+        });
+      }
     });
   } else {
     registerLiveSfx(null);
@@ -540,7 +576,9 @@ export function e1m1Firefight(): ScriptedRun {
   return scriptedE1M1Run({
     tics: FIREFIGHT_TICS,
     pistolStart: true,
-    plan: () => ({ attack: true }),
+    // attackdown starts TRUE (G_PlayerReborn idiom, p_pspr.ts:290) — the
+    // button must be seen RELEASED once before a held-fire refires.
+    plan: (tic) => (tic < 2 ? {} : { attack: true }),
   });
 }
 
@@ -645,6 +683,7 @@ export interface SpyRig {
   ctx: SpyContext;
   driver: SfxDriver;
   events: ScriptedRun['events'];
+  listener: { tic: number; x: number; y: number; angle: number; self: number | null }[];
   started: () => number;
   dispose: () => void;
 }
@@ -669,6 +708,10 @@ export function spyRun(opts: { tics: number; plan?: (tic: number) => Partial<Gam
   const next = { v: 1 };
 
   const state = bootE1M1();
+  const listener: SpyRig['listener'] = [];
+  const mo0 = state.players[0]!.mo;
+  const selfId = originKey(mo0 as unknown as LiveSfxOrigin, ids, next);
+  listener.push({ tic: 0, x: mo0.x, y: mo0.y, angle: (mo0.angle ?? 0) >>> 0, self: selfId });
   const p = state.players[0] as unknown as {
     weaponowned: Int32Array | number[];
     ammo: Int32Array | number[];
@@ -688,6 +731,11 @@ export function spyRun(opts: { tics: number; plan?: (tic: number) => Partial<Gam
       wall.t += 1 / 35;
       gTicker(state, { ...emptyInput(), ...(opts.plan?.(t) ?? {}) });
       driver.tick(state);
+      const mo = state.players[0]!.mo;
+      const last = listener[listener.length - 1]!;
+      if (last.x !== mo.x || last.y !== mo.y || ((mo.angle ?? 0) >>> 0) !== last.angle) {
+        listener.push({ tic: t + 1, x: mo.x, y: mo.y, angle: (mo.angle ?? 0) >>> 0, self: selfId });
+      }
       for (const src of ctx.sources) {
         // fire onended for sources whose scheduled stop has passed the clock
         if (src.onended !== null && src.stops.length > 0 && src.stops[src.stops.length - 1]! <= ctx.currentTime) {
@@ -704,6 +752,7 @@ export function spyRun(opts: { tics: number; plan?: (tic: number) => Partial<Gam
     ctx,
     driver,
     events,
+    listener,
     started: () => ctx.sources.filter((s) => s.starts.length > 0).length,
     dispose: () => {
       driver.dispose();
