@@ -32,10 +32,11 @@
 //    plumbing) calls it from the new-game path.
 //  * `if (automapactive) AM_Stop()` (g_game.c:1026) is a no-op here: the
 //    automap lives outside GameState (main.ts wiring, M9-09 display seam).
-//  * S_ChangeMusic(mus_inter) (wi_stuff.c:1509-1514) and the S_StartSound
-//    dots land in the hooks.sfxStub silent-M9 counter (M10 replaces the
-//    body); sfx keys: 'sfx_pistol' / 'sfx_barexp' / 'sfx_sgcock' /
-//    'mus_inter'.
+//  * S_ChangeMusic(mus_inter) (wi_stuff.c:1509-1514) lands on the music
+//    ledger via hooks.musicSlot('intermission', true) (M10-04; consumer
+//    M10-08); the S_StartSound dots land in hooks.sfxSink (counted +
+//    per-tic event emission, uiSfxLog keys 'sfx_pistol'/'sfx_barexp'/
+//    'sfx_sgcock'; live playback M10-06).
 //  * G_PlayerFinishLevel (g_game.c:779-792) runs verbatim through the
 //    attached InventoryFields view (p_inter_inventory.ts) — powers, cards,
 //    MF_SHADOW, extralight, fixedcolormap, damagecount, bonuscount.
@@ -53,7 +54,7 @@
 import { GA, GS, gWorldDone, registerGameFlowHooks } from './game';
 import { parsFor, GAME_MODE } from './gamemode';
 import { mRandom } from './prng';
-import { sfxStub } from './hooks';
+import { musicSlot, sfxSink } from './hooks';
 import type { PickupPlayer } from './p_inter_inventory';
 import type { GameState } from './state';
 import type { GameInput } from './ticcmd';
@@ -334,42 +335,42 @@ function wiUpdateStats(state: GameState): void {
     wi.cntSecret = itrunc((wbs.ls.secret * 100) / wbs.maxsecret);
     wi.cntTime = itrunc(wi.stime / TICRATE);
     wi.cntPar = itrunc(wbs.partime / TICRATE);
-    sfxStub('sfx_barexp');
+    sfxSink('sfx_barexp');
     wi.spState = 10;
   }
 
   if (wi.spState === 2) {
     wi.cntKills += 2;
 
-    if (!(wi.bcnt & 3)) sfxStub('sfx_pistol');
+    if (!(wi.bcnt & 3)) sfxSink('sfx_pistol');
 
     if (wi.cntKills >= itrunc((wbs.ls.kills * 100) / wbs.maxkills)) {
       wi.cntKills = itrunc((wbs.ls.kills * 100) / wbs.maxkills);
-      sfxStub('sfx_barexp');
+      sfxSink('sfx_barexp');
       wi.spState++;
     }
   } else if (wi.spState === 4) {
     wi.cntItems += 2;
 
-    if (!(wi.bcnt & 3)) sfxStub('sfx_pistol');
+    if (!(wi.bcnt & 3)) sfxSink('sfx_pistol');
 
     if (wi.cntItems >= itrunc((wbs.ls.items * 100) / wbs.maxitems)) {
       wi.cntItems = itrunc((wbs.ls.items * 100) / wbs.maxitems);
-      sfxStub('sfx_barexp');
+      sfxSink('sfx_barexp');
       wi.spState++;
     }
   } else if (wi.spState === 6) {
     wi.cntSecret += 2;
 
-    if (!(wi.bcnt & 3)) sfxStub('sfx_pistol');
+    if (!(wi.bcnt & 3)) sfxSink('sfx_pistol');
 
     if (wi.cntSecret >= itrunc((wbs.ls.secret * 100) / wbs.maxsecret)) {
       wi.cntSecret = itrunc((wbs.ls.secret * 100) / wbs.maxsecret);
-      sfxStub('sfx_barexp');
+      sfxSink('sfx_barexp');
       wi.spState++;
     }
   } else if (wi.spState === 8) {
-    if (!(wi.bcnt & 3)) sfxStub('sfx_pistol');
+    if (!(wi.bcnt & 3)) sfxSink('sfx_pistol');
 
     wi.cntTime += 3;
 
@@ -381,13 +382,13 @@ function wiUpdateStats(state: GameState): void {
       wi.cntPar = itrunc(wbs.partime / TICRATE);
 
       if (wi.cntTime >= itrunc(wi.stime / TICRATE)) {
-        sfxStub('sfx_barexp');
+        sfxSink('sfx_barexp');
         wi.spState++;
       }
     }
   } else if (wi.spState === 10) {
     if (wi.accelerateStage !== 0) {
-      sfxStub('sfx_sgcock');
+      sfxSink('sfx_sgcock');
 
       // commercial ⇒ WI_initNoState (§4-unreached, shareware policy)
       wiInitShowNextLoc(state);
@@ -450,8 +451,9 @@ export function wiTicker(state: GameState, input: GameInput): void {
   wi.bcnt++;
 
   if (wi.bcnt === 1) {
-    // intermission music (S_ChangeMusic(mus_inter) — silent-M9 counter)
-    sfxStub('mus_inter');
+    // intermission music (S_ChangeMusic(mus_inter, true) — M10-04 swap,
+    // music ledger; consumer M10-08)
+    musicSlot('intermission', true);
   }
 
   wiCheckForAccelerate(state, input);

@@ -34,7 +34,7 @@ import {
 } from '../sim/game';
 import type { GameState } from '../sim/state';
 import { FG, screens, vInit } from '../render/vvideo';
-import { resetGameactionLog, resetSfxStubLog, sfxStubLog } from '../sim/hooks';
+import { musicLog, resetGameactionLog, resetSfxStubLog } from '../sim/hooks';
 import { mReset, menuState } from './menu';
 
 import {
@@ -137,7 +137,7 @@ describe('D_StartTitle boot (d_main.c:1166 → :525-530 → :454-475)', () => {
     expect(st.usergame).toBe(false); // :458 "no save / end game here"
     expect(st.paused).toBe(false);
     expect(st.players[0]!.playerstate).toBe(0); // PST_LIVE (:456)
-    expect(sfxStubLog.byName.get('mus_intro')).toBe(1); // :477, D-0xx
+    expect(musicLog.byId?.get('title')).toBe(1); // :477 S_StartMusic (M10-04)
   });
 
   it('D_PageTicker decrements every GS_DEMOSCREEN tic (gTicker routing)', () => {

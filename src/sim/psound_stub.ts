@@ -191,11 +191,17 @@ export function resolveSfxId(token: string): number {
   return id;
 }
 
-/** Read-view of an origin mobj (mobj_t x/y/z). */
+/** Read-view of an origin mobj (mobj_t x/y/z). M10-04 additive: `o` is
+ * the thinker-arena id when the caller carries one (s_sound.c's
+ * one-sound-per-mobj rule, §0.4 — the M10-05 allocator keys its
+ * same-origin steal on it); the live listener receives the WHOLE view
+ * (hooks.ts LiveSfxOrigin is structurally satisfied). Log entries stay
+ * {id,x,y,z,tic} — `o` never enters them. */
 export interface SfxOrigin {
   readonly x: number;
   readonly y: number;
   readonly z: number;
+  readonly o?: number;
 }
 
 /**
@@ -203,6 +209,9 @@ export interface SfxOrigin {
  * body with the channel mixer; call sites never change, M6-plan §0.10).
  * `origin = null` is vanilla's listener-position form (S_StartSound(NULL, …)
  * for the consoleplayer's own sounds — the pickup tail, door oof, menu).
+ * M10-04: the hook-slot record is byte-unchanged; the origin read-view is
+ * now ALSO forwarded through sfxSlot to the live listener (record first,
+ * notify after).
  */
 export function sStartSound(
   h: HookSlots,
@@ -210,7 +219,7 @@ export function sStartSound(
   origin: SfxOrigin | null,
   tic: number
 ): void {
-  sfxSlot(h, id, origin ? origin.x : 0, origin ? origin.y : 0, origin ? origin.z : 0, tic);
+  sfxSlot(h, id, origin ? origin.x : 0, origin ? origin.y : 0, origin ? origin.z : 0, tic, origin);
 }
 
 /**
@@ -240,7 +249,9 @@ export function installPickupSfxBridge(
  */
 export function installPsprSfxSlot(h: HookSlots, getTic: () => number): void {
   registerPsprHook('startSound', (p: PsprPlayer, sfxId: number) => {
-    sStartSound(h, sfxId, { x: p.mo.x, y: p.mo.y, z: p.mo.z }, getTic());
+    // M10-04: pass p.mo ITSELF as the origin read-view (same x/y/z reads,
+    // plus the live ref for the listener's one-sound-per-mobj identity).
+    sStartSound(h, sfxId, p.mo, getTic());
   });
 }
 

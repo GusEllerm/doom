@@ -3,7 +3,7 @@
 // Scope (plan §0.10 + §4): EPISODIC ep1 only. F_StartFinale's shareware/
 // registered/retail arm (f_finale.c:105-135) with the ep1 pins —
 // finaleflat "FLOOR4_8" + finaletext E1TEXT (d_englsh.h:359, compiled-in,
-// NO endgame lump) + mus_victor via the D-0xx counted sfx stub; the
+// NO endgame lump) + mus_victor via hooks.musicSlot('finale', true) (M10-04 swap; consumer M10-08); the
 // commercial arm (:137-186, C1-C6 texts, mus_read_m), F_StartCast, the
 // cast ticker/responder/drawer and F_BunnyScroll are ABSENT by plan (§4
 // "commercial/Doom-2 finale branches … code-shipped-but-unreached" — here
@@ -36,7 +36,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { GA, GS, registerGameFlowHooks, type FlowActFn, type FlowTicFn } from '../sim/game';
-import { sfxStub } from '../sim/hooks';
+import { musicSlot } from '../sim/hooks';
 import { decodeFlat } from '../wad/flat';
 import { lumpPatch, screens, FG, SCREENWIDTH, SCREENHEIGHT, vDrawPatch, vMarkRect, type VPatch } from '../render/vvideo';
 import type { WadFile } from '../wad/wadfile';
@@ -121,7 +121,7 @@ export function fReset(w?: WadFile | null): void {
  * state, the display block never draws it outside GS_LEVEL), then the
  * gamemode switch. Only the shareware/registered/retail arm (:107-135)
  * ships; ep1 = FLOOR4_8 + E1TEXT + mus_victor (S_ChangeMusic loop,
- * D-0xx counted). The commercial arm + cast (:137-186/:330+) are §4-
+ * M10-04 musicSlot swap). The commercial arm + cast (:137-186/:330+) are §4-
  * absent; ep2-4 arms count a stub (shareware clamp makes them
  * unreachable — pin, not dead code).
  */
@@ -135,7 +135,7 @@ export const fStartFinale: FlowActFn = (state) => {
   // gamemode.ts pins GAME_MODE='shareware' + G_InitNew clamps ep≤1).
   switch (state.gameepisode) {
     case 1: // :109-113
-      sfxStub('mus_victor'); // :110 S_ChangeMusic(mus_victor, true) — D-0xx
+      musicSlot('finale', true); // :110 S_ChangeMusic(mus_victor, true) — M10-04 swap
       finaleflat = 'FLOOR4_8';
       finaletext = E1TEXT;
       break;

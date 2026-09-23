@@ -37,7 +37,7 @@ import {
 import { emptyInput } from '../sim/ticcmd';
 import type { GameState } from '../sim/state';
 import { FG, screens, vInit } from '../render/vvideo';
-import { resetGameactionLog, resetSfxStubLog, sfxStubLog } from '../sim/hooks';
+import { musicLog, resetGameactionLog, resetSfxStubLog } from '../sim/hooks';
 import { gResponderDemo } from './title';
 
 import {
@@ -205,7 +205,7 @@ describe('F_StartFinale through the gameaction drain (:96-135)', () => {
     expect(finaleState.finaletext()).toBe(E1TEXT); // :112 ← E1TEXT
     expect(finaleState.finalestage()).toBe(0); // :188
     expect(finaleState.finalecount()).toBe(1); // :189 reset, then F_Ticker++
-    expect(sfxStubLog.byName.get('mus_victor')).toBe(1); // :110, D-0xx
+    expect(musicLog.byId?.get('finale')).toBe(1); // :110 (M10-04 swap)
   });
 
   it('routing: every GS_FINALE gTicker tic lands on F_Ticker exactly once', () => {
@@ -220,7 +220,7 @@ describe('F_StartFinale through the gameaction drain (:96-135)', () => {
     st.gameepisode = 2; // unreachable under the shareware clamp — shape pin
     fStartFinale(st);
     expect(finaleStubHits.byName.get('finale-episode-2')).toBe(1);
-    expect(sfxStubLog.byName.has('mus_victor')).toBe(false); // :110 ep1 site
+    expect(musicLog.byId?.get('finale') ?? 0).toBe(0); // :110 ep1 site
   });
 
   it('F_Responder is the transcribed constant false (stages 0/1)', () => {
