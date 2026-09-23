@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "set": "persist",
+  "pipeline": "fixture corpus (pSaveg scenarios incl. mover-at-save + turnfire) & E1M1 → gInitGame → scripted tics → gSaveGame §0.3 chain → captureSink→menuSaveLoad createCaptureHandler→DBP1→codec→memory store → saved BYTES; double-run byte-equal + matrix 300-tic continuation equality; artifact = sha256(savegame bytes) (+ `<name>.bin`)",
+  "scenes": {
+    "m11-save-corpse-field": {
+      "kind": "fixture",
+      "script": "corpus 'corpse-field' → run to save point (40+setup+30) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "6d030db7b9451fd72503348196f3764d161606b937682bf3c981aa0762d1eb48",
+      "bin": "m11-save-corpse-field.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "6d030db7b9451fd72503348196f3764d161606b937682bf3c981aa0762d1eb48"
+        }
+      ]
+    },
+    "m11-save-crush-mid-travel": {
+      "kind": "fixture",
+      "script": "corpus 'crush-mid-travel' → run to save point (20+setup+40) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "0b9ce2ab1bd43a395a55cd3ecfb7c5f36c2d4c3f12eb33eb2b63af7e3810090d",
+      "bin": "m11-save-crush-mid-travel.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "0b9ce2ab1bd43a395a55cd3ecfb7c5f36c2d4c3f12eb33eb2b63af7e3810090d"
+        }
+      ]
+    },
+    "m11-save-e1m1-midlevel": {
+      "kind": "iwad",
+      "script": "E1M1 gInitGame → 240 scripted tics (walk+turn+fire) → gSaveGame chain → codec+store → saved BYTES; matrix: fresh boot + reload-sim store → load → 300 tics == original",
+      "format": "dsg-bytes",
+      "indexSha256": "5ae520e4516faf555fdb408e04e637abcee580b596555df9589fce3c00490e3b",
+      "bin": "m11-save-e1m1-midlevel.bin",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "5ae520e4516faf555fdb408e04e637abcee580b596555df9589fce3c00490e3b"
+        }
+      ]
+    },
+    "m11-save-fire-and-lights": {
+      "kind": "fixture",
+      "script": "corpus 'fire-and-lights' → run to save point (0+setup+60) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "1c9afbf1e536495f0a03f7ee7289cc000ef7dfb1ed9e58ed4ff2928d636fbd2a",
+      "bin": "m11-save-fire-and-lights.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "1c9afbf1e536495f0a03f7ee7289cc000ef7dfb1ed9e58ed4ff2928d636fbd2a"
+        }
+      ]
+    },
+    "m11-save-mid-door-move": {
+      "kind": "fixture",
+      "script": "corpus 'mid-door-move' → run to save point (20+setup+15) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "dae7911a57aa9b33be5cf83f776a7c2c84670895f7f6a595c73a75f6154992e6",
+      "bin": "m11-save-mid-door-move.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "dae7911a57aa9b33be5cf83f776a7c2c84670895f7f6a595c73a75f6154992e6"
+        }
+      ]
+    },
+    "m11-save-mover-started-at-save": {
+      "kind": "fixture",
+      "script": "corpus 'mover-started-at-save' → run to save point (25+setup+0) → gSaveGame → §0.3 chain → codec+store → saved BYTES (FINDING M11-08-F1: continuation identity tracked as it.failing in matrix.test.ts)",
+      "format": "dsg-bytes",
+      "indexSha256": "88860f62da9e6fbcec93d575785636e1dea84a91d1304e95b20e9c908882d753",
+      "bin": "m11-save-mover-started-at-save.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "88860f62da9e6fbcec93d575785636e1dea84a91d1304e95b20e9c908882d753"
+        }
+      ]
+    },
+    "m11-save-plat-mid-travel": {
+      "kind": "fixture",
+      "script": "corpus 'plat-mid-travel' → run to save point (20+setup+12) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "4ba91e5ff0ca94a3a7b462bf86eb14626e601be9911fb93aaa562e89603d4e45",
+      "bin": "m11-save-plat-mid-travel.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "4ba91e5ff0ca94a3a7b462bf86eb14626e601be9911fb93aaa562e89603d4e45"
+        }
+      ]
+    },
+    "m11-save-projectiles-and-corpses": {
+      "kind": "fixture",
+      "script": "corpus 'projectiles-and-corpses' → run to save point (30+setup+25) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "d0328f1be13ce7aafc68eee56cd4e3353a14686a1b59e7d0c9dfbc471b5ae6f7",
+      "bin": "m11-save-projectiles-and-corpses.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "d0328f1be13ce7aafc68eee56cd4e3353a14686a1b59e7d0c9dfbc471b5ae6f7"
+        }
+      ]
+    },
+    "m11-save-secret-counts-tallies": {
+      "kind": "fixture",
+      "script": "corpus 'secret-counts-tallies' → run to save point (30+setup+10) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "d29562d373dd786526e4fc58d0bd1a768939000cc407bed80eb6b62fbadb8f30",
+      "bin": "m11-save-secret-counts-tallies.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "d29562d373dd786526e4fc58d0bd1a768939000cc407bed80eb6b62fbadb8f30"
+        }
+      ]
+    },
+    "m11-save-turnfire-continuation": {
+      "kind": "fixture",
+      "script": "corpus 'turnfire-continuation' → run to save point (15+setup+15) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "28f9e6807fa1e2a0c40de4b2fa1a5730ec5257884834040f6fb4eeed6ac67491",
+      "bin": "m11-save-turnfire-continuation.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "28f9e6807fa1e2a0c40de4b2fa1a5730ec5257884834040f6fb4eeed6ac67491"
+        }
+      ]
+    },
+    "m11-save-weapon-in-hand-powerups": {
+      "kind": "fixture",
+      "script": "corpus 'weapon-in-hand-powerups' → run to save point (10+setup+10) → gSaveGame → §0.3 chain → codec+store → saved BYTES; hashState at save point + continuation recorded in matrix assertions",
+      "format": "dsg-bytes",
+      "indexSha256": "c50e226e7add9e006e76e235ffc1625be996da0b99ebc23f8b79e5dd35336b5e",
+      "bin": "m11-save-weapon-in-hand-powerups.bin",
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "c50e226e7add9e006e76e235ffc1625be996da0b99ebc23f8b79e5dd35336b5e"
+        }
+      ]
+    },
+    "m11-sim-e1m1-5000tic": {
+      "kind": "iwad",
+      "script": "E1M1 gInitGame → 5000 no-input tics → hashState (ASCII hex bytes); the save path never perturbs the sim",
+      "format": "dsg-bytes",
+      "indexSha256": "6df1af6f24211327a6482ea723e22ce5b34375fc6e983f23f8327383eebbdd59",
+      "bin": "m11-sim-e1m1-5000tic.bin",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M11-08-t2 bless",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M11-08-t2 bless",
+          "at": "2026-09-23",
+          "indexSha256": "6df1af6f24211327a6482ea723e22ce5b34375fc6e983f23f8327383eebbdd59"
+        }
+      ]
+    }
+  }
+}
