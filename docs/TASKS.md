@@ -167,3 +167,9 @@ Future tasks will be added as architects decompose milestones.
 | M9-12 | Flow e2e + debug seams | M9 | 08-10 | done (merged 905b1dd + M9-fix boot adaptation 40b6283) |
 | M9-12-fix | Legacy e2e boot adaptation (TITLEPIC boot) | M9 | 12 | done (merged — e2e 37/37 x2, production boot untouched) |
 | M9-13 | Exit sweep + docs + montage + PRNG final | M9 | 11,12 | done (this branch — M9 CLOSED) |
+
+## M10 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M10-plan | Audio milestone plan | M10 | M9 | dispatched (agent a9dfef50) |
