@@ -104,12 +104,14 @@ export function chtCheckCheat(cht: CheatSeq, key: number): boolean {
  * stops at the buffer end and returns '' (documented, unreachable). */
 export function chtGetParam(cht: CheatSeq): string {
   let p = 0;
-  while (p < cht.seq.length && cht.seq[p] !== 1) p++; // while (*(p++) != 1)
+  while (p < cht.seq.length && cht.seq[p] !== 1) p++;
+  if (p >= cht.seq.length) return ''; // guarded: no 1 marker (never happens post-match)
+  p++; // C's `while (*(p++) != 1);` leaves p PAST the marker
   let out = '';
   let c = 0;
   do {
     c = cht.seq[p] ?? 0;
-    out += String.fromCharCode(c);
+    if (c !== 0) out += String.fromCharCode(c); // the C NUL byte is content-terminator, not content
     cht.seq[p] = 0;
     p++;
   } while (c !== 0 && (cht.seq[p] ?? 0xff) !== 0xff);
