@@ -31,11 +31,8 @@
  * keydown/keyup arrow/Enter pairs consumed by mResponder verbatim, so
  * the ev_mouse branch is intentionally NOT transcribed (deviation).
  *
- * SFX policy D-0xx (CLOSED by M10-04): every S_StartSound site lands as
- * hooks.sfxSink(name) — counted + recorded per-tic event emission onto
- * the uiSfxLog ledger with live-listener fan-out (playback is M10-06's
- * driver; byte-identical to the M9 stub with no listener registered).
- * QUIT: I_Quit maps to the D_StartTitle browser
+ * SFX policy D-0xx (CLOSED M10-04): every S_StartSound site is now an
+ * event emit via hooks.sfxSink(name). QUIT: I_Quit maps to the D_StartTitle browser
  * target (D-0zz) via the game.ts `startTitle` flow hook.
  *
  * SKILL DOMAIN: vanilla passes 0-based game-skills to
