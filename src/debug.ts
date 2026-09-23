@@ -15,11 +15,25 @@
  * counters getter) that main.ts wires from render/solidsegs; capture()
  * copies the real framebuffer and state().render.hom is live (no more −1
  * stub once attached; −1 remains the pre-boot value).
- * M11-10 (this file): ADDITIVE persistence seams — state().persist snapshot
- * + save/load/demo/persist command surface. WIP stub (composer lands in main.ts).
+ * M11-10 (this file, ADDITIVE): persistence seams inside state()/commands —
+ * `state().persist = {lastSaveTic, savesCount, settingsLoaded}` (sim saveFlow
+ * + the main.ts-mounted store snapshot) and the __doom seam commands
+ * save(slot, desc?) / load(slot) / settings(patch?) / recordDemo(name?) /
+ * playDemo(bytes) / demoStatus() / typeChars(text) (the L4 cheat-injection
+ * hook). NO new globals: the commands ride the existing debugApi object;
+ * the async/store halves arrive through {@link attachPersistDebug} (the
+ * attachRenderDebug/attachUiDebug discipline — src/persist imports live in
+ * the composer, this file keeps sim+types plus the audio precedent).
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
-import { runHeadless, GS } from './sim/game';
+import { gSaveGame, runHeadless, GS, saveFlow } from './sim/game';
+import {
+  demoBytes,
+  demoPlaying,
+  demoRecording,
+  gDeferedPlayDemo,
+  gStartRecordDemo
+} from './sim/pDemo';
 import { pTeleportMove } from './sim/pmap';
 import {
   CF_GODMODE,
@@ -242,6 +256,99 @@ export function attachUiDebug(fn: UiReadFn | null): void {
   uiRead = fn;
 }
 
+/* ------------------------------------------------------------------ */
+/* M11-10 persistence seams (plan §M11-10)                             */
+/* ------------------------------------------------------------------ */
+
+/** The additive `state().persist` block (types/debug.ts untouched — the
+ * live snapshot is widened HERE; consumers read it through the
+ * intersection, exactly like every earlier additive state field). */
+export interface DebugPersistRead {
+  /** gametic of the last EXECUTED save (ga_savegame drain) — -1 = none. */
+  lastSaveTic: number;
+  /** non-empty slots of the mounted store snapshot (0 while detached) */
+  savesCount: number;
+  /** settings.ts hydrate completed (fail-closed: false until then) */
+  settingsLoaded: boolean;
+}
+
+/** The `__doom.settings()` echo (settings.ts SettingsView, plain data). */
+export interface DebugSettingsEcho {
+  loaded: boolean;
+  vars: Record<string, number>;
+  keys: Record<string, number>;
+}
+
+/** The `__doom.demoStatus()` echo (pDemo flags + last recording size). */
+export interface DebugDemoStatus {
+  recording: boolean;
+  playing: boolean;
+  bytes: number;
+}
+
+/** The additive command surface riding the existing __doom object
+ * (plan §M11-10: save/load/settings/recordDemo/playDemo + the L4
+ * cheat-injection hook; no new globals). */
+export interface DebugPersistApi {
+  /** Arm G_SaveGame(slot, desc) and AWAIT the drain + store write
+   * (durability for save→reload e2e). true = landed in the store. */
+  save(slot: number, desc?: string): Promise<boolean>;
+  /** store.get → decode → ga_loadgame (executes in the NEXT drain).
+   * true = armed; false = empty slot / no wiring (silent vanilla lane). */
+  load(slot: number): Promise<boolean>;
+  /** Read the settings echo; with a patch, setMany() first (write-on-
+   * change → debounced store.put happens inside settings.ts). */
+  settings(patch?: Readonly<Record<string, unknown>>): DebugSettingsEcho;
+  /** G_RecordDemo + G_BeginRecording on the attached state. */
+  recordDemo(name?: string): boolean;
+  /** queue ga_playdemo over the bytes (G_DeferedPlayDemo). */
+  playDemo(bytes: Uint8Array): boolean;
+  demoStatus(): DebugDemoStatus;
+  /** Push typed characters through the real D_ProcessEvents queue (the
+   * cheat-sequence injection hook for L4); false when unmounted. */
+  typeChars(text: string): boolean;
+}
+
+/** The seam object main.ts's M11-10 composer mounts. The SIM halves
+ * (G_SaveGame arm, demo arms, saveFlow reads) run HERE via sim imports;
+ * the store/settings/event-queue halves (load, echoes, typeChars) ride
+ * this object — the same split as popInput/aiGate (no persist import
+ * lands in this file). */
+export interface PersistDebugSource {
+  /** non-empty-slot count of the last-known store snapshot */
+  savesCount(): number;
+  /** settings controller hydrate state */
+  settingsLoaded(): boolean;
+  settingsView(): DebugSettingsEcho;
+  /** setMany() through the live controller; returns applied names */
+  settingsApply(patch: Readonly<Record<string, unknown>>): string[];
+  /** menuSaveLoad.loadSlot against the LIVE state (async drain arming);
+   * false = no state / no store (the silent vanilla-faithful lane) */
+  loadSlot(slot: number): boolean;
+  /** await every queued store write (e2e durability hop) */
+  flushWrites(): Promise<void>;
+  /** push a typed character sequence through the D_ProcessEvents queue
+   * (the L4 cheat-injection hook — real keydown/keyup-shaped packets) */
+  typeChars(text: string): void;
+}
+
+let persistSrc: PersistDebugSource | null = null;
+
+/** Mount (null detaches) the persistence seam — main.ts composer only. */
+export function attachPersistDebug(src: PersistDebugSource | null): void {
+  persistSrc = src;
+}
+
+function persistRead(): DebugPersistRead {
+  return {
+    lastSaveTic: saveFlow.lastSaveTic,
+    savesCount: persistSrc === null ? 0 : persistSrc.savesCount(),
+    settingsLoaded: persistSrc === null ? false : persistSrc.settingsLoaded()
+  };
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
 /** gamestate number → the §7 name (M9: all four states live). */
 function gamestateName(gs: number): DebugGamestateName {
   switch (gs) {
@@ -420,8 +527,10 @@ export const debugSim: SimDebugApi = {
   }
 };
 
-/** The same singleton installed as window.__doom by installDebugApi(). */
-export const debugApi: DoomDebugApi = {
+/** The same singleton installed as window.__doom by installDebugApi().
+ * M11-10: DoomDebugApi & DebugPersistApi — the additive persistence
+ * commands ride the SAME object (plan: no new globals). */
+export const debugApi: DoomDebugApi & DebugPersistApi = {
   sim: debugSim,
   loadMap(mapName: string): void {
     throw new Error(
@@ -459,7 +568,64 @@ export const debugApi: DoomDebugApi = {
   },
   state(): DebugStateSnapshot {
     if (!attached) return { ready: false, note: 'no simulation attached yet' };
-    return liveSnapshot(attached);
+    // M11-10 ADDITIVE: the persist block joins the live snapshot; every
+    // pre-existing field rides untouched (assertion = the widening seam).
+    return { ...liveSnapshot(attached), persist: persistRead() } as DebugStateSnapshot;
+  },
+
+  /* ---- M11-10 persistence seam commands (plan §M11-10) ---- */
+
+  async save(slot: number, desc?: string): Promise<boolean> {
+    if (!attached) return false;
+    if (!Number.isInteger(slot) || slot < 0 || slot > 9) return false;
+    // G_SaveGame = the DEFERRED half (g_game.c:1256, §0.3): the capture +
+    // store write land at the NEXT drain (vanilla's tic-boundary site).
+    const before = saveFlow.savesDone;
+    gSaveGame(slot, desc ?? `${attached.map.name}@${attached.leveltime}`);
+    // Wait for the drain (live page: ≤1 tic; headless: the caller's next
+    // runTics), then for every queued store write — durability for e2e
+    // save→reload flows.
+    for (let i = 0; i < 350 && saveFlow.savesDone === before; i++) await sleep(10);
+    if (saveFlow.savesDone === before) return false;
+    if (persistSrc !== null) await persistSrc.flushWrites();
+    return true;
+  },
+  async load(slot: number): Promise<boolean> {
+    if (!attached || persistSrc === null) return false;
+    // store.get → decode → gRequestLoadGame (ga_loadgame executes in the
+    // NEXT drain — vanilla's deferral; the caller steps/polls to observe).
+    return persistSrc.loadSlot(slot);
+  },
+  settings(patch?: Readonly<Record<string, unknown>>): DebugSettingsEcho {
+    if (patch !== undefined && persistSrc !== null) persistSrc.settingsApply(patch);
+    return persistSrc === null
+      ? { loaded: false, vars: {}, keys: {} }
+      : persistSrc.settingsView();
+  },
+  recordDemo(name?: string): boolean {
+    if (!attached) return false;
+    // G_RecordDemo + G_BeginRecording at the loop top (d_main.c:356-357);
+    // the tics ride gWriteDemoTiccmd inside the drain, the file half
+    // arrives via the captureSink ('demo' kind) when it finishes.
+    gStartRecordDemo(attached, name);
+    return true;
+  },
+  playDemo(bytes: Uint8Array): boolean {
+    if (!attached || !(bytes instanceof Uint8Array) || bytes.length < 13) return false;
+    gDeferedPlayDemo(attached, bytes); // ga_playdemo drains NEXT tic
+    return true;
+  },
+  demoStatus(): DebugDemoStatus {
+    return {
+      recording: demoRecording(),
+      playing: demoPlaying(),
+      bytes: demoBytes()?.length ?? 0
+    };
+  },
+  typeChars(text: string): boolean {
+    if (persistSrc === null) return false;
+    persistSrc.typeChars(text);
+    return true;
   },
   popInput(): { events: number; mouse: { x: number; y: number } } | null {
     // M6-13 finding 3: scripted e2e phases run under pause(true) via
@@ -498,7 +664,7 @@ export const debugApi: DoomDebugApi = {
 
 declare global {
   interface Window {
-    __doom?: DoomDebugApi;
+    __doom?: DoomDebugApi & DebugPersistApi;
   }
 }
 
