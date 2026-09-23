@@ -61,7 +61,7 @@ class MockParam {
 }
 class MockGain implements GainNodeLike {
   readonly gain = new MockParam();
-  connect(_dest: unknown): void {}
+  connect(): void {}
 }
 class MockContext {
   state = 'running'; // live immediately: focus here is the gain law, not the gate
