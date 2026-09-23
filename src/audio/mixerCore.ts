@@ -55,7 +55,14 @@
 
 import { SFX_ID, NUMSFX } from '../sim/psound_stub';
 import { DEDUP_SFX_IDS, SFX_INFO } from './sfxinfo';
-import type { DecodedSfx } from './sfxdata';
+
+/** The MINIMAL decoded-buffer shape the render loop needs (rate + mono
+ * float PCM at the native DS rate). sfxdata's DecodedSfx satisfies it
+ * structurally; the golden tests build exact-binary synthetic buffers. */
+export interface MixSfxData {
+  readonly rate: number;
+  readonly samples: Float32Array;
+}
 import { NORM_SEP, sAdjustSoundParams } from './spatial';
 
 /* ------------------------------------------------------------------ */
@@ -172,7 +179,7 @@ export interface MixChannel {
   x: number;
   y: number;
   /** Decoded PCM (link rows carry the LINK's data, i_sound.c:803-810). */
-  data: DecodedSfx | null;
+  data: MixSfxData | null;
   /** Current pitch 0..255 (NORM_PITCH 128 + jitter, s_sound.c:323-346). */
   pitch: number;
   /** Current mix volume 0..127 (pre-split; spatially attenuated). */
@@ -196,13 +203,13 @@ export interface ListenerPose {
 }
 
 /** Data source: sfxdata.sfxDataById-style resolution, null = silent (§0.10). */
-export type SfxBufferSource = (id: number) => DecodedSfx | null;
+export type SfxBufferSource = (id: number) => MixSfxData | null;
 
 export interface MixerOptions {
   /** Decoded data per sfx id (link rows are resolved INTERNALLY here — pass
    * a map/function keyed by the table id whose DS lump exists, or key the
    * link target: the pool looks up `info.link ?? id`). */
-  readonly buffers: ReadonlyMap<number, DecodedSfx> | SfxBufferSource;
+  readonly buffers: ReadonlyMap<number, MixSfxData> | SfxBufferSource;
   /** snd_SfxVolume mirror, 0..127 (default = thermo 8 *8 = 64, D-10d). */
   readonly sfxVolume?: number;
   /** gamemap for the E1M8 branch (s_sound.c:773/:800; default 1). */
@@ -246,7 +253,7 @@ export function createMixer(options: MixerOptions): Mixer {
   const src: SfxBufferSource =
     typeof options.buffers === 'function'
       ? options.buffers
-      : (id: number) => (options.buffers as ReadonlyMap<number, DecodedSfx>).get(id) ?? null;
+      : (id: number) => (options.buffers as ReadonlyMap<number, MixSfxData>).get(id) ?? null;
 
   const channels: MixChannel[] = [];
   for (let i = 0; i < NUM_MIXER_CHANNELS; i++) {
@@ -512,7 +519,7 @@ export interface MixListenerKey {
 
 export interface MixScript {
   readonly events: readonly MixEvent[];
-  readonly buffers: ReadonlyMap<number, DecodedSfx> | SfxBufferSource;
+  readonly buffers: ReadonlyMap<number, MixSfxData> | SfxBufferSource;
   readonly listener?: readonly MixListenerKey[];
   readonly sfxVolume?: number;
   readonly gamemap?: number;
@@ -545,8 +552,8 @@ export function renderMix(script: MixScript, sampleRate: number): Int16Array {
   const src: SfxBufferSource =
     typeof script.buffers === 'function'
       ? script.buffers
-      : (id: number) => (script.buffers as ReadonlyMap<number, DecodedSfx>).get(id) ?? null;
-  const resolve = (id: number): DecodedSfx | null => {
+      : (id: number) => (script.buffers as ReadonlyMap<number, MixSfxData>).get(id) ?? null;
+  const resolve = (id: number): MixSfxData | null => {
     const info = SFX_INFO[id];
     return src(info !== undefined && info.link !== null ? info.link : id);
   };
