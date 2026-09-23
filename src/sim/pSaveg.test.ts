@@ -412,6 +412,16 @@ describe('M11-04 game.ts save/load branches', () => {
     expect(gameactionLog.entries.some((e) => e.action === GA.savegame)).toBe(true);
   });
 
+  it('the payload survives a JSON round-trip (persist codec path, D-11a)', () => {
+    // persist's codec byte/DBP1 path serializes the payload — nothing in
+    // SaveSnapshot may be live-object-only (typed arrays, Maps, fns).
+    const a = boot();
+    runIn(a, 60, walkIn);
+    const snap = captureWorld(a);
+    const wire = JSON.parse(JSON.stringify(snap)) as SaveSnapshot;
+    expectIdentical(a, restoreIntoBlank(wire));
+  });
+
   it('ga_loadgame drains the pending snapshot; one tic later == reference continuation', () => {
     const a = boot();
     runIn(a, 60, walkIn);
