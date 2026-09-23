@@ -17,7 +17,7 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { Session } from 'node:inspector';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
