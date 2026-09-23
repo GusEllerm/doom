@@ -110,7 +110,10 @@ function moverSector(s: GameState): number {
   return si;
 }
 
-const walkIn = (_i = 0): GameInput => ({ ...emptyInput(), forward: true });
+const walkIn = (_i = 0): GameInput => {
+  void _i;
+  return { ...emptyInput(), forward: true };
+};
 
 /* ------------------------------------------------------------------ */
 /* Harness                                                             */
