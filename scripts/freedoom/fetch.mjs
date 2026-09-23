@@ -7,8 +7,21 @@
  * Usage:
  *   node scripts/freedoom/fetch.mjs            # fetch required entries (freedoom1.wad)
  *   node scripts/freedoom/fetch.mjs --all      # include optional entries (freedoom2.wad)
+ *   node scripts/freedoom/fetch.mjs --music    # also fetch pinned music companions
+ *                                              # (release.json musicEntries; the pinned
+ *                                              # v0.13.0 zip carries NONE — see release.json)
+ *   node scripts/freedoom/fetch.mjs --verify-music  # verify wads/music/** against the
+ *                                              # pins ONLY (no download). Any mismatch,
+ *                                              # missing pinned file, or UNPINNED stray
+ *                                              # file is a HARD STOP (exit 1).
  *   node scripts/freedoom/fetch.mjs --local X  # use a local zip or directory instead of download
+ *   node scripts/freedoom/fetch.mjs --pin P --root R  # test seams (alternate pin file /
+ *                                              # output root)
  *   FREEDOOM_ZIP_LOCAL=/path/to.zip npm run fetch-freedoom
+ *
+ * Music files are FETCH-ONLY (wads/ is gitignored — never committed);
+ * the runtime treats their absence as the designed silent/SMF path
+ * (M10-plan §0.x + src/audio/musicSelect.ts).
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -90,17 +103,31 @@ async function download(url, tries = 3) {
 async function main() {
   const args = process.argv.slice(2);
   const wantAll = args.includes('--all');
+  const wantMusic = args.includes('--music') || wantAll;
+  const verifyMusic = args.includes('--verify-music');
   const localIdx = args.indexOf('--local');
   const localZip =
     localIdx >= 0 ? args[localIdx + 1] : process.env.FREEDOOM_ZIP_LOCAL ?? null;
+  const pinIdx = args.indexOf('--pin');
+  const rootIdx = args.indexOf('--root');
+  const pinFile = pinIdx >= 0 ? resolve(args[pinIdx + 1]) : PIN_FILE;
+  const root = rootIdx >= 0 ? resolve(args[rootIdx + 1]) : ROOT;
 
-  const pin = JSON.parse(readFileSync(PIN_FILE, 'utf8'));
+  const pin = JSON.parse(readFileSync(pinFile, 'utf8'));
+  const musicEntries = pin.musicEntries ?? [];
+
+  // ---- verify-only mode: checksum gate over wads/music/, no download ----
+  if (verifyMusic) {
+    verifyMusicFiles(pin, root);
+    return;
+  }
   const entries = pin.entries.filter((e) => e.required || wantAll);
+  if (wantMusic) entries.push(...musicEntries);
 
   // Cache check: if every target already matches its pinned hash, skip all work.
   let allCached = true;
   for (const e of entries) {
-    const target = join(ROOT, e.target);
+    const target = join(root, e.target);
     if (!existsSync(target) || sha256(readFileSync(target)) !== e.sha256) {
       allCached = false;
       break;
@@ -121,7 +148,7 @@ async function main() {
 
   const got = sha256(zipBuf);
   if (localZip) {
-    console.log(`local zip in use (sha256 ${got}); skipping zip-hash gate, WAD hashes still enforced`);
+    console.log(`local zip in use (sha256 ${got}); skipping zip-hash gate, entry hashes still enforced`);
   } else if (got !== pin.zipSha256) {
     throw new Error(`zip sha256 mismatch: got ${got}, pinned ${pin.zipSha256}`);
   } else {
@@ -129,7 +156,7 @@ async function main() {
   }
 
   for (const e of entries) {
-    const target = join(ROOT, e.target);
+    const target = join(root, e.target);
     if (existsSync(target) && sha256(readFileSync(target)) === e.sha256) {
       console.log(`skip (already present): ${e.target}`);
       continue;
@@ -146,6 +173,50 @@ async function main() {
       throw new Error(`${e.target} size ${data.length} != pinned ${e.size}`);
     }
   }
+
+  // Music companions fetched from a zip that lacks them: impossible (the
+  // unzipEntry above hard-throws); a pin with musicEntries: [] fetches none.
+  if (wantMusic && musicEntries.length === 0) {
+    console.log('music: no pinned companion entries for this tag (see release.json musicComment)');
+  }
+}
+
+/** --verify-music: checksum gate over the FETCHED (never committed) music
+ * dir. Every pinned file must exist and match; every file present in the
+ * music dir must be pinned and match (stray/tamper detection). ANY
+ * failure is a HARD STOP (non-zero exit, no partial success). */
+function verifyMusicFiles(pin, root) {
+  const musicEntries = pin.musicEntries ?? [];
+  const musicDir = pin.musicDir ?? 'wads/music';
+  const dirPath = join(root, musicDir);
+  const problems = [];
+  const pinnedTargets = new Set();
+  for (const e of musicEntries) {
+    pinnedTargets.add(e.target);
+    const target = join(root, e.target);
+    if (!existsSync(target)) {
+      problems.push(`missing pinned file: ${e.target}`);
+      continue;
+    }
+    const got = sha256(readFileSync(target));
+    if (got !== e.sha256) problems.push(`${e.target} sha256 MISMATCH: got ${got}, pinned ${e.sha256}`);
+    else if (e.size !== undefined && statSync(target).size !== e.size) {
+      problems.push(`${e.target} size ${statSync(target).size} != pinned ${e.size}`);
+    } else console.log(`verify ok: ${e.target}`);
+  }
+  if (existsSync(dirPath)) {
+    for (const f of readdirSync(dirPath).sort()) {
+      const rel = `${musicDir}/${f}`;
+      if (!pinnedTargets.has(rel) && !musicEntries.some((e) => e.target.endsWith(`/${f}`))) {
+        problems.push(`unpinned stray file in ${musicDir}: ${f} (fetch-only dir — refuse)`);
+      }
+    }
+  }
+  if (problems.length > 0) {
+    for (const p of problems) console.error(`verify-music: ${p}`);
+    throw new Error(`music checksum verification FAILED (${problems.length} problem(s))`);
+  }
+  console.log(`verify-music: ${musicEntries.length} pinned file(s) verified`);
 }
 
 main().catch((err) => {

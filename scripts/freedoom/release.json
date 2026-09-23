@@ -18,5 +18,8 @@
       "sha256": "a8772e088847032510d97ba2312406a6998f21cbab44d4ff10696faa9c0ecd4b",
       "required": false
     }
-  ]
+  ],
+  "musicDir": "wads/music",
+  "musicComment": "M10-plan §0.x OGG companion slot. AUDIT (this task, tag v0.13.0 zip central-directory scan): the release ships 11 entries — freedoom1.wad, freedoom2.wad, docs — and ZERO .ogg files; the BSD music lives INSIDE freedoom1.wad as 41 SMF D_* lumps (which the runtime plays directly — no id-asset derivation). musicEntries stays EMPTY for this tag: pinned entries here would be FETCHED (wads/ is gitignored — fetch-only, never committed) and --verify-music hard-stops on any checksum mismatch or unpinned stray file. If a future Freedoom tag ships companion OGGs, pin them here (same sha256 discipline).",
+  "musicEntries": []
 }

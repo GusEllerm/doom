@@ -68,7 +68,7 @@ import {
   parseMapName,
   skillToInternal
 } from './gamemode';
-import { recordGameaction, resetHookSlots } from './hooks';
+import { musicSlot, recordGameaction, resetHookSlots } from './hooks';
 
 // M8-12 flip companion (D-m1 note): pdeath.ts registers the GENERIC
 // p_enemy.c death/pain bodies into the mobj-domain slots — vanilla has ONE
@@ -381,6 +381,12 @@ function gSetupLevel(state: GameState, map: RuntimeMap, clearRandom: boolean): v
   // Nothing traverses until a weapon actually fires (the psprite machine
   // is ticked by puser.ts / M7-03), so no boot-time draw and no hash move.
   bindShootWorld(state);
+  // M10-08: the ONE new audio call site of the milestone — S_Start()'s
+  // music selection at the TAIL of P_SetupLevel (p_setup.c:607,
+  // s_sound.c:202-248; M10-plan §0.6/§M10-08). Event-only (musicLog +
+  // live listener; zero PRNG, zero sim state — the audio consumer
+  // src/audio/musicSelect.ts resolves episode/map through its seam).
+  musicSlot('level', true); // level music ALWAYS loops (s_sound.c:245)
 }
 
 /* ------------------------------------------------------------------ */

@@ -433,7 +433,11 @@ export const SFX_UI_SITE_LEDGER: Readonly<Record<string, { sfx: number; music: n
   // d_main.c:477/:498 S_StartMusic(mus_intro) — ONE site (case 0).
   'title.ts': { sfx: 0, music: 1 },
   // f_finale.c:114 S_ChangeMusic(mus_victor,true).
-  'finale.ts': { sfx: 0, music: 1 }
+  'finale.ts': { sfx: 0, music: 1 },
+  // M10-08: the S_Start() site at the P_SetupLevel tail (p_setup.c:607)
+  // — the ONE new music call site M10-plan §0.9 promises (and §0.9's
+  // "musicSlot('level', true)" landing note); event-only, zero sim state.
+  'game.ts': { sfx: 0, music: 1 }
 };
 
 /** g_game.c G_Ticker gameaction-drain record (d_event.h gameaction_t
