@@ -5,17 +5,16 @@
 // store.get→codec→ga_loadgame), and the quicksave/quickload slot semantics
 // (quickSaveSlot -1/-2/-N, m_menu.c:90/:706/:685-712/:729-745).
 //
-// Ownership note: menu.ts is M11-03's. This module imports NOTHING from
-// menu.ts and hands it a patch-list for the wiring points:
-//   - F2/F3 rows call saveMenuOpener()/loadMenuOpener()
-//   - F6/F9 call quickSave()/quickLoad()
-//   - M_Responder routes: saveStringEnter ⇒ saveStringResponder(ev) first
-//   - the y/n prompt responder ⇒ quickPromptResponse(state, ch, kind)
-//   - quickSaveSlot stays menu.ts's global (M11-03 §0.4); it binds its
-//     accessors via bindQuickSlot().
-// The d_englsh strings used here are DUPLICATED locally (menu.ts/textdata.ts
-// are M11-03's files); the patch-list asks menu.ts to become the single
-// source once merged.
+// Wiring truth: M11-03 (menu.ts) is MERGED and carries the canonical
+// F-key/rows/editor BODIES behind two seams (menu.ts:203-212): the
+// last-known saveRows read-view + requestLoadSlot. createMenuGlue() below
+// is the M11-05 glue that mounts them (“pre-opened by the M11-05 glue —
+// the menu never awaits”, §M11-03); the composer (M11-10) installs it and
+// registers captureHandler as captureSink. NO menu.ts edit was needed
+// (patch-list: zero — the seams M11-03 shipped are exactly the contract).
+// This module’s own entry points (saveMenuOpener/saveStringResponder/
+// quickSave/…) remain the plan-§M11-05 API and are fully tested here; if
+// menu.ts ever delegates, the same semantics are already proven.
 //
 // Vanilla-truth decisions recorded here (§0.4, m_menu.c read :505-760 this
 // task):
@@ -56,6 +55,7 @@ import {
   SAVE_SLOT_COUNT,
   type PersistStore,
 } from '../persist/store';
+import { menuSeams } from './menu';
 
 /* ------------------------------------------------------------------ */
 /* Constants (§0.4)                                                    */
@@ -641,6 +641,57 @@ export async function flushWrites(): Promise<void> {
   // Two hops so continuations chained during the flush also land.
   await writeChain;
   await writeChain;
+}
+
+/* ------------------------------------------------------------------ */
+/* menu.ts glue (M11-03's seam contract, menu.ts:203-212)               */
+/* ------------------------------------------------------------------ */
+
+/** Mount options: getState supplies the running GameState when a load
+ * request arrives (mLoadSelect carries no state — the composer owns it). */
+export interface MenuGlueOptions {
+  getState: () => GameState | null;
+}
+
+export interface MenuGlue {
+  /** Register as hooks.captureSink (kind 'save' handled; others pass). */
+  captureHandler: (e: CaptureEvent) => void;
+  /** Mount menuSeams.saveRows + requestLoadSlot (idempotent) + bind. */
+  install(): void;
+  /** Clear exactly what install() set (test/composer teardown). */
+  uninstall(): void;
+}
+
+/** The M11-05 glue: feeds menu.ts the LAST-KNOWN slot read-view (async
+ * snapshot pattern — mReadSaveStrings never awaits) and the async
+ * M_LoadSelect half. Label refreshes land via bindStore + every capture
+ * write, so a menu opened after them shows the new labels. */
+export function createMenuGlue(
+  store: PersistStore,
+  options: MenuGlueOptions
+): MenuGlue {
+  const captureHandler = createCaptureHandler(store);
+  return {
+    captureHandler,
+    install() {
+      bindStore(store);
+      menuSeams.saveRows = () =>
+        rows.map((r) => ({
+          // Error lanes face M_ReadSaveStrings’ open-fail rule (:524-528):
+          // the row reads as EMPTYSTRING.
+          empty: r.empty || r.error !== null,
+          description: r.error !== null ? EMPTY_SLOT_TEXT : r.description,
+        }));
+      menuSeams.requestLoadSlot = (slot: number) => {
+        const state = options.getState();
+        if (state !== null) void loadSlot(state, slot);
+      };
+    },
+    uninstall() {
+      menuSeams.saveRows = undefined;
+      menuSeams.requestLoadSlot = undefined;
+    },
+  };
 }
 
 /* ------------------------------------------------------------------ */

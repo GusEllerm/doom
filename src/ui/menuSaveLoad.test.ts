@@ -37,6 +37,7 @@ import {
   setPendingLoad,
 } from '../sim/hooks';
 import { resetPlatFlatCopies } from '../sim/pplats';
+import { menuSeams } from './menu';
 import { KEY_BACKSPACE, KEY_ENTER, KEY_ESCAPE } from '../input/keyboard';
 import { buildPayload, encodeSave } from '../persist/codec';
 import { openStore, type PersistStore } from '../persist/store';
@@ -55,6 +56,7 @@ import {
   captureErrors,
   refreshSlotLabels,
   createCaptureHandler,
+  createMenuGlue,
   doSave,
   flushWrites,
   getQuickSaveSlot,
@@ -655,3 +657,58 @@ async function refresh(): Promise<void> {
   await new Promise<void>((r) => setTimeout(r, 0));
 }
 
+
+/* ------------------------------------------------------------------ */
+/* 5. menu.ts glue (M11-03 seam contract, menu.ts:203-212)              */
+/* ------------------------------------------------------------------ */
+
+describe('createMenuGlue — mounts menu.ts saveRows/requestLoadSlot', () => {
+  it('install feeds the last-known rows; requestLoadSlot arms a real load', async () => {
+    const store = await memoryStore();
+    registerCaptureSink(null);
+    // Seed a real world save through the sim path for slot 1.
+    const a = boot();
+    runIn(a, 10);
+    const sinkStore = createCaptureHandler(store);
+    registerCaptureSink(sinkStore);
+    doSave(a, 1);
+    gTicker(a, walkIn());
+    gTicker(a, walkIn());
+    await flushWrites();
+    registerCaptureSink(null);
+
+    const b = boot();
+    const glue = createMenuGlue(store, { getState: () => b });
+    glue.install();
+    await new Promise<void>((r) => setTimeout(r, 0)); // hydrate the view
+    const view = menuSeams.saveRows!();
+    expect(view.length).toBe(SLOT_COUNT);
+    // doSave passed slotText verbatim — the vanilla M_DoSave quirk: the
+    // un-named slot saves WITH the literal "empty slot" string.
+    expect(view[1]).toEqual({ empty: false, description: 'empty slot' });
+    expect(view[0]!.empty).toBe(true);
+
+    menuSeams.requestLoadSlot!(1); // the mLoadSelect half (async)
+    await new Promise<void>((r) => setTimeout(r, 0));
+    expect(b.gameaction).toBe(GA.loadgame);
+    gTicker(b, walkIn());
+    expect(hashState(b)).toBe(hashState(a)); // a ran its drain tic too
+
+    glue.uninstall();
+    expect(menuSeams.saveRows).toBeUndefined();
+    expect(menuSeams.requestLoadSlot).toBeUndefined();
+  });
+
+  it('error lanes face the EMPTYSTRING read-view (open-fail rule)', async () => {
+    const { factory, saves } = sharedIdb();
+    const store = await openStore({ factory });
+    saves.set(4, { junk: 1 }); // corrupt record lane
+    const glue = createMenuGlue(store, { getState: () => null });
+    glue.install();
+    await new Promise<void>((r) => setTimeout(r, 0));
+    const view = menuSeams.saveRows!();
+    expect(view[4]!.empty).toBe(true);
+    expect(view[4]!.description).toBe('empty slot');
+    glue.uninstall();
+  });
+});
