@@ -278,3 +278,4 @@ EXIT GATE: check 141f/2812t, e2e 37x2 consecutive, goldens --check drift-free x5
 - Development resumed: M10 (audio) planning dispatched. Field-bug pipeline clear (B-01..10 all closed/no-defect).
 - M10-01 merged (buses + gesture unlock + renderMix). Wave 1b: sfx table/decode + SMF decoder dispatched.
 - M10-02 merged: all 123 SOUND lumps decode; Freedoom renamed 11 to FS-* (shareware-table names mapped). M10-04 (site swap -> typed event ledger) dispatched; SMF still running.
+- M10-03 merged (SMF exact, rational tempo math). Wave 2: mixer core (vanilla channel/attenuation) + GM synth dispatched.
