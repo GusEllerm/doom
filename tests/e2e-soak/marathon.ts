@@ -134,9 +134,9 @@ export interface LevelCensusRow {
   readonly entryTic: number;
   readonly occupiedAtEntry: number;
   readonly thinkersAtEntry: number;
-  readonly peakOccupied: number;
-  readonly reloads: number;
-  readonly reloadOccupiedDelta: number; // worst |occ - baseline| at reload
+  peakOccupied: number;
+  reloads: number;
+  reloadOccupiedDelta: number; // worst |occ - baseline| at reload
 }
 
 export interface MarathonReport {
@@ -306,7 +306,6 @@ export function runMarathon(simMinutes: number, seed: number): MarathonReport {
   let lastMapRef: unknown = state.map;
   let exitLatched = false;
   let exitLatchedTic = -1;
-  let lastLevelMapRef = state.map;
   let lastLevelName = currentMapName();
   let rotations = 0;
   let secretExits = 0;
@@ -401,7 +400,6 @@ export function runMarathon(simMinutes: number, seed: number): MarathonReport {
           }
         }
         lastLevelName = name;
-        lastLevelMapRef = state.map;
         exitLatched = false;
       }
     }
@@ -428,7 +426,6 @@ export function runMarathon(simMinutes: number, seed: number): MarathonReport {
   };
 
   /* ---- per-tic invariants ---- */
-  let hashChecks = 0;
   const invariants = (tic: number): void => {
     const p = state.players[0]!;
     const mo = p.mo;
@@ -443,7 +440,6 @@ export function runMarathon(simMinutes: number, seed: number): MarathonReport {
     if (tic % 8 === 0) {
       const h1 = hashState(state);
       const h2 = hashState(state);
-      hashChecks += 1;
       if (h1 !== h2) fail(`hash not self-consistent (${h1} vs ${h2})`);
     }
     if (tic % 32 === 0) {
