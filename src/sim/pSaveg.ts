@@ -68,8 +68,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import { pAddThinker, pRemoveThinker, type Thinker } from './ptick';
-import { pSpawnMobj, syncMobj, type Mobj, type SpawnPoint } from './p_mobj';
-import { thingUnsetPosition, MF_NOBLOCKMAP } from './thinglinks';
+import { pSetMobjFlags, pSpawnMobj, syncMobj, type Mobj, type SpawnPoint } from './p_mobj';
+import { thingSetPosition, thingUnsetPosition, MF_NOBLOCKMAP } from './thinglinks';
 
 import { tVerticalDoor, type Door } from './pdoors';
 import { tMoveFloor, type FloorMove } from './pfloor';
@@ -153,6 +153,9 @@ export interface SaveSnapshot {
     totalitems: number;
     turnheld: number;
     gametic: number;
+    /** thinker arena id counter (mid-run spawn ids must not collide with
+     * the captured reserved ids). */
+    nextId: number;
     itemQue: SpawnPoint[];
     itemQueTime: number[];
     iquehead: number;
@@ -171,7 +174,8 @@ type PlayerSnap = {
   damagecount: number;
   bonuscount: number;
   usedown: number;
-  message: string;
+  forwardmove: number;
+  sidemove: number;
   killcount: number;
   itemcount: number;
   frags: number[];
@@ -204,8 +208,8 @@ type MobjSnap = {
   x: number;
   y: number;
   z: number;
-  /** full-field record (omitted on tombstones): */
-  f?: {
+  /** full-field record (kept for tombstones too — inert but comparable) */
+  f: {
     momx: number; momy: number; momz: number;
     floorz: number; ceilingz: number;
     angle: number; state: number; tics: number; sprite: number; frame: number;
@@ -281,7 +285,8 @@ function snapshotPlayer(p: Player, state: GameState): PlayerSnap {
     damagecount: p.damagecount,
     bonuscount: p.bonuscount,
     usedown: p.usedown ? 1 : 0,
-    message: p.message,
+    forwardmove: p.forwardmove,
+    sidemove: p.sidemove,
     killcount: p.killcount,
     itemcount: p.itemcount,
     frags: Array.from(p.frags),
@@ -307,18 +312,16 @@ function snapshotPlayer(p: Player, state: GameState): PlayerSnap {
 }
 
 function mobjSnap(m: Mobj, state: GameState): MobjSnap {
-  const rec: MobjSnap = {
+  const target = m.target;
+  return {
     thinkerId: m.thinker.id,
     type: m.type,
     removed: m.removed ? 1 : 0,
     linkSlot: m.linkSlot,
     x: m.x,
     y: m.y,
-    z: m.z
-  };
-  if (m.removed) return rec;
-  const target = m.target;
-  rec.f = {
+    z: m.z,
+    f: {
     momx: m.momx,
     momy: m.momy,
     momz: m.momz,
@@ -346,8 +349,8 @@ function mobjSnap(m: Mobj, state: GameState): MobjSnap {
         : -1,
     player: m.player ? state.players.indexOf(m.playerRef as Player) + 1 : 0,
     excludeFromHash: m.thinker.excludeFromHash ? 1 : 0
+    }
   };
-  return rec;
 }
 
 function thinkerWords(t: Thinker): number[] {
@@ -503,6 +506,7 @@ export function captureWorld(state: GameState): SaveSnapshot {
       totalitems: rt.totalitems,
       turnheld: state.turnheld,
       gametic: state.gametic,
+      nextId: state.thinkers.nextId,
       itemQue: rt.itemQue.map((s) => ({ ...s })),
       itemQueTime: Array.from(rt.itemQueTime),
       iquehead: rt.iquehead,
@@ -540,7 +544,11 @@ function unarchivePlayers(state: GameState, snaps: PlayerSnap[]): void {
     p.damagecount = s.damagecount;
     p.bonuscount = s.bonuscount;
     p.usedown = s.usedown !== 0;
-    p.message = s.message;
+    p.forwardmove = s.forwardmove;
+    p.sidemove = s.sidemove;
+    // p_saveg.c:96 — P_SerializePlayers NULLS player->message
+    // (never archived); our P_SpawnPlayerFromStart pass already cleared it
+    // through its registered write site, so nothing to restore here.
     p.killcount = s.killcount;
     p.itemcount = s.itemcount;
     for (let f = 0; f < p.frags.length && f < s.frags.length; f++) p.frags[f] = s.frags[f]!;
@@ -655,6 +663,14 @@ function unarchiveThinkers(state: GameState, snap: SaveSnapshot): void {
       if (spawn === undefined) throw new SavegError('playerSpawnFn unbound');
       spawn(rt, start);
       m = rt.mobjs[rt.mobjs.length - 1]!;
+      // Exact geometry: the P_SpawnPlayer start is UNIT-granular (<<16 of
+      // a truncated >>16) — re-position to the captured fixed point.
+      m.x = rec.x;
+      m.y = rec.y;
+      m.z = rec.z;
+      thingUnsetPosition(links, m.linkSlot);
+      thingSetPosition(links, m.linkSlot, rec.x, rec.y);
+      links.z[m.linkSlot] = rec.z;
     } else {
       m = pSpawnMobj(
         rt, rec.x, rec.y, rec.z, rec.type,
@@ -665,16 +681,7 @@ function unarchiveThinkers(state: GameState, snap: SaveSnapshot): void {
         links.linked[rec.linkSlot] = 1; // static CSR cell membership returns
       }
     }
-    if (rec.removed || rec.f === undefined) {
-      // Tombstone: inert roster placeholder (keeps target indices stable).
-      if (!m.removed) {
-        if (m.linkSlot >= 0) thingUnsetPosition(links, m.linkSlot);
-        pRemoveThinker(m.thinker);
-        m.removed = true;
-        rt.slotMobjs.delete(m.linkSlot);
-      }
-      continue;
-    }
+    if (rec.removed) rt.slotMobjs.delete(m.linkSlot);
     const f = rec.f;
     m.momx = f.momx;
     m.momy = f.momy;
@@ -686,7 +693,7 @@ function unarchiveThinkers(state: GameState, snap: SaveSnapshot): void {
     m.tics = f.tics;
     m.sprite = f.sprite;
     m.frame = f.frame;
-    m.flags = f.flags;
+    pSetMobjFlags(m, f.flags); // mirrors into the grid slot (words[5])
     m.health = f.health;
     m.reactionTime = f.reactionTime;
     m.movedir = f.movedir;
@@ -709,6 +716,14 @@ function unarchiveThinkers(state: GameState, snap: SaveSnapshot): void {
       (m as Mobj & { reactiontime?: number }).reactiontime = f.reactionTime;
     }
     syncMobj(m);
+    if (rec.removed) {
+      // Tombstone bookkeeping AFTER the fields (inert roster placeholder
+      // keeping target indices stable — p_mobj.ts header rule).
+      if (m.linkSlot >= 0) thingUnsetPosition(links, m.linkSlot);
+      pRemoveThinker(m.thinker);
+      m.removed = true;
+      rt.slotMobjs.delete(m.linkSlot);
+    }
   }
 }
 
@@ -891,6 +906,7 @@ export function restoreWorld(state: GameState, snap: SaveSnapshot): void {
     );
   }
   attachPsprFields(state.players[0]!);
+  for (const p of state.players) initPlayerInventory(p);
   unarchivePlayers(state, snap.players); // pass 1
   unarchiveWorld(state, snap); // pass 2
   state.leveltime = snap.header.leveltime; // g_game.c:1233 (post-InitNew)
@@ -912,6 +928,13 @@ export function restoreWorld(state: GameState, snap: SaveSnapshot): void {
   state.specialexit = snap.misc.specialexit !== 0;
   state.exitRequest = snap.misc.exitRequest === 0 ? 'none' : snap.misc.exitRequest === 1 ? 'normal' : 'secret';
   state.turnheld = snap.misc.turnheld;
+  // gametic rides the payload (port-extra: hashState hashes gametic, and
+  // the golden property demands continuation — the vanilla process-global
+  // notion of gametic has no browser-run analogue).
+  state.gametic = snap.misc.gametic;
+  // id counter PAST every captured id (mid-run spawns must never reuse a
+  // live reserved id — Map.set would silently replace).
+  state.thinkers.nextId = Math.max(state.thinkers.nextId, snap.misc.nextId);
   rt.totalkills = snap.misc.totalkills;
   rt.totalitems = snap.misc.totalitems;
   for (let i = 0; i < snap.misc.itemQue.length; i++) rt.itemQue[i] = { ...snap.misc.itemQue[i]! };
