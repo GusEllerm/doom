@@ -130,6 +130,10 @@ export interface BusSet {
   sfx(): number;
   music(): number;
   master(): number;
+  /** M10-06 additive: the live sfx-bus GainNode source consumers connect to
+   * (null until the graph is built). Optional — the offline harness BusSet
+   * needs no source wiring. */
+  sfxNode?(): GainNodeLike | null;
   setSfx(v: number): void;
   setMusic(v: number): void;
   /** Direct master control (gesture unmute / test mute); respects mute flags. */
@@ -241,6 +245,17 @@ export function platformState(): PlatformState {
   return audioAvailable() ? 'unbuilt' : 'absent';
 }
 
+/**
+ * M10-06 additive: the live AudioContext (NOT a construction site — null
+ * until the first gesture builds the graph; the driver reads it lazily and
+ * degrades to the pure-mixer path when null, keeping the constructor spy
+ * zero on every headless path). Source-node FACTORIES (createBufferSource
+ * etc.) are the driver's structural extension of AudioContextLike.
+ */
+export function getContext(): AudioContextLike | null {
+  return ctx;
+}
+
 /** The bus triplet (always present; live once a context owns the nodes). */
 export const busSet: BusSet = {
   get live(): boolean {
@@ -249,6 +264,7 @@ export const busSet: BusSet = {
   sfx: () => sfxBus.value,
   music: () => musicBus.value,
   master: () => masterBus.value,
+  sfxNode: () => sfxBus.node,
   setSfx: (v) => sfxBus.set(v, ctx),
   setMusic: (v) => musicBus.set(musicPaused ? 0 : v, ctx),
   setMaster: (v) => masterBus.set(testMute ? 0 : v, ctx),

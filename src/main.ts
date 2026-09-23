@@ -110,6 +110,7 @@ import { flatsFromWad, loadRenderWorld, type FlatSource, type RenderWorld } from
 import { buildRenderMapView, type RenderMapView } from './render/view';
 import { initLightTables, type LightTables } from './render/lights';
 import { fetchWad, WadLoadError } from './platform/wadload';
+import { audioFrame, audioTick, installAudio } from './audio/sfxDriver';
 import { loadMap } from './wad/mapdata';
 import { decodeColormap, decodePlaypal } from './wad/palettes';
 import { texturesFromWad } from './wad/texture';
@@ -387,6 +388,11 @@ function stepTic(): void {
 
   gTicker(state, ticInput);
   amTicker(am, player); // G_Ticker GS_LEVEL automap item (g_game.c)
+  // M10-06: the per-TIC audio half (d_main.c:392 S_UpdateSounds mapped to
+  // the tic grid, D-10f) — event-ledger drain + tic-boundary stamp + node
+  // diff. Silent no-op before installAudio / without a gesture-unlocked
+  // context (existing e2e contract).
+  audioTick(state);
 
   // G_Ticker's UI tick halves (g_game.c:729-733: ST_Ticker/HU_Ticker run
   // OUTSIDE the paused gate, every GS_LEVEL tic — the st_face M_Random
@@ -497,6 +503,7 @@ function loop(nowMs: number): void {
   }
   if (accumulator > TIC_MS * MAX_CATCHUP_TICS) accumulator = 0; // drop backlog
   render();
+  audioFrame(); // M10-06: per-frame pending-flush/age rules (no-op silent)
 }
 
 /* ------------------------------------------------------------------ */
@@ -578,6 +585,10 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // sites (psound_stub.ts holds the complete site ledger for the audio port).
   installPickupSfxBridge(state.hooks, () => state.leveltime);
   installPsprSfxSlot(state.hooks, () => state.leveltime);
+  // M10-06 audio wiring: the ONE sfxDriver entry (live-sfx seam + UI sfx
+  // clock + gesture gate + __doom.audio debug shape); the tic/frame halves
+  // below are its only other touch points (plan §M10-06).
+  installAudio(state, wad);
   const luts = new PaletteLuts(decodePlaypal(wad.readLumpByName('PLAYPAL')));
 
   // Render world built ONCE (M3-07): SoA tables + BSP view + wad light
