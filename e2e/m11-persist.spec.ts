@@ -38,6 +38,17 @@ const ui = (page: Page) => page.evaluate(() => window.__doom!.ui()!);
 
 const state = (page: Page) => page.evaluate(() => window.__doom!.state() as any);
 
+/** Install the monsters-view normalizer in-page: targetSlot is the target's
+ * ARENA slot — G_InitNew re-setup numbers the player mobj differently, so
+ * the raw int is representation, not world state (targetPlayer = the fact,
+ * excluded from hashState by design — mobj channels are not hashed). */
+const installNorm = (page: Page): Promise<unknown> =>
+  page.evaluate(() => {
+    const nv = (v: any) => (v ? { ...v, targetSlot: v.targetPlayer ? 'player' : v.targetSlot } : v);
+    (window as any).normMonsters = (m: any) =>
+      m ? { ...m, first: nv(m.first), mobjs: Array.isArray(m.mobjs) ? m.mobjs.map(nv) : m.mobjs } : m;
+  });
+
 /** Boot with the console-error collector (m9-flow boot idiom). */
 async function boot(page: Page): Promise<string[]> {
   const errors: string[] = [];
@@ -163,6 +174,16 @@ const frameDigest = (page: Page): Promise<string> =>
       .join('');
   });
 
+/** Park the skull on slot row 0 (ArrowUp/Down WRAP — m_menu.c key_up/
+ * key_down — so the deterministic walk is DOWN until itemOn == 0). */
+async function pickSlot0(page: Page): Promise<void> {
+  for (let i = 0; i < 9; i++) {
+    if ((await ui(page)).menu!.itemOn === 0) return;
+    await pressKey(page, 'ArrowDown', 1);
+  }
+  throw new Error('itemOn never reached 0');
+}
+
 /** REAL menu-click route: title → MainDef → New Game (click) → episode 1
  * (click) → Hurt me (click) → live E1M1 (the "real game", not the scripted
  * playstart drain). Live tics before the save point are irrelevant to the
@@ -197,6 +218,7 @@ test.describe('M11-11 save → RELOAD → load identity', () => {
   test('hash + pixels + 100-tic continuation match across a real reload', async ({ page }) => {
     test.setTimeout(180_000);
     const errors = await boot(page);
+    await installNorm(page);
     await idbReady(page);
 
     // FRESH CONTEXT ⇒ EMPTY STORES (the "reload keeps IDB, new context
@@ -223,7 +245,7 @@ test.describe('M11-11 save → RELOAD → load identity', () => {
       api.sim.runTics(2); // the scripted save drain (snapshot + 1 world tic)
       const ok = await p; // resolves once savesDone moved + store flushed
       const at = api.state() as any;
-      const reference = { hash: at.hash, leveltime: at.leveltime, gametic: at.gametic, player: at.player, monsters: at.monsters };
+      const reference = { hash: at.hash, leveltime: at.leveltime, gametic: at.gametic, player: at.player, monsters: (window as any).normMonsters(at.monsters) };
       const traj: number[] = [];
       for (let i = 0; i < 100; i++) traj.push(api.sim.runTics(1));
       return { ok, preAmmo, reference, traj };
@@ -252,7 +274,7 @@ test.describe('M11-11 save → RELOAD → load identity', () => {
       const s = api.state() as any;
       const traj: number[] = [];
       for (let i = 0; i < 100; i++) traj.push(api.sim.runTics(1));
-      return { ok, armed, hash: s.hash, leveltime: s.leveltime, gametic: s.gametic, player: s.player, monsters: s.monsters, traj };
+      return { ok, armed, hash: s.hash, leveltime: s.leveltime, gametic: s.gametic, player: s.player, monsters: (window as any).normMonsters(s.monsters), traj };
     });
     expect(post.ok).toBe(true);
     expect(post.armed).toBe(true);
@@ -287,8 +309,10 @@ test.describe('M11-11 settings across reload', () => {
     await idbReady(page);
     expect(await idbKeys(page, 'settings')).toEqual([]); // fresh context EMPTY
 
+    // Hydrate on an EMPTY store completes with the m_misc.c DEFAULTS
+    // (loaded=true, values shipped — "absent record" ≠ "not loaded").
+    await page.waitForFunction(() => window.__doom!.settings().loaded === true, null, { timeout: 10_000 });
     const defaults = await page.evaluate(() => window.__doom!.settings());
-    expect(defaults.loaded).toBe(false); // nothing stored yet ⇒ defaults stand
     expect(defaults.vars.sfx_volume).toBe(8);
     expect(defaults.vars.mouse_sensitivity).toBe(5);
 
@@ -344,10 +368,9 @@ test.describe('M11-11 menu save/load with real input', () => {
     await clickRow(page, (await ui(page)).menu!.itemBoxes![3]!);
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.menuName === 'SaveDef', null, { timeout: 5_000 });
 
-    // Slot 0 (ArrowUp clamps at 0 — no wrap in 1.10), Enter ⇒ the string
-    // editor ("intercepting all chars", m_menu.c:656).
-    for (let i = 0; i < 7; i++) await pressKey(page, 'ArrowUp', 1);
-    expect((await ui(page)).menu!.itemOn).toBe(0);
+    // Slot 0 (ArrowUp WRAPS in 1.10 — walk DOWN onto it), Enter ⇒ the
+    // string editor ("intercepting all chars", m_menu.c:656).
+    await pickSlot0(page);
     await pressKey(page, 'Enter');
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.messageToPrint === 1, null, { timeout: 5_000 });
 
@@ -373,7 +396,7 @@ test.describe('M11-11 menu save/load with real input', () => {
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.menuName === 'LoadDef', null, { timeout: 5_000 });
     expect((await idbGet(page, 'saves', 0))?.description).toBe('m11save');
 
-    for (let i = 0; i < 7; i++) await pressKey(page, 'ArrowUp', 1);
+    await pickSlot0(page);
     await pressKey(page, 'Enter', 4); // M_LoadSelect ⇒ G_LoadGame (no prompt)
     await page.waitForFunction(
       (lt: number) => (window.__doom!.state() as any).leveltime <= lt + 2,
@@ -410,7 +433,7 @@ test.describe('M11-11 F6/F9 quicksave round-trip', () => {
     // ("pick a slot now", m_menu.c:706) — the SaveDef open IS the -2 face.
     await pressKey(page, 'F6');
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.menuName === 'SaveDef', null, { timeout: 5_000 });
-    for (let i = 0; i < 7; i++) await pressKey(page, 'ArrowUp', 1);
+    await pickSlot0(page);
     await pressKey(page, 'Enter'); // editor
     await pressKey(page, 'q');
     await pressKey(page, 'u');
@@ -531,8 +554,9 @@ test.describe('M11-11 demo playback at L4', () => {
         for (let i = 0; i < 300 && api.sim.getState()!.gameaction !== 5; i++)
           await new Promise((r) => setTimeout(r, 10)); // 5 = ga_playdemo
         const armed = api.sim.getState()!.gameaction === 5;
+        api.sim.runTics(1); // the ga_playdemo drain — demoplayback ON here
         const playing = api.demoStatus().playing;
-        api.sim.runTics(n); // n tics: demo READS replace input at the mount
+        api.sim.runTics(n - 1); // remaining tics: demo READS replace input
         const after = api.demoStatus(); // tic n's read hit the marker
         const s = api.state() as any;
         return {
