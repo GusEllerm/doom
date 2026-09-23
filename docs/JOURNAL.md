@@ -435,3 +435,4 @@ Close-the-tab time travel: 10 save slots (+quick) through IndexedDB with a byte-
 - Wave 2 dispatched: M12-02 (>=72-viewpoint all-maps L3 corpus + montage), M12-04 (perf measure-then-pin, no premature optimization). B-11 elevator fix flying alongside. M12-03 (exit routes) queued behind slot.
 - M12-04 merged: PERF TRUTH = 1.2ms worst-case per frame at 35Hz — ~78x under our own aspiration; hottest path 1.66% (column loop). Zero optimization commits (D-12a honored).
 - CORRECTION: my previous M12-04 'merged' entry was premature — branch-discovery glob missed the real branch (pi-agent-eaa5eacf); caught, audited, NOW truly merged (7f5caec). Perf numbers real, suite green.
+- M12-02 merged (D016 eyes-on PASS: 108-viewpoint montage reviewed — 9 maps clean, 2 zero-light scenes legit map lighting). M12-03 exit-routes dispatched (the discipline that would have caught B-11 automatically).
