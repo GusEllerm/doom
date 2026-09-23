@@ -201,9 +201,18 @@ export interface SettingsRecord {
   keys: Record<string, number>;
 }
 
+/** The m_misc.c default byte of a variable’s key. Prefer the data-face
+ * defaultKey; the keyboard↔mapping import cycle can leave those fields
+ * undefined at eval time depending on module order (latent M11-03-area
+ * bug, filed as follow-up), and the DOM-code transcription is the same
+ * byte by construction — resolve through it as the fallback. */
+function defaultByte(v: { domCode: string; defaultKey: number }): number {
+  return v.defaultKey ?? vanillaKeyCode(v.domCode);
+}
+
 /** Build the key_* variable map from the LIVE bind table: for each of
  * the ten variables, the vanilla code of the key currently serving the
- * channel — preferring the variable's own default key while it still
+ * channel — preferring the variable’s own default key while it still
  * holds (multi-key A-09 rows with no vanilla face, like KeyW, read as
  * the default and are NOT part of the cfg state — D-11d). */
 export function keyVarsOf(binds: BindStore = bindStore): Record<string, number> {
@@ -212,7 +221,7 @@ export function keyVarsOf(binds: BindStore = bindStore): Record<string, number> 
   for (const v of KEY_VANILLA_VARS) {
     const own = table.find((b) => b.code === v.domCode && b.action === v.channel);
     if (own) {
-      out[v.name] = v.defaultKey;
+      out[v.name] = defaultByte(v);
       continue;
     }
     const other = table.find((b) => b.action === v.channel);
