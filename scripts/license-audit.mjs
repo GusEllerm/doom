@@ -229,10 +229,10 @@ const rules = [
   {
     id: 'dev-label',
     test: (name) =>
-      /^(FIRELIGHT|LIGHT1|LIGHT2|RAISE|OPEN|ADDRSHIFT|FONT|FIXMAP|FIXWALL\d|FIXFLAT\d|FLAT[AB]\d?|DOORFIX\d|E1M1THNG|NEWLEVEL)$/.test(name),
+      /^(FIRELIGHT|LIGHT1|LIGHT2|RAISE|OPEN|ADDRSHIFT|FONT|LICENSE|UNKNOWN|FIXMAP|FIXWALL\d|FIXFLAT\d|FLAT[AB]\d?|DOORFIX\d|E1M1THNG|NEWLEVEL)$/.test(name),
     classification: 'synthetic/label',
     rationale:
-      'internal labels (special display names, door-action docs) or synthetic FIXMAP-style test-map fixtures invented by this project — not id assets',
+      'internal labels (special display names, this audit script\'s own filenames/status tags) or synthetic FIXMAP-style test-map fixtures invented by this project — not id assets',
   },
 ];
 
