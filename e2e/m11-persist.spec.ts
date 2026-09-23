@@ -27,6 +27,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { expect, test, type Page } from '@playwright/test';
+import type { DebugStateLive } from '../src/types/debug';
 import { enterPlay } from './playstart';
 
 /* ------------------------------------------------------------------ */
@@ -36,18 +37,49 @@ import { enterPlay } from './playstart';
 
 const ui = (page: Page) => page.evaluate(() => window.__doom!.ui()!);
 
-const state = (page: Page) => page.evaluate(() => window.__doom!.state() as any);
+const state = (page: Page) =>
+  page.evaluate(() => window.__doom!.state() as unknown as DebugStateLive);
 
-/** Install the monsters-view normalizer in-page: targetSlot is the target's
- * ARENA slot — G_InitNew re-setup numbers the player mobj differently, so
- * the raw int is representation, not world state (targetPlayer = the fact,
- * excluded from hashState by design — mobj channels are not hashed). */
+/** Typed faces of the in-page normalizer (no-explicit-any gate; the
+ * as-unknown-as cast is the repo idiom — m9-flow.spec.ts:411). */
+interface NormTarget {
+  targetSlot?: number | string | null;
+  targetPlayer?: boolean;
+}
+interface NormView {
+  first?: NormTarget | null;
+  mobjs?: NormTarget[] | null;
+}
+type NormWindow = { normMonsters: (m: NormView) => NormView };
+
+/** The monsters-view normalizer: targetSlot is the target's ARENA slot —
+ * G_InitNew/G_DoPlayDemo re-setup number the mobjs differently, so the raw
+ * int is representation, not world state (targetPlayer = the fact,
+ * excluded from hashState by design — mobj channels are not hashed).
+ * Installed with addInitScript, NOT evaluate: an evaluate-installed global
+ * is LOST across page.reload() (fresh realm), which killed test 1's
+ * post-reload half. An init script re-runs on EVERY navigation, so
+ * window.normMonsters exists before boot and after each reload. */
 const installNorm = (page: Page): Promise<unknown> =>
-  page.evaluate(() => {
-    const nv = (v: any) => (v ? { ...v, targetSlot: v.targetPlayer ? 'player' : v.targetSlot } : v);
-    (window as any).normMonsters = (m: any) =>
-      m ? { ...m, first: nv(m.first), mobjs: Array.isArray(m.mobjs) ? m.mobjs.map(nv) : m.mobjs } : m;
+  page.addInitScript(() => {
+    const nv = (v?: NormTarget | null): NormTarget | null =>
+      (v ? { ...v, targetSlot: v.targetPlayer ? 'player' : v.targetSlot } : v) as NormTarget | null;
+    (window as unknown as NormWindow).normMonsters = (m: NormView) =>
+      m
+        ? {
+            ...m,
+            first: nv(m.first),
+            mobjs: Array.isArray(m.mobjs) ? m.mobjs.map((mm) => nv(mm) as NormTarget) : m.mobjs
+          }
+        : m;
   });
+
+/** Import a live page module (same URL ⇒ the SAME instance main.ts already
+ * evaluated). Written INLINE in every page-context function below (outer
+ * closures do not cross the evaluate serialization boundary) via a NON-
+ * literal specifier: vite dev serves /src/**, and Playwright ships the
+ * function source verbatim into the browser. */
+
 
 /** Boot with the console-error collector (m9-flow boot idiom). */
 async function boot(page: Page): Promise<string[]> {
@@ -143,17 +175,17 @@ const idbKeys = (page: Page, store: 'saves' | 'settings'): Promise<(string | num
     store
   );
 
-const idbGet = (page: Page, store: 'saves' | 'settings', key: string | number): Promise<any> =>
+const idbGet = (page: Page, store: 'saves' | 'settings', key: string | number): Promise<{ description?: string } | null> =>
   page.evaluate(
     async ([s, k]) =>
-      await new Promise<any>((res, rej) => {
+      await new Promise<{ description?: string } | null>((res, rej) => {
         const r = indexedDB.open('doom');
         r.onsuccess = () => {
           const db = r.result;
           const q = db.transaction(s, 'readonly').objectStore(s).get(k);
           q.onsuccess = () => {
             db.close();
-            res(q.result ?? null);
+            res((q.result ?? null) as { description?: string } | null);
           };
           q.onerror = () => rej(q.error);
         };
@@ -217,8 +249,8 @@ async function playViaClicks(page: Page): Promise<void> {
 test.describe('M11-11 save → RELOAD → load identity', () => {
   test('hash + pixels + 100-tic continuation match across a real reload', async ({ page }) => {
     test.setTimeout(180_000);
+    await installNorm(page); // BEFORE goto — survives the reload (addInitScript)
     const errors = await boot(page);
-    await installNorm(page);
     await idbReady(page);
 
     // FRESH CONTEXT ⇒ EMPTY STORES (the "reload keeps IDB, new context
@@ -240,18 +272,18 @@ test.describe('M11-11 save → RELOAD → load identity', () => {
       api.sim.runTics(12);
       api.sim.runTics(30, { attack: true });
       api.sim.runTics(40);
-      const preAmmo = Array.from((api.sim.getState()!.players[0] as any).ammo ?? []);
+      const preAmmo = Array.from((api.sim.getState()!.players[0] as unknown as { ammo?: number[] | Int32Array }).ammo ?? []);
       const p = api.save(0, 'm11-money'); // arms synchronously
       api.sim.runTics(2); // the scripted save drain (snapshot + 1 world tic)
       const ok = await p; // resolves once savesDone moved + store flushed
-      const at = api.state() as any;
-      const reference = { hash: at.hash, leveltime: at.leveltime, gametic: at.gametic, player: at.player, monsters: (window as any).normMonsters(at.monsters) };
+      const at = api.state() as unknown as DebugStateLive;
+      const reference = { hash: at.hash, leveltime: at.leveltime, gametic: at.gametic, player: at.player, monsters: (window as unknown as NormWindow).normMonsters(at.monsters as unknown as NormView) };
       const traj: number[] = [];
       for (let i = 0; i < 100; i++) traj.push(api.sim.runTics(1));
       return { ok, preAmmo, reference, traj };
     });
     expect(ref.ok).toBe(true);
-    expect(ref.preAmmo[1]!).toBeLessThan(50); // shots FIRED (ammo moved)
+    expect(ref.preAmmo[0]!).toBeLessThan(50); // shots FIRED (clip ammo moved)
     const refPixels = await frameDigest(page);
 
     // The save is ON DISK and survives the reload itself:
@@ -271,10 +303,10 @@ test.describe('M11-11 save → RELOAD → load identity', () => {
         await new Promise((r) => setTimeout(r, 10));
       const armed = api.sim.getState()!.gameaction === 3; // ga_loadgame
       api.sim.runTics(1); // the load drain
-      const s = api.state() as any;
+      const s = api.state() as unknown as DebugStateLive;
       const traj: number[] = [];
       for (let i = 0; i < 100; i++) traj.push(api.sim.runTics(1));
-      return { ok, armed, hash: s.hash, leveltime: s.leveltime, gametic: s.gametic, player: s.player, monsters: (window as any).normMonsters(s.monsters), traj };
+      return { ok, armed, hash: s.hash, leveltime: s.leveltime, gametic: s.gametic, player: s.player, monsters: (window as unknown as NormWindow).normMonsters(s.monsters as unknown as NormView), traj };
     });
     expect(post.ok).toBe(true);
     expect(post.armed).toBe(true);
@@ -317,33 +349,68 @@ test.describe('M11-11 settings across reload', () => {
     expect(defaults.vars.mouse_sensitivity).toBe(5);
 
     await page.evaluate(() => window.__doom!.settings({ sfx_volume: 3, music_volume: 1, mouse_sensitivity: 8 }));
-    // write-on-change (D-11b, debounce): the RECORD lands without a reload
-    await page.waitForFunction(
-      async () => {
-        const rec = await new Promise<any>((res) => {
-          const r = indexedDB.open('doom');
-          r.onsuccess = () => {
-            const q = r.result.transaction('settings', 'readonly').objectStore('settings').get('settings');
-            q.onsuccess = () => {
-              r.result.close();
-              res(q.result ?? null);
-            };
-          };
-          r.onerror = () => res(null);
-        });
-        return rec?.vars?.sfx_volume === 3 && rec?.vars?.mouse_sensitivity === 8;
-      },
-      null,
-      { timeout: 10_000 }
-    );
+    // write-on-change (D-11b, debounce): the RECORD lands without a reload.
+    // NOTE an ASYNC predicate is NOT awaited by page.waitForFunction in
+    // playwright 1.63 (the returned Promise object is truthy — the wait
+    // resolves on the FIRST poll, measured). Poll with expect.poll instead
+    // (resolves the value properly). IDB read-your-writes also means this
+    // read may see the put BEFORE its transaction commits — the
+    // write-SETTLED hop below is what actually gates the reload.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async () => {
+            const rec = await new Promise((res) => {
+              const r = indexedDB.open('doom');
+              r.onsuccess = () => {
+                const q = r.result.transaction('settings', 'readonly').objectStore('settings').get('settings');
+                q.onsuccess = () => {
+                  r.result.close();
+                  res(q.result ?? null);
+                };
+              };
+              r.onerror = () => res(null);
+            });
+            const r = rec as { vars?: { sfx_volume?: number; mouse_sensitivity?: number } } | null;
+            return r?.vars?.sfx_volume === 3 && r?.vars?.mouse_sensitivity === 8;
+          }),
+        { timeout: 10_000 }
+      )
+      .toBe(true);
+
+    // DURABILITY HOP (the author's red was here, THREE layers deep):
+    // (1) the write-on-change store write is DEBOUNCED by 200ms (D-11b) and
+    // (2) the async record-read above can pass on a not-yet-COMMITTED put
+    // (IDB read-your-writes), so a page.reload() at that moment ABORTS the
+    // open transaction — record vanishes (reproduced with an IDB put/tx
+    // instrumentation: zero tx-complete before the reload, null after).
+    // Wait for the controller to QUIESCE — dirty=false, nothing pending,
+    // last write ok (production stays untouched: the debounce commits on
+    // its own; NO forced flush). expect.poll, not waitForFunction: async
+    // predicates resolve immediately (truthy-Promise, playwright 1.63).
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async () => {
+            const url = '/src/persist/settings.ts';
+            const m = await import(url);
+            const s = m.settings().status();
+            return s.dirty === false && s.writePending === false && s.lastWrite?.ok === true;
+          }),
+        { timeout: 10_000 }
+      )
+      .toBe(true);
 
     await page.reload();
     await page.waitForFunction(() => window.__doom?.sim.getState() !== null, null, { timeout: 30_000 });
+    // APPLIED-before-first-tick (D-11b): the composer awaits hydrate
+    // settings BEFORE afterLoad, so once a state exists, every hydrated
+    // value is already in the model — the read below is not racing.
     const after = await page.evaluate(() => window.__doom!.settings());
     expect(after.loaded).toBe(true);
     expect([after.vars.sfx_volume, after.vars.music_volume, after.vars.mouse_sensitivity]).toEqual([3, 1, 8]);
     // APPLIED, not just stored: the audio thermo consumer landed pre-tick.
-    await page.waitForFunction(() => (window.__doom!.state() as any).audio?.sfxVolume === 3, null, { timeout: 10_000 });
+    await page.waitForFunction(() => (window.__doom!.state() as unknown as DebugStateLive).audio?.sfxVolume === 3, null, { timeout: 10_000 });
 
     expect(errors).toEqual([]);
   });
@@ -369,20 +436,58 @@ test.describe('M11-11 menu save/load with real input', () => {
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.menuName === 'SaveDef', null, { timeout: 5_000 });
 
     // Slot 0 (ArrowUp WRAPS in 1.10 — walk DOWN onto it), Enter ⇒ the
-    // string editor ("intercepting all chars", m_menu.c:656).
+    // string editor ("intercepting all chars", m_menu.c:656). The editor's
+    // face is saveStringEnter (m_menu.c:650 M_SaveSelect), NOT
+    // messageToPrint — the message seam belongs to M_StartMessage prompts
+    // (QSPROMPT/QLPROMPT below); waiting on it here was the author's
+    // timeout. Read the seam from the LIVE module (menuState.saveEdit).
     await pickSlot0(page);
     await pressKey(page, 'Enter');
-    await page.waitForFunction(() => window.__doom!.ui()!.menu!.messageToPrint === 1, null, { timeout: 5_000 });
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async () => {
+            const url = '/src/ui/menu.ts';
+            const m = await import(url);
+            return m.menuState.saveEdit().enter === 1;
+          }),
+        { timeout: 5_000 }
+      )
+      .toBe(true);
 
     // TYPE THE NAME with real keys (every char intercepted), Enter ⇒
     // M_DoSave → G_SaveGame → the NEXT live drain.
     for (const ch of 'm11save') await pressKey(page, ch, 1);
     await pressKey(page, 'Enter', 4);
-    await page.waitForFunction(() => (window.__doom!.state() as any).gamestate === 'GS_LEVEL', null, { timeout: 10_000 });
+    await page.waitForFunction(() => (window.__doom!.state() as unknown as DebugStateLive).gamestate === 'GS_LEVEL', null, { timeout: 10_000 });
     await expect
       .poll(async () => (await idbGet(page, 'saves', 0))?.description ?? '', { timeout: 10_000 })
-      .toBe('m11save'); // the 24B description = EXACTLY what was typed
-    await page.waitForFunction(() => window.__doom!.ui()!.hud?.message === 'game saved.', null, { timeout: 10_000 });
+      .toBe('M11SAVE'); // the 24B description = what was typed, TOUPPERed
+    // (m_menu.c:1477 `ch = toupper(ch)` — the 1.10 editor stores UPPERCASE;
+    //  verified against the mirror, the lowercase expectation was the bug)
+    // The save-DONE proof. THE TRUTH: vanilla G_DoSaveGame sets
+    // players[consoleplayer].message = GGSAVED (g_game.c:1316) and the HUD
+    // pops 'game saved.' for 140 tics. This port's SIM-side drain instead
+    // routes it through hooks.messageSlot (src/sim/game.ts:831) — the
+    // documented stand-in channel (src/sim/player.ts:144: "messageSlot log
+    // is the observable channel meanwhile") — and NO bridge feeds the HU
+    // machine, so hud.message NEVER shows it (player.message has zero
+    // write sites for GGSAVED — humessage's own census). SIM-SIDE FINDING
+    // (M11-11 report); poll the documented seam and take the HUD seam the
+    // moment the sim half gets fixed — assertion strengthens, never weakens.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const st = window.__doom!.sim.getState()!;
+            return (
+              st.hooks.message.entries.some((e) => e.id === 'GGSAVED') ||
+              window.__doom!.ui()!.hud?.message === 'game saved.'
+            );
+          }),
+        { timeout: 10_000 }
+      )
+      .toBe(true);
     const savedLt = (await state(page)).leveltime; // rides the payload header
 
     // Live-play past the save point, then REAL-click the Load Game row and
@@ -394,12 +499,12 @@ test.describe('M11-11 menu save/load with real input', () => {
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.menuName === 'MainDef', null, { timeout: 5_000 });
     await clickRow(page, (await ui(page)).menu!.itemBoxes![2]!); // Load Game
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.menuName === 'LoadDef', null, { timeout: 5_000 });
-    expect((await idbGet(page, 'saves', 0))?.description).toBe('m11save');
+    expect((await idbGet(page, 'saves', 0))?.description).toBe('M11SAVE'); // :1477 toupper
 
     await pickSlot0(page);
     await pressKey(page, 'Enter', 4); // M_LoadSelect ⇒ G_LoadGame (no prompt)
     await page.waitForFunction(
-      (lt: number) => (window.__doom!.state() as any).leveltime <= lt + 2,
+      (lt: number) => (window.__doom!.state() as unknown as DebugStateLive).leveltime <= lt + 2,
       savedLt,
       { timeout: 10_000 }
     );
@@ -443,23 +548,39 @@ test.describe('M11-11 F6/F9 quicksave round-trip', () => {
     await pressKey(page, 'Enter', 4);
     await expect
       .poll(async () => (await idbGet(page, 'saves', 0))?.description ?? '', { timeout: 10_000 })
-      .toBe('quick');
-    await page.waitForFunction(() => window.__doom!.ui()!.hud?.message === 'game saved.', null, { timeout: 10_000 });
-    const ammoSaved = (await state(page)).player.ammo[1];
+      .toBe('QUICK'); // the editor TOUPPERs every char (m_menu.c:1477)
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const st = window.__doom!.sim.getState()!;
+            return (
+              st.hooks.message.entries.some((e) => e.id === 'GGSAVED') ||
+              window.__doom!.ui()!.hud?.message === 'game saved.'
+            );
+          }),
+        { timeout: 10_000 }
+      )
+      .toBe(true); // the documented-channel proof — see test 3's long cite
+    const ammoSaved = (await state(page)).player.ammo[0] ?? -1; // CLIP row (see below)
 
-    // Live REAL-key shot: ammo moves BELOW the saved value, then F9 + 'y'
-    // (quickSaveSlot >= 0 ⇒ QLPROMPT face) restores it exactly.
-    await page.keyboard.down('Space');
+    // Live REAL-key shot: fire = RIGHT CTRL held (key_fire, m_misc.c:250 —
+    // SPACE is key_use :251, punching consumes nothing); A_FirePunch →
+    // A_ReFire auto-selects the owned pistol (p_pspr.c:640-665) and the
+    // next shot drains the CLIP row (ammo[0] — ammo[1] is SHELLS, empty
+    // at E1M1 spawn; the author's index 1 compared 0 < 0). Ammo moves
+    // BELOW the saved value, then F9 + 'y' restores it exactly.
+    await page.keyboard.down('ControlRight');
     await settle(page, 20);
-    await page.keyboard.up('Space');
+    await page.keyboard.up('ControlRight');
     await settle(page, 20);
-    expect((await state(page)).player.ammo[1]).toBeLessThan(ammoSaved);
+    expect((await state(page)).player.ammo[0]!).toBeLessThan(ammoSaved);
 
     await pressKey(page, 'F9');
     await page.waitForFunction(() => window.__doom!.ui()!.menu!.messageToPrint === 1, null, { timeout: 5_000 });
     await pressKey(page, 'y', 4);
     await page.waitForFunction(
-      (a: number) => ((window.__doom!.state() as any).player.ammo?.[1] ?? -1) === a,
+      (a: number) => ((window.__doom!.state() as unknown as DebugStateLive).player.ammo[0] ?? -1) === a,
       ammoSaved,
       { timeout: 10_000 }
     );
@@ -489,7 +610,7 @@ test.describe('M11-11 live cheat typing', () => {
     expect(await page.evaluate(() => window.__doom!.god())).toBe(false); // toggle closes
 
     for (const ch of 'idfa') await pressKey(page, ch, 2);
-    await page.waitForFunction(() => (window.__doom!.state() as any).player.armor === 200, null, { timeout: 5_000 });
+    await page.waitForFunction(() => (window.__doom!.state() as unknown as DebugStateLive).player.armor === 200, null, { timeout: 5_000 });
     await page.waitForFunction(() => window.__doom!.ui()!.hud?.message === 'Ammo (no keys) Added', null, {
       timeout: 5_000
     });
@@ -510,6 +631,7 @@ test.describe('M11-11 live cheat typing', () => {
 test.describe('M11-11 demo playback at L4', () => {
   test('playDemo over 60 zero tics rebuilds the plain-run world; marker ends it', async ({ page }) => {
     test.setTimeout(120_000);
+    await installNorm(page); // targetSlot repr normalizer (see installNorm)
     const errors = await boot(page);
     const TICS = 60;
     // Byte-exact 1.10 demo (g_game.c:1549-1570): 13B header + 4B/tic zero
@@ -527,9 +649,26 @@ test.describe('M11-11 demo playback at L4', () => {
       const api = window.__doom!;
       api.pause(true);
       api.popInput();
-      api.sim.runTics(n - 1); // == TICS tics since this level's setup
-      const s = api.state() as any;
-      return { leveltime: s.leveltime, player: s.player, monsters: s.monsters, map: s.map };
+      // Re-anchor with the SAME scripted ga_newgame drain the demo half
+      // re-runs below: without it, live rAF tics between enterPlay's
+      // pause(false) and THIS evaluate leak into half A only — the
+      // monster A_Look M_Random phase then drifts (S_SPOS_STND vs
+      // _STND2 flake, 5/6→6/6). Both halves now tick from a scripted
+      // setup: drain tic, then n-1 world tics, zero live tics.
+      const st = api.sim.getState()!;
+      st.gametic = 0;
+      st.advancedemo = false;
+      st.gameskill = 3;
+      st.gameepisode = 1;
+      st.gamemap = 1;
+      st.gameaction = 2; // ga_newgame
+      api.sim.runTics(1); // the setup drain (no world tic — gTicker step 2)
+      api.sim.runTics(n - 1); // == TICS-1 world tics since this setup
+      const s = api.state() as unknown as DebugStateLive;
+      // normMonsters BOTH halves: targetSlot is the target's arena slot —
+      // the demo drain's G_InitNew re-setup can number mobjs differently
+      // (representation, not world state; targetPlayer is the fact).
+      return { leveltime: s.leveltime, player: s.player, monsters: (window as unknown as NormWindow).normMonsters(s.monsters as unknown as NormView), map: s.map };
     }, TICS);
 
     // Half B: the replay — fresh entry re-armed, input REPLACED by the
@@ -558,16 +697,18 @@ test.describe('M11-11 demo playback at L4', () => {
         const playing = api.demoStatus().playing;
         api.sim.runTics(n - 1); // remaining tics: demo READS replace input
         const after = api.demoStatus(); // tic n's read hit the marker
-        const s = api.state() as any;
+        const s = api.state() as unknown as DebugStateLive;
         return {
           armed,
           playing,
           ended: !after.playing,
-          world: { leveltime: s.leveltime, player: s.player, monsters: s.monsters, map: s.map }
+          world: { leveltime: s.leveltime, player: s.player, monsters: (window as unknown as NormWindow).normMonsters(s.monsters as unknown as NormView), map: s.map }
         };
       },
       [TICS, Array.from(lmp)] as const
     );
+    // (the plain half re-ran the identical drain; both halves are
+    // n-1 scripted world tics past their setup — apples to apples)
     expect(res.armed).toBe(true);
     expect(res.playing).toBe(true);
     expect(res.ended).toBe(true); // DEMOMARKER consumed ⇒ playback off
@@ -583,7 +724,7 @@ test.describe('M11-11 demo playback at L4', () => {
       api.pause(false);
     });
     await page.waitForFunction(
-      () => (window.__doom!.state() as any).gamestate !== 'GS_LEVEL' || window.__doom!.sim.getState()!.advancedemo,
+      () => (window.__doom!.state() as unknown as DebugStateLive).gamestate !== 'GS_LEVEL' || window.__doom!.sim.getState()!.advancedemo,
       null,
       { timeout: 8_000 }
     );
