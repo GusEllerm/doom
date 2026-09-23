@@ -35,7 +35,7 @@ import {
   resetGameFlow,
   takeWipeRequest
 } from './game';
-import { gameactionLog, resetGameactionLog, resetSfxStubLog, sfxStubLog } from './hooks';
+import { gameactionLog, musicLog, resetGameactionLog, resetSfxStubLog, sfxStubLog } from './hooks';
 import { hashState, type GameState } from './state';
 import { emptyInput, type GameInput } from './ticcmd';
 import { mClearRandom, mRandom } from './prng';
@@ -286,7 +286,7 @@ describe('sp_state timeline (cnt_pause=35, kills/items +=2, time/par +=3)', () =
     // state4 97..113 → 100,104,108,112 = 4; state6 149 → 0;
     // state8 185..195 → 188,192 = 2
     expect(sfxStubLog.byName.get('sfx_pistol')).toBe(7 + 4 + 0 + 2);
-    expect(sfxStubLog.byName.get('mus_inter')).toBe(1); // bcnt==1, once
+    expect(musicLog.byId?.get('intermission')).toBe(1); // bcnt==1, once (M10-04)
   });
 });
 
