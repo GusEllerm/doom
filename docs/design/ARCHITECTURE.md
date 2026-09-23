@@ -476,6 +476,8 @@ export interface CaptureResult { width: 320; height: 200; indices: Uint8Array } 
 
 **A-10 IndexedDB in headless tests.** Node vitest has no IDB: sim-side serialize/deserialize tested on raw buffers (pure); storage layer gets one Playwright persistence test in-browser (M11). Risk of drift: shared `serialize` API keeps both honest.
 
+> **M11 pointer note (M11-12):** the A-10 surface landed as its own import-boundary zone `src/persist/` (idb/store/codec/settings/demoFile — D-11g), not `platform/storage.ts`; the `src/persist/**` eslint zone rule (sim imports nothing from it) enforces the boundary in `npm run check`. Raw-buffer rule held: the whole persistence corpus (goldens set `persist`) runs headless on the memory adapter; the in-browser proof is `e2e/m11-persist.spec.ts` (save → real reload → load, hash-identical).
+
 ## 10. Notes sufficiency (per research note)
 
 | Note | Verdict | Gaps / notes |

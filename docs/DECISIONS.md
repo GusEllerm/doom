@@ -122,7 +122,7 @@ not a stub): the divert is reachable in e2e and the M9-11 corpus censors
 EpiDef to 3 items. Flipping the policy constant (retail semantics) re-enables
 E2+ for the M12 corpus with zero menu-code change.
 
-## D023 — attract is TITLEPIC-only; .lmp demo playback deferred Post-M12 (2026-10, M9-10 → M9-13 recorded)
+## D023 — attract is TITLEPIC-only; .lmp demo playback deferred Post-M12 (2026-10, M9-10 → M9-13 recorded; M11 cross-ref: stance UNCHANGED)
 - Vanilla D_DoAdvanceDemo cycles TITLEPIC/demo1/CREDIT/demo2/HELP2/demo3
 (d_main.c:456); demo1-3 need .lmp playback, which ROADMAP defers to the
 Post-M12 stretch list. M9 ships the REDUCED attract: TITLEPIC page
@@ -130,6 +130,10 @@ Post-M12 stretch list. M9 ships the REDUCED attract: TITLEPIC page
 branch (g_game.c:529-541), D_StartTitle as the endgame/quit target. The
 demosequence counter keeps its vanilla shape (-1 after D_StartTitle) so the
 full cycle drops in with the .lmp task.
+- **M11 CROSS-REF (M11-12):** demo RECORDING/playback of first-class BYTES landed
+(D-11e) — but the attract DID NOT change: zero DEMO lumps in the pinned WAD, the
+reduced TITLEPIC cycle stands, and user-demo attract playback stays the Post-M12
+stretch item. The demosequence counter kept its vanilla shape exactly as promised.
 
 ## D-10a..f — M10 (audio) decisions of record (plan of record: M10-plan §3; all CLOSED-IMPLEMENTED at M10-12)
 - **D-10a — pitch jitter WITHOUT `M_Random`** (M10-05): linuxdoom-1.10 burns one
@@ -200,3 +204,28 @@ full cycle drops in with the .lmp task.
    untouched), and the 3 `mus_*` stub bodies were the only music addresses plus
    the ONE new sim-side call site (`musicSlot('level', true)` at
    game.ts:389, the P_SetupLevel tail per p_setup.c:607).
+
+## D-11a..g — M11 (persistence & options) decisions of record (plan of record: M11-plan §3; all CLOSED-IMPLEMENTED at M11-12)
+Closure table (decision · question · how it closed, with exit-time evidence):
+
+| decision | question | closure (evidence at M11-12) |
+|---|---|---|
+| **D-11a** | byte-faithful `.dsg` or vanilla header + OUR payload? | **CLOSED-IMPLEMENTED — byte-honest where observable.** `src/persist/codec.ts` emits §0.1 EXACTLY: 24B description, `"version 110"` @24, skill/ep/map @40-42, playeringame @43, 3B leveltime @47, `0x1d` terminator, SAVEGAMESIZE cap as a typed error; failure modes typed (`BadVersion` silent-return semantics, `BadMarker`), never console throws. Payload = versioned `DBP1` container — internal state, never a fidelity surface (nothing external reads our files; the only observable header byte IS the 24B description the menu shows). Evidence: codec corrupt-input battery + goldens set `persist` (12 scenes blessing the sha of the REAL saved bytes). |
+| **D-11b** | where do save/load/hydrate sit relative to the sim clock? | **CLOSED-IMPLEMENTED — persistence never inside gTicker.** Capture runs INSIDE the gameaction drain (pure `captureWorld` ⇒ bytes at the exact tic boundary, vanilla's own site); the IndexedDB write is async AFTER the tick; loads request `ga_loadgame` and execute in the NEXT drain (g_game.c:627-628 deferral kept). Boot: settings hydrate is AWAITED BEFORE the first `gTicker` (main.ts `afterLoad`; consumes ZERO tics; boot-order pin in debug.test) — the "hydrate-off-sim-clock" clause: a slow IDB read can never shift the RNG or the first tic. Money shot: e2e/m11-persist.spec test 1 — save → real `page.reload()` → load → exact `state().hash` + 12100 sampled pixels + 100-tic trajectory identity. |
+| **D-11c** | demo desync detection? | **CLOSED-IMPLEMENTED — faithful zero.** 1.10 demos carry NO checksum (the consistancy machinery guards netcmds only); we added none. Determinism is certified test-side by the record→replay hash-identity golden; desyncs stay silent like vanilla. |
+| **D-11d** | how are bindings/config persisted? | **CLOSED-IMPLEMENTED — config = the default.cfg variable set**, ported to the IDB `settings` store with m_misc.c defaults (write-on-quit ⇒ write-on-change+debounce: a browser never quits). The m_misc default table data-ified (`bindStore`); NO bind menu (1.10 truth — `M_bind`/`M_Keybinder` grep empty; a menu would be a 1.9 feature). Truth corrections landed with it: gamma is NOT a settable 1.10 setting, mouse0 is a dead key, `show_messages` defaults ON. Evidence: settings census test vs the live mirror + e2e test 2 (vars applied PRE-first-tick across a reload). |
+| **D-11e** | where do demo bytes live? | **CLOSED-IMPLEMENTED — demos are first-class BYTES** (record → `captureSink` → downloadable `.lmp` Blob; playback consumes bytes via `playDemo()`/`loadLmp()` — the browser answer to 1.10's lump-only I/O, and the pinned WAD has ZERO DEMO lumps). Attract stays TITLEPIC-only (D023 reaffirmed, cross-ref below); user-demo attract remains Post-M12 stretch; `-record` has no vanilla key ⇒ the debug seam is the affordance. **End-of-demo TRUTH-FLIP:** playback ends via the `G_DeferedInitNew` route — the level stays PLAYABLE (g_game.c flag-reset; NOT the folklore "returns to title/menus", and never `G_InitNew`). |
+| **D-11f** | when do cheat effects land? | **CLOSED-IMPLEMENTED — event-pump timing.** Effects fire through `hooks.cheatSink` in the responder phase (vanilla `ST_Responder` order, `if/else-if` chain preserved), never mid-tic; god/noclip toggles gate the NEXT tic so the hash is untouched by the toggle itself; the ledger records the effect tic. Ledger: docs/reports/M11-cheats.md (inventory + verify hooks). |
+| **D-11g** | `platform/storage.ts` or a `src/persist/` zone? | **CLOSED-IMPLEMENTED — zone landed.** `src/persist/` (idb/store/codec/settings/demoFile) with an eslint boundary rule (sim imports NOTHING from it; violation fails `npm run check`) — the ARCHITECTURE §9 A-10 pointer note is now IN the doc; D008 otherwise unchanged. |
+
+## M11-era truth flips — the folklore deaths register (distilled at the exit; sources re-grepped at M11-12)
+- **F2/F3 quicksave/quickload: DO NOT EXIST in 1.10.** F2/F3 open the Load/Save MENUS (m_menu.c:1548-1560); the quicksave keys are F6/F9. Cited absence (grep), M11-03, re-verified at M11-11.
+- **F6/F9 quicksave/quickload DO exist** (m_menu.c:1572/:1587 → `M_QuickSave`/`M_QuickLoad`; KEY_F6/F9 doomdef.h:262/:265) — the orchestrator's pre-plan folklore ("1.10 has no quicksave") died with F2/F3. The prompt strings are the d_englsh set: QSAVESPOT (`you haven't picked a quicksave slot yet!`), QSPROMPT/QLPROMPT (`quicksave over your game named '%s'?`) — src/ui/textdata.ts:53-65, pinned by e2e test 4. PROVENANCE NOTE: the M11-11 merge subject says *"'save quick' is the real prompt string"* — the exit grep finds NO such string anywhere in the linuxdoom-1.10 mirror (d_englsh.h quick-strings are exactly the four above); the verified prompts are the d_englsh ones. Both readings kept deliberately, M10 corrections-register style.
+- **`iddqd` is the god code — `idkdt` NEVER EXISTED** (m_cheat.c/st_stuff.c decoded-table census at M11-09). Also dead: bare `noclip` (a source COMMENT claims it; no sequence — typed, it does NOTHING, asserted by test), bare `mypos`, `dtent`, IDK*-style variants. `idmus<nn>` = an `<ep><map>` PAIR (the M10 deferred slot consumed); `idclev`'s commercial epsd=0 source bug KEPT (does nothing in 1.10-commercial; unreachable under our shareware policy anyway); **d_main.c contains ZERO cheat code** — the engine is m_cheat.c, the responder is ST_Responder (+ AM_Responder's iddt).
+- **Savegames carry NO RNG state**: load runs `M_ClearRandom` — both streams reset to table entry 0 (the load-determinism backbone; pinned in tests/persist: post-load counters == 0 + first-N draws == table prefix).
+- **Demos never checksum** (D-11c) and **demo end leaves the level playable** (D-11e). **6-slot save menu** over a 10-entry `savegamestrings` array; **no bind menu** (D-11d).
+
+## Salvage protocol lessons (silent deaths #10/#11 — both closed GREEN in-milestone)
+- **#10 (M11-08)**: write-early-commit-early paid again — the dead worktree held a stub commit + 5 uncommitted test files, the author's pending edits recovered from transcript. The WIP was briefly merged then REVERTED to keep main green (new rule exercised: never guess-merge unfinished WIP into main; finish on the salvage branch). Finisher t2: 50/50 corpus green, ZERO src bugs found (every original failure harness-side).
+- **#11 (M11-11)**: full suite was already committed on the dying branch + in-flight polish committed to the salvage branch; the merge honestly exposed 5/6 red ("the suite is real, unfinished") — isolation proved test 2 PRODUCTION-side; the finisher ran with wiring-zone fix authority (sim off-limits) and STOP-and-report discipline: 6/6 ×2.
+- Standing rules that saved both: salvage briefs say "finish on YOUR pi-agent-\* branch" (M9 decoy-merge fix), early commits, and a merge turn that reports RED honestly instead of massaging assertions.
