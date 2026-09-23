@@ -349,3 +349,4 @@ NOTE: /tmp mirror self-healed by plan agent (was gutted by OS temp cleanup); 62-
 - M11-01/02 merged (persist zone live: IDB+fallback+codec). Wave 2 held until M11-04 (capture/restore) lands — hooks.ts conflict discipline.
 - M11-04 merged (+lint touch-up): restoration battery 38/38, save@T→+500 hash identity x12, PRNG reset-on-load truth pinned. Wave 2 dispatched: demos (the record→replay golden), save/load menu rows+editor+binds, cheats (1.10-vs-folklore inventory). M11-05 (slot UX) queued for next slot.
 - M11-06 merged (demo golden: recorded bytes literal-asserted, replay hashes match live run; TRUTH: demo end leaves level PLAYABLE — 1.10's real site, not the folklore exit-to-title). M11-05 dispatched.
+- M11-03 merged (61 tests): save rows/editor/binds-data. TRUTH: 1.10 has NO F2/F3 quicksave and NO bind menu (cited absences — defaults table is the whole story). M11-07 dispatched.
