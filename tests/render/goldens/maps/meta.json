@@ -1,0 +1,3329 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "set": "maps",
+  "pipeline": "freedoom1 E1Mx -> loadMap + world/view/sprites (bundle cache per map) -> gInitGame -> pTeleportMove warp (z=floorz) -> renderFrame x2 byte-equal -> sha256(indices), hom + visplane/vissprite/opening/drawseg overflow asserted 0 + non-single-color; per-map montage tiles the scene buffers (4 cols, scale 1, 5x7 labels)",
+  "scenes": {
+    "e1m1-bright": {
+      "kind": "iwad",
+      "script": "sec124 centroid walk-back, argmax-contrast angle; stand: BSP sec124 L220 f24/c384 RROCK18/RROCK17",
+      "viewpoint": {
+        "x": 2537,
+        "y": 605,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "d89b25d08e0bdebbf322815c90dcc43a023570eb495d96bb9aca19ff2637ce15",
+      "png": "e1m1-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d89b25d08e0bdebbf322815c90dcc43a023570eb495d96bb9aca19ff2637ce15"
+        }
+      ]
+    },
+    "e1m1-busy": {
+      "kind": "iwad",
+      "script": "sec134 n=21 centroid walk-back, argmax-contrast angle; stand: BSP sec134 L160 f136/c264 CEIL5_1/FLAT1",
+      "viewpoint": {
+        "x": 2203,
+        "y": -201,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "4a47d2d8e02606f48702e34f3af2c7b32f60d5ff580e7967fa52af19224564b3",
+      "png": "e1m1-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "4a47d2d8e02606f48702e34f3af2c7b32f60d5ff580e7967fa52af19224564b3"
+        }
+      ]
+    },
+    "e1m1-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec87 elongated lit sector, end standoff on the long axis; stand: BSP sec87 L192 f-136/c8 AQF070/AQF012",
+      "viewpoint": {
+        "x": 880,
+        "y": 1808,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e60f925088a7afaed75468d8820eb0dc6006b6832dc980fe0c94de22429ed0f6",
+      "png": "e1m1-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e60f925088a7afaed75468d8820eb0dc6006b6832dc980fe0c94de22429ed0f6"
+        }
+      ]
+    },
+    "e1m1-door": {
+      "kind": "iwad",
+      "script": "ln998 sp2 standoff perpendicular, facing the line; stand: BSP sec120 L192 f128/c272 FWATER1/NUKAGE1",
+      "viewpoint": {
+        "x": 2160,
+        "y": -416,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "a482d86030a2786874827bee38737b183a2ddaf804e8619d02641caa509854d7",
+      "png": "e1m1-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "a482d86030a2786874827bee38737b183a2ddaf804e8619d02641caa509854d7"
+        }
+      ]
+    },
+    "e1m1-exit": {
+      "kind": "iwad",
+      "script": "ln407 sp11 standoff perpendicular, facing the line; stand: BSP sec66 L160 f-128/c8 FLAT5_4/FLAT1",
+      "viewpoint": {
+        "x": -304,
+        "y": 1296,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "d19b4c9ade5a3ca9f7df216b1efbf1f53eb4767db3691dceddf6370690a9626f",
+      "png": "e1m1-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d19b4c9ade5a3ca9f7df216b1efbf1f53eb4767db3691dceddf6370690a9626f"
+        }
+      ]
+    },
+    "e1m1-far-nook": {
+      "kind": "iwad",
+      "script": "sec7 centroid walk-back, argmax-contrast angle; stand: BSP sec7 L160 f184/c304 MFLR8_3/MFLR8_3",
+      "viewpoint": {
+        "x": 3018,
+        "y": 2138,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "44ee36a67d959068f702178663709b86d8cfabe828850c20465edf0187d23589",
+      "png": "e1m1-far-nook.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "44ee36a67d959068f702178663709b86d8cfabe828850c20465edf0187d23589"
+        }
+      ]
+    },
+    "e1m1-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln421 sp26 standoff perpendicular, facing the line; stand: BSP sec87 L192 f-136/c8 AQF070/AQF012",
+      "viewpoint": {
+        "x": 832,
+        "y": 1608,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "699f090f24b7f4bd5f8caa712635f02137947a6ae19a44126229c1806da2e635",
+      "png": "e1m1-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "699f090f24b7f4bd5f8caa712635f02137947a6ae19a44126229c1806da2e635"
+        }
+      ]
+    },
+    "e1m1-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln423 sp26 standoff perpendicular, facing the line; stand: BSP sec56 L128 f-128/c64 FLOOR5_2/SLIME14",
+      "viewpoint": {
+        "x": 832,
+        "y": 1368,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7ed0f43d118696aa0d106d558347988098082d3d5b2ab95f3204ecdc87abc4e8",
+      "png": "e1m1-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7ed0f43d118696aa0d106d558347988098082d3d5b2ab95f3204ecdc87abc4e8"
+        }
+      ]
+    },
+    "e1m1-lift": {
+      "kind": "iwad",
+      "script": "ln1075 sp62 standoff perpendicular, facing the line; stand: BSP sec144 L160 f-8/c296 AQF024/FWATER1",
+      "viewpoint": {
+        "x": 1428,
+        "y": -376,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "9feee2cf9b0706d45275c1e9b0b280e8c93bd82942a1d4c8bf521f2d46fb9e2d",
+      "png": "e1m1-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "9feee2cf9b0706d45275c1e9b0b280e8c93bd82942a1d4c8bf521f2d46fb9e2d"
+        }
+      ]
+    },
+    "e1m1-masked": {
+      "kind": "iwad",
+      "script": "ln1 midtex standoff perpendicular, facing the line; stand: BSP sec7 L160 f184/c304 MFLR8_3/MFLR8_3",
+      "viewpoint": {
+        "x": 2024,
+        "y": 1413,
+        "angleDeg": 216
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "efa62b04b366320562c7de9635b25430028482c4b4539760f41d8c23a47bbf83",
+      "png": "e1m1-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "efa62b04b366320562c7de9635b25430028482c4b4539760f41d8c23a47bbf83"
+        }
+      ]
+    },
+    "e1m1-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 844,
+      "indexSha256": "b4866b84becaaee758ce687214f635eee57a6da0102129085aa6e9c6fc0d71f7",
+      "png": "e1m1-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "b4866b84becaaee758ce687214f635eee57a6da0102129085aa6e9c6fc0d71f7"
+        }
+      ]
+    },
+    "e1m1-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec140 L192 f0/c128 AQF054/SLIME14",
+      "viewpoint": {
+        "x": -416,
+        "y": 256,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad",
+      "png": "e1m1-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "3f41dac01e481f1129b34d7fcf1ae68221f0bd080b077b824c60e1a0b65742ad"
+        }
+      ]
+    },
+    "e1m1-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec140 L192 f0/c128 AQF054/SLIME14",
+      "viewpoint": {
+        "x": -416,
+        "y": 256,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6f2771afe898aedf66ea5541f07a2a4246d1adf8a691c9021d664eb04cc68fed",
+      "png": "e1m1-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "6f2771afe898aedf66ea5541f07a2a4246d1adf8a691c9021d664eb04cc68fed"
+        }
+      ]
+    },
+    "e1m1-tall": {
+      "kind": "iwad",
+      "script": "sec0 centroid walk-back, argmax-contrast angle; stand: BSP sec0 L202 f-160/c376 RROCK18/CEIL5_1",
+      "viewpoint": {
+        "x": 1207,
+        "y": 853,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "10d41924929c7480e71522eeb6af0773c5a0ddcac5ffa02d4a6cd07e9f846f73",
+      "png": "e1m1-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "10d41924929c7480e71522eeb6af0773c5a0ddcac5ffa02d4a6cd07e9f846f73"
+        }
+      ]
+    },
+    "e1m2-bright": {
+      "kind": "iwad",
+      "script": "sec102 centroid walk-back, argmax-contrast angle; stand: BSP sec102 L224 f72/c200 FLAT14/FLAT14",
+      "viewpoint": {
+        "x": 2136,
+        "y": -2240,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "458ffbe70c03d6f206d099bfa3583cc5638c21f0322eb51046b2cbe4a71b33df",
+      "png": "e1m2-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "458ffbe70c03d6f206d099bfa3583cc5638c21f0322eb51046b2cbe4a71b33df"
+        }
+      ]
+    },
+    "e1m2-busy": {
+      "kind": "iwad",
+      "script": "sec8 n=13 centroid walk-back, argmax-contrast angle; stand: BSP sec8 L224 f0/c320 RROCK19/F_SKY1",
+      "viewpoint": {
+        "x": 216,
+        "y": -439,
+        "angleDeg": 315
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6d825b97ee9004a54c24954ea6966824c810b1e29a3cf9d8e7060ef73b27f222",
+      "png": "e1m2-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "6d825b97ee9004a54c24954ea6966824c810b1e29a3cf9d8e7060ef73b27f222"
+        }
+      ]
+    },
+    "e1m2-door": {
+      "kind": "iwad",
+      "script": "ln515 sp2 standoff perpendicular, facing the line; stand: BSP sec269 L144 f64/c320 FLOOR5_2/CEIL5_1",
+      "viewpoint": {
+        "x": 720,
+        "y": -2784,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "26811135cb06448dcbf0780b74b71730084ceeb047c94c6b9239057ad3943393",
+      "png": "e1m2-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "26811135cb06448dcbf0780b74b71730084ceeb047c94c6b9239057ad3943393"
+        }
+      ]
+    },
+    "e1m2-exit": {
+      "kind": "iwad",
+      "script": "ln1974 sp19 standoff perpendicular, facing the line; stand: BSP sec350 L224 f72/c200 FLAT14/FLAT14",
+      "viewpoint": {
+        "x": 1978,
+        "y": -2184,
+        "angleDeg": 264
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "f48c46b05d79c7038a2d2a308cfa8432ddfdba2e301890ec46821b5ee70b9d4c",
+      "png": "e1m2-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "f48c46b05d79c7038a2d2a308cfa8432ddfdba2e301890ec46821b5ee70b9d4c"
+        }
+      ]
+    },
+    "e1m2-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln151 sp28 standoff perpendicular, facing the line; stand: BSP sec4 L208 f-8/c88 FLOOR0_3/FLAT5_5",
+      "viewpoint": {
+        "x": 1112,
+        "y": -160,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "689a1483293af7a703b4b129b7a0902de2d71ae01780b5fa54329885d405f7b0",
+      "png": "e1m2-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "689a1483293af7a703b4b129b7a0902de2d71ae01780b5fa54329885d405f7b0"
+        }
+      ]
+    },
+    "e1m2-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln260 sp26 standoff perpendicular, facing the line; stand: BSP sec59 L144 f128/c256 FLAT5_4/FLAT1",
+      "viewpoint": {
+        "x": 832,
+        "y": -1408,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e31baaddc43de849a92ea0c786c7fb543ebb966309f72199ed74cda3791f20c8",
+      "png": "e1m2-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e31baaddc43de849a92ea0c786c7fb543ebb966309f72199ed74cda3791f20c8"
+        }
+      ]
+    },
+    "e1m2-lift": {
+      "kind": "iwad",
+      "script": "ln219 sp62 standoff perpendicular, facing the line; stand: BSP sec44 L128 f240/c368 STEP2/CEIL5_1",
+      "viewpoint": {
+        "x": 1472,
+        "y": -1408,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6499542951d3d72528910d81020732d5f315d25b4d8e319f332ce73ff8eb92a1",
+      "png": "e1m2-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "6499542951d3d72528910d81020732d5f315d25b4d8e319f332ce73ff8eb92a1"
+        }
+      ]
+    },
+    "e1m2-masked": {
+      "kind": "iwad",
+      "script": "ln0 midtex standoff perpendicular, facing the line; stand: BSP sec11 L144 f-8/c184 FLAT1/FLAT5_5",
+      "viewpoint": {
+        "x": 664,
+        "y": -896,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "466ef417c4d4f6c2e05545e39632e353823bd78cd6afd054f69aacb002bdcd4d",
+      "png": "e1m2-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "466ef417c4d4f6c2e05545e39632e353823bd78cd6afd054f69aacb002bdcd4d"
+        }
+      ]
+    },
+    "e1m2-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 636,
+      "indexSha256": "827f1a42e2421eddb522fc13865cbbcf6ef6cc9aa9e6b1591615e24ddfe859fd",
+      "png": "e1m2-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "827f1a42e2421eddb522fc13865cbbcf6ef6cc9aa9e6b1591615e24ddfe859fd"
+        }
+      ]
+    },
+    "e1m2-secret": {
+      "kind": "iwad",
+      "script": "ln1854 sp103 standoff perpendicular, facing the line; stand: BSP sec263 L128 f64/c160 FLOOR4_8/CEIL3_5",
+      "viewpoint": {
+        "x": 584,
+        "y": -2520,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "c415706cc934753c7f5770968a40170c4a8f3051f272fb8acaeb35fd4ff1d4c0",
+      "png": "e1m2-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "c415706cc934753c7f5770968a40170c4a8f3051f272fb8acaeb35fd4ff1d4c0"
+        }
+      ]
+    },
+    "e1m2-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec182 L192 f0/c128 FLOOR4_1/CEIL3_5",
+      "viewpoint": {
+        "x": 608,
+        "y": 48,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "873c303f89f5e1d5c10386c3964c07120b9118a12dfb9b196a6ed2834495db4e",
+      "png": "e1m2-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "873c303f89f5e1d5c10386c3964c07120b9118a12dfb9b196a6ed2834495db4e"
+        }
+      ]
+    },
+    "e1m2-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec182 L192 f0/c128 FLOOR4_1/CEIL3_5",
+      "viewpoint": {
+        "x": 608,
+        "y": 48,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e80102714f81edd69450d87ea4705ed7a61ff8fd79bad58a0c8cc515d7249a9d",
+      "png": "e1m2-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e80102714f81edd69450d87ea4705ed7a61ff8fd79bad58a0c8cc515d7249a9d"
+        }
+      ]
+    },
+    "e1m2-tall": {
+      "kind": "iwad",
+      "script": "sec178 centroid walk-back, argmax-contrast angle; stand: BSP sec178 L178 f-1024/c-48 SLIME01/CEIL5_3",
+      "viewpoint": {
+        "x": 1541,
+        "y": -10,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "f4e9a08563ee27221aee85eef411029211c001623d4f1de52d518e1210010d00",
+      "png": "e1m2-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "f4e9a08563ee27221aee85eef411029211c001623d4f1de52d518e1210010d00"
+        }
+      ]
+    },
+    "e1m3-bright": {
+      "kind": "iwad",
+      "script": "sec64 centroid walk-back, argmax-contrast angle; stand: BSP sec64 L255 f-33/c23 FLOOR7_1/FLOOR7_1",
+      "viewpoint": {
+        "x": -505,
+        "y": 1720,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "ca643293f48bd4c280b1383651a161d43d1a4a52911743ecbc54de4cacd63a18",
+      "png": "e1m3-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "ca643293f48bd4c280b1383651a161d43d1a4a52911743ecbc54de4cacd63a18"
+        }
+      ]
+    },
+    "e1m3-busy": {
+      "kind": "iwad",
+      "script": "sec5 n=21 centroid walk-back, argmax-contrast angle; stand: BSP sec5 L164 f0/c128 FLOOR5_2/CEIL5_2",
+      "viewpoint": {
+        "x": -508,
+        "y": 290,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "eca37e73e9e1f0ce0d1bc99879a1c0f2158c4b4136181fb553e09f165386f5bd",
+      "png": "e1m3-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "eca37e73e9e1f0ce0d1bc99879a1c0f2158c4b4136181fb553e09f165386f5bd"
+        }
+      ]
+    },
+    "e1m3-door": {
+      "kind": "iwad",
+      "script": "ln149 sp1 standoff perpendicular, facing the line; stand: BSP sec22 L150 f56/c152 FLOOR5_1/CEIL3_5",
+      "viewpoint": {
+        "x": -1144,
+        "y": 848,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e3440e2bae2b5ad09781dc7492bb66b68bf73235154db0a5a1f2fe8cdeefab19",
+      "png": "e1m3-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e3440e2bae2b5ad09781dc7492bb66b68bf73235154db0a5a1f2fe8cdeefab19"
+        }
+      ]
+    },
+    "e1m3-exit": {
+      "kind": "iwad",
+      "script": "ln2024 sp138 standoff perpendicular, facing the line; stand: BSP sec22 L150 f56/c152 FLOOR5_1/CEIL3_5",
+      "viewpoint": {
+        "x": -1296,
+        "y": 1004,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "c41526f11c64e608a8f71a7212b1af728dbd7aab64bdf35cad8d0bf6e7511d49",
+      "png": "e1m3-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "c41526f11c64e608a8f71a7212b1af728dbd7aab64bdf35cad8d0bf6e7511d49"
+        }
+      ]
+    },
+    "e1m3-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln708 sp31 standoff perpendicular, facing the line; stand: BSP sec5 L164 f0/c128 FLOOR5_2/CEIL5_2",
+      "viewpoint": {
+        "x": -1024,
+        "y": 104,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7d909ff12b431a42623ff26ddb5e76716ff0bcc2c0f1199c8c42cc85c29767b0",
+      "png": "e1m3-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7d909ff12b431a42623ff26ddb5e76716ff0bcc2c0f1199c8c42cc85c29767b0"
+        }
+      ]
+    },
+    "e1m3-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln710 sp32 standoff perpendicular, facing the line; stand: BSP sec149 L160 f16/c104 FLOOR5_1/CEIL4_2",
+      "viewpoint": {
+        "x": -1264,
+        "y": 104,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b19fb625a29bddfee3f902ee23bdcd110a6c4e281b507600a31d4d65bb866351",
+      "png": "e1m3-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "b19fb625a29bddfee3f902ee23bdcd110a6c4e281b507600a31d4d65bb866351"
+        }
+      ]
+    },
+    "e1m3-lift": {
+      "kind": "iwad",
+      "script": "ln261 sp62 standoff perpendicular, facing the line; stand: BSP sec34 L136 f0/c128 FLOOR4_8/CEIL5_1",
+      "viewpoint": {
+        "x": -1376,
+        "y": 1568,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "1898d8f0b27c79ae8f139d6d547ac481d9df408e43128d3ecb24a94cb15e81fd",
+      "png": "e1m3-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "1898d8f0b27c79ae8f139d6d547ac481d9df408e43128d3ecb24a94cb15e81fd"
+        }
+      ]
+    },
+    "e1m3-masked": {
+      "kind": "iwad",
+      "script": "ln6 midtex standoff perpendicular, facing the line; stand: BSP sec20 L196 f0/c168 FLOOR5_2/F_SKY1",
+      "viewpoint": {
+        "x": -768,
+        "y": 152,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "cb79b26234e33ab1dba9f380f9180c152253fad257a4827eceb52468c46e1322",
+      "png": "e1m3-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "cb79b26234e33ab1dba9f380f9180c152253fad257a4827eceb52468c46e1322"
+        }
+      ]
+    },
+    "e1m3-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 636,
+      "indexSha256": "2618db136e7032945f5724436c9f0ab558384e6f1f4c8cbfa6fa4ced29702dbc",
+      "png": "e1m3-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "2618db136e7032945f5724436c9f0ab558384e6f1f4c8cbfa6fa4ced29702dbc"
+        }
+      ]
+    },
+    "e1m3-secret": {
+      "kind": "iwad",
+      "script": "ln361 sp103 standoff perpendicular, facing the line; stand: BSP sec89 L150 f104/c288 FLOOR4_8/CEIL5_1",
+      "viewpoint": {
+        "x": -952,
+        "y": 2152,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "bb52a094ca8ddaaeea2ab7fe8285735caf6f0f4c361f61fd5e9bf8556074453d",
+      "png": "e1m3-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "bb52a094ca8ddaaeea2ab7fe8285735caf6f0f4c361f61fd5e9bf8556074453d"
+        }
+      ]
+    },
+    "e1m3-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec0 L180 f0/c120 FLOOR5_2/F_SKY1",
+      "viewpoint": {
+        "x": -788,
+        "y": -216,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5b2b96548e2de472b6cad14c92e4f8d232fe39fbecb50302a65a34d32c24e43f",
+      "png": "e1m3-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "5b2b96548e2de472b6cad14c92e4f8d232fe39fbecb50302a65a34d32c24e43f"
+        }
+      ]
+    },
+    "e1m3-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec0 L180 f0/c120 FLOOR5_2/F_SKY1",
+      "viewpoint": {
+        "x": -788,
+        "y": -216,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e86da264e674b26d67cad681170416cff5c57860b7249e8ef7c6609aa8211e78",
+      "png": "e1m3-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e86da264e674b26d67cad681170416cff5c57860b7249e8ef7c6609aa8211e78"
+        }
+      ]
+    },
+    "e1m3-tall": {
+      "kind": "iwad",
+      "script": "sec2 centroid walk-back, argmax-contrast angle; stand: BSP sec2 L164 f-104/c128 NUKAGE1/CEIL5_2",
+      "viewpoint": {
+        "x": -96,
+        "y": 123,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "8d88455ef609ae44f14ebad64beca3bc7e91bf5dd18ca3fc50384c03adac1ab4",
+      "png": "e1m3-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "8d88455ef609ae44f14ebad64beca3bc7e91bf5dd18ca3fc50384c03adac1ab4"
+        }
+      ]
+    },
+    "e1m4-bright": {
+      "kind": "iwad",
+      "script": "sec201 centroid walk-back, argmax-contrast angle; stand: BSP sec201 L208 f-240/c-128 FLOOR4_8/CEIL5_2",
+      "viewpoint": {
+        "x": 1760,
+        "y": 813,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "3073ec1fdd1ad8d1ad6fdb98e5198763ad713f3dd906a0a3fb8b8236dd8e049f",
+      "png": "e1m4-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "3073ec1fdd1ad8d1ad6fdb98e5198763ad713f3dd906a0a3fb8b8236dd8e049f"
+        }
+      ]
+    },
+    "e1m4-busy": {
+      "kind": "iwad",
+      "script": "sec233 n=27 centroid walk-back, argmax-contrast angle; stand: BSP sec233 L130 f-264/c-136 FLOOR4_6/FLAT1",
+      "viewpoint": {
+        "x": -1705,
+        "y": -396,
+        "angleDeg": 45
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "4a142e6818096402b7bcdf868d9d7ca30c56e8168797bd303688fb2622964935",
+      "png": "e1m4-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "4a142e6818096402b7bcdf868d9d7ca30c56e8168797bd303688fb2622964935"
+        }
+      ]
+    },
+    "e1m4-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec184 elongated lit sector, end standoff on the long axis; stand: BSP sec184 L140 f-64/c64 CEIL5_2/CEIL3_5",
+      "viewpoint": {
+        "x": 126,
+        "y": 1600,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "d90612249cf6b980258de44a75f78b90708f8fe8a434e491326d5c086db18915",
+      "png": "e1m4-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d90612249cf6b980258de44a75f78b90708f8fe8a434e491326d5c086db18915"
+        }
+      ]
+    },
+    "e1m4-corridor-1": {
+      "kind": "iwad",
+      "script": "corridor sec34 elongated lit sector, end standoff on the long axis; stand: BSP sec34 L165 f-256/c160 FLOOR0_1/F_SKY1",
+      "viewpoint": {
+        "x": -955,
+        "y": 496,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "9821bb2a98ca7de949f0edab25f1c8968e1eb414b7b58082130b22b3a23ae170",
+      "png": "e1m4-corridor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "9821bb2a98ca7de949f0edab25f1c8968e1eb414b7b58082130b22b3a23ae170"
+        }
+      ]
+    },
+    "e1m4-door": {
+      "kind": "iwad",
+      "script": "ln79 sp1 standoff perpendicular, facing the line; stand: BSP sec6 L135 f16/c144 FLOOR0_3/CEIL3_5",
+      "viewpoint": {
+        "x": 64,
+        "y": -488,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "ba7a22777ef546aa84a5fd971333ff757c3115f1dfe7280875e2c36b54275bf7",
+      "png": "e1m4-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "ba7a22777ef546aa84a5fd971333ff757c3115f1dfe7280875e2c36b54275bf7"
+        }
+      ]
+    },
+    "e1m4-exit": {
+      "kind": "iwad",
+      "script": "ln1996 sp11 standoff perpendicular, facing the line; stand: BSP sec141 L160 f-72/c56 FLOOR4_8/FLOOR4_8",
+      "viewpoint": {
+        "x": 704,
+        "y": 2136,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "d7e70f63117c991ae78f1ed2cd04283ec423905cd4b1564ae0ff21aca51b6e37",
+      "png": "e1m4-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d7e70f63117c991ae78f1ed2cd04283ec423905cd4b1564ae0ff21aca51b6e37"
+        }
+      ]
+    },
+    "e1m4-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln267 sp27 standoff perpendicular, facing the line; stand: BSP sec29 L135 f16/c144 FLOOR0_3/CEIL3_5",
+      "viewpoint": {
+        "x": 1992,
+        "y": -704,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "f04993d60b88fd0fa121cbe693254075605a8e2bd944e786ad13dbeb85012c97",
+      "png": "e1m4-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "f04993d60b88fd0fa121cbe693254075605a8e2bd944e786ad13dbeb85012c97"
+        }
+      ]
+    },
+    "e1m4-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln272 sp27 standoff perpendicular, facing the line; stand: BSP sec27 L135 f8/c144 FLOOR0_3/CEIL3_5",
+      "viewpoint": {
+        "x": 1752,
+        "y": -704,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "1ca0ec3afdff173543dd41061846f80b21a6f2698056a128caa9b80e95134af3",
+      "png": "e1m4-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "1ca0ec3afdff173543dd41061846f80b21a6f2698056a128caa9b80e95134af3"
+        }
+      ]
+    },
+    "e1m4-lift": {
+      "kind": "iwad",
+      "script": "ln326 sp62 standoff perpendicular, facing the line; stand: BSP sec33 L165 f0/c160 STEP1/F_SKY1",
+      "viewpoint": {
+        "x": -576,
+        "y": -704,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "600e0c032fd3e92f2b331838de4dde219de39780bb0e5e83ad14c95f3525a15f",
+      "png": "e1m4-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "600e0c032fd3e92f2b331838de4dde219de39780bb0e5e83ad14c95f3525a15f"
+        }
+      ]
+    },
+    "e1m4-masked": {
+      "kind": "iwad",
+      "script": "ln1 midtex standoff perpendicular, facing the line; stand: BSP sec1 L130 f0/c144 FLOOR0_3/CEIL3_5",
+      "viewpoint": {
+        "x": 896,
+        "y": -1344,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "67af225a963ab46fc7c7f8df18fe9a9d962187c6c2031cbc76ddcf3cb9b12b2d",
+      "png": "e1m4-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "67af225a963ab46fc7c7f8df18fe9a9d962187c6c2031cbc76ddcf3cb9b12b2d"
+        }
+      ]
+    },
+    "e1m4-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 844,
+      "indexSha256": "03b9143e7f3c4a0e299d090c916f3a51cbe9f51dd8d46eb4214432bc7253fc0c",
+      "png": "e1m4-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "03b9143e7f3c4a0e299d090c916f3a51cbe9f51dd8d46eb4214432bc7253fc0c"
+        }
+      ]
+    },
+    "e1m4-secret": {
+      "kind": "iwad",
+      "script": "ln1892 sp126 standoff perpendicular, facing the line; stand: BSP sec46 L145 f-104/c24 FLAT19/FLAT1",
+      "viewpoint": {
+        "x": -1120,
+        "y": -832,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "74a6e923745f5eff5bb3845448a429a937c7fc142f9e42bf1411e1e7cfe81fc8",
+      "png": "e1m4-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "74a6e923745f5eff5bb3845448a429a937c7fc142f9e42bf1411e1e7cfe81fc8"
+        }
+      ]
+    },
+    "e1m4-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec21 L160 f-8/c160 FLAT14/F_SKY1",
+      "viewpoint": {
+        "x": 896,
+        "y": -1760,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "3b009326b1969fbaa0fb922694c660dea298bbbba2313d8104f7e54c3d759755",
+      "png": "e1m4-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "3b009326b1969fbaa0fb922694c660dea298bbbba2313d8104f7e54c3d759755"
+        }
+      ]
+    },
+    "e1m4-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec21 L160 f-8/c160 FLAT14/F_SKY1",
+      "viewpoint": {
+        "x": 896,
+        "y": -1760,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6c9306e190581a9a3d54548fb86eab326076a649343ebd98c525921e57e3c4f3",
+      "png": "e1m4-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "6c9306e190581a9a3d54548fb86eab326076a649343ebd98c525921e57e3c4f3"
+        }
+      ]
+    },
+    "e1m4-tall": {
+      "kind": "iwad",
+      "script": "sec151 centroid walk-back, argmax-contrast angle; stand: BSP sec151 L150 f-112/c160 NUKAGE1/CEIL5_2",
+      "viewpoint": {
+        "x": 637,
+        "y": -236,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "339e767695c5a9bfda542ae4eaa50b14836697435fbd87645fa43744c5b4d35b",
+      "png": "e1m4-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "339e767695c5a9bfda542ae4eaa50b14836697435fbd87645fa43744c5b4d35b"
+        }
+      ]
+    },
+    "e1m5-bright": {
+      "kind": "iwad",
+      "script": "sec1 centroid walk-back, argmax-contrast angle; stand: BSP sec1 L256 f-16/c176 FLOOR5_2/TLITE6_6",
+      "viewpoint": {
+        "x": -2656,
+        "y": 1440,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "a2ace68f5374a71cfe74206265192c21a8ef50f0522cd6cbd7315242df4faff9",
+      "png": "e1m5-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "a2ace68f5374a71cfe74206265192c21a8ef50f0522cd6cbd7315242df4faff9"
+        }
+      ]
+    },
+    "e1m5-busy": {
+      "kind": "iwad",
+      "script": "sec56 n=28 centroid walk-back, argmax-contrast angle; stand: BSP sec56 L192 f-16/c176 FLOOR4_8/FLAT19",
+      "viewpoint": {
+        "x": -861,
+        "y": 699,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "03d00f29421febb929981bbd4b5f32b0945cd0b46008eccb4c1b87c0d01129a8",
+      "png": "e1m5-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "03d00f29421febb929981bbd4b5f32b0945cd0b46008eccb4c1b87c0d01129a8"
+        }
+      ]
+    },
+    "e1m5-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec163 elongated lit sector, end standoff on the long axis; stand: BSP sec163 L192 f72/c208 CEIL4_1/FLAT19",
+      "viewpoint": {
+        "x": 1072,
+        "y": -281,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "c65c790de7fab82e1d6c20c956a17814e3579d9b4f47bbe8ed29dad4b7645dac",
+      "png": "e1m5-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "c65c790de7fab82e1d6c20c956a17814e3579d9b4f47bbe8ed29dad4b7645dac"
+        }
+      ]
+    },
+    "e1m5-corridor-1": {
+      "kind": "iwad",
+      "script": "corridor sec86 elongated lit sector, end standoff on the long axis; stand: BSP sec86 L192 f-16/c112 FLOOR4_8/FLAT19",
+      "viewpoint": {
+        "x": -1584,
+        "y": 1440,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "24472fdfd30e71a220f49a4be51acf6c93cda94db24c0d7fa209ef5e85855dfb",
+      "png": "e1m5-corridor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "24472fdfd30e71a220f49a4be51acf6c93cda94db24c0d7fa209ef5e85855dfb"
+        }
+      ]
+    },
+    "e1m5-door": {
+      "kind": "iwad",
+      "script": "ln1202 sp1 standoff perpendicular, facing the line; stand: BSP sec127 L192 f-32/c112 FLAT3/CEIL3_3",
+      "viewpoint": {
+        "x": 1472,
+        "y": 1008,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "88ce6507ce3b6c01f6a04c34f1e62ddbc9845937d9bf436f55f735581f77dd2b",
+      "png": "e1m5-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "88ce6507ce3b6c01f6a04c34f1e62ddbc9845937d9bf436f55f735581f77dd2b"
+        }
+      ]
+    },
+    "e1m5-exit": {
+      "kind": "iwad",
+      "script": "ln634 sp11 standoff perpendicular, facing the line; stand: BSP sec56 L192 f-16/c176 FLOOR4_8/FLAT19",
+      "viewpoint": {
+        "x": -992,
+        "y": 1088,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "274daaf85971a0060a824ac398dc4b9fb469629b7e98b10491b0b09f15eb4162",
+      "png": "e1m5-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "274daaf85971a0060a824ac398dc4b9fb469629b7e98b10491b0b09f15eb4162"
+        }
+      ]
+    },
+    "e1m5-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln1156 sp31 standoff perpendicular, facing the line; stand: BSP sec7 L176 f-16/c120 FLOOR5_2/CEIL3_3",
+      "viewpoint": {
+        "x": -3312,
+        "y": 1440,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "4d79ba2292ca4fa69d6d41bd0ae0e179b9112afe5d4ad0653dcf949b68badc9e",
+      "png": "e1m5-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "4d79ba2292ca4fa69d6d41bd0ae0e179b9112afe5d4ad0653dcf949b68badc9e"
+        }
+      ]
+    },
+    "e1m5-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln1171 sp31 standoff perpendicular, facing the line; stand: BSP sec13 L192 f-16/c240 FLOOR5_2/F_SKY1",
+      "viewpoint": {
+        "x": -3536,
+        "y": 1440,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6d579eb2ffd01e61a7c24341bca4db693fd6d0679221520aa2f0788cdca4b541",
+      "png": "e1m5-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "6d579eb2ffd01e61a7c24341bca4db693fd6d0679221520aa2f0788cdca4b541"
+        }
+      ]
+    },
+    "e1m5-lift": {
+      "kind": "iwad",
+      "script": "ln654 sp62 standoff perpendicular, facing the line; stand: BSP sec76 L192 f-16/c112 FLOOR4_8/FLAT19",
+      "viewpoint": {
+        "x": 1472,
+        "y": 1728,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "99da129912b691bcd8f12a2ce6e7e46ff7e81b0e969486037b97d6119f5510c9",
+      "png": "e1m5-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "99da129912b691bcd8f12a2ce6e7e46ff7e81b0e969486037b97d6119f5510c9"
+        }
+      ]
+    },
+    "e1m5-masked": {
+      "kind": "iwad",
+      "script": "ln4 midtex standoff perpendicular, facing the line; stand: BSP sec56 L192 f-16/c176 FLOOR4_8/FLAT19",
+      "viewpoint": {
+        "x": -768,
+        "y": 416,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "83c0f4c59b29a213c3f442eb1ae43954d75387de699e4a0cc736084808214596",
+      "png": "e1m5-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "83c0f4c59b29a213c3f442eb1ae43954d75387de699e4a0cc736084808214596"
+        }
+      ]
+    },
+    "e1m5-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 844,
+      "indexSha256": "70057fba30bb71d280e0c9dd08a9cee670101cb44858ba694d4e6c176aaf6238",
+      "png": "e1m5-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "70057fba30bb71d280e0c9dd08a9cee670101cb44858ba694d4e6c176aaf6238"
+        }
+      ]
+    },
+    "e1m5-secret": {
+      "kind": "iwad",
+      "script": "ln633 sp126 standoff perpendicular, facing the line; stand: BSP sec60 L144 f-32/c112 SLIME01/CEIL5_2",
+      "viewpoint": {
+        "x": -1408,
+        "y": 1088,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7bb5a22f9b6f9d7aebf7c8f37211c83c52d5919d2a1ad0d03d237ab3d5627f7a",
+      "png": "e1m5-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7bb5a22f9b6f9d7aebf7c8f37211c83c52d5919d2a1ad0d03d237ab3d5627f7a"
+        }
+      ]
+    },
+    "e1m5-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec5 L256 f-16/c56 FLOOR5_2/FLAT2",
+      "viewpoint": {
+        "x": -4768,
+        "y": 1296,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "0499af63027f69677ad8cf16ede52ed46d43e5a447318927f3416799c6496834",
+      "png": "e1m5-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "0499af63027f69677ad8cf16ede52ed46d43e5a447318927f3416799c6496834"
+        }
+      ]
+    },
+    "e1m5-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec5 L256 f-16/c56 FLOOR5_2/FLAT2",
+      "viewpoint": {
+        "x": -4768,
+        "y": 1296,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7d4c7f64ad093ec1ab2e65a90ccf05095c66861598b0d2c9e84c7103422a75a1",
+      "png": "e1m5-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7d4c7f64ad093ec1ab2e65a90ccf05095c66861598b0d2c9e84c7103422a75a1"
+        }
+      ]
+    },
+    "e1m5-tall": {
+      "kind": "iwad",
+      "script": "sec82 centroid walk-back, argmax-contrast angle; stand: BSP sec82 L256 f-40/c208 FLOOR4_1/TLITE6_6",
+      "viewpoint": {
+        "x": 352,
+        "y": 1440,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e08577a1b5947da20477b818c527155a1c060fe7206e2421816ed3fc747104f3",
+      "png": "e1m5-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e08577a1b5947da20477b818c527155a1c060fe7206e2421816ed3fc747104f3"
+        }
+      ]
+    },
+    "e1m6-bright": {
+      "kind": "iwad",
+      "script": "sec263 centroid walk-back, argmax-contrast angle; stand: BSP sec263 L224 f72/c176 FLOOR0_3/FLAT5_4",
+      "viewpoint": {
+        "x": -780,
+        "y": 1351,
+        "angleDeg": 315
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "47939cdc4983cf76a013b21f5be3f0da1b8695f7ecd34817060806643edbe241",
+      "png": "e1m6-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "47939cdc4983cf76a013b21f5be3f0da1b8695f7ecd34817060806643edbe241"
+        }
+      ]
+    },
+    "e1m6-busy": {
+      "kind": "iwad",
+      "script": "sec151 n=125 centroid walk-back, argmax-contrast angle; stand: BSP sec151 L160 f-192/c-32 FLOOR4_8/FLOOR0_3",
+      "viewpoint": {
+        "x": -801,
+        "y": -519,
+        "angleDeg": 45
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "612c165ca4ca8e7bcf1563ed1827456ba1c8aeba0389a1be5bfdf1ed7bf55a6d",
+      "png": "e1m6-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "612c165ca4ca8e7bcf1563ed1827456ba1c8aeba0389a1be5bfdf1ed7bf55a6d"
+        }
+      ]
+    },
+    "e1m6-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec193 elongated lit sector, end standoff on the long axis; stand: BSP sec193 L224 f-384/c0 NUKAGE1/F_SKY1",
+      "viewpoint": {
+        "x": -2313,
+        "y": -2416,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "3f63064a7a26156a8ee619280100af15eb4c5bfbc253dec38483af5ceff6817d",
+      "png": "e1m6-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "3f63064a7a26156a8ee619280100af15eb4c5bfbc253dec38483af5ceff6817d"
+        }
+      ]
+    },
+    "e1m6-corridor-1": {
+      "kind": "iwad",
+      "script": "corridor sec59 elongated lit sector, end standoff on the long axis; stand: BSP sec59 L224 f-32/c288 MFLR8_2/F_SKY1",
+      "viewpoint": {
+        "x": 459,
+        "y": 880,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "61bb94115fbbd7086a3ae73551784af98d24ac0b5c95d5912bf8fd331fa92c19",
+      "png": "e1m6-corridor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "61bb94115fbbd7086a3ae73551784af98d24ac0b5c95d5912bf8fd331fa92c19"
+        }
+      ]
+    },
+    "e1m6-door": {
+      "kind": "iwad",
+      "script": "ln1110 sp1 standoff perpendicular, facing the line; stand: BSP sec154 L160 f-72/c96 FLAT18/FLAT14",
+      "viewpoint": {
+        "x": 992,
+        "y": 528,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "578f255ce1137c82c0830bb345fcd4141c1dec21a8474891659d3b35eb550525",
+      "png": "e1m6-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "578f255ce1137c82c0830bb345fcd4141c1dec21a8474891659d3b35eb550525"
+        }
+      ]
+    },
+    "e1m6-exit": {
+      "kind": "iwad",
+      "script": "ln1546 sp11 standoff perpendicular, facing the line; stand: BSP sec151 L160 f-192/c-32 FLOOR4_8/FLOOR0_3",
+      "viewpoint": {
+        "x": -744,
+        "y": -80,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "9235869aac3b300ca741b253ff5d78a2614f75893e5b00a2785b4973a1e8cc2e",
+      "png": "e1m6-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "9235869aac3b300ca741b253ff5d78a2614f75893e5b00a2785b4973a1e8cc2e"
+        }
+      ]
+    },
+    "e1m6-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln118 sp28 standoff perpendicular, facing the line; stand: BSP sec140 L176 f0/c192 FLOOR5_4/FLOOR0_6",
+      "viewpoint": {
+        "x": -912,
+        "y": 1024,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "12557dd9301102851c48ddf18958aa5fda68164ca642c42ff4414ed90de6eca5",
+      "png": "e1m6-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "12557dd9301102851c48ddf18958aa5fda68164ca642c42ff4414ed90de6eca5"
+        }
+      ]
+    },
+    "e1m6-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln603 sp32 standoff perpendicular, facing the line; stand: BSP sec232 L208 f-72/c64 FLAT18/CEIL5_2",
+      "viewpoint": {
+        "x": 1920,
+        "y": 480,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "aebd98ebbdb25511388292f5e795bf68a49eb2512dbce39c7d3fe26008fbf429",
+      "png": "e1m6-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "aebd98ebbdb25511388292f5e795bf68a49eb2512dbce39c7d3fe26008fbf429"
+        }
+      ]
+    },
+    "e1m6-lift": {
+      "kind": "iwad",
+      "script": "ln512 sp62 standoff perpendicular, facing the line; stand: BSP sec363 L192 f0/c384 STEP2/CEIL3_5",
+      "viewpoint": {
+        "x": -736,
+        "y": 448,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "9bb8fa4a1c9f0850a4ab172e5aa880996b4c71c237881f931c3ebf4231875e51",
+      "png": "e1m6-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "9bb8fa4a1c9f0850a4ab172e5aa880996b4c71c237881f931c3ebf4231875e51"
+        }
+      ]
+    },
+    "e1m6-masked": {
+      "kind": "iwad",
+      "script": "ln1 midtex standoff perpendicular, facing the line; stand: BSP sec151 L160 f-192/c-32 FLOOR4_8/FLOOR0_3",
+      "viewpoint": {
+        "x": 296,
+        "y": -296,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "04158381d7d232325a30c31271cbdaced12dad215c5762f2843eff43d85215d2",
+      "png": "e1m6-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "04158381d7d232325a30c31271cbdaced12dad215c5762f2843eff43d85215d2"
+        }
+      ]
+    },
+    "e1m6-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 844,
+      "indexSha256": "d5ec04e832f839fb1fe490d13f9b413da8ac013e29a7aae513411c9144b0e052",
+      "png": "e1m6-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d5ec04e832f839fb1fe490d13f9b413da8ac013e29a7aae513411c9144b0e052"
+        }
+      ]
+    },
+    "e1m6-secret": {
+      "kind": "iwad",
+      "script": "ln1464 sp103 standoff perpendicular, facing the line; stand: BSP sec237 L208 f-72/c96 FLAT18/FLAT14",
+      "viewpoint": {
+        "x": 1000,
+        "y": 480,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "674c6d31b7f7921dfb73285d9641df7766e3623f6a2cd9de58da706d74382e05",
+      "png": "e1m6-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "674c6d31b7f7921dfb73285d9641df7766e3623f6a2cd9de58da706d74382e05"
+        }
+      ]
+    },
+    "e1m6-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec151 L160 f-192/c-32 FLOOR4_8/FLOOR0_3",
+      "viewpoint": {
+        "x": 0,
+        "y": -160,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "6772ddfd8e5269f8cf73eb6516419f1fb042bef3ad67136c3ad6db4b4e9e3aad",
+      "png": "e1m6-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "6772ddfd8e5269f8cf73eb6516419f1fb042bef3ad67136c3ad6db4b4e9e3aad"
+        }
+      ]
+    },
+    "e1m6-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec151 L160 f-192/c-32 FLOOR4_8/FLOOR0_3",
+      "viewpoint": {
+        "x": 0,
+        "y": -160,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "23424c395ee5c1c43473a6c7cf022d135a2d0a167e845f3556fe2f8e72062f6d",
+      "png": "e1m6-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "23424c395ee5c1c43473a6c7cf022d135a2d0a167e845f3556fe2f8e72062f6d"
+        }
+      ]
+    },
+    "e1m6-tall": {
+      "kind": "iwad",
+      "script": "sec178 centroid walk-back, argmax-contrast angle; stand: BSP sec178 L192 f-512/c128 NUKAGE1/FLOOR0_6",
+      "viewpoint": {
+        "x": -1818,
+        "y": -1677,
+        "angleDeg": 45
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "df5e326087a3bc79e397a34cc3a302bae98053de0026491fccb0ab5d5970913e",
+      "png": "e1m6-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "df5e326087a3bc79e397a34cc3a302bae98053de0026491fccb0ab5d5970913e"
+        }
+      ]
+    },
+    "e1m7-bright": {
+      "kind": "iwad",
+      "script": "sec592 centroid walk-back, argmax-contrast angle; stand: BSP sec592 L255 f296/c360 CEIL3_5/CEIL3_5",
+      "viewpoint": {
+        "x": 1408,
+        "y": 2816,
+        "angleDeg": 315
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "42dda21b29d500222dbb1fbaf84e885284a6dddc28bd8051832a35fd4bdf2b67",
+      "png": "e1m7-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "42dda21b29d500222dbb1fbaf84e885284a6dddc28bd8051832a35fd4bdf2b67"
+        }
+      ]
+    },
+    "e1m7-busy": {
+      "kind": "iwad",
+      "script": "sec456 n=24 centroid walk-back, argmax-contrast angle; stand: BSP sec456 L208 f0/c144 TLITE6_5/MFLR8_1",
+      "viewpoint": {
+        "x": -989,
+        "y": 2191,
+        "angleDeg": 315
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b045f606a629070ca7db48584b1e6897bc8b06157d7da7c41fb4275c3a4ed268",
+      "png": "e1m7-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "b045f606a629070ca7db48584b1e6897bc8b06157d7da7c41fb4275c3a4ed268"
+        }
+      ]
+    },
+    "e1m7-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec147 elongated lit sector, end standoff on the long axis; stand: BSP sec147 L192 f-96/c160 CEIL5_2/F_SKY1",
+      "viewpoint": {
+        "x": 619,
+        "y": -1056,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "295e1ed7978618a163a99dae0b51adb0dfe22db674c05e424e786fe1da7f23ce",
+      "png": "e1m7-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "295e1ed7978618a163a99dae0b51adb0dfe22db674c05e424e786fe1da7f23ce"
+        }
+      ]
+    },
+    "e1m7-corridor-1": {
+      "kind": "iwad",
+      "script": "corridor sec376 elongated lit sector, end standoff on the long axis; stand: BSP sec376 L192 f-256/c160 FLOOR6_2/F_SKY1",
+      "viewpoint": {
+        "x": -1261,
+        "y": -816,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "85990eb92283e669d29585f8b87d6e1eed356f2975297c324afbec65f4b38c14",
+      "png": "e1m7-corridor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "85990eb92283e669d29585f8b87d6e1eed356f2975297c324afbec65f4b38c14"
+        }
+      ]
+    },
+    "e1m7-door": {
+      "kind": "iwad",
+      "script": "ln19 sp1 standoff perpendicular, facing the line; stand: BSP sec0 L192 f0/c128 FLAT14/FLAT23",
+      "viewpoint": {
+        "x": 0,
+        "y": -40,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "cac329f9577af436e8f6ff977e9130106ad174b996efbcbe5717b6a6211d854a",
+      "png": "e1m7-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "cac329f9577af436e8f6ff977e9130106ad174b996efbcbe5717b6a6211d854a"
+        }
+      ]
+    },
+    "e1m7-exit": {
+      "kind": "iwad",
+      "script": "ln3975 sp11 standoff perpendicular, facing the line; stand: BSP sec376 L192 f-256/c160 FLOOR6_2/F_SKY1",
+      "viewpoint": {
+        "x": -936,
+        "y": 704,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "07448f7d32028c6daa21d55530b64bc4bf34827dc3c6f085d68c4e61f286587a",
+      "png": "e1m7-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "07448f7d32028c6daa21d55530b64bc4bf34827dc3c6f085d68c4e61f286587a"
+        }
+      ]
+    },
+    "e1m7-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln130 sp27 standoff perpendicular, facing the line; stand: BSP sec693 L192 f0/c128 RROCK03/RROCK03",
+      "viewpoint": {
+        "x": -504,
+        "y": 896,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "76010fc31954a14e58caa4d972dad533986a5de45110952ebe8a8050f1333127",
+      "png": "e1m7-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "76010fc31954a14e58caa4d972dad533986a5de45110952ebe8a8050f1333127"
+        }
+      ]
+    },
+    "e1m7-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln131 sp27 standoff perpendicular, facing the line; stand: BSP sec73 L160 f32/c176 FLAT19/FLAT19",
+      "viewpoint": {
+        "x": -256,
+        "y": 896,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "cdd860694a23befdbc321b84bc5d183192a13173a60e667bd10a736565ba45d0",
+      "png": "e1m7-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "cdd860694a23befdbc321b84bc5d183192a13173a60e667bd10a736565ba45d0"
+        }
+      ]
+    },
+    "e1m7-lift": {
+      "kind": "iwad",
+      "script": "ln645 sp62 standoff perpendicular, facing the line; stand: BSP sec627 L160 f-24/c72 FLOOR0_3/FLAT3",
+      "viewpoint": {
+        "x": 1984,
+        "y": 1152,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "2c31b37ddc2a70d7aa4a61a20788ed3d3c8f286329429b58c4dd0b292243762f",
+      "png": "e1m7-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "2c31b37ddc2a70d7aa4a61a20788ed3d3c8f286329429b58c4dd0b292243762f"
+        }
+      ]
+    },
+    "e1m7-masked": {
+      "kind": "iwad",
+      "script": "ln3 midtex standoff perpendicular, facing the line; stand: BSP sec5 L192 f0/c128 SLIME13/FLAT1",
+      "viewpoint": {
+        "x": 0,
+        "y": 256,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7de6064596a868eb61f313a3a01adc921239192af18224af8ed034c626ae4dd5",
+      "png": "e1m7-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7de6064596a868eb61f313a3a01adc921239192af18224af8ed034c626ae4dd5"
+        }
+      ]
+    },
+    "e1m7-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 844,
+      "indexSha256": "62dbf56f66bdfbcad40ff95d4ad2caf66b4355b584e9d49849cb861c9826a030",
+      "png": "e1m7-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "62dbf56f66bdfbcad40ff95d4ad2caf66b4355b584e9d49849cb861c9826a030"
+        }
+      ]
+    },
+    "e1m7-secret": {
+      "kind": "iwad",
+      "script": "ln283 sp103 standoff perpendicular, facing the line; stand: BSP sec33 L144 f8/c144 FLOOR4_8/MFLR8_1",
+      "viewpoint": {
+        "x": -416,
+        "y": 1632,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5460bcea351c40df9e20d9fc40ada34b9a6e18af3a2d8aa5ec3b91891a48e87b",
+      "png": "e1m7-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "5460bcea351c40df9e20d9fc40ada34b9a6e18af3a2d8aa5ec3b91891a48e87b"
+        }
+      ]
+    },
+    "e1m7-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec16 L192 f0/c96 FLAT14/CEIL5_2",
+      "viewpoint": {
+        "x": 0,
+        "y": -232,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "fd222ff76c4e6f6b138a4a451a0e6d0d0351e609cce51dda48bc473b02368709",
+      "png": "e1m7-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "fd222ff76c4e6f6b138a4a451a0e6d0d0351e609cce51dda48bc473b02368709"
+        }
+      ]
+    },
+    "e1m7-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec16 L192 f0/c96 FLAT14/CEIL5_2",
+      "viewpoint": {
+        "x": 0,
+        "y": -232,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "221bea826c549d629fd44747fbeeea4e0b4828944eba3b9e2c3a99b8526db08d",
+      "png": "e1m7-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "221bea826c549d629fd44747fbeeea4e0b4828944eba3b9e2c3a99b8526db08d"
+        }
+      ]
+    },
+    "e1m7-tall": {
+      "kind": "iwad",
+      "script": "sec229 centroid walk-back, argmax-contrast angle; stand: BSP sec229 L144 f-248/c256 NUKAGE1/CEIL3_5",
+      "viewpoint": {
+        "x": 3153,
+        "y": 663,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b935c588b703367d611ba2a73c9138913a7e0267c23ce4ada779c21fe897d174",
+      "png": "e1m7-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "b935c588b703367d611ba2a73c9138913a7e0267c23ce4ada779c21fe897d174"
+        }
+      ]
+    },
+    "e1m8-bright": {
+      "kind": "iwad",
+      "script": "sec93 centroid walk-back, argmax-contrast angle; stand: BSP sec93 L224 f24/c168 SLIME13/SLIME13",
+      "viewpoint": {
+        "x": 3228,
+        "y": -1688,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "20a64553fd3ba116f83516d10f7efdbb362c209294bde16836046421df4b5026",
+      "png": "e1m8-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "20a64553fd3ba116f83516d10f7efdbb362c209294bde16836046421df4b5026"
+        }
+      ]
+    },
+    "e1m8-busy": {
+      "kind": "iwad",
+      "script": "sec83 n=8 centroid walk-back, argmax-contrast angle; stand: BSP sec83 L224 f-136/c256 STEP1/F_SKY1",
+      "viewpoint": {
+        "x": 2464,
+        "y": 320,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "468d8fbf9880919f5feb63cb42e7722e2172133466e60ca2ce6aa482d73d004b",
+      "png": "e1m8-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "468d8fbf9880919f5feb63cb42e7722e2172133466e60ca2ce6aa482d73d004b"
+        }
+      ]
+    },
+    "e1m8-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec54 elongated lit sector, end standoff on the long axis; stand: BSP sec54 L224 f0/c256 RROCK19/F_SKY1",
+      "viewpoint": {
+        "x": 1584,
+        "y": 50,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "762191851e1169bceeabd9c0bf2b405bcaede5baf99e448bbf86288aa5bde221",
+      "png": "e1m8-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "762191851e1169bceeabd9c0bf2b405bcaede5baf99e448bbf86288aa5bde221"
+        }
+      ]
+    },
+    "e1m8-corridor-1": {
+      "kind": "iwad",
+      "script": "corridor sec7 elongated lit sector, end standoff on the long axis; stand: BSP sec7 L224 f0/c256 MFLR8_2/F_SKY1",
+      "viewpoint": {
+        "x": -464,
+        "y": 21,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "bc453160a85cbad4532eed934e12193e8966b062fb8176771bb67784cfd52df9",
+      "png": "e1m8-corridor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "bc453160a85cbad4532eed934e12193e8966b062fb8176771bb67784cfd52df9"
+        }
+      ]
+    },
+    "e1m8-exit": {
+      "kind": "iwad",
+      "script": "ln894 sp19 standoff perpendicular, facing the line; stand: BSP sec17 L224 f-16/c256 MFLR8_2/F_SKY1",
+      "viewpoint": {
+        "x": -124,
+        "y": 316,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "45656994302bca9f6360b1bc031a3b149e3a9c79138079aba1c153dd8b2fcac8",
+      "png": "e1m8-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "45656994302bca9f6360b1bc031a3b149e3a9c79138079aba1c153dd8b2fcac8"
+        }
+      ]
+    },
+    "e1m8-far-nook": {
+      "kind": "iwad",
+      "script": "sec39 centroid walk-back, argmax-contrast angle; stand: BSP sec39 L128 f0/c112 FLOOR7_2/FLOOR6_2",
+      "viewpoint": {
+        "x": 132,
+        "y": -1212,
+        "angleDeg": 45
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b1aa973c7dd57180d3d444b3778baf447b07fb67cd03796dd1389882779d0c48",
+      "png": "e1m8-far-nook.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "b1aa973c7dd57180d3d444b3778baf447b07fb67cd03796dd1389882779d0c48"
+        }
+      ]
+    },
+    "e1m8-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln868 sp31 standoff perpendicular, facing the line; stand: BSP sec93 L224 f24/c168 SLIME13/SLIME13",
+      "viewpoint": {
+        "x": 3232,
+        "y": -704,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "39ea55f41fd1ffeb8fcbf142354c3b3cb22b171210d3caf4cef4221356e6ea36",
+      "png": "e1m8-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "39ea55f41fd1ffeb8fcbf142354c3b3cb22b171210d3caf4cef4221356e6ea36"
+        }
+      ]
+    },
+    "e1m8-masked": {
+      "kind": "iwad",
+      "script": "ln20 midtex standoff perpendicular, facing the line; stand: BSP sec17 L224 f-16/c256 MFLR8_2/F_SKY1",
+      "viewpoint": {
+        "x": -139,
+        "y": -9,
+        "angleDeg": 336
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "20a3b85e1c9b749cf1de8f4bf4ec93e488c51849e219e01ba557387a18c404ec",
+      "png": "e1m8-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "20a3b85e1c9b749cf1de8f4bf4ec93e488c51849e219e01ba557387a18c404ec"
+        }
+      ]
+    },
+    "e1m8-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 636,
+      "indexSha256": "4d0c6caf175d359c213450d3033440ce5b4f0638ea820ec1236ec59889f2abb5",
+      "png": "e1m8-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "4d0c6caf175d359c213450d3033440ce5b4f0638ea820ec1236ec59889f2abb5"
+        }
+      ]
+    },
+    "e1m8-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec83 L224 f-136/c256 STEP1/F_SKY1",
+      "viewpoint": {
+        "x": 2464,
+        "y": 360,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "75a166df6743650945520b7cce93badee1677e3f2875dfc9f01c4702b17ba5b1",
+      "png": "e1m8-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "75a166df6743650945520b7cce93badee1677e3f2875dfc9f01c4702b17ba5b1"
+        }
+      ]
+    },
+    "e1m8-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec83 L224 f-136/c256 STEP1/F_SKY1",
+      "viewpoint": {
+        "x": 2464,
+        "y": 360,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7f07ad62cfbc4095f96ee914db64afa0b719cf634477f848b8bf8d609f9fdc6d",
+      "png": "e1m8-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7f07ad62cfbc4095f96ee914db64afa0b719cf634477f848b8bf8d609f9fdc6d"
+        }
+      ]
+    },
+    "e1m8-tall": {
+      "kind": "iwad",
+      "script": "sec32 centroid walk-back, argmax-contrast angle; stand: BSP sec32 L160 f-8/c200 CEIL5_2/FLOOR7_2",
+      "viewpoint": {
+        "x": 928,
+        "y": -1575,
+        "angleDeg": 135
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "529887a5abf15f9b2732a7fed0000c0c756a7ac54f2efa69f323c61bb9098c98",
+      "png": "e1m8-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "529887a5abf15f9b2732a7fed0000c0c756a7ac54f2efa69f323c61bb9098c98"
+        }
+      ]
+    },
+    "e1m9-bright": {
+      "kind": "iwad",
+      "script": "sec114 centroid walk-back, argmax-contrast angle; stand: BSP sec114 L240 f40/c168 FLOOR0_3/CEIL3_5",
+      "viewpoint": {
+        "x": 1634,
+        "y": 1826,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "7ed7755bcab802c070fa1ea19c1995daa6d0eceaab316e690c7df57908f19513",
+      "png": "e1m9-bright.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "7ed7755bcab802c070fa1ea19c1995daa6d0eceaab316e690c7df57908f19513"
+        }
+      ]
+    },
+    "e1m9-busy": {
+      "kind": "iwad",
+      "script": "sec264 n=23 centroid walk-back, argmax-contrast angle; stand: BSP sec264 L160 f112/c240 FLAT5/CEIL3_5",
+      "viewpoint": {
+        "x": -948,
+        "y": 3143,
+        "angleDeg": 315
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "4e27d9efbb156bb5e59e1e1cd79c5419c8cc66215aa5a1c6a144f85654805d59",
+      "png": "e1m9-busy.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "4e27d9efbb156bb5e59e1e1cd79c5419c8cc66215aa5a1c6a144f85654805d59"
+        }
+      ]
+    },
+    "e1m9-corridor-0": {
+      "kind": "iwad",
+      "script": "corridor sec60 elongated lit sector, end standoff on the long axis; stand: BSP sec60 L160 f-72/c208 FLAT5/F_SKY1",
+      "viewpoint": {
+        "x": -368,
+        "y": 1484,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "5ff60cf704b328197ab55d55a4f5929250523ebe46410b94fc6ac49d8869a371",
+      "png": "e1m9-corridor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "5ff60cf704b328197ab55d55a4f5929250523ebe46410b94fc6ac49d8869a371"
+        }
+      ]
+    },
+    "e1m9-door": {
+      "kind": "iwad",
+      "script": "ln344 sp1 standoff perpendicular, facing the line; stand: BSP sec106 L160 f-72/c184 FLAT5/CEIL3_5",
+      "viewpoint": {
+        "x": 928,
+        "y": 1536,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "e67f6c2aad15affa8c3d601937ef7b42bd8d1cf463f8db73615a758c5f048f46",
+      "png": "e1m9-door.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "e67f6c2aad15affa8c3d601937ef7b42bd8d1cf463f8db73615a758c5f048f46"
+        }
+      ]
+    },
+    "e1m9-exit": {
+      "kind": "iwad",
+      "script": "ln1662 sp11 standoff perpendicular, facing the line; stand: BSP sec59 L144 f-8/c136 FLOOR0_3/MFLR8_1",
+      "viewpoint": {
+        "x": 1312,
+        "y": 720,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "d004c10f558f014dc92401396ac3114a59a7f477ecb209e1003c706f48bd72c3",
+      "png": "e1m9-exit.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d004c10f558f014dc92401396ac3114a59a7f477ecb209e1003c706f48bd72c3"
+        }
+      ]
+    },
+    "e1m9-keydoor-0": {
+      "kind": "iwad",
+      "script": "ln46 sp31 standoff perpendicular, facing the line; stand: BSP sec19 L176 f-72/c184 FLAT10/CEIL3_3",
+      "viewpoint": {
+        "x": -416,
+        "y": 648,
+        "angleDeg": 270
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "d56cf46117ce096e627e6a33713378d85fd661e50d18ae8b716f52a43271caab",
+      "png": "e1m9-keydoor-0.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "d56cf46117ce096e627e6a33713378d85fd661e50d18ae8b716f52a43271caab"
+        }
+      ]
+    },
+    "e1m9-keydoor-1": {
+      "kind": "iwad",
+      "script": "ln87 sp31 standoff perpendicular, facing the line; stand: BSP sec10 L176 f-72/c56 FLAT10/CEIL3_3",
+      "viewpoint": {
+        "x": -416,
+        "y": 400,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "a2d275c3c675676b9b10eaec0bd7185f08dabd42c7f6583187b0a5b89e884f47",
+      "png": "e1m9-keydoor-1.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "a2d275c3c675676b9b10eaec0bd7185f08dabd42c7f6583187b0a5b89e884f47"
+        }
+      ]
+    },
+    "e1m9-lift": {
+      "kind": "iwad",
+      "script": "ln951 sp62 standoff perpendicular, facing the line; stand: BSP sec194 L160 f-104/c120 FLAT5/F_SKY1",
+      "viewpoint": {
+        "x": 1056,
+        "y": 3440,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "40160d6b70b223d71bdf62cca33496a381d2837fa7ee188508437a4e078e9cba",
+      "png": "e1m9-lift.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "40160d6b70b223d71bdf62cca33496a381d2837fa7ee188508437a4e078e9cba"
+        }
+      ]
+    },
+    "e1m9-masked": {
+      "kind": "iwad",
+      "script": "ln1 midtex standoff perpendicular, facing the line; stand: BSP sec1 L176 f-8/c104 FLAT5/CEIL3_3",
+      "viewpoint": {
+        "x": -352,
+        "y": -160,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "89e8c777a3f48127733cb15b932560a767ce224a3ca400419dce83c5d090310b",
+      "png": "e1m9-masked.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "89e8c777a3f48127733cb15b932560a767ce224a3ca400419dce83c5d090310b"
+        }
+      ]
+    },
+    "e1m9-montage": {
+      "kind": "montage",
+      "script": "montage: tiles the blessed scene buffers of this map",
+      "hom": 0,
+      "width": 1280,
+      "height": 844,
+      "indexSha256": "0e825c718f152026cfd6c3896c69e00063a2afd21b12317e71c9a03c090b6ad1",
+      "png": "e1m9-montage.png",
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "0e825c718f152026cfd6c3896c69e00063a2afd21b12317e71c9a03c090b6ad1"
+        }
+      ]
+    },
+    "e1m9-secret": {
+      "kind": "iwad",
+      "script": "ln883 sp103 standoff perpendicular, facing the line; stand: BSP sec163 L160 f120/c232 FLOOR0_5/CEIL3_5",
+      "viewpoint": {
+        "x": 8,
+        "y": 2960,
+        "angleDeg": 90
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "2b5edd4ba60f977a02f1cd542b3cf0815f498f892ddd2c10969dea4fa7491ec5",
+      "png": "e1m9-secret.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "2b5edd4ba60f977a02f1cd542b3cf0815f498f892ddd2c10969dea4fa7491ec5"
+        }
+      ]
+    },
+    "e1m9-spawn": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec2 L192 f-8/c104 FLAT5/CEIL3_4",
+      "viewpoint": {
+        "x": -216,
+        "y": -160,
+        "angleDeg": 180
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "363635eadc1272763bebd2209248fd6505d85a823d55193d6016872259b4e816",
+      "png": "e1m9-spawn.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "363635eadc1272763bebd2209248fd6505d85a823d55193d6016872259b4e816"
+        }
+      ]
+    },
+    "e1m9-spawn-alt": {
+      "kind": "iwad",
+      "script": "player1 start thing, designer angle; stand: BSP sec2 L192 f-8/c104 FLAT5/CEIL3_4",
+      "viewpoint": {
+        "x": -216,
+        "y": -160,
+        "angleDeg": 0
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "b0a26a2140a05361fcb4224e578e96ca7691998c1d85aff38a6b5df6c096adab",
+      "png": "e1m9-spawn-alt.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "b0a26a2140a05361fcb4224e578e96ca7691998c1d85aff38a6b5df6c096adab"
+        }
+      ]
+    },
+    "e1m9-tall": {
+      "kind": "iwad",
+      "script": "sec145 centroid walk-back, argmax-contrast angle; stand: BSP sec145 L176 f-96/c264 NUKAGE1/CEIL3_5",
+      "viewpoint": {
+        "x": 1203,
+        "y": 2328,
+        "angleDeg": 225
+      },
+      "hom": 0,
+      "width": 320,
+      "height": 200,
+      "indexSha256": "170bf632ba9f161a9b06f60aff31264239edcd3d164976c6377c05d64974b7b5",
+      "png": "e1m9-tall.png",
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M12-02 initial bless: 117 analytically-derived viewpoints x 9 E1 maps + 9 per-map montage sheets",
+          "at": "2026-09-23",
+          "indexSha256": "170bf632ba9f161a9b06f60aff31264239edcd3d164976c6377c05d64974b7b5"
+        }
+      ]
+    }
+  }
+}

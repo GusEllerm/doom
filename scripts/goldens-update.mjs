@@ -124,6 +124,19 @@ const SETS = {
     pipeline:
       'E1M1 gInitGame -> scripted player/wminfo state + tics (main.ts tic order) -> displayFrame D_Display composition (3D + crop + borders + ST bar + HU + WI/menu/finale drawers) x2-run byte-equal -> sha256(fb.indices), hom asserted 0 on every 3D frame'
   },
+  maps: {
+    // M12-02 L3 every-map corpus (plan §M12-02): tests/render/allMaps.test.ts
+    // — 9 E1 maps × >= 8 analytically-derived viewpoints (viewpointsAllMaps.ts,
+    // 117 scenes: spawn/key-door/exit/secret-door/tall/bright/busy/masked/
+    // door/lift/corridor families, BSP-verified standings) + ONE contact-sheet
+    // montage PER MAP (9 sheets, 4-col × scale-1 tiles of the blessed scene
+    // buffers, docs/reports/M12-montage.md). Every frame asserts hom == 0,
+    // all overflow counters == 0 and > 4 distinct colors. WAD-GATED (skipIf
+    // no wad — committed goldens untouched on skip).
+    testFile: join('tests', 'render', 'allMaps.test.ts'),
+    pipeline:
+      'freedoom1 E1Mx -> loadMap + world/view/sprites (bundle cache per map) -> gInitGame -> pTeleportMove warp (z=floorz) -> renderFrame x2 byte-equal -> sha256(indices), hom + visplane/vissprite/opening/drawseg overflow asserted 0 + non-single-color; per-map montage tiles the scene buffers (4 cols, scale 1, 5x7 labels)'
+  },
   audio: {
     // M10-10 L1 audio golden corpus (plan §M10-10): tests/audio/goldens.test.ts.
     // ARTIFACT CLASS DIFFERS from every visual set: the subject is an
