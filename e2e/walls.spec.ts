@@ -94,6 +94,52 @@ function captureStats(page: Page): Promise<CaptureStats> {
   });
 }
 
+/**
+ * M10-10 FLAKE FIX: state-predicate wait replacing the fixed 150 ms sleeps.
+ * The Tab toggle is EVENT-level: keydown → eventQueue → consumed in the
+ * NEXT stepTic (amResponder) → visible in the NEXT renderFrame. A sleep
+ * races that chain — the capture occasionally caught pre-toggle frames or
+ * half-applied overlay residue (the `overPainted > 0` flake).
+ *
+ * Predicate: two ADJACENT rAF polls hash equal (a settled screen — the
+ * same byte-determinism claim, now proven by the wait itself), plus:
+ *  - mode 'on'  : automap overlay pixels (WALLCOLORS 176..191 > 100 AND
+ *    WHITE 209 > 0) and the frame differs from `notHash` (the pre-Tab 3D
+ *    frame) — the overlay is on;
+ *  - mode 'off' : the frame differs from `notHash` (the overlay frame) —
+ *    the 3D pass repainted; overlay residue on painted pixels then stays
+ *    a genuine bug, not a timing artifact.
+ */
+async function waitSettled(
+  page: Page,
+  mode: 'any' | 'on' | 'off' = 'any',
+  notHash?: string
+): Promise<void> {
+  await page.waitForFunction(
+    ([m, bad]) => {
+      const cap = window.__doom!.capture();
+      let h = 2166136261 >>> 0;
+      let reds = 0;
+      let whites = 0;
+      for (let i = 0; i < cap.indices.length; i++) {
+        const v = cap.indices[i]!;
+        h = Math.imul(h ^ v, 16777619);
+        if (v >= 176 && v < 192) reds++;
+        else if (v === 209) whites++;
+      }
+      const hash = (h >>> 0).toString(16);
+      const store = window as unknown as Record<string, string | undefined>;
+      const settled = store.__wallsSettledHash === hash;
+      store.__wallsSettledHash = hash;
+      if (!settled || hash === bad) return false;
+      if (m === 'on') return reds > 100 && whites > 0;
+      return true;
+    },
+    [mode, notHash ?? null] as [string, string | null],
+    { timeout: 15_000 }
+  );
+}
+
 /** Live state().render COUNTERS (null while state() is not ready). The
  * B-07/B-08 sprite fingerprint field (state().render.sprites) is
  * deliberately excluded — this helper's contract is the five counters. */
@@ -187,7 +233,7 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
       if (!s.ready) throw new Error('state() not ready');
       window.__doom!.warp(s.player.x, s.player.y, 0, s.player.angleDeg);
     });
-    await page.waitForTimeout(150); // ≥ 5 frames at 60 Hz
+    await waitSettled(page); // settled at the pinned viewpoint (flake fix)
 
     const cap1 = await captureStats(page);
     const cap2 = await captureStats(page);
@@ -232,7 +278,9 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
     const preTab = await stashFrame(page, '__wallsPreTab');
     void preTab;
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(150);
+    // State predicate (was a 150 ms sleep): settled frame WITH overlay
+    // pixels, different from the pinned 3D frame — the automap is on.
+    await waitSettled(page, 'on', cap1.hash);
     const amCap = await captureStats(page);
     expect(amCap.hash, 'Tab must change the frame').not.toBe(cap1.hash);
     expect(amCap.reds, 'automap wall lines must be present when open').toBeGreaterThan(100);
@@ -240,7 +288,10 @@ test.describe('walls pipeline (M3-07 skeleton)', () => {
 
     // Tab closes: the 3D pass repaints every pixel it owns.
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(150);
+    // State predicate (was a 150 ms sleep): a settled frame that differs
+    // from the overlay frame — the close is CONSUMED and RENDERED before
+    // the diff below ever runs (the half-applied-overlay flake, gone).
+    await waitSettled(page, 'off', amCap.hash);
     const restore = await diffAgainstStashed(page, '__wallsPreTab');
     expect(
       restore.overPainted,
