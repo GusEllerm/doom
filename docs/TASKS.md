@@ -173,3 +173,7 @@ Future tasks will be added as architects decompose milestones.
 | ID | Title | Milestone | Deps | Status |
 |---|---|---|---|---|
 | M10-plan | Audio milestone plan | M10 | M9 | dispatched (agent a9dfef50) |
+| M10-01 | Audio context + buses | M10 | M9 | done (merged) |
+| M10-02 | S_sfx table + DS decode | M10 | M10-01 | dispatched (agent 89cc0f80) |
+| M10-03 | SMF decoder | M10 | — | dispatched (agent 370efdcb) |
+| M10-04..12 | (see docs/design/M10-plan.md) | M10 | waves | planned |
