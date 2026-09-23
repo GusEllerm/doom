@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "tsc --noEmit && eslint . && vitest run",
+    "check": "tsc --noEmit && eslint . && vitest run && node scripts/license-audit.mjs",
+    "license-audit": "node scripts/license-audit.mjs",
     "e2e": "playwright test",
     "goldens:update": "node scripts/goldens-update.mjs",
     "fetch-freedoom": "node scripts/freedoom/fetch.mjs"
