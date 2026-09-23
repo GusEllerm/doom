@@ -255,6 +255,17 @@ describe('pDemo — end/status lanes', () => {
     expect(demoFlow.playsDone).toBe(1);
   });
 
+  it('gReadDemoTiccmd: marker ⇒ cmd UNCHANGED (vanilla retention, :1493)', () => {
+    const s = boot();
+    const keep = { forwardmove: 42, sidemove: -7, angleturn: 512, buttons: 3 };
+    gDeferedPlayDemo(s, Uint8Array.of(110, 3, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, DEMOMARKER));
+    gTicker(s, emptyInput()); // drain arms playback; cmd 0 consumed
+    expect(demoPlaying()).toBe(true);
+    expect(gReadDemoTiccmd(s, keep)).toBe('end'); // marker at playP=13
+    expect(keep).toEqual({ forwardmove: 42, sidemove: -7, angleturn: 512, buttons: 3 });
+    gCheckDemoStatus(s);
+  });
+
   it("'q' stop: marker appended, bytes out via captureSink kind 'demo'", () => {
     const events: CaptureEvent[] = [];
     registerCaptureSink((e) => events.push(e));
