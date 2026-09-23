@@ -63,7 +63,20 @@
 //
 // ARENA ORDER: hashState walks the arena Map in insertion order, so the
 // snapshot pins the LIVE-entry order (arenaOrder) and restore rebuilds the
-// Map in exactly that order after the mobj/special respawns.
+// Map in exactly that order after the mobj/special respawns. The id
+// COUNTER (misc.nextId) is restored past every captured id — without it a
+// mid-run spawn would reuse a live reserved id and Map.set would silently
+// replace the thinker (observed: a restored door vanishing when a missile
+// claimed its id).
+//
+// MIRROR FIELDS: mobj flags return through pSetMobjFlags, not a bare
+// assignment — the grid-slot copy (links.flags) is what syncMobj hashes
+// (words[5]) and what PIT_CheckThing reads; a corpse's post-death flag
+// edit only survives restore through the mirror.
+//
+// MESSAGE: player->message is NOT archived — p_saveg.c:96 NULLs it in both
+// directions; our registered spawn-clear write site (pplayer.ts, the
+// hu_stuff census) leaves it empty identically.
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -914,8 +927,9 @@ export function restoreWorld(state: GameState, snap: SaveSnapshot): void {
   unarchiveSpecials(state, snap); // pass 4
   unarchivePlayers(state, snap.players); // re-apply after pplayer's clears
   // (P_UnArchiveThinkers binds player->mo; pSpawnPlayerFromStart clears
-  // viewheight/message/refire/extralight/psprites — the canonical values
-  // land AFTER, mirroring vanilla's memcpy-the-struct semantics.)
+  // viewheight/refire/extralight/psprites — the canonical values land
+  // AFTER, mirroring vanilla's memcpy-the-struct semantics; message
+  // stays cleared per the p_saveg.c:96 NULL rule.)
 
   // RNG tail (port deviation documented at the header — the reset already
   // ran inside gInitNew; the payload's captured indices land last).
