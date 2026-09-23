@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // core/constants.ts — shared constants named by ARCHITECTURE §2 / §2.5.
 // Source: tables.h, m_fixed.h, doomdef.h, p_maputl.c (linuxdoom-1.10, R03 §1,
 // R04 §4). Angle constants are BAM values written u32-safe: in C they are

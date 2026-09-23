@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // core/tables.ts — FINE_TRIG tables transcribed VERBATIM from id Software's
 // linuxdoom-1.10 tables.c (GPL release). The released file contains only the
 // finished data (the R_InitTrig generator is not in it), and closed-form

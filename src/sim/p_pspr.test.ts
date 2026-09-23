@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // sim/p_pspr.test.ts — M7-07 acceptance (docs/design/M7-plan.md §M7-07).
 // 1) raise/lower EXACTLY 16 tics + per-tic sy goldens (fist + pistol);
 // 2) ready-bob formulas re-derived vs player.bob streams;

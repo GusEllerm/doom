@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // sim/amon_sarg.ts — M8-08 Family B: Demon / Spectre / Lost Soul
 // (linuxdoom-1.10 p_enemy.c bodies + the p_map.c PIT skullfly branch +
 // the info.c S_SARG_ATK*/S_SKULL_ATK* rows). Mirror re-read THIS pass

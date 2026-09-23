@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // core/fixed.ts — exact 16.16 fixed-point + binary-angle helpers for int32-as-
 // number (ARCHITECTURE §2.5, ADR A-01; C originals m_fixed.c / tables.h).
 //

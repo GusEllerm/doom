@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // sim/p_ammo.test.ts — M7-05 acceptance (docs/design/M7-plan.md §M7-05).
 //  1) P_CheckAmmo ladder matrix: costs (BFG 40 / SSG 2 / rest 1), every
 //     rung incl. plasma/BFG gamemode gates, SSG shell>2 + commercial gate,
