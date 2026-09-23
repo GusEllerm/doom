@@ -427,3 +427,4 @@ Close-the-tab time travel: 10 save slots (+quick) through IndexedDB with a byte-
 11/12 — M12: full-episode hardening (every map, perf gate, scripted playthrough, release).
 - M12 plan dispatched (final milestone: 9-map viewpoint corpus, perf gate, soak marathon, production/PWA build, GPL-compliance audit, release v0.12.0).
 - M12 plan merged. Final-milestone truths: perf NEVER measured anywhere (p50<=8ms was aspirational — now measure-then-pin), 8/9 maps never fully exercised, no build/release pipeline exists. Wave 1 dispatched (census/soak/build; license-audit queued for first free slot).
+- M12-06 merged: shippable build (game-only dist, 182KB gz vs 500KB cap, debug seams verified ABSENT in production, playable off vite preview). NOTE: walls.spec double-render flake variant reproduced on CLEAN main — the 'killed' flake has an heir; file for wave-3 fix. M12-07 dispatched.
