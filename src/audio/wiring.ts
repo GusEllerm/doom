@@ -24,10 +24,31 @@
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-import type { LiveMusicFn, LiveSfxFn } from '../sim/hooks';
+import type { HookSlots, LiveMusicFn, LiveSfxFn, MusicKind } from '../sim/hooks';
 import { registerLiveMusic, registerLiveSfx } from '../sim/hooks';
+import { installPickupSfxBridge, installPsprSfxSlot } from '../sim/psound_stub';
 import { menuState } from '../ui/menu';
-import { ensureContext, platformState, testMuted } from './context';
+import {
+  busSet,
+  ensureContext,
+  getContext,
+  onContextBuilt,
+  platformState,
+  testMuted,
+  type BusSet,
+} from './context';
+import {
+  musicEventListener,
+  musicState,
+  musicTick,
+  setMusicHost,
+  setMusicLevelView,
+  setMusicWad,
+  sStopMusic,
+  type LevelView,
+  type MusicWadView,
+} from './musicSelect';
+import type { SynthContextLike } from './synth';
 import {
   musicBusGain,
   musicThermo,
@@ -252,6 +273,106 @@ export function audioWiringInstalled(): boolean {
   return installed;
 }
 
+/* ------------------------------------------------------------------ */
+/* M10-10-3: the ONE sfx-bridge install (main.ts / headless parity)    */
+/* ------------------------------------------------------------------ */
+
+/** The two reads the sfx-slot bridges need (GameState-shaped; leveltime is
+ * read LAZILY per emit, exactly like main.ts's `() => state.leveltime`). */
+export interface SfxBridgeView {
+  hooks: HookSlots;
+  leveltime: number;
+}
+
+/**
+ * THE sfx-bridge install (FINDING M10-10-3): the p_inter pickup tail + the
+ * ten p_pspr S_StartSound sites enqueue into the hook ring through EXACTLY
+ * this pair — main.ts (production boot), debug.ts (dev/test attach) and
+ * the headless scenario harnesses all call THIS function, so production
+ * and headless sfx logs come from identical code, not mirrored call
+ * sequences. Idempotent (slot REPLACE semantics, psound_stub).
+ */
+export function installSfxBridges(state: SfxBridgeView): void {
+  installPickupSfxBridge(state.hooks, () => state.leveltime);
+  installPsprSfxSlot(state.hooks, () => state.leveltime);
+}
+
+/* ------------------------------------------------------------------ */
+/* M10-10-A: the music composer install (the ONE production site)      */
+/* ------------------------------------------------------------------ */
+
+export interface MusicComposerOptions {
+  /** IWAD read-view for the `d_<song>` lump lookup (null ⇒ counted silence). */
+  wad: MusicWadView | null;
+  /** Episode/map read for the 'level' event (unset ⇒ the E1M1 default). */
+  levelView?: () => LevelView;
+}
+
+/** The most recent music event (the host-attach re-arm memo, §0.6). */
+let lastMusicEvent: { kind: MusicKind; loop: boolean } | null = null;
+let musicHostHooked = false;
+let musicPumpHandle = 0;
+
+const musicComposerConsumer: LiveMusicFn = (kind, loop, tic) => {
+  lastMusicEvent = { kind, loop };
+  musicEventListener(kind, loop, tic);
+};
+
+const musicComposerCensus = (): Partial<AudioCensus> => {
+  const m = musicState();
+  return { music: { lump: m.lump, playing: m.playing, paused: m.paused } };
+};
+
+/** Attach (or re-attach) the realtime host to the live context and re-arm
+ * the state-machine song the synth never had: the title event fires BEFORE
+ * the first gesture, so the already-started song must reach the synth, not
+ * just the census. */
+function attachMusicHost(buses: BusSet = busSet): void {
+  const context = getContext();
+  if (context === null) return;
+  const wasPlaying = musicState().playing;
+  setMusicHost({
+    context: context as unknown as SynthContextLike,
+    musicIn: buses.musicNode === undefined ? undefined : buses.musicNode(),
+  });
+  if (wasPlaying && lastMusicEvent !== null) {
+    sStopMusic(); // clear the same-song guard so the re-fire RESTARTS
+    musicEventListener(lastMusicEvent.kind, lastMusicEvent.loop, 0);
+  }
+}
+
+function musicPumpStep(): void {
+  musicTick(); // no player/host ⇒ 0 — the bare loop is a no-op
+  const r = raf();
+  musicPumpHandle = r !== null ? r(musicPumpStep) : 0;
+}
+
+/**
+ * The music composer install (FINDING M10-10-A): registers the M10-08
+ * selector as the wiring's music CONSUMER (through the dispatcher — never
+ * a direct registerLiveMusic, composer rule), the music half of the debug
+ * census, the wad/level read-views, and the lazily attached synth host
+ * (gesture-built context via onContextBuilt). A missing D_* lump is
+ * counted silence (warn-once, musicSelect §0.10) — zero console errors.
+ * Idempotent; main.ts's afterLoad is the production call site.
+ */
+export function installMusicComposer(options: MusicComposerOptions): void {
+  installAudioWiring(); // the ONE dispatcher owner (idempotent)
+  setMusicWad(options.wad);
+  if (options.levelView !== undefined) setMusicLevelView(options.levelView);
+  registerWiringMusicConsumer(musicComposerConsumer);
+  registerAudioCensus(musicComposerCensus);
+  if (!musicHostHooked) {
+    musicHostHooked = true;
+    onContextBuilt(attachMusicHost);
+  }
+  attachMusicHost(); // the context may ALREADY be live (late install)
+  if (musicPumpHandle === 0) {
+    const r = raf();
+    if (r !== null) musicPumpHandle = r(musicPumpStep); // SmfPlayer lookahead
+  }
+}
+
 /** Test seam: full detach of the wiring layer (volume state untouched —
  * volumes.resetVolumesToDefaults owns that). */
 export function __resetAudioWiring(): void {
@@ -269,6 +390,12 @@ export function __resetAudioWiring(): void {
   census = null;
   registerLiveSfx(null);
   registerLiveMusic(null);
+  if (musicPumpHandle !== 0 && typeof g.cancelAnimationFrame === 'function') {
+    g.cancelAnimationFrame(musicPumpHandle);
+  }
+  musicPumpHandle = 0;
+  musicHostHooked = false;
+  lastMusicEvent = null;
 }
 
 /* ------------------------------------------------------------------ */

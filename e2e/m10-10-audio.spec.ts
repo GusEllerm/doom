@@ -7,13 +7,12 @@
  *  2. the volume thermo alters the BUS GAIN observably: real F4 sound-menu
  *     keys move `state().audio.sfxVolume` AND `sfxBusGain` by the exact
  *     D-10d law (thermo*8/127);
- *  3. music starts on the title after interaction — RUNS AS AN EXPECTED
- *     FAILURE (FINDING M10-10-A): no production composer installs the M10-08
- *     music selector (`installMusicSelector`/`registerWiringMusicConsumer`/
- *     `setMusicWad` are referenced by NO src file outside musicSelect itself
- *     and its unit tests), so `state().audio.music` never leaves
- *     {lump:null, playing:false} in the browser. When the wiring lands,
- *     this spec flips to "unexpected pass" and the marker gets deleted.
+ *  3. music starts on the title after interaction — LIVE PASS since the
+ *     M10-10-A FIX: main.ts's afterLoad installs the M10-08 music selector
+ *     through the audio composer (`installMusicComposer` in wiring.ts —
+ *     selector-as-consumer + census + wad read-view + lazily attached
+ *     synth host), so `state().audio.music` leaves {lump:null,
+ *     playing:false} in the browser (D_INTRO on the title, per d_main.c:477).
  *
  * Headless chromium runs a REAL AudioContext (null sink) — nothing mocked;
  * the muted-boot contract of the older suites is unchanged (no setTestMute
@@ -183,16 +182,12 @@ test.describe('M10-10 audio pack (L1 offline corpus companion on the live page)'
   });
 
   test('music starts on the title after interaction', async ({ page }) => {
-    // FINDING M10-10-A (reported, NOT fixed — src is out of this task's
-    // ownership): the M10-08 music lifecycle exists and is unit-green, but
-    // NO production file installs it (musicEventListener is never attached
-    // as a wiring music consumer; registerAudioCensus never registers the
-    // music census). Until that lands, this MUST fail — kept as an
-    // expected-failure so the pack stays honest and the fix is obvious.
-    test.fail(
-      true,
-      'FINDING M10-10-A: no src composer installs musicSelect (grep registerWiringMusicConsumer src → only wiring.ts itself + tests); state().audio.music stays {lump:null, playing:false} in the browser',
-    );
+    // M10-10-A FIXED: main.ts's afterLoad calls installMusicComposer (the
+    // ONE production site) — the selector is attached as the wiring music
+    // consumer and the census registers, so the title attract's
+    // musicSlot('title') shows up as D_INTRO playing in state().audio.music
+    // (one-shot per d_main.c:477) once a real key unlocks the context and
+    // the composer attaches the synth host to the built graph.
     const errors = await boot(page);
     // A real key unlocks the context; the title attract already emitted
     // musicSlot('title') → with a selector installed the census must show

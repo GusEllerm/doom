@@ -65,7 +65,6 @@ import { wiDrawSnapshot, wiPeek } from './sim/wintermission';
 import { attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug, debugApi, debugSim, installDebugApi, screenRead } from './debug';
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
-import { installPickupSfxBridge, installPsprSfxSlot } from './sim/psound_stub';
 import { buildMapSprites, displayFrame, getFrameCounters, getSpritePassStats, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
 import { setViewSize } from './render/view';
 import { vInit } from './render/vvideo';
@@ -111,6 +110,7 @@ import { buildRenderMapView, type RenderMapView } from './render/view';
 import { initLightTables, type LightTables } from './render/lights';
 import { fetchWad, WadLoadError } from './platform/wadload';
 import { audioFrame, audioTick, installAudio } from './audio/sfxDriver';
+import { installMusicComposer, installSfxBridges } from './audio/wiring';
 import { loadMap } from './wad/mapdata';
 import { decodeColormap, decodePlaypal } from './wad/palettes';
 import { texturesFromWad } from './wad/texture';
@@ -583,12 +583,21 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // tail and p_pspr.c's ten S_StartSound(player->mo, …) lines) enqueue into
   // the M6-01 hook ring; M10 replaces the slot BODIES, never these call
   // sites (psound_stub.ts holds the complete site ledger for the audio port).
-  installPickupSfxBridge(state.hooks, () => state.leveltime);
-  installPsprSfxSlot(state.hooks, () => state.leveltime);
+  // M10-10-3: the install MOVED to the shared composer export — the headless
+  // harnesses (m10Scenarios) and debug.ts attach call the SAME function.
+  installSfxBridges(state);
   // M10-06 audio wiring: the ONE sfxDriver entry (live-sfx seam + UI sfx
   // clock + gesture gate + __doom.audio debug shape); the tic/frame halves
   // below are its only other touch points (plan §M10-06).
   installAudio(state, wad);
+  // M10-10-A (FINDING fix): the ONE production music install — the M10-08
+  // selector as the wiring's music consumer + the music census + the wad
+  // read-view + the lazily attached synth host (gesture-built context).
+  // A WAD without the D_* lumps degrades to counted silence, zero errors.
+  installMusicComposer({
+    wad,
+    levelView: () => ({ episode: state.gameepisode, map: state.gamemap }),
+  });
   const luts = new PaletteLuts(decodePlaypal(wad.readLumpByName('PLAYPAL')));
 
   // Render world built ONCE (M3-07): SoA tables + BSP view + wad light
