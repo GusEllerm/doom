@@ -1,0 +1,263 @@
+{
+  "schema": 1,
+  "generator": "scripts/goldens-update.mjs",
+  "set": "audio",
+  "pipeline": "scripted offline-mix scenes (createMixer/renderMix int law, exact-binary fixtures) + E1M1 2000-tic live-ledger firefight (IWAD-gated) + hand-built SMF songs through decodeSmf→planMusic→renderPlanOffline records; every scene double-run byte-equal, artifact = sha256(Int16 LE bytes) (+ `<name>.bin` where compact)",
+  "scenes": {
+    "m10-att-far-clipout": {
+      "kind": "fixture",
+      "script": "pistol @ dist 1100 (audible, faint) AND dshtgn @ dist 1300 (> S_CLIPPING_DIST ⇒ start returns false, :773-777 clip-out) — the band edge",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "63f81309",
+      "indexSha256": "27f37d8aed4b5d030ea7688fcabef1e0e3c52ab502054e3bf46721b8c7fa3cbd",
+      "bin": "m10-att-far-clipout.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "27f37d8aed4b5d030ea7688fcabef1e0e3c52ab502054e3bf46721b8c7fa3cbd"
+        }
+      ]
+    },
+    "m10-att-linear": {
+      "kind": "fixture",
+      "script": "pistol @ dist 600 (mid 160..1200) → linear falloff law :810-813 vs the near band",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "081f25bf",
+      "indexSha256": "fd342a8046a201a25c7d1f10e860db4d792b0776f3165086a78d23f901631b43",
+      "bin": "m10-att-linear.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "fd342a8046a201a25c7d1f10e860db4d792b0776f3165086a78d23f901631b43"
+        }
+      ]
+    },
+    "m10-att-map8-clip-exempt": {
+      "kind": "fixture",
+      "script": "gamemap 8: doropn @ 1300 (clip-out geometry) audible via the :800-808 15+ law + plpain @ 600 (same law, other branch)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "1a826639",
+      "indexSha256": "a783dcf3c905e024199396f58c25d4496a659640b159b50c4b1a63996615163c",
+      "bin": "m10-att-map8-clip-exempt.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "a783dcf3c905e024199396f58c25d4496a659640b159b50c4b1a63996615163c"
+        }
+      ]
+    },
+    "m10-att-near": {
+      "kind": "fixture",
+      "script": "pistol(id1) @ dist 128 (<S_CLOSE_DIST 160), origin 100, tic 1 → full snd_SfxVolume band (s_sound.c:796-799)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "76c287f3",
+      "indexSha256": "704a82a4e38f8d2829813f2cfd48a56ccb62a614934189ed8955d0b34df0f257",
+      "bin": "m10-att-near.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "704a82a4e38f8d2829813f2cfd48a56ccb62a614934189ed8955d0b34df0f257"
+        }
+      ]
+    },
+    "m10-e1m1-firefight": {
+      "kind": "iwad",
+      "script": "E1M1 gInitGame (freedoom1) → pistol start, held-fire 2000 tics (gTicker, real p_pspr/P_NoiseAlert) → live-sfx ledger (tic-stamped sfxSlot events, stable origin ids) + listener track → renderMix @ 8000 Hz; sha-only artifact (plan Int16-hash wording)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 8000,
+      "frames": 467315,
+      "mixHash": "020267d5",
+      "indexSha256": "737fc121b0b637faa02fc080d72240864520e7892b1a8f4af5e10290607bc220",
+      "bin": null,
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "737fc121b0b637faa02fc080d72240864520e7892b1a8f4af5e10290607bc220"
+        }
+      ]
+    },
+    "m10-iwad-music-census": {
+      "kind": "iwad",
+      "script": "freedoom1.wad D_* lumps (dir order, zero-size excluded) → per-lump name/size/sha256/OGG-magic record; the M10-08-corrected music-in-WAD golden (SMF decode N/A — OGG containers)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 1,
+      "frames": 900,
+      "mixHash": "1fbe518f",
+      "indexSha256": "d2c825e1062048be0d5965ee474da9eb88095df4eb3ae4d30899d676af9b495a",
+      "bin": null,
+      "wad": {
+        "file": "freedoom1.wad",
+        "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+      },
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "d2c825e1062048be0d5965ee474da9eb88095df4eb3ae4d30899d676af9b495a"
+        }
+      ]
+    },
+    "m10-loop-start-stop": {
+      "kind": "fixture",
+      "script": "renderScript: stnmov(origin 70) + plpain(origin 71) at tic 1; S_StopSound(origin 70/71) keys at tic 35 — hard cut mid-buffer (loop start/stop); engine == renderMix on stop-free scripts (asserted below)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "71c9e648",
+      "indexSha256": "c11686efd1fc9b55ea3f19c11f5b642841a6b97eeef49e5703c2b069d042ea0c",
+      "bin": "m10-loop-start-stop.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "c11686efd1fc9b55ea3f19c11f5b642841a6b97eeef49e5703c2b069d042ea0c"
+        }
+      ]
+    },
+    "m10-multisum-clamp": {
+      "kind": "fixture",
+      "script": "8 loud sources (ids 1,4,20,22,25,32,35,82; origins 50..57) at the listener — multi-source sum drives the clamp law (±0x7fff / −0x8000 asymmetry, i_sound.c:617-627; both extremes asserted below)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "e1f0a3dd",
+      "indexSha256": "9546b13c5b5ee16cd40e60d8e32df05c5b6ff0d6b52bc5970e0ba7879817ea32",
+      "bin": "m10-multisum-clamp.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "9546b13c5b5ee16cd40e60d8e32df05c5b6ff0d6b52bc5970e0ba7879817ea32"
+        }
+      ]
+    },
+    "m10-pan-sweep": {
+      "kind": "fixture",
+      "script": "listener angle keyframes 0/90/180/270° (tics 1/11/21/31) × four 512-unit sources (front doropn, left stnmov, rear plpain, right telept) → sep law 128−(FixedMul(S_STEREO_SWING,finesine)>>16) across all quadrants (:793)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "0cf8547c",
+      "indexSha256": "f3630ef3fba0f64fbc340b115b5ea2749637175ccc31624f13deeb3b4b3c9fa7",
+      "bin": "m10-pan-sweep.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "f3630ef3fba0f64fbc340b115b5ea2749637175ccc31624f13deeb3b4b3c9fa7"
+        }
+      ]
+    },
+    "m10-priority-kick": {
+      "kind": "fixture",
+      "script": "8× telept(prio 32, origins 10..17) fill the pool; tic 3 pistol(64) → S_getChannel finds no priority>=64 ⇒ Sorry-Charlie DROP (silence); tic 10 telept(origin 41) kicks the FIRST channel (prio 32>=32); tic 20 telept(origin 12) same-origin steal (s_sound.c:827-875)",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 22050,
+      "mixHash": "da688bf1",
+      "indexSha256": "8efc046632d07584db8ac61120420ca2c9b62b694e224b6253aef1cfdde67f77",
+      "bin": "m10-priority-kick.bin",
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "8efc046632d07584db8ac61120420ca2c9b62b694e224b6253aef1cfdde67f77"
+        }
+      ]
+    },
+    "m10-song-fanfare": {
+      "kind": "fixture",
+      "script": "hand-built SMF (smfBuild) → decodeSmf → planMusic → renderPlanOffline (1 cycle) @ 22050 Hz; canonical+plan+checksum record",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 59,
+      "mixHash": "81007a10",
+      "indexSha256": "ed41ec079709a576dea290fe2eaa8eee1c835cb580df705d556af30d41f3b2b3",
+      "bin": null,
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "ed41ec079709a576dea290fe2eaa8eee1c835cb580df705d556af30d41f3b2b3"
+        }
+      ]
+    },
+    "m10-song-loop2": {
+      "kind": "fixture",
+      "script": "hand-built SMF (smfBuild) → decodeSmf → planMusic → renderPlanOffline (2 cycles) @ 22050 Hz; canonical+plan+checksum record",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 59,
+      "mixHash": "0ba43e0d",
+      "indexSha256": "1b51ebde7bb82e9313368b4901d9c7f3855c678122c02575852cbea2c37fa460",
+      "bin": null,
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "1b51ebde7bb82e9313368b4901d9c7f3855c678122c02575852cbea2c37fa460"
+        }
+      ]
+    },
+    "m10-song-rock": {
+      "kind": "fixture",
+      "script": "hand-built SMF (smfBuild) → decodeSmf → planMusic → renderPlanOffline (1 cycle) @ 22050 Hz; canonical+plan+checksum record",
+      "format": "s16le-interleaved-stereo",
+      "sampleRate": 22050,
+      "frames": 59.5,
+      "mixHash": "effb1ac3",
+      "indexSha256": "9b0d815e55b00353e001ce2de360c162f22b3babc9995e6618bcf73d83582327",
+      "bin": null,
+      "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+      "updatedAt": "2026-09-23",
+      "history": [
+        {
+          "reason": "M10-10: initial audio golden corpus (offline-mix law scenes, E1M1 firefight ledger, SMF song records, IWAD music census)",
+          "at": "2026-09-23",
+          "indexSha256": "9b0d815e55b00353e001ce2de360c162f22b3babc9995e6618bcf73d83582327"
+        }
+      ]
+    }
+  }
+}
