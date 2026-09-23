@@ -189,7 +189,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`map-census: wrote ${out}`);
   }
   const lineMax = Math.max(...census.unions.lineSpecials);
-  const secMax = Math.max(...census.unions.sectorSpecials);
   console.log(`map-census: ${census.meta.maps} maps, ${census.meta.numLumps} lumps`);
   console.log(`  line-special union: ${census.unions.lineSpecials.length} ids (max ${lineMax})`);
   console.log(`  sector-special union: ${census.unions.sectorSpecials.join(',')}`);
