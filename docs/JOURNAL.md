@@ -280,3 +280,4 @@ EXIT GATE: check 141f/2812t, e2e 37x2 consecutive, goldens --check drift-free x5
 - M10-02 merged: all 123 SOUND lumps decode; Freedoom renamed 11 to FS-* (shareware-table names mapped). M10-04 (site swap -> typed event ledger) dispatched; SMF still running.
 - M10-03 merged (SMF exact, rational tempo math). Wave 2: mixer core (vanilla channel/attenuation) + GM synth dispatched.
 - M10-04 merged: sim has a voice — 41 sites emit typed {tic,sfx,source-pos} events; sim stream bit-identical (audio touches no PRNG — proven by unmoved hashes).
+- M10-07 merged (GM synth: 16ch/24-voice, 78-program table, rational tempo math, 3 goldens). M10-08 dispatched (music lifecycle + checksummed OGG fetch).

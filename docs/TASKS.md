@@ -179,4 +179,5 @@ Future tasks will be added as architects decompose milestones.
 | M10-04..12 | (see docs/design/M10-plan.md) | M10 | waves | planned |
 | M10-04 | 41-site swap + event ledger | M8 | M10-01/02 | done (merged) |
 | M10-05 | Mixer core | M10 | M10-01/02 | dispatched (agent f6645be6) |
-| M10-07 | GM synth + SMF player | M10 | M10-01/03 | dispatched (agent 0e27d457) |
+| M10-07 | GM synth + SMF player | M10 | M10-01/03 | done (merged) |
+| M10-08 | Music lifecycle + OGG fetch | M10 | M10-04/07 | dispatched (agent b528d677) |
