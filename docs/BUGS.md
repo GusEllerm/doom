@@ -31,3 +31,16 @@ Fixes: reference this ledger; update Status column with evidence per fix.
 Class note: harness (game.ts + scripted runTics) says combat+AI work; the REAL rAF/real-time browser path disagrees. All prior AI/combat specs use runTics/warp seams — none drive a genuine 35Hz rAF session with real input into monsters. Gap: **browser-live soak spec**.
 | B-09 | Turning left/right feels like gaining forward momentum | CLOSED: physics clean (mom-invariance theorems); rAF dx-batching fixed (per-tic apportionment, capture-time clamp) |
 | B-10 | Only ~1 enemy findable in E1M1 live; kill-door unopenable (user: "spawning outside the level"?) | NO DEFECT: browser census proves 32/32 spawn at WAD positions across all 5 skills; E1M1 hides most hostiles behind the blue-key route; kill-door needs 80% clears. Per-skill census specs added |
+
+## B-11 E1M2 blazing platform (tag 14, sector 124) never engages — OPEN (user-reported, ELEVATOR UNRESPONSIVE = PROGRESSION BLOCKER)
+
+Reported: E1M2 elevator doesn't respond, level can't be completed.
+
+Orchestrator triage (direct-dispatch probe, headless E1M2, deterministic):
+- Sector 124 (tag 14, floor=40, ceil=168, single tag14 sector) is a blazing DWUS lift.
+- Its trigger lines: 350 (sp 123, front 228 floor −16) and 1287 (sp 120, front 219 floor 48).
+- Lowest surrounding floor = −16 ⇒ vanilla EV_DoPlat(blazeDWUS) MUST go down to −16, high=40, wait 105 (p_plats.c blazeDWUS branch: low=FindLowestFloorSurrounding clamped; high=current).
+- Observed in our port: firing pCrossSpecialLine(350)/pUseSpecialLine(1287) directly → sector NEVER moves; after fire, lines.special[350] STILL 123 (cross-side clear not reached ⇒ dispatcher/EV path exits before creating the plat, or plat blocked/removed in same tic).
+- Registry table (specials-table.ts ids 120/121/122/123) route semantics need re-verification vs p_spec.c enclosing-function boundaries (use vs cross section) — 120 registered GR-cross in our table, 123 SR-use; verify W1/S1 assignments for the blaze family against the C switch sections (enclosing-function question OPEN: which function contains p_spec.c:929 case 120?).
+- Siblings that DO move: other blaze/ DWUS tags (5, 10-13) responded — the defect is tag/scenario-specific or the 120/123 dispatch route only.
+- Note: E1M1 census drives route sets; live player path apparently never crossed/used these two lines in any suite (M6 corpus covers types, not this map's instances).
