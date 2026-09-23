@@ -15,7 +15,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { browserName: 'chromium' }
+      use: { browserName: 'chromium' },
+      // M12-06: the production-build spec is the `build` project's only
+      // member — it runs vite build/preview inside the spec (Playwright
+      // 1.63 has no project-level webServer; a second ROOT webServer would
+      // build on every chromium run, disturbing them). Excluded here so
+      // the catch-all project doesn't double-run it against the dev server.
+      testIgnore: /build\.spec\.ts/
     },
     {
       // M10-11 (plan §M10-11): the UNMUTED audio profile. Deliberately NOT
@@ -47,6 +53,15 @@ export default defineConfig({
         }
       },
       testMatch: /m10-audio\.spec\.ts/
+    },
+    {
+      // M12-06 (plan §M12-06): production-build e2e — `vite build` +
+      // `vite preview` booted INSIDE the spec (see e2e/build.spec.ts header
+      // for why not a webServer entry); the root dev webServer is unused by
+      // this project (every navigation is an absolute preview URL).
+      name: 'build',
+      use: { browserName: 'chromium' },
+      testMatch: /build\.spec\.ts/
     }
   ],
   webServer: {
