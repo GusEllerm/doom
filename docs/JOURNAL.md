@@ -277,3 +277,4 @@ EXIT GATE: check 141f/2812t, e2e 37x2 consecutive, goldens --check drift-free x5
 - B-10 VERDICT: no defect — agent walked the real browser menu at all 5 skills; 32/32 E1M1 hostiles spawn at exact census positions (and a lore keep: menu skill is 0..4 straight through, bit=1<<(gameskill-1), no -1 anywhere). Per-skill census specs now permanent. 'Can't find them' = level design (blue-key interior holds the bulk); kill-door = 80% threshold.
 - Development resumed: M10 (audio) planning dispatched. Field-bug pipeline clear (B-01..10 all closed/no-defect).
 - M10-01 merged (buses + gesture unlock + renderMix). Wave 1b: sfx table/decode + SMF decoder dispatched.
+- M10-02 merged: all 123 SOUND lumps decode; Freedoom renamed 11 to FS-* (shareware-table names mapped). M10-04 (site swap -> typed event ledger) dispatched; SMF still running.
