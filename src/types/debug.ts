@@ -174,6 +174,37 @@ export interface DebugStateLive {
   /** M9-12 seam: raw flow flags of the live GameState (see
    * DebugScreenRead; pure reads, nothing hashed). */
   screen: DebugScreenRead;
+  /** M10-09 seam: the audio composer read-view (src/audio/wiring.ts
+   * audioWiringState — volumes/laws/context lifecycle + driver census).
+   * Always present once the module graph loads; never hashed. */
+  audio: DebugAudioRead;
+}
+
+/** M10-09: music lifecycle view (census registered by the M10-08 music
+ * driver; defaults until it registers — plan §M10-09 shape). */
+export interface DebugAudioMusic {
+  lump: string | null;
+  playing: boolean;
+  paused: boolean;
+}
+
+/** M10-09 `state().audio` (plan §M10-09 acceptance 3): thermos (0..15,
+ * m_misc.c:237-238), engine ints (0..127, D-10d `* 8`), live bus gains,
+ * the context.ts lifecycle state, and the driver census (activeVoices /
+ * missingLumps / music — zero until the drivers register their seam). */
+export interface DebugAudioRead {
+  sfxVolume: number;
+  musicVolume: number;
+  sfxInternal: number;
+  musicInternal: number;
+  sfxBusGain: number;
+  musicBusGain: number;
+  context: 'absent' | 'unbuilt' | 'suspended' | 'running';
+  muted: boolean;
+  wired: boolean;
+  activeVoices: number;
+  missingLumps: number;
+  music: DebugAudioMusic;
 }
 
 /** One monster view (M8-plan §M8-12 `state().mobjs` field list:

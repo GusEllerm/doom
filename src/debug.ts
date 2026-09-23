@@ -36,6 +36,12 @@ import { P_GiveWeapon } from './sim/p_inter_pickup';
 import { pPlayerDamage } from './sim/pplayer';
 import type { PsprFields } from './sim/p_pspr';
 import { emptyInput, type GameInput } from './sim/ticcmd';
+// M10-09: audio composer seam. debug.ts is a wiring ENDPOINT (eslint zones
+// leave src/ root unrestricted); the ui/menu import is TRANSITIVE via
+// wiring.ts (its read-only thermos pump), never direct here. main.ts owns
+// the production install (M10-06's installAudio site) — until that lands
+// this file installs the wiring for dev/test boots only.
+import { audioWiringState, installAudioWiring } from './audio/wiring';
 import type {
   CaptureResult,
   DebugGamestateName,
@@ -324,6 +330,9 @@ function liveSnapshot(state: GameState): DebugStateLive {
           sprites: renderSource.sprites ? renderSource.sprites() : UNATTACHED_COUNTERS.sprites,
         },
     screen: screenRead(state),
+    // M10-09 seam: live audio read-view (pure reads; pumps the menu thermos
+    // first so L4 volume moves are observable on the same read).
+    audio: audioWiringState(),
     hash: hashState(state)
   };
 }
@@ -489,5 +498,9 @@ declare global {
 export function installDebugApi(): void {
   const wantDebug = import.meta.env.DEV || new URLSearchParams(location.search).has('test');
   if (!wantDebug) return;
+  // M10-09: dev/test boots get the audio composer (gesture gate + rAF volume
+  // pump + live fan-out dispatcher) without waiting for main.ts's M10-06
+  // installAudio call. Idempotent + silent (plan acceptance 4).
+  installAudioWiring();
   window.__doom = debugApi;
 }

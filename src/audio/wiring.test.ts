@@ -18,6 +18,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { sfxSink, musicSlot } from '../sim/hooks';
+import { gInitGame } from '../sim/game';
+import { buildMapFromData } from '../sim/map';
+import { loadMap } from '../wad/mapdata';
+import { WadFile } from '../wad/wadfile';
+import { buildFixtureMapWad } from '../../tests/fixtures/mapBuilder';
+import { debugApi, debugSim } from '../debug';
+import type { DebugStateLive } from '../types/debug';
 import { mReset, SoundMenu, menuState } from '../ui/menu';
 import {
   __resetAudioContext,
@@ -302,5 +309,41 @@ describe('gesture gate (first key/click => ensureContext)', () => {
     const [master] = ctx.gains;
     expect(gainOf(master!.param)).toBe(1); // gesture unmute
     expect(target.types().sort()).toEqual(['keydown', 'pointerdown']);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* debug seam: state().audio (the L4 target — M10-11's spec rides this) */
+/* ------------------------------------------------------------------ */
+
+describe('state().audio (debug.ts wiring)', () => {
+  function attachMinimalState(): void {
+    const bytes = buildFixtureMapWad({
+      rooms: [{ x: 0, y: 0, w: 256, h: 256, lightLevel: 200 }],
+      things: [{ x: 64, y: 64, angle: 0, type: 1 }]
+    });
+    const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+    debugSim.attach(gInitGame(buildMapFromData(loadMap(WadFile.parse(buf), 'FIXMAP'))));
+  }
+
+  it('menu arrows move the thermo AND the bus gain within one state() read', () => {
+    attachMinimalState();
+    stepMenuThermo('sfx', 3); // two lefts + one right through mSfxVol
+    stepMenuThermo('music', 12);
+    const s = debugApi.state() as DebugStateLive;
+    expect(s.audio.sfxVolume).toBe(3);
+    expect(s.audio.sfxInternal).toBe(24); // D-10d *8
+    expect(s.audio.sfxBusGain).toBeCloseTo(24 / 127, 10);
+    expect(s.audio.musicVolume).toBe(12);
+    expect(s.audio.musicBusGain).toBeCloseTo((96 / 127) * MUSIC_TRIM, 10);
+    expect(s.audio.wired).toBe(false); // state() works even uninstalled
+    expect(s.audio.context).toBe('absent'); // node: nothing constructed
+    debugSim.detach();
+  });
+
+  it('pending shape (no attach) carries no audio key and never throws', () => {
+    debugSim.detach();
+    const s = debugApi.state();
+    expect(s.ready).toBe(false);
   });
 });
