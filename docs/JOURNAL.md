@@ -287,3 +287,4 @@ EXIT GATE: check 141f/2812t, e2e 37x2 consecutive, goldens --check drift-free x5
 - M10-10 (audio goldens + e2e + flake audit) dispatched — last test task before M10 exit.
 - M10-10 merged: audio corpus (8 offline mixes + E1M1 firefight golden + 3 SMF songs + WAD music census + integration + stream proofs; 3086 tests). FINDINGS: (A) production never installs the music composer — fix dispatched; (3) headless/test bridge parity gap — same fix; plus the walls.spec flake fix rides along (3x-consecutive green demanded).
 - M10 fix wave merged: music installs in production (composer via wiring), headless/browser bridge parity via one exported installer, walls.spec flake root-caused+fixed (3x green). BUGS follow-ups: 1 flake closed.
+- M10-11 dispatched (browser audio suite dual-profile + human playtest checklist + audio project). After it: M10-12 exit.
