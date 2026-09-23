@@ -339,3 +339,8 @@ pause-music is N/A-faithful (1.10's S_PauseSound site is dead code — the
 latch is ported, unwired by design, asserted openly not silently passed);
 volumes are session-only (persistence rides M11 saves). M10 CLOSED (12/12).
 NEXT: M11 persistence & options (A-10), then M12 hardening.
+
+
+## MILESTONE M10 COMPLETE — Sound and music
+The browser now hears 1993: all 41 sfx sites live through a vanilla-law mixer (8 channels, priority kicks, GG1 distance law, ±8/±16 pitch jitter from a zero-stream splitmix), per-level OGG music decoded from WAD D_* lumps, 0.5·(v/15)² bus curve with live menu thermos, dual-profile browser proof (silent-deterministic fleet + real playback), 13 audio goldens incl a 2000-tic firefight render, 3086 unit tests / 53 e2e / 7 golden sets. Process: the correction-chain lesson (orchestrator's own wrong 'fix' overturned by an agent's measurement) is now doctrine: verify claims against bytes, including mine.
+10/12 — remaining: M11 persistence (saves/bindings/cheats/demos), M12 full-episode hardening.
