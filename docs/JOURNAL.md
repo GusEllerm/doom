@@ -420,3 +420,8 @@ scripted playthroughs, release docs seed.
 ## MILESTONE M11 COMPLETE — Persistence & options
 The browser remembers: save → close tab → reopen → load — exact hash, 12100 sampled pixels, trajectory. Vanilla-header saves (DBP1 payload) on IndexedDB, 41-row default.cfg ≡ settings store applied pre-first-tick, the source-verified 1.10 cheat set live on real keys (folklore exorcised: no F2/F3 quicksave — F6/F9 exist; iddqd not idkdt; demoend leaves the level playable), byte-exact demos, and a persistence golden corpus that IS the fidelity matrix (save@T → cold hydrate → 300-tic equality). 3380 unit tests / 59 e2e / 7 golden sets. Two silent deaths (#10, #11), both salvaged GREEN — write-early doctrine remains undefeated.
 11/12 — remaining: M12 full-episode hardening, then Phase 4 audits.
+
+
+## MILESTONE M11 COMPLETE — Persistence & controls
+Close-the-tab time travel: 10 save slots (+quick) through IndexedDB with a byte-honest codec and cold-hydrate world identity (hash+pixels+trajectory across a REAL page reload); settings survive restarts (41-row cfg, fail-closed); demos record/replay byte-exact; cheats from the 1.10 bytes (iddqd et al, folklore executed). Salvage arc: two silent deaths (#10, #11) both recovered green from dead worktrees — protocol proven. 3380 tests / 59 e2e / 7 golden sets.
+11/12 — M12: full-episode hardening (every map, perf gate, scripted playthrough, release).
