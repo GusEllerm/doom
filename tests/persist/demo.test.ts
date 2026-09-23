@@ -61,15 +61,16 @@ describe('M11-08 demo×save interplay (plan-minimal)', () => {
     const bytes = demoBytes();
     expect(bytes).not.toBeNull();
     if (!bytes) return;
-    // Chain: gSaveGame before tic 1 ⇒ tic 1 PACKS the special buttons
-    // (the demo write sees them — game.ts order: pack → G_WriteDemoTiccmd)
-    // ⇒ tic 2's DECODE arms ga_savegame ⇒ tic 2 drains the capture.
-    const packed = bytes[DEMO_HEADER_SIZE + 1 * 4 + 3]!;
+    // Chain: gSaveGame BEFORE the loop ⇒ the FIRST tic (index 0) PACKS
+    // the special buttons (game.ts order: pack → G_WriteDemoTiccmd), the
+    // same tic’s DECODE arms ga_savegame ⇒ tic 1 drains the capture.
+    // Slot rides the vanilla BTS_SAVEMASK bits 2..4 (game.ts BTS_*).
+    const packed = bytes[DEMO_HEADER_SIZE + 0 * 4 + 3]!;
     expect(packed & 0x80).toBe(0x80); // BT_SPECIAL
     expect(packed & 0x03).toBe(2); // BTS_SAVEGAME (port encoding, game.ts BTS_*)
-    expect((packed & 0xf0) >> 4).toBe(saveSlot);
+    expect((packed & 0x1c) >> 2).toBe(saveSlot); // slot inside the 3-bit window
     // No other tic carries special buttons.
-    for (let t = 2; t < (bytes.length - DEMO_HEADER_SIZE - 1) / 4; t++) {
+    for (let t = 1; t < (bytes.length - DEMO_HEADER_SIZE - 1) / 4; t++) {
       expect(bytes[DEMO_HEADER_SIZE + t * 4 + 3]! & 0x80, `tic ${t}`).toBe(0);
     }
   });

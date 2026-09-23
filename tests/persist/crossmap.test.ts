@@ -23,14 +23,14 @@ import { initPlayerInventory } from '../../src/sim/p_inter_inventory';
 import { CF_GODMODE, CF_NOCLIP } from '../../src/sim/player';
 import { decodeSave, parsePayload } from '../../src/persist/codec';
 import type { SaveSnapshot } from '../../src/sim/pSaveg';
-import type { RuntimeMap } from '../../src/sim/map';
-import { bindStore, createCaptureHandler, flushWrites } from '../../src/ui/menuSaveLoad';
+import { bindStore, createCaptureHandler } from '../../src/ui/menuSaveLoad';
 import { registerCaptureSink } from '../../src/sim/hooks';
 import type { PersistStore } from '../../src/persist/store';
 import {
   bootCorpus,
   bootE1M1,
   corpusMap,
+  drainAsync,
   e1m1Map,
   hasWad,
   loadThroughBytes,
@@ -47,7 +47,10 @@ import {
   type LoaderFn
 } from '../fixtures/m11Scenarios';
 
-beforeEach(() => resetM11());
+beforeEach(async () => {
+  await drainAsync(); // settle bindStore/capture refreshes BEFORE nulling
+  resetM11();
+});
 
 const cont = (i: number) => ({
   ...walkIn(i),
@@ -130,6 +133,7 @@ describe('M11-08 cross-map: the map-name roll', () => {
     const b = bootE1M1();
     b.gamemap = 2; // stand-in for a rolled/live world on E1M2
     registerLoader((ep, map) => (ep === 1 && map === 1 ? e1m1Map() : corpusMap()));
+    gTicker(b, contE(0)); // WARM TIC (boot PST_REBORN latch, see above)
     await loadThroughBytes(b, store, 3);
     gTicker(b, contE(1)); // the load drain re-inits from the SNAPSHOT
     expect(b.gameepisode).toBe(1);
@@ -150,45 +154,51 @@ describe('M11-08 cross-map: the map-name roll', () => {
 
 describe('M11-08 save-timing sites', () => {
   it('save armed at the intermission edge: drain still lands next tic; leveltime frozen at the snapshot', async () => {
-    // The M9 intermission phase ticks OUTSIDE gTicker; the GS.INTERMISSION
-    // gTicker branch does NOT tick the level — so a save whose two chain
-    // tics ride with the gamestate staged away from LEVEL captures a
-    // FROZEN world: header leveltime == the arming tic (no +1), and the
-    // continuation aligns one tic EARLIER than the in-level pattern (the
-    // load-drain tic IS the first future tic).
+    // The M9 intermission phase ticks OUTSIDE gTicker; a save armed while
+    // the gamestate is staged away from LEVEL still drains NEXT tic — the
+    // frozen pack tic costs the world nothing (gametic only) and the
+    // SNAPSHOT (taken mid-drain, before that tic’s tick) carries the
+    // FROZEN leveltime: header == the arming tic, no +1.
     const a = bootCorpus();
     runIn(a, 60, walkIn);
     const store = await memStore();
     bindStoreForSave(store);
     gSaveGame(5, 'pre-wi');
-    a.gamestate = 1; // GS.INTERMISSION staged between arming and the chain…
-    gTicker(a, walkIn()); // …pack tic (world frozen — but does the flag)…
-    gTicker(a, walkIn()); // …drain+capture tic (still frozen)
-    await flushWrites();
-    a.gamestate = 0; // WI done, back to LEVEL
+    a.gamestate = 1; // GS.INTERMISSION staged between arming and the PACK tic…
+    gTicker(a, cont(0)); // …pack tic: world FROZEN (does the flag, no tick)
+    a.gamestate = 0; // WI ends before the drain tic — that one runs LEVEL
+    gTicker(a, cont(1)); // …drain+capture tic: snapshot precedes the tick
+    await drainAsync();
     const res = await store.loadGame(5);
     if (!res.ok) throw new Error('save did not land');
     const dec = decodeSave(res.value.bytes);
     if (!dec.ok) throw new Error('decode failed');
-    expect(dec.header.leveltime).toBe(60);
+    expect(dec.header.leveltime).toBe(60); // frozen at the ARMING tic: the
+    // pack tic did not tick the level; the capture precedes the drain tic
     expect(dec.header.map).toBe(1);
-    expect(a.leveltime).toBe(60); // world frozen during the two chain tics…
+    expect(a.leveltime).toBe(61); // frozen for the pack tic; the drain tic ticked
     expect(a.gamestate).toBe(0);
 
-    // A's future starts NOW (world at 61); B's drain tic is future #1…
+    // STANDARD matrix accounting (matrixRun): after the drain tic both
+    // worlds stand at leveltime 61 / gametic 62 — A ticked cont(0) frozen
+    // (gametic only) + cont(1) as the drain; B's load-drain gTicker is fed
+    // cont(1). Futures start at cont(2) on both sides.
     const ref: number[] = [];
     for (let k = 0; k < 6; k++) {
-      runIn(a, 50, (i) => cont(k * 50 + i));
+      runIn(a, 50, (i) => cont(2 + k * 50 + i));
       ref.push(hashState(a));
     }
     resetM11();
     const b = bootCorpus();
     registerLoader(corpusLoader);
+    gTicker(b, walkIn()); // WARM TIC: consumes the boot PST_REBORN latch
+    // (G_DoReborn would otherwise OVERWRITE the armed ga_loadgame with
+    // ga_loadlevel in the drain — matrixRun cells tick ≥1 before arming).
     await loadThroughBytes(b, store, 5);
-    gTicker(b, cont(0)); // restores the frozen snapshot, THEN ticks once
+    gTicker(b, cont(1)); // restores, THEN ticks — B’s drain tic == A’s
     const back: number[] = [];
     for (let k = 0; k < 6; k++) {
-      runIn(b, 50, (i) => cont(1 + k * 50 + i));
+      runIn(b, 50, (i) => cont(2 + k * 50 + i));
       back.push(hashState(b));
     }
     expect(back).toEqual(ref);
@@ -230,15 +240,17 @@ describe('M11-08(c) episode-progress facts through the payload', () => {
     p.cards[0] = 1;
     p.cards[4] = 1;
     p.powers[0] = 30; // powers[0] = PowerInvulnerability (p_inter_pickup.c domain)
-    a.totalkills = 11;
-    a.totalitems = 4;
+    a.mobjs.totalkills = 11; // g_game.c totals ride the P_SpawnMapThing
+    a.mobjs.totalitems = 4; // counters (p_mobj MobjRuntime), not GameState
     a.totalsecret = 1;
     a.secretcount = 1;
 
     const store = await memStore();
     const bytes = await saveThroughBytes(a, store, 6, 'tally');
 
-    // Payload face: the facts are ON the bytes (DBP1 JSON section).
+    // Payload face: the facts are ON the bytes (DBP1 JSON section). The
+    // snapshot world sits AFTER the pack tic (§0.3 chain accounting), so
+    // the invulnerability power has already ridden down by one (30→29).
     const dec = decodeSave(bytes);
     if (!dec.ok) throw new Error('decode failed');
     const pay = parsePayload(dec.payload);
@@ -248,7 +260,7 @@ describe('M11-08(c) episode-progress facts through the payload', () => {
     expect([jp.killcount, jp.itemcount, jp.secretcount, jp.cheats]).toEqual([
       7, 2, 1, CF_GODMODE | CF_NOCLIP
     ]);
-    expect([jp.cards[0], jp.cards[4], jp.powers[0]]).toEqual([1, 1, 30]);
+    expect([jp.cards[0], jp.cards[4], jp.powers[0]]).toEqual([1, 1, 29]);
     expect([json.misc.totalkills, json.misc.totalitems, json.misc.totalsecret, json.misc.secretcount]).toEqual([
       11, 4, 1, 1
     ]);
@@ -260,12 +272,13 @@ describe('M11-08(c) episode-progress facts through the payload', () => {
     await loadThroughBytes(b, store, 6);
     gTicker(b, walkIn()); // drain + one tic (invuln rides down by 1)
     const pb = b.players[0]!;
-    expect([pb.killcount, pb.itemcount, pb.secretcount, pb.cheats]).toEqual([
+    expect([pb.killcount, pb.itemcount, (b as GameState).secretcount, pb.cheats]).toEqual([
       7, 2, 1, CF_GODMODE | CF_NOCLIP
     ]);
     const inv = initPlayerInventory(attachPsprFields(pb));
-    expect([inv.cards[0], inv.cards[4], inv.powers[0]]).toEqual([1, 1, 29]);
-    expect([b.totalkills, b.totalitems, b.totalsecret, b.secretcount]).toEqual([11, 4, 1, 1]);
+    // snapshot rode in at 29; the drain tic’s own tick rides it to 28.
+    expect([inv.cards[0], inv.cards[4], inv.powers[0]]).toEqual([1, 1, 28]);
+    expect([b.mobjs.totalkills, b.mobjs.totalitems, b.totalsecret, b.secretcount]).toEqual([11, 4, 1, 1]);
     store.close();
   });
 });
@@ -284,7 +297,11 @@ describe('M11-08(d) load ⇒ RNG pins at the byte level', () => {
   it('fresh-boot save ⇒ restored stream ignores a 200-tic drifted world (bytes drive the reset stream)', async () => {
     const a = bootCorpus();
     const store = await memStore();
-    const bytes = await saveThroughBytes(a, store, 8, 'rng0');
+    // NOTE: the production chain carries the save slot through the
+    // vanilla 3-bit BTS_SAVEMASK channel (game.ts) — slots 8/9 ALIAS to
+    // 0/1 there (vanilla truth: SAVEGAMESLOTS were 6; see FINDINGS). The
+    // corpus stays inside the encodable 0..7 window.
+    const bytes = await saveThroughBytes(a, store, 5, 'rng0');
     const dec = decodeSave(bytes);
     if (!dec.ok) throw new Error('decode failed');
     const pay = parsePayload(dec.payload);
@@ -297,7 +314,7 @@ describe('M11-08(d) load ⇒ RNG pins at the byte level', () => {
     registerLoader(corpusLoader);
     runIn(b, 200, walkIn);
     expect(b.rng.prndindex).toBeGreaterThan(0);
-    await loadThroughBytes(b, store, 8);
+    await loadThroughBytes(b, store, 5);
     gTicker(b, walkIn()); // snapshot sits at boot+1 ⇒ b now at boot+2
 
     const d2 = bootCorpus(); // booted AFTER b finished ticking
@@ -319,14 +336,14 @@ describe('M11-08(d) load ⇒ RNG pins at the byte level', () => {
     const a = bootCorpus();
     runIn(a, 120, walkIn); // monster AI consumed P_Random
     const store = await memStore();
-    const bytes = await saveThroughBytes(a, store, 9, 'rngmid');
+    const bytes = await saveThroughBytes(a, store, 7, 'rngmid');
     expect(bytes.length).toBeGreaterThan(51);
 
     resetM11();
     const b = bootCorpus();
     registerLoader(corpusLoader);
     gTicker(b, walkIn()); // b lived 1 tic (drift) — rng now nonzero
-    await loadThroughBytes(b, store, 9);
+    await loadThroughBytes(b, store, 7);
     gTicker(b, walkIn()); // restore@121 + drain tic ⇒ b at 122
     const ref = bootCorpus(); // booted AFTER b ticked (world-bind rule)
     runIn(ref, 122, walkIn);

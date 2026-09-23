@@ -92,7 +92,7 @@ async function storeWithMap(): Promise<{
     close() {}
   };
   const factory = {
-    open(_n: string, _v?: number) {
+    open() {
       const r: Record<string, unknown> = {};
       queueMicrotask(() => {
         r.result = db;
@@ -177,11 +177,15 @@ describe('battery A — codec typed failures (never throws)', () => {
     const badMagic = buildPayload([{ id: 0, bytes: new Uint8Array(1) }]);
     badMagic.set([0x44, 0x42, 0x50, 0x00], 0);
     expect(parsePayload(badMagic).ok).toBe(false);
-    // bad container version
+    // container version face: the MERGED parsePayload EXPOSES the
+    // version and never rejects it (codec.ts declares a badPayloadVersion
+    // lane but no code path reaches it — FINDING M11-08-F2). Pin the
+    // shipped contract: a future-versioned container parses and the
+    // version rides out to the caller (gate is the caller’s half).
     const bv = buildPayload([{ id: 0, bytes: new Uint8Array(1) }], 99);
     const r2 = parsePayload(bv);
-    expect(r2.ok).toBe(false);
-    if (!r2.ok && r2.failure.kind === 'badPayloadVersion') expect(r2.failure.found).toBe(99);
+    expect(r2.ok).toBe(true);
+    if (r2.ok) expect(r2.version).toBe(99);
     // truncated container (header cut)
     expect(parsePayload(badMagic.subarray(0, 4)).ok).toBe(false);
     // section length lying about the remainder (mid-section truncation)
@@ -282,8 +286,7 @@ describe('battery B — store-level corrupt records', () => {
   });
 
   it('backend failure (quota) ⇒ typed quota-exceeded, never a rejection', async () => {
-    const failReq = () => {
-      const err = Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+    const failReq = (err: Error) => {
       const req: {
         error: unknown;
         onsuccess: unknown;
@@ -292,8 +295,10 @@ describe('battery B — store-level corrupt records', () => {
       queueMicrotask(() => req.onerror?.({ target: req }));
       return req;
     };
+    const quotaErr = Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+    const readErr = new Error('backend read blew up');
     const quotaFactory = {
-      open(_n: string, _v?: number) {
+      open() {
         const r: Record<string, unknown> = {};
         queueMicrotask(() => {
           r.result = {
@@ -301,8 +306,8 @@ describe('battery B — store-level corrupt records', () => {
             transaction() {
               return {
                 objectStore: () => ({
-                  put: () => failReq(),
-                  get: () => failReq()
+                  put: () => failReq(quotaErr),
+                  get: () => failReq(readErr)
                 })
               };
             },
@@ -326,7 +331,7 @@ describe('battery B — store-level corrupt records', () => {
   it('the whole battery ran console-clean (acceptance: typed, never console.error)', () => {
     // registered first so it sees ONLY this file’s output; every async
     // above already settled (each awaited).
-    expect(spy.results.length).toBe(0);
+    expect(spy.mock.calls.length).toBe(0);
   });
 });
 

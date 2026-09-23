@@ -43,15 +43,12 @@ import {
   registerGameFlowHooks,
   resetFlowStubHits,
   resetGameFlow,
-  resetSaveFlow,
-  saveFlow,
-  flowStubHits
+  resetSaveFlow
 } from '../../src/sim/game';
 import { hashState, type GameState } from '../../src/sim/state';
 import { emptyInput, type GameInput } from '../../src/sim/ticcmd';
 import type { SaveSnapshot } from '../../src/sim/pSaveg';
 import {
-  captureLog,
   registerCaptureSink,
   resetCaptureLog,
   resetGameactionLog,
@@ -342,7 +339,10 @@ export const SCENARIOS: readonly ScenarioSpec[] = [
     name: 'mover-started-at-save',
     setupTics: 25,
     setup: (s) => {
-      expect(evDoDoor(s, taggedLine(s), VL.open, 0)).toBeTruthy();
+      // merged evDoDoor takes (s, line, type) — no speed parameter (the
+      // VDOORSPEED constant lives inside pdoors; pSaveg.test.ts calls it
+      // 3-arg, mirrored here).
+      expect(evDoDoor(s, taggedLine(s), VL.open)).toBeTruthy();
     },
     settleTics: 0,
     input: walkIn
@@ -410,7 +410,12 @@ function req<T>(value: T): {
   onerror: ((ev: { target: { error?: unknown } }) => void) | null;
   onsuccess: ((ev: { target: { result?: T } }) => void) | null;
 } {
-  const r = { result: value, error: undefined as unknown, onerror: null, onsuccess: null };
+  const r: {
+    result?: T;
+    error: unknown;
+    onerror: ((ev: { target: { error?: unknown } }) => void) | null;
+    onsuccess: ((ev: { target: { result?: T } }) => void) | null;
+  } = { result: value, error: undefined, onerror: null, onsuccess: null };
   queueMicrotask(() => r.onsuccess?.({ target: r }));
   return r;
 }
@@ -457,8 +462,8 @@ export function sharedIdb(): SharedIdb {
     },
     close() {}
   };
-  return {
-    open(_name: string, _version?: number) {
+  const factory = {
+    open() {
       const r: {
         result?: unknown;
         error?: unknown;
@@ -474,6 +479,17 @@ export function sharedIdb(): SharedIdb {
       return r;
     }
   } as unknown as IDBFactory;
+  return { factory, saves: maps.get('saves')! };
+}
+
+/** Drain every fake-IDB microtask hop + the fire-and-forget label
+ * refreshes bindStore() queues, so a resetSaveLoad() in the NEXT test
+ * can never null the store mid-refresh (the unhandled-rejection lane).
+ * All fakes here are microtask-only ⇒ one macrotask tick settles all. */
+export async function drainAsync(): Promise<void> {
+  await flushWrites();
+  await new Promise((r) => setTimeout(r, 0));
+  await Promise.resolve();
 }
 
 export function memStore(): Promise<PersistStore> {
@@ -510,7 +526,7 @@ export async function saveThroughBytes(
   mountCapture(store);
   gSaveGame(slot, description);
   for (let i = 0; i < 2; i++) gTicker(s, drainIn(i));
-  await flushWrites();
+  await drainAsync();
   const res = await store.loadGame(slot);
   if (!res.ok) throw new Error(`saveThroughBytes: store miss slot ${slot}`);
   return res.value.bytes;
@@ -522,6 +538,7 @@ export async function saveThroughBytes(
 export async function loadThroughBytes(s: GameState, store: PersistStore, slot: number): Promise<void> {
   bindStore(store);
   const outcome = await loadSlot(s, slot);
+  await drainAsync();
   expect(outcome.action).toBe('clear-menus');
 }
 
@@ -574,7 +591,7 @@ export async function matrixRun(opts: {
   // Shared input cursor: the save chain consumes 0/1, futures 2.. on
   // BOTH worlds (same counter object ⇒ same stream by construction).
   let cursor = 0;
-  const stream = (_i: number): GameInput => opts.contInput(cursor++);
+  const stream = (): GameInput => opts.contInput(cursor++);
 
   const hashAtSave = hashState(opts.orig);
   const saveBytes = await saveThroughBytes(opts.orig, store, slot, 'm11', stream);
@@ -588,7 +605,9 @@ export async function matrixRun(opts: {
   // ---- world B: ONLY after A is done forever -------------------------
   resetM11();
   const b = opts.bootFresh();
-  registerGameFlowHooks({ levelLoader: opts.loader });
+  registerGameFlowHooks({
+    levelLoader: (_s: GameState, ep: number, map: number) => opts.loader(ep, map)
+  });
   if (opts.driftTics) runIn(b, opts.driftTics, walkIn);
 
   const storeB = opts.reload ? await reopenStore(factory) : store;
