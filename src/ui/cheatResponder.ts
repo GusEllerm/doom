@@ -58,6 +58,7 @@ import {
   cheatChoppers,
   cheatGod,
   cheatMypos,
+  setMessage,
   cheatNoclip,
   createCheatSeq,
   resolveClev,
@@ -158,11 +159,11 @@ export function cheatResponder(
   }
   // 'mus' cheat for changing music (:595)
   else if (chtCheckCheat(t.mus, k)) {
-    state.players[0]!.message = STSTR.MUS; // :600 — BEFORE GetParam (:602)
+    setMessage(state, STSTR.MUS); // :600 — BEFORE GetParam (:602)
     const param = chtGetParam(t.mus);
     const { song, nomus } = resolveMus(param);
     if (nomus) {
-      state.players[0]!.message = STSTR.NOMUS; // :610/:619
+      setMessage(state, STSTR.NOMUS); // :610/:619
       cheatSink('mus', param, tic);
     } else {
       sChangeMusic(song, true); // S_ChangeMusic(musnum, 1)
@@ -207,7 +208,7 @@ export function cheatResponder(
     const param = chtGetParam(t.clev);
     const target = resolveClev(param);
     if (target !== null) {
-      state.players[0]!.message = STSTR.CLEV; // :720
+      setMessage(state, STSTR.CLEV); // :720
       gDeferedInitNew(state, state.gameskill, target.epsd, target.map); // :721
       cheatSink('clev', param, tic);
     }

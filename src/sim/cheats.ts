@@ -205,6 +205,15 @@ export const STSTR = {
 const plr = (state: GameState) => state.players[0]!;
 const inv = (state: GameState) => state.players[0] as unknown as PickupPlayer;
 
+/** THE single player.message write site of the cheat layer (every STSTR_*
+ * write of st_stuff.c routes through here). Registered in
+ * ui/humessage.ts HU_WRITE_SITES at THIS line — if this file moves, update
+ * that row (the write-site census test re-derives the set from sources). */
+export function setMessage(state: GameState, s: string): void {
+  const p = state.players[0]!;
+  p.message = s;
+}
+
 /** st_stuff.c:549-563 — `iddqd`. */
 export function cheatGod(state: GameState): void {
   const p = plr(state);
@@ -215,9 +224,9 @@ export function cheatGod(state: GameState): void {
     // fixture stub carries no health field, so the write is duck-typed.
     if (p.mo) (p.mo as unknown as { health: number }).health = 100;
     p.health = 100;
-    p.message = STSTR.DQDON;
+    setMessage(state, STSTR.DQDON);
   } else {
-    p.message = STSTR.DQDOFF;
+    setMessage(state, STSTR.DQDOFF);
   }
 }
 
@@ -235,7 +244,7 @@ export function cheatArsenal(state: GameState, withKeys: boolean): void {
     const cards = (plr(state) as unknown as { cards: Int32Array }).cards;
     for (let i = 0; i < NUMCARDS; i++) cards[i] = 1;
   }
-  p.message = withKeys ? STSTR.KFAADDED : STSTR.FAADDED;
+  setMessage(state, withKeys ? STSTR.KFAADDED : STSTR.FAADDED);
 }
 
 /** st_stuff.c:625-633 — `idspispopd` / `idclip` (two sequences, one
@@ -246,10 +255,10 @@ export function cheatNoclip(state: GameState): void {
   p.cheats ^= CF_NOCLIP;
   if (p.cheats & CF_NOCLIP) {
     p.mo.flags |= MF_NOCLIP | MF_NOGRAVITY;
-    p.message = STSTR.NCON;
+    setMessage(state, STSTR.NCON);
   } else {
     p.mo.flags &= ~(MF_NOCLIP | MF_NOGRAVITY);
-    p.message = STSTR.NCOFF;
+    setMessage(state, STSTR.NCOFF);
   }
 }
 
@@ -261,13 +270,13 @@ export function cheatBehold(state: GameState, i: number): void {
   if (!p.powers[i]) P_GivePower(p, i);
   else if (i !== PW.pw_strength) p.powers[i] = 1;
   else p.powers[i] = 0;
-  p.message = STSTR.BEHOLDX;
+  setMessage(state, STSTR.BEHOLDX);
 }
 
 /** st_stuff.c:652-656 — bare `idbehold`: the hint message ONLY (no menu
  * exists in 1.10 despite the comment). */
 export function cheatBeholdMenu(state: GameState): void {
-  plr(state).message = STSTR.BEHOLD;
+  setMessage(state, STSTR.BEHOLD);
 }
 
 /** st_stuff.c:657-663 — `idchoppers`. Quirk kept: `powers[pw_invulnerability]
@@ -276,7 +285,7 @@ export function cheatChoppers(state: GameState): void {
   const p = inv(state);
   p.weaponowned[WP.wp_chainsaw] = 1;
   p.powers[PW.pw_invulnerability] = 1;
-  p.message = STSTR.CHOPPERS;
+  setMessage(state, STSTR.CHOPPERS);
 }
 
 /** st_stuff.c:664-673 — `idmypos`. sprintf("ang=0x%x;x,y=(0x%x,0x%x)") —
@@ -286,7 +295,10 @@ export function cheatChoppers(state: GameState): void {
 export function cheatMypos(state: GameState): void {
   const p = plr(state);
   const hex = (v: number) => (v >>> 0).toString(16);
-  p.message = `ang=0x${hex(p.mo.angle)};x,y=(0x${hex(p.mo.x)},0x${hex(p.mo.y)})`;
+  setMessage(
+    state,
+    `ang=0x${hex(p.mo.angle)};x,y=(0x${hex(p.mo.x)},0x${hex(p.mo.y)})`
+  );
 }
 
 /* ------------------------------------------------------------------ */

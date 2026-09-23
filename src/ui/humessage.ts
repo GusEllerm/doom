@@ -210,6 +210,7 @@ export const HU_WRITE_SITES: readonly HuWriteSite[] = [
   { file: 'src/sim/pplayer.ts', line: 367, writes: "'' (clear)", origin: 'G_PlayerReborn (g_game.c:800-831, the memset clears player->message; line drifted 365→367 at M9-08 reborn.ts split)' },
   { file: 'src/ui/menu.ts', line: 611, writes: "MSGON 'Messages ON' | MSGOFF 'Messages OFF' (literals)", origin: 'M_ChangeMessages (m_menu.c:979-990, F8); line drifted 534→611 at M11-03 save/load bodies' },
   { file: 'src/ui/menu.ts', line: 1311, writes: 'gammamsg[usegamma] (literal)', origin: 'F11 gamma cycle (m_menu.c:1766-1777); line drifted 1033→1311 at M11-03 save/load bodies' },
+  { file: 'src/sim/cheats.ts', line: 214, writes: "STSTR.* literals + idmypos sprintf line (ALL cheat messages, funnelled through setMessage)", origin: 'ST_Responder plyr->message writes (st_stuff.c:559/562/575/592/600/610/619/631/633/649/654/662/671/720) — M11-09' },
   { file: 'src/ui/humessage.ts', line: 0, writes: "'' (pop-clear, consumer side)", origin: 'HU_Ticker: plr->message = 0 (hu_stuff.c:525)' },
 ] as const;
 
