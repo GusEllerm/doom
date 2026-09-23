@@ -1,43 +1,45 @@
 # STATUS
 
 ## Current phase
-Phase 3, M9 COMPLETE (game flow & UI). Merged: T00, R01–R12, M1–M9 all tasks
+Phase 3, M10 COMPLETE (sound & music). Merged: T00, R01–R12, M1–M10 all tasks
 (plans + ledgers in docs/design, docs/TASKS.md).
 
-## M9 exit state (M9-13)
-- Gates: `npm run check` 141 files / 2812 tests green, `npm run e2e` 37 green
-  TWICE consecutive (boot-flip e2e adaptation held), goldens --check
-  drift-free on automap/walls/weapons/screens/m9 (+motion/mechanics
-  in-suite); mirror 62-.c re-verified. Full table + RE-BLESS LEDGER
-  (18 reasons, 7 sets, 91 scenes): docs/reports/M9-13-exit-sweep.md.
-- THE WHOLE LOOP: TITLEPIC → skill → play → menu (keys+mouse, D020) → exit →
-  WI tally/par → E1M2 → death→FAITHFUL level restart (D017 RETIRED) → F7 →
-  title (D021). e2e/m9-flow.spec.ts + 8 legacy specs enter play via the
-  deterministic m9-flow seams (M9-fix).
-- Production pixels: sb9 windowed default + borders, statusbar/face/HU live,
-  LIVE monsters (D018 FLIPPED). L5 pack: goldens/screens/m9-exit-montage.png
-  (18 blessed scenes tiled 3x6 — D016 review artifact of THIS exit).
-- PRNG final: FULL-SCOPE manifest (scanCallTree, whole src tree, both
-  streams) green; `st_face` = 1 M_Random/GS_LEVEL tic + WI +10/state-entry
-  pinned ON THE LIVE STREAM (tests/sim/m9prng.test.ts; M9-07 fresh-stream
-  timing asserts fixed — the §M9-13 callout was REAL).
-- D-list CLOSED: silent-M9 sfx 41 sites kept (D019), mouse-synth (D020),
-  title-as-quit-target (D021), ad-divert fidelity (D022), TITLEPIC-only
-  attract (D023).
-- FINDINGS rollup: intermission canvas is 320x240 (WI_STARTY=168); HU queue
-  drops NEWEST (M9-06); finale reveal = 250+3n tics and F_StartFinale is
-  SILENT (M9-10 — music slots are counters); face priority chain incl. the
-  aim-frame-0 idle draw + 17-tic straight-face clock (M9-05); par row gate
-  is `wbs->epsd < 3` (wi_stuff.c:1683-1686, re-measured at exit) — E1 under
-  the shareware policy ALWAYS shows the par row (wi-time-par golden); the
-  M9-07 journal line "par NEVER displayed in 1.10" is RETRACTED (true only
-  for epsd ≥ 3, unreachable under this policy);
-  secret exit ⇒ E1M9 unconditional.
+## M10 exit state (M10-12)
+- Gates (fresh at exit): `npm run check` 163 files / 3086 tests green (3
+  long-standing gated skips), `npm run e2e` **53 green**
+  (4 project-scoped skips: 3 unmuted specs under `chromium`, 1 muted spec
+  under `audio`, by design) — run twice consecutive at M10-11 per convention,
+  goldens `--check` drift-free on ALL sets: automap 5 / walls 31 / weapons 15
+  / screens 5 / m9 27 / **audio 13** (+motion/mechanics in-suite).
+  (/tmp source mirror has decayed to 1 file since M10 planning — mirror
+  re-check per the standing rule at next source-touching dispatch.) ZERO golden re-blesses the whole milestone (audio adds,
+  never mutates — plan §4-5 held).
+- THE BROWSER HAS SOUND: mixerCore (8-channel allocator, priority steal,
+  same-origin dedup, 1200/160/1040 attenuation, finesine sep + quadratic L/R
+  — spatial.ts/mixerCore.ts), sfxDriver → WebAudio nodes, GM synth + SMF
+  player + SMF-OGG-aware musicSelect. **41 silent-M9 sfx sites live IN
+  PLACE** (`sfxStub(` grep outside hooks.ts == 0; D019 CLOSED), and music is
+  **per-level** — `musicSlot('level', true)` at the P_SetupLevel tail
+  (game.ts:389, the ONE new sim-side call address) + title/intermission/
+  finale routed per s_sound.c §0.6.
+- Zero-stream regression PROVEN (D-10a CLOSED): mRandom call-tree == the M9
+  blessed manifest (no new keys; audio zone included), hook-log parity vs
+  muted boot — tests/audio/regression.test.ts.
+- Music source truth: the pinned WAD carries 41 BSD Freedoom **SMF** lumps
+  (MThd everywhere — the correction chain + orchestrator wrong-correction
+  lesson are banked in the DECISIONS.md corrections register). MUS stays
+  `musDecoder=false`; companion-OGG hook landed unused (zero pinned entries).
+- Volumes (L4): thermo ⇒ internal `*8` (D-10d) ⇒ bus gains, e2e-proven by
+  the law; 0 ⇒ silent graph. Session-only — persistence rides M11 saves.
+- D-10a..f all CLOSED-IMPLEMENTED (DECISIONS.md). Playtest checklist
+  (docs/reports/M10-playtest.md) issued; the HUMAN ear session is the one
+  exit item still open (D016-style sign-off pending).
 
 ## Next actions
-1. M10 planning (audio: SFX bodies at the 41 kept sites + SMF synth A-03) —
-   carry-overs in ROADMAP 'M10 preview'.
-2. Orchestrator: merge task/M9-13-exit, re-run the full gate on main.
+1. Human M10 playtest session (checklist sign-off; MUSIC_TRIM +
+   audible-distance are the two tunables it exists for).
+2. M11 planning (persistence A-10, bindings/cheats, volume persistence,
+   pause-latch wiring) — carry-overs in ROADMAP 'M11 preview'.
 
 ## Environment quirks
 - git via /Library/Developer/CommandLineTools/usr/bin/git until Xcode license accepted by user (D007).

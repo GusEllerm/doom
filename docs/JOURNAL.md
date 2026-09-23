@@ -288,3 +288,54 @@ EXIT GATE: check 141f/2812t, e2e 37x2 consecutive, goldens --check drift-free x5
 - M10-10 merged: audio corpus (8 offline mixes + E1M1 firefight golden + 3 SMF songs + WAD music census + integration + stream proofs; 3086 tests). FINDINGS: (A) production never installs the music composer — fix dispatched; (3) headless/test bridge parity gap — same fix; plus the walls.spec flake fix rides along (3x-consecutive green demanded).
 - M10 fix wave merged: music installs in production (composer via wiring), headless/browser bridge parity via one exported installer, walls.spec flake root-caused+fixed (3x green). BUGS follow-ups: 1 flake closed.
 - M10-11 dispatched (browser audio suite dual-profile + human playtest checklist + audio project). After it: M10-12 exit.
+
+## 2026-09-23 — 🏁 M10 COMPLETE (sound & music) — exit sweep M10-12
+THE STORY: waves 1-4 landed 01→11 as planned (context/buses/volumes → sfx
+table + DS decode + SMF decoder → 41-site body swap → mixer core + GM synth →
+driver + music lifecycle + options wiring → goldens + dual-profile e2e), and
+the product now HAS a voice and a soundtrack: pistol shots mix through an
+8-channel vanilla allocator (priority steal, same-origin dedup, 1200/160/1040
+attenuation, finesine sep + quadratic L/R), music is per-level via ONE new sim
+call site (musicSlot at the P_SetupLevel tail) plus title/intermission/finale
+routing, and the SoundDef thermos move REAL bus gains through the restored
+*8 law. Exit gates fresh on this sweep: check 163f/3086t (3 gated skips),
+e2e 53 green (4 project-scoped skips; x2 consecutive held from M10-11),
+goldens --check drift-free on automap 5 / walls 31 / weapons 15 / screens 5 /
+m9 27 / **audio 13** — and ZERO golden re-blesses the whole milestone: audio
+touched no stream, no frame, no hash (D-10a proof: tests/audio/regression
+.test.ts (a) mRandom call-tree == M9 blessed manifest, zero new keys — the
+splitmix sound-owned jitter bought the entire milestone's zero-regression
+record).
+THE CORRECTION CHAIN (the milestone's best lesson, three links): plan §0.10
+audited the pinned WAD and found 41 SMF music lumps → at the M10-08 merge
+turn I "corrected" the plan claiming the WAD had ZERO music and pivoted the
+task to companion-OGG fetches (the §0.x stamp) → the implementer MEASURED:
+the 41 lumps ARE there — the plan was right, MY CORRECTION WAS WRONG, and the
+agent that checked bytes instead of trusting the orchestrator was right.
+Exit-time byte re-check: D_E1M1/D_INTER/D_VICTOR/D_BUNNY all start `MThd` —
+SMF everywhere, zero MUS, zero OGG (my earlier journal line's "embedded OGG,
+OGGVORB" parenthetical was itself a wording slip, corrected here — provenance
+of both readings preserved deliberately). Residue is healthy: the OGG fetch
+machinery stands as an unused no-op (musicSelect setOggSource precedence hook,
+zero pinned entries), MUS stays flag-off. RULE BANKED: an orchestration-level
+"correction" is a CLAIM, not a fact — it needs the same measurement discipline
+as an implementer's, and briefs must never force an agent to implement a
+leader's unverified truth.
+OTHER M10 TRUTHS: the m_musicvol no-op premise died at M10-09 (both SoundDef
+thermos are REAL live rows in 1.10, defaults 8/8 — wired, not decorative);
+the 41-site silent-M9 ledger proved EXACTLY complete — the swap touched zero
+sites beyond it (`sfxStub(` outside hooks.ts == 0), the one promise D019 made.
+BUGS FOUND + FIXED this milestone: (1) M10-10-A install gap — production never
+installed the music composer (tests passed, browser was silent; fixed in the
+M10-fix wave via wiring, with the headless/browser bridge-parity gap closed by
+ONE exported installer both paths use — a composer-shaped hole, and the
+same class as B-07's silent-fallback lesson: installers must be asserted from
+the PRODUCTION entry point); (2) the walls.spec Tab-overlay flake — pre-existing
+(verified on baseline, not driver-caused), root-caused and killed, 3x
+consecutive green demanded; (3) zero-stream regressions: none (proven, above).
+OPEN AT EXIT: the human ear session (docs/reports/M10-playtest.md unsigned —
+the two tunables it exists for: MUSIC_TRIM 0.5 and the audible-distance feel);
+pause-music is N/A-faithful (1.10's S_PauseSound site is dead code — the
+latch is ported, unwired by design, asserted openly not silently passed);
+volumes are session-only (persistence rides M11 saves). M10 CLOSED (12/12).
+NEXT: M11 persistence & options (A-10), then M12 hardening.
