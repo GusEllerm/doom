@@ -15,6 +15,8 @@
  * counters getter) that main.ts wires from render/solidsegs; capture()
  * copies the real framebuffer and state().render.hom is live (no more −1
  * stub once attached; −1 remains the pre-boot value).
+ * M11-10 (this file): ADDITIVE persistence seams — state().persist snapshot
+ * + save/load/demo/persist command surface. WIP stub (composer lands in main.ts).
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { runHeadless, GS } from './sim/game';

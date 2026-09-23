@@ -26,6 +26,8 @@
  * sim↔render bridge: it hands render's structural read-view interfaces the
  * real sim/amMap + sim/map + sim/player objects. They satisfy the shapes by
  * construction and the typecheck HERE is the enforcement point (A-INT1).
+ * M11-10: persistence boot composer — settings hydrate before first tick,
+ * store-backed captureSink mount, cheat responder slot. WIP stub.
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import { createKeyboardInput } from './input/keyboard';
