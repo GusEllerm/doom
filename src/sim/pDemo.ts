@@ -245,10 +245,11 @@ export function gWriteDemoTiccmd(state: GameState, cmd: Ticcmd): WriteOutcome {
   b[recordP++] = cmd.sidemove & 0xff; // :1520
   b[recordP++] = ((cmd.angleturn + 128) >> 8) & 0xff; // :1521
   b[recordP++] = cmd.buttons & 0xff; // :1522
-  // demo_p -= 4; G_ReadDemoTiccmd(cmd);  — the trick, inlined (the re-read
-  // advances the SAME 4, net 4/tic). state is unused on this path but the
-  // signature mirrors the read side (call-site symmetry in game.ts).
+  // demo_p -= 4; G_ReadDemoTiccmd(cmd);  — the trick, inlined: REWIND 4,
+  // the re-read advances the SAME 4 again (net stays 4/tic). state is
+  // unused on this path but the signature mirrors the read side.
   void state;
+  recordP -= 4;
   demoBytesInto(cmd, b, () => recordP++);
   return 'ok';
 }
