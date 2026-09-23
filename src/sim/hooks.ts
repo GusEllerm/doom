@@ -424,8 +424,9 @@ export function musicSlot(kind: MusicKind, loop: boolean): void {
 export const SFX_UI_SITE_LEDGER: Readonly<Record<string, { sfx: number; music: number }>> = {
   // m_menu.c's S_StartSound sites (30 textual; our quit sites collapse
   // the quitsounds[] pair, the read-this arms share M_ReadThis routines)
-  // ⇒ 28 emit statements after M9-05/M9-06 transcription.
-  'menu.ts': { sfx: 28, music: 0 },
+  // ⇒ 27 EMIT statements (the exit-sweep D-list line "menu.ts 28" is the
+  // TEXTUAL grep, which also counted the old D-0xx header comment line).
+  'menu.ts': { sfx: 27, music: 0 },
   // wi_stuff.c: the 10 sfx_barexp/pistol/sgcock tally sites + the ONE
   // S_ChangeMusic(mus_inter,true) site (:1509-1514).
   'wintermission.ts': { sfx: 10, music: 1 },
