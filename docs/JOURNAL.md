@@ -346,3 +346,4 @@ The browser now hears 1993: all 41 sfx sites live through a vanilla-law mixer (8
 10/12 — remaining: M11 persistence (saves/bindings/cheats/demos), M12 full-episode hardening.
 NOTE: /tmp mirror self-healed by plan agent (was gutted by OS temp cleanup); 62-file gate re-verified.
 - M11 plan merged. Wave 1 dispatched: IDB store (graceful-degradation model), savegame codec (version-110 header faithful, structured payload decision), pSaveg capture/restore (the milestone's hardest: save@T->restore->500 tics == original T..T+500 hashes). NOTE: OS temp-cleanup had gutted the /tmp mirror; plan agent restored it (62-file gate doctrine caught it).
+- M11-01/02 merged (persist zone live: IDB+fallback+codec). Wave 2 held until M11-04 (capture/restore) lands — hooks.ts conflict discipline.
