@@ -351,3 +351,4 @@ NOTE: /tmp mirror self-healed by plan agent (was gutted by OS temp cleanup); 62-
 - M11-06 merged (demo golden: recorded bytes literal-asserted, replay hashes match live run; TRUTH: demo end leaves level PLAYABLE — 1.10's real site, not the folklore exit-to-title). M11-05 dispatched.
 - M11-03 merged (61 tests): save rows/editor/binds-data. TRUTH: 1.10 has NO F2/F3 quicksave and NO bind menu (cited absences — defaults table is the whole story). M11-07 dispatched.
 - M11-09 merged (59 cheat tests): 1.10 inventory from d_main/am_map/st_stuff — iddqd (not idkdt!), idchoppers, idmus ep+map PAIR; non-existent codes tested to do NOTHING; typed-stream matcher with source-accurate reset.
+- M11-05 merged (24 tests): slot UI + glue; save→codec→store→fresh-hydrate→load→world-identity proven at sim level.
