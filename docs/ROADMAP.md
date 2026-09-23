@@ -18,7 +18,7 @@ Refined by the Phase-2 architect; per-milestone leaf plans live in docs/design/M
 | M8 | Monsters (+ DEHACKED fullbright task, A-02) | Full Phase-1 roster from state tables; wake on sight/sound, melee/missile, pain/death/gib, infighting, barrels — L2 per-family fixtures + random-site counts; L5 death-state screenshot review | M7 | [x] |
 | M9 | Game flow & UI | Title→skill→play→exit→intermission tally→next map→end screen (all original/Freedoom text); menus keyboard+mouse operable (L4 real clicks/keys, zero console errors); status bar + face + messages (L3 goldens) | M7 | [x] |
 | M10 | Audio (SMF synth task per A-03; MUS behind flag) | SFX with priority/attenuation/panning (L1 mixer unit tests + offline-mix golden buffers); SMF music plays in e2e without console errors; volume settings take effect (L4) | M9 (any sim≥M7) | [x] |
-| M11 | Persistence & options (IndexedDB task per A-10) | F6/F9 + menu save/load round-trip in browser: `state().hash` equals pre-save (L4 in-browser IDB test); bindings/sensitivity/volumes persisted across reload; raw-buffer serialize/deserialize L1 goldens | M9 | [ ] |
+| M11 | Persistence & options (IndexedDB task per A-10) | F6/F9 + menu save/load round-trip in browser: `state().hash` equals pre-save (L4 in-browser IDB test); bindings/sensitivity/volumes persisted across reload; raw-buffer serialize/deserialize L1 goldens | M9 | [x] |
 | M12 | Full-episode hardening | Every Freedoom P1 map loads + renders at ≥8 sampled viewpoints with HOM=0 and no single-color/anomaly flags (L3 corpus); reachable exit per map (L2/L4 route); scripted playthrough of E1M1 + one map per episode (L4); perf log: 35 Hz sim + 60 fps on mid-range laptop | M1–M11 | [ ] |
 | P4 | Fidelity audits (see below) | ≥2 audit rounds; final round with zero high-severity findings; playtest sweep report clean | M12 | [ ] |
 | P5 | Release + stretch | DONE_REPORT.md maps every §3 criterion to evidence; README; then stretch milestones below | P4 | [ ] |
@@ -37,6 +37,35 @@ firefight golden drift-free; the 41-site silent-M9 ledger swapped IN PLACE
 title / intermission / finale in e2e with zero console errors ×2; volume
 thermos move the real bus gains (L4, D-10d law). D-10a..f closed;
 corrections register in DECISIONS.md.
+
+## M11 — CLOSED (M11-12 exit sweep green; see STATUS "M11 exit state" + DECISIONS D-11a..g)
+Every exit criterion landed: menu save/load + F6/F9 across a REAL page reload
+with exact `state().hash` + pixel + trajectory identity (e2e money shot); the
+vanilla-header `DBP1` codec + 12-scene raw-buffer golden corpus; the
+default.cfg ≡ IndexedDB settings store (volumes/binds/sensitivity applied
+PRE-first-tick across reloads); demo record→replay hash identity (no checksum,
+like vanilla); the full source-verified 1.10 cheat set live on the real page
+(idmus slot consumed); attract unchanged (D023 reaffirmed). Two silent-death
+salvages (#10 M11-08, #11 M11-11) both closed green.
+
+## M12 preview (post-M11 carry-overs the exit sweep recorded)
+- **Every-map render corpus (THE milestone):** every Freedoom Phase 1 map
+  loaded + rendered at ≥8 sampled viewpoints, HOM == 0, no single-color /
+  anomaly flags (L3); per-map structural audits (subsector/blockmap sanity).
+- **Reachable exit per map** (L2/L4 scripted route) + scripted playthrough of
+  E1M1 and one map per episode in the browser (L4).
+- **Perf gate:** profiled log — 35 Hz sim + 60 fps on a mid-range laptop over
+  the heaviest P1 maps (budget < 8 ms/frame, logged in JOURNAL).
+- **Release docs seed:** README + evidence skeleton that P5's DONE_REPORT
+  grows from.
+- **Carried, still deferred (counted, none new-console):** chat sfx +
+  `HU_dequeueChatChar` (netgame-only input; singleplayer never reaches it);
+  bind-menu UI (D-11d, 1.9 feature with no 1.10 truth); netgame save
+  semantics + `M_EndGame` confirm variants; user-demo ATTRACT playback
+  (D023/ROADMAP stretch — the bytes machinery already exists); pause
+  affordance (latch ported, unwired by design); the human-ears M10 playtest
+  and the human-hands M11 playtest checklists (docs/reports/) want sign-off
+  sessions — they exist precisely for the two things automation cannot see.
 
 ## M11 preview (post-M10 carry-overs the exit sweep recorded)
 - **Persistence (A-10)**: F6/F9 + menu save/load round-trip in browser

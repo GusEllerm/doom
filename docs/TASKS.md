@@ -186,3 +186,21 @@ Future tasks will be added as architects decompose milestones.
 | M10-10 | Audio golden corpus + zero-stream proofs | M10 | 05/06/07/08 | done (merged, 13 audio scenes + regression proofs; findings fixed in M10-fix wave: production music composer + bridge-parity installer + walls.spec Tab-overlay flake root-caused/fixed 3x-green) |
 | M10-11 | Dual-profile browser audio e2e + playtest checklist | M10 | 10 | done (merged 4550e31 + merge 7f8f8ea — e2e green x2; human ear session PENDING) |
 | M10-12 | Exit sweep + docs | M10 | 10/11 | done (this task — gates fresh green: check 163f/3086t, e2e 53, goldens 6 sets + audio drift-free; M10 CLOSED) |
+
+## M11 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M11-plan | Persistence & options milestone plan | M11 | M10 | done (merged — mirror re-restored + 62-.c gate re-verified in-plan) |
+| M11-01 | IDB zone: stores/versioning/memory adapter + eslint boundary | M11 | M11-plan | done (merged f5a9671 — never-throw ladder, byte-parity fallback) |
+| M11-02 | Savegame codec: vanilla header + DBP1 payload | M11 | — | done (merged 9ac23ad — corrupt-input battery 24 tests; D-11a) |
+| M11-04 | Capture/restore walk + ga_savegame/ga_loadgame + sendsave chain | M11 | M11-02 | done (merged 5a7bcdb — restoration battery 38/38, save@T→500-tic identity ×12) |
+| M11-03 | Save rows/F-keys/bind-data (menuStub bodies land) | M11 | M11-04 | done (merged 2133c2b — 61 tests; TRUTH: no F2/F3 quicksave, no bind menu in 1.10) |
+| M11-05 | Slot UI + string editor + quickslot | M11 | M11-03 | done (merged 15b0e3e — 24 tests; zero menu.ts edits needed, patch-list = none) |
+| M11-06 | Demo record/playback + .lmp bytes + identity golden | M11 | M11-04 | done (merged 8d1229d — TRUTH: demo end leaves level PLAYABLE) |
+| M11-09 | Cheat engine + responder + ledger | M11 | M11-04 | done (merged da5e035 — 59 tests; iddqd not idkdt; idmus ep+map PAIR; folklore tested to do NOTHING) |
+| M11-07 | default.cfg ≡ settings store + consumer mounts | M11 | M11-01 | done (merged a0914d3 — 41-row census; gamma-not-a-setting, mouse0 dead, msg default ON) |
+| M11-08 | Persistence golden corpus (L1) | M11 | 04/05/06 | done (merged 43b92ab — SALVAGE ARC: silent death #10 → salvage branch → revert-to-keep-main-green → finisher 50/50, zero src bugs) |
+| M11-10 | Persistence boot + debug seams | M11 | 01/07/09 | done (merged c4b11aa — hydrate parallel-to-WAD, pre-first-tick; cheat responder wired) |
+| M11-11 | Reload-persistence e2e + playtest checklist | M11 | 08/10 | done (merged 1ce006c — SALVAGE #11 + finisher: 6/6 ×2; MONEY SHOT save→real reload→load = hash+12100px+trajectory identity; F6/F9 + demoend truths) |
+| M11-12 | Exit sweep + docs | M11 | 10/11 | done (this task — gates fresh green: check 179f/3380t, e2e 59, goldens 7 sets incl persist 12, all drift-free; M11 CLOSED) |

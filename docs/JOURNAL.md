@@ -359,3 +359,64 @@ NOTE: /tmp mirror self-healed by plan agent (was gutted by OS temp cleanup); 62-
 - M11-08 (salvage arc CLOSED): 50/50 corpus green — every original failure was harness-side (sharedIdb factory bug etc.), zero src bugs; persistence goldens drift-free. Salvage #10 fully recovered.
 - Silent-death #11: M11-11 e2e agent died last-mile. Salvage: branch had full suite commit + uncommitted polish (normalizer/pickSlot0) — both committed to salvage/M11-11, merged (5/6 red — suite real, unfinished). Isolation run proves test 2 (settings-reload) is production-side suspect — finisher dispatched with wiring-zone fix authority (sim off-limits; STOP-and-report discipline).
 - M11-11 merged (finished salvaged suite): MONEY SHOT GREEN — save, real page reload, load: exact state hash + 12100 sampled pixels + 100-tic continuation identity. TRUTHS: F6/F9 quicksave/quickload DO exist in 1.10 (d_main.c:95-96) with prompt 'save quick' (21-char string belongs elsewhere — orchestrator's folklore corrected); demoend = G_DeferedInitNew (never G_InitNew, no menus).
+
+## 2026-09-23 — 🏁 M11 COMPLETE (persistence & options — the browser remembers)
+THE STORY: waves 1-4 landed 01→11 (IDB zone + codec + capture/restore → menu
+rows/editor/binds-data + demos + cheats → settings store + golden corpus →
+boot composer + reload e2e), and the product can now be PUT DOWN AND PICKED
+UP: save mid-level, close the tab, reopen, load — exact hash, exact pixels,
+exact continuation (e2e money shot: state().hash + 12100 sampled pixels +
+100-tic trajectory identity across a REAL page.reload()). The sim stayed
+pure: capture runs AT the tic boundary inside the gameaction drain (vanilla's
+own deferral), only IDB is async, and settings hydrate is awaited BEFORE the
+first tick — a slow disk can never shift a tic (D-11b, boot-order pinned).
+Thinker fidelity closed exactly as p_saveg.c does it (players→world→mobj→7
+special classes; movers caught MID-TRAVEL by the save survive — the
+mover-at-save goldens are the milestone's hardest byte), and the RNG-reset-on-
+load truth (M_ClearRandom, no RNG state in a savegame) turned out to be the
+backbone that makes reload-determinism EXACT rather than approximate. The
+1.10 cheat set went live on the real page through real keys — the M10 idmus
+slot consumed on arrival — and the config face became the default.cfg
+variable set (41 rows census'd, defaults byte-equal, write-on-change since a
+browser never quits). Attract untouched, D023 reaffirmed (the pinned WAD has
+zero DEMO lumps).
+THE TWO SALVAGES (the milestone's other story, both closed GREEN): silent
+death #10 (M11-08 corpus) and #11 (M11-11 e2e, killed LAST-MILE, 6/6 written
+but unpolished). Protocol held and improved: early commits meant BOTH death
+worktrees held recoverable bytes; the #10 WIP was briefly merged then
+REVERTED to keep main green (new: finish on the salvage branch, never
+guess-merge unfinished WIP to main); #11's merge reported 5/6 RED honestly,
+isolation proved one failure PRODUCTION-side, and the finisher ran with
+wiring-zone fix authority (sim off-limits, STOP-and-report) to 6/6 ×2. Net
+src-bug count from both salvages: one wiring fix. Every other failure was
+harness-side — write-early-commit-early, again, buys whole tasks back.
+FOLKLORE DEATHS REGISTER (M11, the milestone that checked): F2/F3
+quicksave/quickload NEVER EXISTED (F2/F3 open the menus; the quick keys are
+F6/F9, m_menu.c:1572/:1587 — the orchestrator's own pre-plan "1.10 has no
+quicksave" folklore died at M11-11's grep); the prompts are the d_englsh
+strings (QSAVESPOT/QSPROMPT/QLPROMPT; the merge-subject "'save quick' is the
+real prompt string" found NO such string at exit-grep — provenance preserved,
+DECISIONS register); iddqd is the god code, idkdt never existed (and
+bare-noclip/mypos/dtent are TESTED TO DO NOTHING); idmus<nn> is an ep+map
+PAIR; d_main.c contains ZERO cheat code (engine = m_cheat.c, responder =
+ST_Responder); demos NEVER checksum, and demo END leaves the level PLAYABLE
+(G_DeferedInitNew — "returns to title" is folklore); 1.10 has NO bind menu
+(config IS the m_misc key_* table); the save MENU shows SIX slots over a
+ten-entry array; savegames carry NO RNG state. And the mirror lesson
+continues: /tmp was gutted AGAIN by OS temp cleanup — the 62-.c gate caught
+it in the planning pass, restored from the canonical tarball, re-verified at
+this exit.
+EXIT GATE (fresh at M11-12): check 179 files / 3380 tests (2 skips), e2e 59
+green (4 project-scoped skips; ×2 consecutive held from M11-11), goldens
+--check drift-free on ALL 7 sets: automap 5 / walls 31 / weapons 15 / screens
+5 / m9 27 / audio 13 / **persist 12** (first run of the persist set outside
+its own task — zero re-blesses needed: persistence touched no frame, no
+stream key, no existing hash; the M10 scripted corpus byte-equal as promised).
+D-11a..g CLOSED-IMPLEMENTED, folklore register + salvage lessons banked in
+DECISIONS.md, ARCHITECTURE A-10 pointer note landed. M11 CLOSED (11/12).
+NEXT: M12 full-episode hardening — every map, every viewpoint, the perf gate,
+scripted playthroughs, release docs seed.
+
+## MILESTONE M11 COMPLETE — Persistence & options
+The browser remembers: save → close tab → reopen → load — exact hash, 12100 sampled pixels, trajectory. Vanilla-header saves (DBP1 payload) on IndexedDB, 41-row default.cfg ≡ settings store applied pre-first-tick, the source-verified 1.10 cheat set live on real keys (folklore exorcised: no F2/F3 quicksave — F6/F9 exist; iddqd not idkdt; demoend leaves the level playable), byte-exact demos, and a persistence golden corpus that IS the fidelity matrix (save@T → cold hydrate → 300-tic equality). 3380 unit tests / 59 e2e / 7 golden sets. Two silent deaths (#10, #11), both salvaged GREEN — write-early doctrine remains undefeated.
+11/12 — remaining: M12 full-episode hardening, then Phase 4 audits.
