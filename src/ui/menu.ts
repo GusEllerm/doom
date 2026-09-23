@@ -860,12 +860,15 @@ function mSaveGame(choice: number): void {
   mReadSaveStrings();
 }
 
-/** M_QuickSaveResponse (m_menu.c:679-687): the QSPROMPT y/n — 'y'
- * fires M_DoSave on the remembered slot + sfx_swtchx. */
+/** M_QuickSaveResponse (m_menu.c:679-688): the QSPROMPT y/n — 'y'
+ * fires M_DoSave on the remembered slot. DEVIATION (documented, sfx
+ * ledger): vanilla’s response-local S_StartSound(:686) is MERGED into
+ * the message branch’s same-tic sfx_swtchx emission (:1507, transcribed
+ * above) — same sound, same tic, one sink event (the M10-04 site
+ * ledger pins the emitter census). */
 function mQuickSaveResponse(ch: number): void {
   if (ch !== ord('y')) return;
   mDoSave(quickSaveSlot);
-  sfxSink('sfx_swtchx');
 }
 
 /**
@@ -897,12 +900,12 @@ function mQuickSave(): void {
   mStartMessage(sprintf(QSPROMPT, savegamestrings[quickSaveSlot]!), mQuickSaveResponse, true);
 }
 
-/** M_QuickLoadResponse (m_menu.c:719-725): 'y' ⇒ M_LoadSelect on the
- * remembered slot + sfx_swtchx. */
+/** M_QuickLoadResponse (m_menu.c:718-726): 'y' ⇒ M_LoadSelect on the
+ * remembered slot (its :723 S_StartSound merges into the message
+ * branch’s same-tic emission — see mQuickSaveResponse’s note). */
 function mQuickLoadResponse(ch: number): void {
   if (ch !== ord('y')) return;
   mLoadSelect(quickSaveSlot);
-  sfxSink('sfx_swtchx');
 }
 
 /**
