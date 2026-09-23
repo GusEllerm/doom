@@ -460,3 +460,69 @@ export function resetGameactionLog(): void {
   gameactionLog.count = 0;
   gameactionLog.entries.length = 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* M11-04 ADDITIVE: the captureSink + pendingLoad persistence seam     */
+/* ------------------------------------------------------------------ */
+
+/** One capture/restore event as the gameaction drain executes
+ * G_DoSaveGame/G_DoLoadGame (g_game.c:630-632/:627-628 sites — INSIDE the
+ * drain, at a tic boundary, D-11b). `snapshot` is the sim's structured
+ * SaveSnapshot carried as `unknown` (hooks.ts imports NOTHING, A-06 —
+ * game.ts casts; the persist layer owns the bytes, M11-01/02).
+ * 'load-rejected' marks the vanilla silent-fail lanes: bad version string
+ * or bad 0x1d marker — a typed ledger record, never a console throw (§0.1). */
+export interface CaptureEvent {
+  readonly kind: 'save' | 'load' | 'load-rejected';
+  readonly slot: number;
+  readonly description: string;
+  readonly snapshot: unknown;
+  readonly tic: number;
+}
+
+export type CaptureSinkFn = (e: CaptureEvent) => void;
+
+/** Module-level like musicSlot (sink-owned, aiGate idiom — resetHookSlots
+ * never clears it; register(…, null) clears; REPLACE = idempotent). */
+let captureSink: CaptureSinkFn | null = null;
+
+export function registerCaptureSink(fn: CaptureSinkFn | null): void {
+  captureSink = fn;
+}
+
+/** Capped ledger (keeps NO snapshot references — long headless runs
+ * cannot leak). */
+export const captureLog: SlotLog<Omit<CaptureEvent, 'snapshot'>> = {
+  count: 0,
+  entries: []
+};
+
+export function emitCapture(e: CaptureEvent): void {
+  const meta: Omit<CaptureEvent, 'snapshot'> = {
+    kind: e.kind, slot: e.slot, description: e.description, tic: e.tic
+  };
+  record(captureLog, meta);
+  captureSink?.(e);
+}
+
+export function resetCaptureLog(): void {
+  captureLog.count = 0;
+  captureLog.entries.length = 0;
+}
+
+/** Menu-layer load request (G_LoadGame's savename + ga_loadgame,
+ * g_game.c:1192-1195): the buffer rides OUTSIDE GameState (never hashed,
+ * no random-sites key) and is consumed exactly once by the next
+ * ga_loadgame drain. */
+let pendingLoad: unknown | null = null;
+
+export function setPendingLoad(snap: unknown | null): void {
+  pendingLoad = snap;
+}
+
+/** Read-and-clear (the G_DoLoadGame M_ReadFile consumption). */
+export function takePendingLoad(): unknown | null {
+  const v = pendingLoad;
+  pendingLoad = null;
+  return v;
+}
