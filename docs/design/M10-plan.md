@@ -158,3 +158,14 @@ Status: PLANNED (filled incrementally; skeleton stub committed first per lost-ag
 | 2 | M10-05 M10-07 | Mixer core (allocator/attenuation/pan/renderMix goldens); GM synth + SMF player |
 | 3 | M10-06 M10-08 M10-09 | WebAudio sfx driver + main.ts wiring; music selection/lifecycle (S_Start site); options + debug seams |
 | 4 | M10-10 M10-11 M10-12 | L1 golden corpus + zero-stream proof; e2e + playtest checklist; exit sweep + docs |
+
+
+## 0.x MUSIC SOURCE CORRECTION (orchestrator, merge turn)
+The 0.13.0-pinned freedoom1.wad contains ZERO music lumps (verified). Transcribing
+Doom MUS arrangements would derive from id-owned assets — violates the asset policy.
+Policy-clean music source: **Freedoom's own BSD-licensed OGG tracks** (shipped as
+companion files in the same release). Task scope change: scripts/freedoom/fetch.mjs
+gains an OGG fetch (same pin + checksum discipline); M10-08 plays those via
+HTMLAudioElement/decode. The SMF decoder + GM synth (M10-03/07) remain as the
+deterministic golden-test path and SMF-IWAD support; they do NOT become the
+freedoom1 default source. Any transcribed-MUS idea is CANCELLED.
