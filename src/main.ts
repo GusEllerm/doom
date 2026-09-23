@@ -26,11 +26,25 @@
  * sim↔render bridge: it hands render's structural read-view interfaces the
  * real sim/amMap + sim/map + sim/player objects. They satisfy the shapes by
  * construction and the typecheck HERE is the enforcement point (A-INT1).
- * M11-10: persistence boot composer — settings hydrate before first tick,
- * store-backed captureSink mount, cheat responder slot. WIP stub.
+ * M11-10 (persistence boot composer, ONE coherent edit): boot order is
+ * fetch WAD ∥ hydrateSettings() (the IDB read rides OFF the sim clock,
+ * D-11b — the rAF loop spins but stepTic no-ops until afterLoad, and
+ * afterLoad awaits the hydrate ⇒ settings land before the FIRST gTicker;
+ * hydrate NEVER rejects — corrupt/absent records fail closed to the
+ * m_misc.c defaults). Volumes + binds apply through their merged homes
+ * (audio/volumes thermo, input/bindStore) inside settings.hydrate; the
+ * audio menu-thermos pump is PRIMED before that home so it cannot clobber
+ * hydrated volumes. PRECEDENCE url > settings > defaults: this port's
+ * only URL params (?wad, ?test) are disjoint from the settings namespace
+ * and no warp/autoplay param exists — existing param behavior untouched.
+ * Also mounted here: the M11-05 store-backed captureSink (via
+ * createMenuGlue — save/labels/quickslot fully wired, the menu rows need
+ * no main.ts glue), the M11-09 cheatResponder BETWEEN mResponder and
+ * huResponder (never consumes — their cited slot), and the __doom persist
+ * seam (attachPersistDebug: save/load/settings/demo/typeChars).
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
-import { createKeyboardInput } from './input/keyboard';
+import { createKeyboardInput, type KeyboardInput } from './input/keyboard';
 import {
   KEY_DOWNARROW,
   KEY_LEFTARROW,
@@ -38,7 +52,12 @@ import {
   KEY_UPARROW
 } from './input/keyboard';
 import { createMenuMouse } from './input/menuMouse';
-import { createMouseInput } from './input/mouse';
+import {
+  createMouseInput,
+  type MouseInput,
+  type MouseTargetLike
+} from './input/mouse';
+import { bindStore } from './input/bindStore';
 import {
   amCreateState,
   amResponder,
@@ -64,7 +83,7 @@ import { rPointToAngle2 } from './sim/p_shoot';
 import type { GameState } from './sim/state';
 import { emptyInput, type GameInput } from './sim/ticcmd';
 import { wiDrawSnapshot, wiPeek } from './sim/wintermission';
-import { attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug, debugApi, debugSim, installDebugApi, screenRead } from './debug';
+import { attachPersistDebug, attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug, debugApi, debugSim, installDebugApi, screenRead } from './debug';
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
 import { buildMapSprites, displayFrame, getFrameCounters, getSpritePassStats, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
@@ -112,7 +131,22 @@ import { buildRenderMapView, type RenderMapView } from './render/view';
 import { initLightTables, type LightTables } from './render/lights';
 import { fetchWad, WadLoadError } from './platform/wadload';
 import { audioFrame, audioTick, installAudio } from './audio/sfxDriver';
-import { installMusicComposer, installSfxBridges } from './audio/wiring';
+import { installMusicComposer, installSfxBridges, pumpAudioWiring } from './audio/wiring';
+import { registerCaptureSink } from './sim/hooks';
+import { cheatResponder } from './ui/cheatResponder';
+import { openStore } from './persist/store';
+import {
+  hydrateSettings,
+  KEY_VAR_NAMES,
+  settings,
+  type SettingsView
+} from './persist/settings';
+import {
+  createMenuGlue,
+  flushWrites as flushSaveWrites,
+  loadSlot,
+  slotRows
+} from './ui/menuSaveLoad';
 import { loadMap } from './wad/mapdata';
 import { decodeColormap, decodePlaypal } from './wad/palettes';
 import { texturesFromWad } from './wad/texture';
@@ -287,6 +321,23 @@ window.addEventListener('keydown', (e) => {
   if (key !== undefined) eventQueue.push(keydown(key), keyup(key));
 });
 
+/** M11-10 (the M11-09 follow-up slot): vanilla feeds printable letters as
+ * ev_keydown to BOTH halves — the responder chain (ST cheat tracker,
+ * m_menu alphaKeys, the save-name editor) AND the polled gamekeydown[] —
+ * g_game.c:566-577. This port routes BOUND codes only through the polled
+ * channel (keyboard.ts stays silent on them), so cheat sequences containing
+ * WASD letters (idspispopd, kfa) and typed slot names would never reach
+ * the queue. Forward the EVENT half for currently-BOUND letters only
+ * (unbound letters already arrive via keyboard.ts onEvent — exactly one
+ * packet per code); the polled held channel stays untouched. */
+window.addEventListener('keydown', (e) => {
+  const code = e.code ?? '';
+  if (!/^Key[A-Z]$/.test(code)) return;
+  if (bindStore.get(code) === undefined) return; // unbound ⇒ keyboard.ts fires it
+  const ch = code.charCodeAt(3) - 65 + 0x61; // 'A'@3 → lowercase ASCII
+  eventQueue.push(keydown(ch), keyup(ch));
+});
+
 /** Canvas coords → the 320×200 screen space the menu boxes live in. */
 function toScreen(e: MouseEvent): { x: number; y: number } {
   const r = canvasEl.getBoundingClientRect();
@@ -354,6 +405,11 @@ function stepTic(): void {
     if (!menuState.menuActive() && gResponderDemo(state, ev)) continue;
     if (state.gamestate === GS.FINALE && fResponder()) continue;
     if (mResponder(state, ev)) continue;
+    // M11-09 ST_Responder cheat layer (st_stuff.c:515-724) at the EXACT
+    // slot their report cites — between mResponder and huResponder; it
+    // NEVER consumes (st_stuff.c:724 `return false`), so the letters keep
+    // flowing to the HU half exactly like vanilla.
+    if (cheatResponder(state, ev)) continue;
     huResponder(ev);
   }
 
@@ -512,15 +568,28 @@ function loop(nowMs: number): void {
 /* Keyboard                                                             */
 /* ------------------------------------------------------------------ */
 
-const keyboard = createKeyboardInput({
-  target: window,
-  // KEY_MAPENTER wiring (additive keyboard.ts feature): event-level keys
-  // (Tab ⇒ doomdef.h KEY_TAB = 9) arrive as vanilla event_t pairs; queue
-  // them for the per-tic D_ProcessEvents drain.
-  onEvent: (ev) => {
-    eventQueue.push(ev.type === 'keydown' ? keydown(ev.data1) : keyup(ev.data1));
-  }
-});
+/** M11-10: keyboard MOUNT (not just creation) — the live binding TABLE is
+ * bindStore's (input/mapping data face); settings hydration rewrites it
+ * (key_* vars ⇒ applyConfigVars), so the consumer must remount to
+ * re-index. Remount = detach + fresh held state; nothing is held during
+ * boot and mid-session rebinds clear stale keys by design. */
+let kbDetach: (() => void) | null = null;
+let keyboard: KeyboardInput;
+function mountKeyboard(): KeyboardInput {
+  kbDetach?.();
+  keyboard = createKeyboardInput({
+    bindings: bindStore.bindings(),
+    // KEY_MAPENTER wiring (additive keyboard.ts feature): event-level keys
+    // (Tab ⇒ doomdef.h KEY_TAB = 9) arrive as vanilla event_t pairs; queue
+    // them for the per-tic D_ProcessEvents drain.
+    onEvent: (ev) => {
+      eventQueue.push(ev.type === 'keydown' ? keydown(ev.data1) : keyup(ev.data1));
+    }
+  });
+  kbDetach = keyboard.attach(window);
+  return keyboard;
+}
+mountKeyboard();
 
 /* ------------------------------------------------------------------ */
 /* Mouse (M5-07) — pointer-lock translation seam                        */
@@ -536,11 +605,19 @@ const keyboard = createKeyboardInput({
 // property lives on document, NOT window — the M5-07 window target would
 // have read undefined and locked OUT every real lock change); e2e drives
 // the same seam with dispatched pointerlockchange/mousemove events.
-const mouseInput = createMouseInput();
-mouseInput.attach(
-  document as unknown as Parameters<typeof mouseInput.attach>[0],
-  canvas
-);
+/** M11-10: the mouse_sensitivity consumer mount — input/mouse.ts scales
+ * at construction (the merged setter surface), so hydrate/change REMOUNTS
+ * with the new mouseSensitivity (raw accumulator restarts empty; a mid-
+ * session change is a debug/menu-var event, never a held drag). */
+let mouseDetach: (() => void) | null = null;
+let mouseInput: MouseInput;
+function mountMouse(sensitivity: number): MouseInput {
+  mouseDetach?.();
+  mouseInput = createMouseInput({ sensitivity });
+  mouseDetach = mouseInput.attach(document as unknown as MouseTargetLike, canvasEl);
+  return mouseInput;
+}
+mountMouse(settings().view().vars.mouse_sensitivity);
 // __doom.sim.injectMouse(dx,dy) (M5-08, plan §M5-08 owns-list): feed the
 // SAME raw ev_mouse accumulator the locked mousemove path feeds, bypassing
 // only the lock GATE (headless pointer lock is unreliable — §6). Scaling,
@@ -746,9 +823,98 @@ picker.addEventListener('change', () => {
   );
 });
 
+/* ------------------------------------------------------------------ */
+/* M11-10 persistence boot composer (plan §M11-10 — the ONE edit)      */
+/* ------------------------------------------------------------------ */
+
+/** Consumer read-mount (M11-07's surface): applies every variable that
+ * has a live consumer. Volumes + binds need NOTHING here — settings.ts
+ * pushes those homes itself (volumes.ts thermo / bindStore). */
+let lastViewSize = { blocks: 9, detail: 0 }; // view.ts shipped defaults
+function applySettingsView(view: SettingsView, changed: readonly string[]): void {
+  const v = view.vars;
+  if (changed.includes('mouse_sensitivity')) mountMouse(v.mouse_sensitivity);
+  if (changed.some((n) => (KEY_VAR_NAMES as readonly string[]).includes(n))) mountKeyboard();
+  if (
+    (changed.includes('screenblocks') || changed.includes('detaillevel')) &&
+    (v.screenblocks !== lastViewSize.blocks || v.detaillevel !== lastViewSize.detail)
+  ) {
+    setViewSize(v.screenblocks, v.detaillevel); // menuSeams.setViewSize home
+    lastViewSize = { blocks: v.screenblocks, detail: v.detaillevel };
+  }
+  if (changed.includes('show_messages')) huState.showMessages = v.show_messages !== 0;
+  // use_joystick / snd_channels / usegamma / use_mouse / mouseb_*: persisted
+  // faithful rows with NO live consumer in M11 (no joystick device, mixer-
+  // owned voices, no gamma LUT site, fixed mouse-button map) — M11-07's
+  // census, not silent here.
+}
+
+// Deterministic audio-volume order: the wiring.ts thermos pump treats the
+// MENU's 0..15 thermos as truth and applies on first pump — priming it
+// HERE (sync, module-init ⇒ before the async hydrate home can interleave)
+// pins lastApplied to the shipped thermos so a hydrated volumes.ts thermo
+// (e.g. sfx_volume 3) survives every later pump. The menu thermo DISPLAY
+// keeps showing the shipped row (follow-up: thermos display ← settings).
+pumpAudioWiring();
+
+applySettingsView(settings().view(), []); // defaults stand until hydrate
+let bindRemountDone = false;
+const settingsHydrate = hydrateSettings((view, changed) => {
+  applySettingsView(view, changed);
+  // hydrate's notify names the VAR rows only (never key_*) — re-index the
+  // bind table ONCE after hydration (applyConfigVars already ran INSIDE
+  // hydrate); later key_* changes arrive as named rows via setVar.
+  if (!bindRemountDone) {
+    bindRemountDone = true;
+    mountKeyboard();
+  }
+});
+
+// Store + the M11-05 glue: saveRows read-view, requestLoadSlot and the
+// store-backed captureSink (kind 'save' → codec → store.put, fire-and-
+// forget with the counted error ledger; 'demo'/'load' kinds pass through).
+void openStore().then((store) => {
+  const glue = createMenuGlue(store, { getState: () => boot?.state ?? debugSim.getState() });
+  glue.install();
+  registerCaptureSink(glue.captureHandler);
+});
+
+attachPersistDebug({
+  savesCount: () => slotRows().reduce((n, r) => n + (!r.empty && r.error === null ? 1 : 0), 0),
+  settingsLoaded: () => settings().status().loaded,
+  settingsView: () => {
+    const v = settings().view();
+    return { loaded: v.loaded, vars: { ...v.vars }, keys: { ...v.keys } };
+  },
+  settingsApply: (patch) => settings().setMany(patch),
+  loadSlot: (slot) => {
+    const st = boot?.state ?? debugSim.getState();
+    if (st === null) return false;
+    void loadSlot(st, slot);
+    return true;
+  },
+  flushWrites: async () => {
+    await flushSaveWrites();
+    await settings().flush();
+  },
+  typeChars: (text) => {
+    for (const ch of text) {
+      const code = ch.toLowerCase().charCodeAt(0);
+      if (Number.isNaN(code)) continue;
+      eventQueue.push(keydown(code), keyup(code));
+    }
+  }
+});
+
 installDebugApi();
 void fetchWad(wadUrl).then(
-  (buf) => afterLoad(buf, wadUrl),
+  (buf) => {
+    // Settings BEFORE the first tick: afterLoad is the ONLY thing that can
+    // pump a gTicker (the boot gate in stepTic), so awaiting the hydrate
+    // here satisfies D-11b. hydrateSettings NEVER rejects (fail-closed
+    // defaults), so the fetch chain can never deadlock on storage.
+    void settingsHydrate.then(() => afterLoad(buf, wadUrl));
+  },
   (err: unknown) => {
     if (err instanceof WadLoadError) showPicker(`${wadUrl} not available`);
     else throw err; // decoder bugs must stay visible
