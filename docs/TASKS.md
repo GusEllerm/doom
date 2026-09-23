@@ -178,6 +178,8 @@ Future tasks will be added as architects decompose milestones.
 | M10-03 | SMF decoder | M10 | — | done (merged) |
 | M10-04..12 | (see docs/design/M10-plan.md) | M10 | waves | planned |
 | M10-04 | 41-site swap + event ledger | M8 | M10-01/02 | done (merged) |
-| M10-05 | Mixer core | M10 | M10-01/02 | dispatched (agent f6645be6) |
+| M10-05 | Mixer core | M10 | M10-01/02 | done (merged) |
 | M10-07 | GM synth + SMF player | M10 | M10-01/03 | done (merged) |
 | M10-08 | Music lifecycle + OGG fetch | M10 | M10-04/07 | dispatched (agent b528d677) |
+| M10-06 | WebAudio sfx driver | M10 | M10-04/05 | dispatched (agent 7d8eb69e) |
+| M10-09 | Volume options wiring | M10 | M10-01 | dispatched (agent 084b8b78) |
