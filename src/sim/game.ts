@@ -68,7 +68,16 @@ import {
   parseMapName,
   skillToInternal
 } from './gamemode';
-import { musicSlot, recordGameaction, resetHookSlots } from './hooks';
+import {
+  musicSlot,
+  recordGameaction,
+  resetHookSlots,
+  emitCapture,
+  takePendingLoad,
+  setPendingLoad,
+  messageSlot
+} from './hooks';
+import { captureWorld, restoreWorld, type SaveSnapshot } from './pSaveg';
 
 // M8-12 flip companion (D-m1 note): pdeath.ts registers the GENERIC
 // p_enemy.c death/pain bodies into the mobj-domain slots — vanilla has ONE
@@ -133,6 +142,44 @@ export const GA = {
   worlddone: 8,
   screenshot: 9
 } as const;
+
+/* ------------------------------------------------------------------ */
+/* M11-04 save/load vocabulary (g_game.c statics + d_event.h BTS_*)     */
+/* ------------------------------------------------------------------ */
+
+/** d_event.h:81/:91/:93/:97-98 special-button encodings (BT_SPECIAL lives
+ * in ticcmd.ts, already 128). */
+const BT_SPECIALMASK = 3;
+const BTS_SAVEGAME = 2;
+const BTS_SAVEMASK = 4 + 8 + 16;
+const BTS_SAVESHIFT = 2;
+const BT_SPECIAL = 128;
+
+/** g_game.c:205-207 `savegameslot`/`savedescription[32]` + :~ `sendsave`
+ * (module statics — the vanilla single-run globals; resetSaveFlow clears
+ * them with the test counters). */
+let saveGameslot = 0;
+let saveDescription = '';
+let sendSave = false;
+
+/** Test/debug observability (NEVER hashed; M11-10 mirrors into
+ * state().persist). */
+export const saveFlow = {
+  savesDone: 0,
+  loadsDone: 0,
+  lastSaveTic: -1,
+  lastLoadTic: -1
+};
+
+export function resetSaveFlow(): void {
+  saveGameslot = 0;
+  saveDescription = '';
+  sendSave = false;
+  saveFlow.savesDone = 0;
+  saveFlow.loadsDone = 0;
+  saveFlow.lastSaveTic = -1;
+  saveFlow.lastLoadTic = -1;
+}
 
 /* ------------------------------------------------------------------ */
 /* M9-03 registrable flow hooks (M8 self-import idiom)                  */
@@ -437,9 +484,32 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
 
   // 3: G_BuildTiccmd → players[0].cmd (consoleplayer).
   const cmd = gBuildTiccmd(input, state);
-  for (const p of state.players) p.cmd = cmd;
 
-  // 4: special buttons (pause/save) — none (see header).
+  // 4: special buttons (g_game.c:425-437 pack in G_BuildTiccmd,
+  // :700-722 decode in G_Ticker AFTER the netcmds copy). M11-04 lands
+  // the save half: G_SaveGame's sendsave packs
+  // BT_SPECIAL | BTS_SAVEGAME | slot<<BTS_SAVESHIFT into the cmd THIS
+  // tic; the decode turns the COMMAND back into gameaction = ga_savegame
+  // — drained in the NEXT gTicker's step 2, i.e. at a consistent post-tic
+  // world state (§0.3 deferral, faithful). sendpause stays deferred
+  // (paused is set directly, M9-04).
+  if (sendSave) {
+    sendSave = false;
+    cmd.buttons =
+      (BT_SPECIAL | BTS_SAVEGAME | ((saveGameslot << BTS_SAVESHIFT) & BTS_SAVEMASK)) & 0xff;
+  }
+  for (const p of state.players) p.cmd = cmd;
+  for (const p of state.players) {
+    if ((p.cmd.buttons & BT_SPECIAL) === 0) continue;
+    switch (p.cmd.buttons & BT_SPECIALMASK) {
+      case BTS_SAVEGAME:
+        saveGameslot = (p.cmd.buttons & BTS_SAVEMASK) >> BTS_SAVESHIFT;
+        state.gameaction = GA.savegame;
+        break;
+      default:
+        break; // BTS_PAUSE: no packing site yet (M9-04 owns pause)
+    }
+  }
 
   // 5: per-state driver (§0.2).
   switch (state.gamestate) {
@@ -554,9 +624,18 @@ function gDrainGameAction(state: GameState): void {
       case GA.worlddone:
         gDoWorldDone(state);
         break;
+      case GA.savegame:
+        // G_DoSaveGame (g_game.c:630-632 drain site → :1270): capture at
+        // the tic boundary, D-11b — the IndexedDB write is the sink's
+        // async AFTER-life, never inside this tic.
+        gDoSaveGame(state);
+        break;
+      case GA.loadgame:
+        // G_DoLoadGame (g_game.c:627-628 → :1201).
+        gDoLoadGame(state);
+        break;
       default:
-        // ga_loadgame/ga_savegame/ga_playdemo/ga_screenshot — §4
-        // registered stubs (M11/M12).
+        // ga_playdemo/ga_screenshot — §4 registered stubs (M11-06/M12).
         flowStub(`ga_${action}`);
     }
   }
@@ -673,6 +752,69 @@ function gDoWorldDone(state: GameState): void {
   state.gamestate = GS.LEVEL;
   state.gamemap = state.wminfo.next + 1;
   gDoLoadLevel(state);
+}
+
+/* ------------------------------------------------------------------ */
+/* M11-04 save/load: G_SaveGame/G_LoadGame entries + the G_DoX bodies   */
+/* ------------------------------------------------------------------ */
+
+/** G_SaveGame (g_game.c:1256-1268) — menu-context entry: ONLY stores
+ * slot/description and arms sendsave; the ticcmd packs/decodes and the
+ * drain executes (two-stage deferral, §0.3). */
+export function gSaveGame(slot: number, description: string): void {
+  saveGameslot = slot & 15;
+  saveDescription = description.slice(0, 23); // SAVESTRINGSIZE-1 (§0.1)
+  sendSave = true;
+}
+
+/** G_LoadGame (g_game.c:1192-1195) — the menu hands the decoded snapshot
+ * (persist layer, M11-01/02) through hooks.pendingLoad and arms
+ * ga_loadgame; the NEXT drain's G_DoLoadGame executes it (§0.3). */
+export function gRequestLoadGame(state: GameState, snap: SaveSnapshot): void {
+  setPendingLoad(snap);
+  state.gameaction = GA.loadgame;
+}
+
+/** G_DoSaveGame (g_game.c:1270-1321) at the :630-632 drain site: pure
+ * captureWorld → snapshot (the vanilla file write is the sink's async
+ * half, D-11b), then the GGSAVED message + savedescription reset (:1317
+ * halves; R_FillBackScreen is the UI's). */
+function gDoSaveGame(state: GameState): void {
+  const snapshot = captureWorld(state);
+  emitCapture({
+    kind: 'save',
+    slot: saveGameslot,
+    description: saveDescription,
+    snapshot,
+    tic: state.gametic
+  });
+  saveDescription = ''; // g_game.c:1317 savedescription[0] = 0
+  saveFlow.savesDone++;
+  saveFlow.lastSaveTic = state.gametic;
+  messageSlot(state.hooks, 'GGSAVED', state.leveltime); // d_englsh.h:135
+}
+
+/** G_DoLoadGame (g_game.c:1201-1251) at the :627-628 drain site, order
+ * EXACT (§0.3): consume buffer → version/marker guards (typed
+ * 'load-rejected' records, never a console throw — the vanilla silent
+ * return / I_Error("Bad savegame") lanes) → G_InitNew(skill,ep,map) —
+ * the FULL level rebuild incl. M_ClearRandom → leveltime + the four
+ * unarchive passes (restoreWorld) → done. */
+function gDoLoadGame(state: GameState): void {
+  const raw = takePendingLoad() as SaveSnapshot | null;
+  if (raw === null) {
+    flowStub('ga_loadgame-empty');
+    return;
+  }
+  if (raw.format !== 1) {
+    emitCapture({ kind: 'load-rejected', slot: -1, description: '', snapshot: raw, tic: state.gametic });
+    return;
+  }
+  gInitNew(state, raw.header.skill, raw.header.episode, raw.header.map);
+  restoreWorld(state, raw);
+  emitCapture({ kind: 'load', slot: -1, description: '', snapshot: raw, tic: state.gametic });
+  saveFlow.loadsDone++;
+  saveFlow.lastLoadTic = state.gametic;
 }
 
 /* ------------------------------------------------------------------ */
