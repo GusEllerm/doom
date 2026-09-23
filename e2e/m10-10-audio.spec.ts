@@ -214,7 +214,7 @@ test.describe('M10-10 audio pack (L1 offline corpus companion on the live page)'
           }
         ).audio.music.playing === true,
       null,
-      { timeout: 15_000 },
+      { timeout: 5_000 },
     );
     const w = await audio(page);
     expect(w.music.lump).toBe('D_INTRO');
