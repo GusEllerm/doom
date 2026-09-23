@@ -177,6 +177,6 @@ Future tasks will be added as architects decompose milestones.
 | M10-02 | S_sfx table + DS decode | M10 | M10-01 | done (merged — 123/123 decode) |
 | M10-03 | SMF decoder | M10 | — | done (merged) |
 | M10-04..12 | (see docs/design/M10-plan.md) | M10 | waves | planned |
-| M10-04 | 41-site swap + event ledger | M8 | M10-01/02 | dispatched (agent c3cc513e) |
+| M10-04 | 41-site swap + event ledger | M8 | M10-01/02 | done (merged) |
 | M10-05 | Mixer core | M10 | M10-01/02 | dispatched (agent f6645be6) |
 | M10-07 | GM synth + SMF player | M10 | M10-01/03 | dispatched (agent 0e27d457) |
