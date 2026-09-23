@@ -17,7 +17,7 @@ import { pPlayerThink } from './puser';
 import { pXYMovement, pZMovement } from './pmove';
 import { createPlayer, PST_DEAD, PST_REBORN } from './player';
 import { createPrngState, mClearRandom } from './prng';
-import { emptyInput, gBuildTiccmd, type GameInput } from './ticcmd';
+import { emptyInput, gBuildTiccmd, type GameInput, type Ticcmd } from './ticcmd';
 import { createHookSlots } from './hooks';
 import { createThinkerArena, pRunThinkers } from './ptick';
 import { createMobjRuntime, pRemoveMobj, pRespawnSpecials, pSpawnThings } from './p_mobj';
@@ -78,6 +78,16 @@ import {
   messageSlot
 } from './hooks';
 import { captureWorld, restoreWorld, type SaveSnapshot } from './pSaveg';
+// M11-06: demo record/playback (g_game.c:1489-1688). game.ts imports
+// pDemo, NEVER the reverse — gDoPlayDemo receives gInitNew by injection.
+import {
+  demoPlaying,
+  demoRecording,
+  gCheckDemoStatus,
+  gDoPlayDemo,
+  gReadDemoTiccmd,
+  gWriteDemoTiccmd
+} from './pDemo';
 
 // M8-12 flip companion (D-m1 note): pdeath.ts registers the GENERIC
 // p_enemy.c death/pain bodies into the mobj-domain slots — vanilla has ONE
@@ -482,21 +492,41 @@ export function gTicker(state: GameState, input: GameInput = emptyInput()): void
   // pending (fast path keeps the blessed-tic cost at one comparison).
   if (state.gameaction !== GA.nothing) gDrainGameAction(state);
 
-  // 3: G_BuildTiccmd → players[0].cmd (consoleplayer).
-  const cmd = gBuildTiccmd(input, state);
-
-  // 4: special buttons (g_game.c:425-437 pack in G_BuildTiccmd,
-  // :700-722 decode in G_Ticker AFTER the netcmds copy). M11-04 lands
-  // the save half: G_SaveGame's sendsave packs
-  // BT_SPECIAL | BTS_SAVEGAME | slot<<BTS_SAVESHIFT into the cmd THIS
-  // tic; the decode turns the COMMAND back into gameaction = ga_savegame
-  // — drained in the NEXT gTicker's step 2, i.e. at a consistent post-tic
-  // world state (§0.3 deferral, faithful). sendpause stays deferred
-  // (paused is set directly, M9-04).
-  if (sendSave) {
-    sendSave = false;
-    cmd.buttons =
-      (BT_SPECIAL | BTS_SAVEGAME | ((saveGameslot << BTS_SAVESHIFT) & BTS_SAVEMASK)) & 0xff;
+  // 3: ticcmd + the DEMO MOUNT (M11-06, g_game.c:650-666 the
+  // demoplayback/demorecording half of G_Ticker). PLAYBACK replaces the
+  // real input at THIS seam — `if (demoplayback) G_ReadDemoTiccmd(cmd)`
+  // takes G_BuildTiccmd's place (the platform GameInput snapshot is
+  // ignored; no bypass loop, D-11e). A marker/end-of-bytes read leaves
+  // cmd UNCHANGED (vanilla's localcmds retention = last tic's cmd = our
+  // p.cmd mirror) and ends via G_CheckDemoStatus; the faithful
+  // D_AdvanceDemo() half routes through the advancedemo flag (D023 ⇒
+  // title/attract). RECORDING builds normally and writes each tic with
+  // the write-rewind-read trick — cmd is MUTATED to its byte-quantized
+  // form there, which is what certifies record→replay identity.
+  let cmd: Ticcmd;
+  if (demoPlaying()) {
+    cmd = { ...state.players[0]!.cmd }; // retention start (marker path)
+    if (gReadDemoTiccmd(state, cmd) === 'end') {
+      if (gCheckDemoStatus(state) === 'playend') gRequestAdvanceDemo(state);
+    }
+  } else {
+    cmd = gBuildTiccmd(input, state);
+    // 4: special buttons (g_game.c:425-437 PACK lives inside
+    // G_BuildTiccmd — BEFORE the demo write, so a recorded save-slot
+    // rides the demo bytes; :700-722 DECODE below runs AFTER the
+    // players[].cmd copy and therefore decodes demo-injected BT_SPECIAL
+    // bytes too, faithful). M11-04's savesave half: the decode turns the
+    // COMMAND back into gameaction = ga_savegame — drained in the NEXT
+    // gTicker's step 2 (§0.3 deferral). sendpause stays deferred.
+    if (sendSave) {
+      sendSave = false;
+      cmd.buttons =
+        (BT_SPECIAL | BTS_SAVEGAME | ((saveGameslot << BTS_SAVESHIFT) & BTS_SAVEMASK)) & 0xff;
+    }
+    if (demoRecording()) {
+      const stop = gWriteDemoTiccmd(state, cmd);
+      if (stop !== 'ok') gCheckDemoStatus(state); // 'q'/buffer-full (:1508/:1514)
+    }
   }
   for (const p of state.players) p.cmd = cmd;
   for (const p of state.players) {
@@ -634,8 +664,15 @@ function gDrainGameAction(state: GameState): void {
         // G_DoLoadGame (g_game.c:627-628 → :1201).
         gDoLoadGame(state);
         break;
+      case GA.playdemo:
+        // G_DoPlayDemo (g_game.c:645-647 drain site → :1582). M11-06:
+        // body in pDemo.ts; gInitNew injected to keep the import graph
+        // one-way (version guard, header flags, level rebuild, flag
+        // reset).
+        gDoPlayDemo(state, gInitNew);
+        break;
       default:
-        // ga_playdemo/ga_screenshot — §4 registered stubs (M11-06/M12).
+        // ga_screenshot — §4 registered stub (M12).
         flowStub(`ga_${action}`);
     }
   }

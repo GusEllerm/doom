@@ -473,7 +473,10 @@ export function resetGameactionLog(): void {
  * 'load-rejected' marks the vanilla silent-fail lanes: bad version string
  * or bad 0x1d marker — a typed ledger record, never a console throw (§0.1). */
 export interface CaptureEvent {
-  readonly kind: 'save' | 'load' | 'load-rejected';
+  /** M11-06 ADDITIVE 'demo': kind 'demo' carries the finished recording's
+   * `.lmp` BYTES as `snapshot` (g_game.c:1653 M_WriteFile's browser
+   * answer, D-11e); description = demoname.lmp, slot = -1 (no slot). */
+  readonly kind: 'save' | 'load' | 'load-rejected' | 'demo';
   readonly slot: number;
   readonly description: string;
   readonly snapshot: unknown;
