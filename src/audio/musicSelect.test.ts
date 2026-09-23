@@ -126,7 +126,7 @@ function mockHost(): { host: MusicHost; now: { t: number } } {
         start: () => undefined,
         stop: () => undefined
       }) as never,
-    createBuffer: (_ch: number, frames: number, _rate: number) => ({
+    createBuffer: (_ch: number, frames: number) => ({
       getChannelData: () => new Float32Array(frames)
     }),
     createBiquadFilter: () =>
