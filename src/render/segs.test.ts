@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * M3-06b acceptance matrix — seg renderer (R_StoreWallRange / R_RenderSegLoop).
  *

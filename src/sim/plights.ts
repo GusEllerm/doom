@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // sim/plights.ts — light thinkers (p_lights.c). M6-09 REPLACES the M6-03
 // stub bodies verbatim from /tmp/DOOM-master/linuxdoom-1.10/p_lights.c.
 // Parent: M6-plan §M6-09. Registry wiring (sector specials 1/2/3/4/8/12/13/17

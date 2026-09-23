@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * M11-02 codec tests — acceptance per docs/design/M11-plan.md §M11-02:
  *  1) golden byte-layout table (literal-offset asserts at 24/40/41/42/43/47 +

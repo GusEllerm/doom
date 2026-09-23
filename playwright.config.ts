@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 import { defineConfig } from '@playwright/test';
 
 const BASE_URL = 'http://127.0.0.1:5173';
