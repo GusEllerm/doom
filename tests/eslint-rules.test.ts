@@ -58,6 +58,15 @@ describe('sim/ zone (HARD rule: deterministic core, no render/platform/DOM)', ()
     ).toEqual([IMPORT]);
   });
 
+  it('bans importing persist/ (M11-plan D-11g: sim knows nothing of storage)', async () => {
+    expect(
+      await boundary(
+        'src/sim/evil.ts',
+        "import { openStore } from '../persist/store';\n"
+      )
+    ).toEqual([IMPORT]);
+  });
+
   it('bans DOM/wall-clock globals and Math.random', async () => {
     expect(
       await boundary(
@@ -91,7 +100,7 @@ describe('sim/ zone (HARD rule: deterministic core, no render/platform/DOM)', ()
 });
 
 describe('core/ zone (imports nothing outside core; pure)', () => {
-  it.each(['sim/state', 'wad/wadfile', 'render/segs', 'platform/clock'])(
+  it.each(['sim/state', 'wad/wadfile', 'render/segs', 'platform/clock', 'persist/store'])(
     'bans importing %s',
     async (target) => {
       expect(
@@ -123,7 +132,7 @@ describe('core/ zone (imports nothing outside core; pure)', () => {
 });
 
 describe('wad/ zone (pure decoders)', () => {
-  it.each(['sim/g_game', 'render/framebuffer', 'platform/audio/sfx'])(
+  it.each(['sim/g_game', 'render/framebuffer', 'platform/audio/sfx', 'persist/idb'])(
     'bans importing %s',
     async (target) => {
       expect(
@@ -152,13 +161,13 @@ describe('wad/ zone (pure decoders)', () => {
 });
 
 describe('render/ zone (reads sim state; never platform)', () => {
-  it('bans importing platform/', async () => {
+  it('bans importing platform/ and persist/', async () => {
     expect(
       await boundary(
         'src/render/evil.ts',
-        "import { present } from '../platform/canvas';\n"
+        "import { present } from '../platform/canvas';\nimport { openStore } from '../persist/store';\n"
       )
-    ).toEqual([IMPORT]);
+    ).toEqual([IMPORT, IMPORT]);
   });
 
   it('bans sim modules other than sim/state (mutators)', async () => {
@@ -203,6 +212,71 @@ describe('platform/ zone (may wire everything except src/debug.ts)', () => {
     expect(
       await boundary(
         'src/platform/evil.ts',
+        "import { installDebugApi } from '../debug';\n"
+      )
+    ).toEqual([IMPORT]);
+  });
+
+  it('allows importing persist/ (the async glue sits above the zone)', async () => {
+    expect(
+      await boundary(
+        'src/platform/persist.ts',
+        "import { openStore } from '../persist/store';\nexport const f = openStore;\n"
+      )
+    ).toEqual([]);
+  });
+});
+
+describe('persist/ zone (IndexedDB; sim read-views only; never imported by sim)', () => {
+  it('bans importing platform/', async () => {
+    expect(
+      await boundary(
+        'src/persist/evil.ts',
+        "import { now } from '../platform/clock';\nimport { present } from '../platform/canvas';\n"
+      )
+    ).toEqual([IMPORT, IMPORT]);
+  });
+
+  it('bans sim modules other than sim/state (mutators)', async () => {
+    expect(
+      await boundary(
+        'src/persist/evil.ts',
+        "import { P_SetupLevel } from '../sim/p_setup';\n"
+      )
+    ).toEqual([IMPORT]);
+  });
+
+  it('allows sim/state reads and intra-zone imports', async () => {
+    expect(
+      await boundary(
+        'src/persist/store.ts',
+        "import { world } from '../sim/state';\nimport { openDb } from './idb';\nexport const z = [world, openDb];\n"
+      )
+    ).toEqual([]);
+  });
+
+  it('allows indexedDB, Date and timers (storage-adjacent)', async () => {
+    expect(
+      await boundary(
+        'src/persist/store.ts',
+        'export const a = indexedDB;\nexport const b = Date.now();\nexport const c = setTimeout(() => {}, 0);\n'
+      )
+    ).toEqual([]);
+  });
+
+  it('bans other DOM/wall-clock globals and Math.random', async () => {
+    expect(
+      await boundary(
+        'src/persist/evil.ts',
+        'export const a = document.body;\nexport const b = fetch("x");\nexport const c = Math.random();\n'
+      )
+    ).toEqual([GLOBALS, GLOBALS, SYNTAX]);
+  });
+
+  it('bans importing src/debug.ts', async () => {
+    expect(
+      await boundary(
+        'src/persist/evil.ts',
         "import { installDebugApi } from '../debug';\n"
       )
     ).toEqual([IMPORT]);
