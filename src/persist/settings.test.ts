@@ -124,13 +124,13 @@ function parseMirrorDefaults(path: string): Map<string, { line: number; token: s
   src.slice(start).split('\n').forEach((row, i) => {
     const m = /^\s*\{\s*"([^"]+)"\s*,[^,]*,\s*(.*?)\s*\},?\s*$/.exec(row);
     if (!m) return;
-    let token = m[2];
+    const name = m[1] ?? '';
+    let token: string = m[2] ?? '';
     if (token.startsWith('(')) token = token.replace(/^\((?:int|char)\s*\)\s*/, '');
     if (token.startsWith("'")) token = String(token.codePointAt(1));
-    else if (/^KEY_/.test(token)) token = String(KEY_TOKENS[token]);
+    else if (/^KEY_/.test(token)) token = String(KEY_TOKENS[token] ?? NaN);
     else if (token.startsWith('"')) token = token.slice(1, -1);
-    else if (/^HUSTR_/.test(token)) token = token;
-    out.set(m[1], { line: line0 + i, token });
+    out.set(name, { line: line0 + i, token });
   });
   return out;
 }
