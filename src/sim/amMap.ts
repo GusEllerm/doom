@@ -22,10 +22,14 @@
 //     INITSCALEMTOT in st_stuff.c, a different, unrelated scale); it only
 //     seeds the static before AM_LevelInit overwrites scale_mtof with
 //     FixedDiv(min_scale_mtof, (int)(0.7*FRACUNIT)).
-//   * AM_cheating: cheat_amap_seq = {0xb2,0x26,0x26,0x2e,0xff} is ported
-//     verbatim with cht_CheckCheat's matcher (m_cheat.c). Quirk kept: that
-//     byte sequence never matches typed ASCII keydowns, so `cheating` is
-//     unreachable via keys in the released source (documented, not fixed).
+//   * AM_cheating: cheat_amap_seq = {0xb2,0x26,0x26,0x2e,0xff} (iddt) is
+//     ported with cht_CheckCheat's matcher (m_cheat.c:43-75). M11-09 fix:
+//     the released matcher compares cheat_xlate_table[key] = SCRAMBLE(key)
+//     (m_cheat.c:62, table built :54-58), NOT the raw typed byte — the
+//     first port here compared raw bytes, so `cheating` was unreachable via
+//     keys, the OPPOSITE of the released source (typing iddt with the map
+//     open cycles the overlay, am_map.c:701-704; rc is forced false so the
+//     keys keep flowing). The event-fed cursor lives in state (cheatCount).
 //
 // Determinism (§3.5): all state lives in the AutomapState record; no module
 // mutable globals, no DOM, no wall clock, no PRNG (the lightlev strobe is
@@ -35,6 +39,7 @@
 
 import { FRACUNIT, MAXINT } from '../core/constants';
 import { FixedDiv, FixedMul } from '../core/fixed';
+import { scramble } from './cheats';
 
 import type { RuntimeMap } from './map';
 import type { Player } from './player';
@@ -514,16 +519,18 @@ export function amUpdateLightLev(s: AutomapState): void {
 /* AM_Responder                                                        */
 /* ------------------------------------------------------------------ */
 
-/** cht_CheckCheat (m_cheat.c), non-chat branch, verbatim. */
+/** cht_CheckCheat (m_cheat.c:43-75), parameterless branch (the amap table
+ * has no 1/0 slots), faithful: SCRAMBLE(key) is compared to the sequence
+ * byte (the cheat_xlate_table of m_cheat.c:54-58/62), the 0xff END byte is
+ * the completion test, and a mismatch rewinds the cursor without retrying
+ * the current key. Fixed in M11-09 — the prior port compared RAW bytes and
+ * could never match (see the header note). */
 function chtCheckCheat(s: AutomapState, ch: number): boolean {
-  if (ch === CHEAT_AMAP_SEQ[s.cheatCount]) {
-    s.cheatCount++;
-    if (!CHEAT_AMAP_SEQ[s.cheatCount]) {
-      s.cheatCount = 0;
-      return true;
-    }
-  } else {
+  if (scramble(ch) === CHEAT_AMAP_SEQ[s.cheatCount]) s.cheatCount++;
+  else s.cheatCount = 0;
+  if (CHEAT_AMAP_SEQ[s.cheatCount] === 0xff) {
     s.cheatCount = 0;
+    return true;
   }
   return false;
 }
