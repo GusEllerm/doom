@@ -181,5 +181,5 @@ Future tasks will be added as architects decompose milestones.
 | M10-05 | Mixer core | M10 | M10-01/02 | done (merged) |
 | M10-07 | GM synth + SMF player | M10 | M10-01/03 | done (merged) |
 | M10-08 | Music lifecycle + OGG fetch | M10 | M10-04/07 | done (merged — music from WAD lumps) |
-| M10-06 | WebAudio sfx driver | M10 | M10-04/05 | dispatched (agent 7d8eb69e) |
+| M10-06 | WebAudio sfx driver | M10 | M10-04/05 | done (merged) — SFX AUDIBLE |
 | M10-09 | Volume options wiring | M10 | M10-01 | done (merged) |
