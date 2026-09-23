@@ -529,3 +529,37 @@ export function takePendingLoad(): unknown | null {
   pendingLoad = null;
   return v;
 }
+
+/* ------------------------------------------------------------------ */
+/* M11-09 ADDITIVE: the cheat ledger (D-11f)                           */
+/* ------------------------------------------------------------------ */
+
+/** One fired cheat effect. `effect` names the st_stuff.c/AM_Responder
+ * effect block; `params` carries the cht_GetParam payload (idmus/idclev
+ * digits; the idbehold letter; '' otherwise). `tic` = gametic at fire —
+ * the event-pump phase (mutations land pre-tic, D-11f). */
+export interface CheatEvent {
+  readonly effect: string;
+  readonly params: string;
+  readonly tic: number;
+}
+
+/** Capped ledger of fired cheats (the D-11f "ledger records the tic of
+ * effect"). ui/cheatResponder.ts calls this at each effect site; the
+ * responder itself performs the mutations via the sim/cheats.ts exports
+ * (same phase, same effect fidelity). */
+export const cheatLog: SlotLog<CheatEvent> = {
+  count: 0,
+  entries: [],
+  byId: new Map()
+};
+
+export function cheatSink(effect: string, params: string, tic: number): void {
+  record(cheatLog, { effect, params, tic }, effect);
+}
+
+export function resetCheatLog(): void {
+  cheatLog.count = 0;
+  cheatLog.entries.length = 0;
+  cheatLog.byId?.clear();
+}
