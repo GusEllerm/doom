@@ -44,6 +44,14 @@
  * seam (attachPersistDebug: save/load/settings/demo/typeChars).
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
+import './input/mapping'; // M11-10 BOOT-ORDER FIX (dev + build): mapping.ts ⇄
+// keyboard.ts form an import cycle (DEFAULT_BINDINGS reads keyboard's KEY_*
+// consts at module-init; keyboard calls mapping's bindingsByCode). ESM
+// post-order evaluation makes the ENTRY's first-reached side of the cycle
+// win: entering via keyboard TDZ-crashes mapping's body (pre-existing on
+// main — the first e2e past M11-03 hits it; a side-effect import of the
+// SAFE side pins mapping (⇒ keyboard first, both bodies init clean). The
+// cycle itself is an input-zone follow-up (break it in mapping.ts).
 import { createKeyboardInput, type KeyboardInput } from './input/keyboard';
 import {
   KEY_DOWNARROW,
