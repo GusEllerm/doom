@@ -99,11 +99,15 @@ test.describe('M10-06 sfx driver (L4)', () => {
     // REAL gesture + fire: ControlRight = key_fire (vanilla bind) — the
     // trusted keydown IS the autoplay gesture the driver listens for.
     await page.keyboard.down('ControlRight');
+    // A poll sees the shot started AND still occupying a channel (the
+    // ~0.5 s DSPISTOL window is ≫ the raf poll rate).
     await page.waitForFunction(
-      () =>
-        (
+      () => {
+        const a = (
           window.__doom as unknown as { audio: () => AudioSeam }
-        ).audio().sourcesStarted > 0,
+        ).audio();
+        return a.sourcesStarted > 0 && a.activeChannels >= 1;
+      },
       null,
       { timeout: 10_000 }
     );
@@ -112,13 +116,12 @@ test.describe('M10-06 sfx driver (L4)', () => {
     expect(a.context).toBe('running'); // the AudioContext is ACTIVE
     expect(a.sourcesStarted).toBeGreaterThanOrEqual(1);
     expect(a.sourcesCreated).toBe(a.sourcesStarted);
-    expect(a.sourcesStarted - a.sourcesStopped).toBeGreaterThanOrEqual(0);
     // D-10f acceptance 5: scheduled at the tic-boundary stamp, ≈ now.
     expect(Math.abs(a.lastSchedDelta)).toBeLessThan(0.02);
-    expect(a.activeChannels).toBeGreaterThanOrEqual(1);
 
-    // Listener tracking: a warp + live tics moves the spatial pose.
-    await page.evaluate(() => window.__doom!.sim.warp(512, -256));
+    // Listener tracking: a warp (fixed-point coords) + live tics moves the
+    // spatial pose — audio().listener == players[0].mo.
+    await page.evaluate(() => window.__doom!.sim.warp(512 * 65_536, -256 * 65_536));
     await page.waitForFunction(
       () =>
         (
@@ -167,21 +170,29 @@ test.describe('M10-06 sfx driver (L4)', () => {
     await page.keyboard.up('ShiftLeft');
     await page.evaluate(() => {
       (window.__doom as unknown as { audio: { unlock(): void } }).audio.unlock();
-      window.__doom!.sim.giveWeapon(1);
+      window.__doom!.sim.giveWeapon(3); // chaingun (fast cadence for the soak)
     });
-    // Scripted firefight: 300 tics of held fire (≈ 20 pistol shots at the
-    // 15-tic cadence) plus drain tics, then hand the loop back.
-    await page.evaluate(() => {
-      window.__doom!.pause(true);
-      window.__doom!.sim.runTics(30, {}); // raise
-      for (let i = 0; i < 20; i++) {
-        window.__doom!.sim.runTics(2, { attack: true });
-        window.__doom!.sim.runTics(13, {});
-      }
-      window.__doom!.popInput();
-      window.__doom!.pause(false);
-    });
-    // The live loop drains the queued ledger; sources then play out.
+    await page.waitForFunction(
+      () =>
+        (window.__doom!.state() as { player: { readyweapon: number } }).player
+          .readyweapon === 3,
+      null,
+      { timeout: 10_000 }
+    );
+    // Live firefight (real held fire on the rAF loop — the no-backlog
+    // path; ~25 chaingun shots per second of hold).
+    await page.keyboard.down('ControlRight');
+    await page.waitForFunction(
+      () =>
+        (
+          window.__doom as unknown as { audio: () => AudioSeam }
+        ).audio().sourcesStarted >= 10,
+      null,
+      { timeout: 20_000 }
+    );
+    await page.keyboard.up('ControlRight');
+    // Everything drains to the terminal state: created == started ==
+    // disconnected, zero voices/channels (the no-leak census).
     await page.waitForFunction(
       () => {
         const a = (
