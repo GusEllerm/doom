@@ -85,7 +85,7 @@ export class ByteWriter {
   }
 
   bytes(values: ArrayLike<number>): void {
-    for (let i = 0; i < values.length; i++) this.byte(values[i]);
+    for (let i = 0; i < values.length; i++) this.byte(values[i]!);
   }
 
   short(value: number): void {
@@ -164,7 +164,7 @@ export class ByteReader {
   /** Throws RangeError on underrun; decodeSave guards lengths so it never fires there. */
   byte(): number {
     this.require(1);
-    return this.bytes[this.pos++];
+    return this.bytes[this.pos++]!;
   }
 
   short(): number {
@@ -201,7 +201,7 @@ export class ByteReader {
     let end = 0;
     while (end < size && field[end] !== 0) end++;
     let s = '';
-    for (let i = 0; i < end; i++) s += String.fromCharCode(field[i]);
+    for (let i = 0; i < end; i++) s += String.fromCharCode(field[i]!);
     return s;
   }
 
@@ -341,7 +341,7 @@ export function encodeSave(header: SaveHeader, payload: Uint8Array): EncodeResul
   w.byte(header.episode);
   w.byte(header.map);
   // offset 43..46 — playeringame[0..3].
-  for (let i = 0; i < 4; i++) w.byte(header.playeringame[i]);
+  for (let i = 0; i < 4; i++) w.byte(header.playeringame[i]!);
   // offset 47..49 — leveltime big-endian-ish split (>>16, >>8, &0xff).
   w.byte((header.leveltime >> 16) & 0xff);
   w.byte((header.leveltime >> 8) & 0xff);
@@ -387,7 +387,7 @@ export function decodeSave(bytes: Uint8Array): DecodeResult {
   let end = 0;
   while (end < SAVESTRINGSIZE && descBytes[end] !== 0) end++;
   let description = '';
-  for (let i = 0; i < end; i++) description += String.fromCharCode(descBytes[i]);
+  for (let i = 0; i < end; i++) description += String.fromCharCode(descBytes[i]!);
   return {
     ok: true,
     header: { description, skill, episode, map, playeringame, leveltime },

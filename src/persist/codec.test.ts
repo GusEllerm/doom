@@ -358,7 +358,7 @@ describe('DBP1 payload container (D-11a)', () => {
     expect(dec.ok).toBe(true);
     if (!dec.ok) throw new Error('decode failed');
     const pp = parsePayload(dec.payload);
-    expect(pp.ok && pp.sections.length === 1 && pp.sections[0].id).toBe(3);
+    expect(pp.ok && pp.sections.length === 1 && pp.sections[0]!.id).toBe(3);
   });
 });
 
