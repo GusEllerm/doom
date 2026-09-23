@@ -135,6 +135,21 @@ const SETS = {
     goldensDir: join('tests', 'audio', 'goldens'),
     pipeline:
       'scripted offline-mix scenes (createMixer/renderMix int law, exact-binary fixtures) + E1M1 2000-tic live-ledger firefight (IWAD-gated) + hand-built SMF songs through decodeSmf→planMusic→renderPlanOffline records; every scene double-run byte-equal, artifact = sha256(Int16 LE bytes) (+ `<name>.bin` where compact)'
+  },
+  persist: {
+    // M11-08 L1 persistence golden corpus (plan §M11-08): the same
+    // artifact class as audio (BYTES, not PNG) — the subject is the
+    // SAVEGAME FILE (§0.1 header + DBP1 payload) the production
+    // capture→codec→store path writes, plus one long-sim hash scene.
+    // The goldens tree lives under tests/persist/goldens (task-mandated
+    // path). Every fixture scene doubles as THE MATRIX assertion
+    // (save@T → fresh world → load → 300 tics == original T..T+300);
+    // the E1M1 scenes are WAD-GATED (skipIf no wad — committed goldens
+    // untouched on skip).
+    testFile: join('tests', 'persist', 'goldens.test.ts'),
+    goldensDir: join('tests', 'persist', 'goldens'),
+    pipeline:
+      'fixture corpus (pSaveg scenarios incl. mover-at-save + turnfire) & E1M1 → gInitGame → scripted tics → gSaveGame §0.3 chain → captureSink→menuSaveLoad createCaptureHandler→DBP1→codec→memory store → saved BYTES; double-run byte-equal + matrix 300-tic continuation equality; artifact = sha256(savegame bytes) (+ `<name>.bin`)'
   }
 };
 
