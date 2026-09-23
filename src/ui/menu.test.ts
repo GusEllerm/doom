@@ -329,12 +329,12 @@ describe('M_Responder truth table', () => {
     expect(menuState.currentMenuName()).toBe('ReadDef1');
     expect(menuState.itemOn()).toBe(0);
     mClearMenus();
-    expect(press(st, KEY_F2)).toBe(true); // M11 stub message armed
-    expect(menuState.messageToPrint()).toBe(1);
-    press(st, ord('x')); // non-input message: any key closes
+    expect(press(st, KEY_F2)).toBe(true); // M11-03: SaveDef opens (usergame, GS_LEVEL)
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+    press(st, ord('x')); // no alphaKey hit in SaveDef (rows are '1'..'6')
     mClearMenus();
-    expect(press(st, KEY_F3)).toBe(true);
-    press(st, ord('x'));
+    expect(press(st, KEY_F3)).toBe(true); // M11-03: LoadDef opens
+    expect(menuState.currentMenuName()).toBe('LoadDef');
     mClearMenus();
     expect(press(st, KEY_F4)).toBe(true); // sound volume menu
     expect(menuState.currentMenuName()).toBe('SoundDef');
@@ -343,8 +343,9 @@ describe('M_Responder truth table', () => {
     const det0 = menuState.detailLevel();
     expect(press(st, KEY_F5)).toBe(true);
     expect(menuState.detailLevel()).toBe(1 - det0); // :1130 toggle only
-    expect(press(st, KEY_F6)).toBe(true); // quicksave M11 stub
-    press(st, ord('x'));
+    expect(press(st, KEY_F6)).toBe(true); // M11-03 quicksave: -1 ⇒ SaveDef + -2 sentinel
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+    expect(menuState.quickSaveSlot()).toBe(-2);
     mClearMenus();
     expect(press(st, KEY_F7)).toBe(true); // end-game confirm armed
     expect(menuState.messageText()).toContain('end the game');
@@ -354,7 +355,8 @@ describe('M_Responder truth table', () => {
     expect(press(st, KEY_F8)).toBe(true); // toggle messages, panel untouched
     expect(st.players[0]!.message).not.toBe(msgs0);
     expect(menuState.menuActive()).toBe(false);
-    expect(press(st, KEY_F9)).toBe(true); // quickload stub message
+    expect(press(st, KEY_F9)).toBe(true); // quickload: QSAVESPOT (slot still unpicked)
+    expect(menuState.messageText()).toContain("haven't picked");
     press(st, ord('x'));
     mClearMenus();
     expect(press(st, KEY_F10)).toBe(true); // quit confirm armed
