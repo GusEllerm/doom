@@ -347,6 +347,35 @@ function persistRead(): DebugPersistRead {
   };
 }
 
+/**
+ * M12-04 perf-read seam (plan §M12-04b): main.ts registers a plain closure
+ * over the LOOP's own timing rings (performance.now deltas captured around
+ * stepTic()/render() — timing stays PLATFORM-side, the sim never sees
+ * performance/Date: A-06 holds). Structural discipline as attachUiDebug —
+ * no platform import lands in this file; the read is pure data.
+ */
+export interface DebugPerfRead {
+  /** total sim tics timed since boot (monotone) */
+  tics: number;
+  /** total render frames timed since boot (monotone) */
+  frames: number;
+  /** ring capacity (samples retained oldest→newest in the arrays) */
+  capacity: number;
+  /** per-tic ms (stepTic wall cost), oldest→newest, ≤ capacity entries */
+  ticMs: number[];
+  /** per-frame ms (render() wall cost incl. blit), oldest→newest */
+  frameMs: number[];
+}
+
+export type PerfReadFn = () => DebugPerfRead;
+
+let perfSrc: PerfReadFn | null = null;
+
+/** Mount (null detaches) the perf read closure — main.ts composer only. */
+export function attachPerfDebug(fn: PerfReadFn | null): void {
+  perfSrc = fn;
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** gamestate number → the §7 name (M9: all four states live). */
@@ -570,7 +599,13 @@ export const debugApi: DoomDebugApi & DebugPersistApi = {
     if (!attached) return { ready: false, note: 'no simulation attached yet' };
     // M11-10 ADDITIVE: the persist block joins the live snapshot; every
     // pre-existing field rides untouched (assertion = the widening seam).
-    return { ...liveSnapshot(attached), persist: persistRead() } as DebugStateSnapshot;
+    // M12-04 ADDITIVE: `perf` (attachPerfDebug closure; absent ⇒ field
+    // missing, e.g. headless attaches without the loop wiring).
+    return {
+      ...liveSnapshot(attached),
+      persist: persistRead(),
+      ...(perfSrc !== null ? { perf: perfSrc() } : {})
+    } as DebugStateSnapshot;
   },
 
   /* ---- M11-10 persistence seam commands (plan §M11-10) ---- */

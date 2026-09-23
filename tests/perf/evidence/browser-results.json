@@ -1,0 +1,64 @@
+{
+  "task": "M12-04 browser probe (real rAF, 320×200, 30 s/scene)",
+  "budget": {
+    "simP50Ms": 8,
+    "simP95Ms": 13,
+    "renderP50Ms": 8,
+    "renderP95Ms": 13
+  },
+  "method": {
+    "warmTics": 40,
+    "measuredTics": 400,
+    "browserWindowMs": 30000,
+    "browserWarmMs": 4000
+  },
+  "machine": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5 Pro",
+    "node": "v22.22.1",
+    "browser": "headless chromium (playwright)",
+    "date": "2026-09-23T23:19:44.448Z"
+  },
+  "scenes": [
+    {
+      "scene": "e1m7",
+      "map": "E1M7",
+      "frames": 1802,
+      "tics": 1051,
+      "fpsEstimate": 60.0606606006066,
+      "hzEstimate": 35.029830350298305,
+      "ticP50": 0.20000004768371582,
+      "ticP95": 0.3999999761581421,
+      "frameP50": 1,
+      "frameP95": 1.8000000715255737,
+      "frameMax": 2.100000023841858
+    },
+    {
+      "scene": "e1m1",
+      "map": "E1M1",
+      "frames": 1801,
+      "tics": 1050,
+      "fpsEstimate": 60.02733060027331,
+      "hzEstimate": 34.996500349965004,
+      "ticP50": 0.10000002384185791,
+      "ticP95": 0.20000004768371582,
+      "frameP50": 1.2999999523162842,
+      "frameP95": 2.299999952316284,
+      "frameMax": 2.600000023841858
+    },
+    {
+      "scene": "fire40",
+      "map": "E1M1",
+      "frames": 1802,
+      "tics": 1055,
+      "fpsEstimate": 60.0606606006066,
+      "hzEstimate": 35.1631503516315,
+      "ticP50": 0.10000002384185791,
+      "ticP95": 0.30000007152557373,
+      "frameP50": 1.5,
+      "frameP95": 2.4000000953674316,
+      "frameMax": 2.700000047683716
+    }
+  ]
+}

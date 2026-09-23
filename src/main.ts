@@ -91,7 +91,7 @@ import { rPointToAngle2 } from './sim/p_shoot';
 import type { GameState } from './sim/state';
 import { emptyInput, type GameInput } from './sim/ticcmd';
 import { wiDrawSnapshot, wiPeek } from './sim/wintermission';
-import { attachPersistDebug, attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug, debugApi, debugSim, installDebugApi, screenRead } from './debug';
+import { attachPersistDebug, attachRenderDebug, attachMouseInjection, attachPopInput, attachUiDebug, attachPerfDebug, debugApi, debugSim, installDebugApi, screenRead } from './debug';
 import { blitToCanvas, Framebuffer, PaletteLuts } from './render/framebuffer';
 import { attachPowerupFields, paletteBand } from './sim/ppalette';
 import { buildMapSprites, displayFrame, getFrameCounters, getSpritePassStats, registerDisplayHooks, type DisplayDeps, type SpriteTables } from './render/renderer';
@@ -247,6 +247,41 @@ const MAX_CATCHUP_TICS = 4;
 const TIC_MS = 1000 / TICS_PER_SECOND;
 let accumulator = 0;
 let lastFrameMs = 0;
+
+/* ------------------------------------------------------------------ */
+/* M12-04 perf recorder (plan §M12-04b: timing is PLATFORM-side — the   */
+/* sim stays performance/Date-free per A-06; these rings only wrap the  */
+/* loop's own stepTic()/render() calls with performance.now deltas)     */
+/* ------------------------------------------------------------------ */
+
+/** Sample window: 8192 frames ≈ 136 s at 60 fps, 8192 tics ≈ 234 s at
+ * 35 Hz — a 30 s e2e window never wraps, so the oldest→newest slice the
+ * debug read returns is complete for the measured span. */
+const PERF_RING = 8192;
+const perfTicMs = new Float64Array(PERF_RING);
+const perfFrameMs = new Float64Array(PERF_RING);
+let perfTics = 0;
+let perfFrames = 0;
+
+function perfRingSlice(buf: Float64Array, count: number): number[] {
+  const n = Math.min(count, PERF_RING);
+  const start = count > PERF_RING ? count % PERF_RING : 0; // oldest slot once wrapped
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) out[i] = buf[(start + i) % PERF_RING]!;
+  return out;
+}
+
+/** The `state().perf` read closure (attachPerfDebug — plain data, same
+ * discipline as attachRenderDebug/attachUiDebug). */
+function perfRead(): { tics: number; frames: number; capacity: number; ticMs: number[]; frameMs: number[] } {
+  return {
+    tics: perfTics,
+    frames: perfFrames,
+    capacity: PERF_RING,
+    ticMs: perfRingSlice(perfTicMs, perfTics),
+    frameMs: perfRingSlice(perfFrameMs, perfFrames)
+  };
+}
 
 /** Key events queued between tics, drained ONCE per tic like vanilla
  * D_ProcessEvents (d_main.c tic loop) — event handling never depends on the
@@ -563,12 +598,19 @@ function loop(nowMs: number): void {
   const simPaused = boot !== null && boot.state.paused;
   let tics = 0;
   while (!paused && !simPaused && accumulator >= TIC_MS && tics < MAX_CATCHUP_TICS) {
+    // M12-04: per-tic sim cost (the WHOLE platform tic half — stepTic's
+    // event drain + gFlowTic + gTicker + UI tickers, i.e. what the frame
+    // budget pays for one 35 Hz tic, not just gTicker's insides).
+    const ticT0 = performance.now();
     stepTic();
+    perfTicMs[perfTics++ % PERF_RING] = performance.now() - ticT0;
     accumulator -= TIC_MS;
     tics++;
   }
   if (accumulator > TIC_MS * MAX_CATCHUP_TICS) accumulator = 0; // drop backlog
+  const frameT0 = performance.now();
   render();
+  perfFrameMs[perfFrames++ % PERF_RING] = performance.now() - frameT0;
   audioFrame(); // M10-06: per-frame pending-flush/age rules (no-op silent)
 }
 
@@ -712,6 +754,7 @@ function afterLoad(buf: ArrayBuffer, src: string): void {
   // M4-07: the full counter set (hom + the four overflow counters) feeds
   // state().render (renderer.ts getFrameCounters seam).
   attachRenderDebug({ indices: fb.indices, counters: getFrameCounters, sprites: getSpritePassStats });
+  attachPerfDebug(perfRead); // M12-04: state().perf (plan §M12-04b)
   boot = { state, am, luts, palettePlayer, world, textures, flats, mapView, tables, sprites, wad, mapName: map.name, simMap: map };
 
   // ---- M9 UI-stack boot (M9-12 wiring; see the wiring block above) ----
