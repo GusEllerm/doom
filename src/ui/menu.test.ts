@@ -28,6 +28,8 @@ import {
   registerGameFlowHooks,
   resetGameFlow,
   resetFlowStubHits,
+  resetSaveFlow,
+  saveFlow,
 } from '../sim/game';
 import type { GameState } from '../sim/state';
 import { FG, screens, vInit } from '../render/vvideo';
@@ -59,6 +61,8 @@ import { resetGameactionLog, resetSfxStubLog, sfxStubLog } from '../sim/hooks';
 import {
   EpiDef,
   EpisodeMenu,
+  LoadDef,
+  LoadMenu,
   MainDef,
   MainMenu,
   NUM_QUITMESSAGES,
@@ -68,11 +72,15 @@ import {
   OptionsMenu,
   ReadDef1,
   ReadDef2,
+  SaveDef,
+  SaveMenu,
   SoundDef,
   SoundMenu,
   menuSeams,
   menuState,
+  menuStubHits,
   mInit,
+  mReadSaveStrings,
   mRegisterFlow,
   mReset,
   mResponder,
@@ -80,6 +88,7 @@ import {
   mTicker,
   mStartControlPanel,
   mClearMenus,
+  resetMenuStubHits,
 } from './menu';
 
 /* ------------------------------------------------------------------ */
@@ -103,6 +112,7 @@ const M_LUMPS: readonly string[] = [
   'M_SFXVOL', 'M_MUSVOL', 'M_GDHIGH', 'M_GDLOW', 'M_MSGOFF', 'M_MSGON',
   'M_THERML', 'M_THERMM', 'M_THERMR', 'M_THERMO',
   'M_SKULL1', 'M_SKULL2',
+  'M_LSLEFT', 'M_LSCNTR', 'M_LSRGHT', // M11-03 save/load row borders (:563-571)
   'HELP1', 'HELP2',
 ];
 
@@ -176,10 +186,13 @@ beforeEach(() => {
   resetGameactionLog();
   resetGameFlow();
   resetFlowStubHits();
+  resetSaveFlow(); // M11-03: the save-arm counters are per-test too
   menuSeams.automapActive = undefined;
   menuSeams.showMessages = undefined;
   menuSeams.setShowMessages = undefined;
   menuSeams.mouseArm = undefined;
+  menuSeams.saveRows = undefined; // M11-03 seams
+  menuSeams.requestLoadSlot = undefined;
   st = freshState();
   mReset(WAD);
   mRegisterFlow();
@@ -329,12 +342,12 @@ describe('M_Responder truth table', () => {
     expect(menuState.currentMenuName()).toBe('ReadDef1');
     expect(menuState.itemOn()).toBe(0);
     mClearMenus();
-    expect(press(st, KEY_F2)).toBe(true); // M11 stub message armed
-    expect(menuState.messageToPrint()).toBe(1);
-    press(st, ord('x')); // non-input message: any key closes
+    expect(press(st, KEY_F2)).toBe(true); // M11-03: SaveDef opens (usergame, GS_LEVEL)
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+    press(st, ord('x')); // no alphaKey hit in SaveDef (rows are '1'..'6')
     mClearMenus();
-    expect(press(st, KEY_F3)).toBe(true);
-    press(st, ord('x'));
+    expect(press(st, KEY_F3)).toBe(true); // M11-03: LoadDef opens
+    expect(menuState.currentMenuName()).toBe('LoadDef');
     mClearMenus();
     expect(press(st, KEY_F4)).toBe(true); // sound volume menu
     expect(menuState.currentMenuName()).toBe('SoundDef');
@@ -343,8 +356,9 @@ describe('M_Responder truth table', () => {
     const det0 = menuState.detailLevel();
     expect(press(st, KEY_F5)).toBe(true);
     expect(menuState.detailLevel()).toBe(1 - det0); // :1130 toggle only
-    expect(press(st, KEY_F6)).toBe(true); // quicksave M11 stub
-    press(st, ord('x'));
+    expect(press(st, KEY_F6)).toBe(true); // M11-03 quicksave: -1 ⇒ SaveDef + -2 sentinel
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+    expect(menuState.quickSaveSlot()).toBe(-2);
     mClearMenus();
     expect(press(st, KEY_F7)).toBe(true); // end-game confirm armed
     expect(menuState.messageText()).toContain('end the game');
@@ -354,7 +368,8 @@ describe('M_Responder truth table', () => {
     expect(press(st, KEY_F8)).toBe(true); // toggle messages, panel untouched
     expect(st.players[0]!.message).not.toBe(msgs0);
     expect(menuState.menuActive()).toBe(false);
-    expect(press(st, KEY_F9)).toBe(true); // quickload stub message
+    expect(press(st, KEY_F9)).toBe(true); // quickload: QSAVESPOT (slot still unpicked)
+    expect(menuState.messageText()).toContain("haven't picked");
     press(st, ord('x'));
     mClearMenus();
     expect(press(st, KEY_F10)).toBe(true); // quit confirm armed
@@ -745,5 +760,272 @@ describe('M_Drawer (vvideo integration)', () => {
     expect(px(idx, 60 + 175 + 2, 37 + 32 + 2)).toBe(lumpFill('M_GDLOW'));
     // messages msgNames[showMessages] at x+120 row 1 (showMessages=1 ON)
     expect(px(idx, 60 + 120 + 2, 37 + 16 + 2)).toBe(lumpFill('M_MSGON'));
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* 9. M11-03 — save/load rows, quickslot, string editor (§0.4)           */
+/* ------------------------------------------------------------------ */
+
+/** 10-row saveRows face: null = hole, string = description. */
+const rowsOf = (...specs: Array<string | null>) =>
+  Array.from({ length: 10 }, (_, i) => {
+    const s = specs[i] ?? null;
+    return s === null ? { description: '', empty: true } : { description: s, empty: false };
+  });
+
+describe('M11-03 SaveDef/LoadDef rows vs m_menu.c:451-505', () => {
+  it('table census: six rows, empty patch names, hotkeys 1..6, x=80 y=54', () => {
+    // load_end = 6 (:460) — SIX rows, not ten (§0.4 correction)
+    expect(LoadMenu.length).toBe(6);
+    expect(SaveMenu.length).toBe(6);
+    for (let i = 0; i < 6; i++) {
+      expect(LoadMenu[i]!.status).toBe(1); // :465 default (holes 0’d at :530)
+      expect(LoadMenu[i]!.name).toBe(''); // row TEXT is savegamestrings
+      expect(LoadMenu[i]!.alphaKey).toBe(ord(String(i + 1)));
+      expect(LoadMenu[i]!.routine).not.toBeNull();
+      expect(SaveMenu[i]!.name).toBe('');
+      expect(SaveMenu[i]!.alphaKey).toBe(ord(String(i + 1)));
+      expect(SaveMenu[i]!.routine).not.toBeNull();
+    }
+    expect(LoadDef.numitems).toBe(6);
+    expect(LoadDef.x).toBe(80); // :480-481
+    expect(LoadDef.y).toBe(54);
+    expect(LoadDef.prevMenu).toBe(MainDef);
+    expect(LoadDef.menuitems).toBe(LoadMenu);
+    expect(SaveDef.numitems).toBe(6);
+    expect(SaveDef.x).toBe(80);
+    expect(SaveDef.y).toBe(54);
+    expect(SaveDef.prevMenu).toBe(MainDef);
+    // MainDef load/save rows at 2/3 (m_menu.c:254-255)
+    expect(MainMenu[2]!.name).toBe('M_LOADG');
+    expect(MainMenu[3]!.name).toBe('M_SAVEG');
+  });
+
+  it('M_ReadSaveStrings: no view ⇒ EMPTYSTRING holes; holes status-0 (:511-536)', () => {
+    mReadSaveStrings(); // no seams.saveRows
+    expect(menuState.saveStrings().slice(0, 6)).toEqual(new Array(6).fill('empty slot'));
+    expect(LoadMenu.map((i) => i.status)).toEqual([0, 0, 0, 0, 0, 0]); // :530
+    menuSeams.saveRows = () => rowsOf('ROUGE', null, 'E1M2 MID');
+    mReadSaveStrings();
+    const s = menuState.saveStrings();
+    expect(s[0]).toBe('ROUGE'); // :532 (24B field)
+    expect(s[1]).toBe('empty slot'); // :528
+    expect(s[6]).toBe('empty slot'); // rows beyond load_end untouched (:518)
+    expect(LoadMenu.map((i) => i.status)).toEqual([1, 0, 1, 0, 0, 0]);
+    // SaveMenu rows keep status 1 — vanilla flips only LoadMenu
+    expect(SaveMenu.map((i) => i.status)).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+
+  it('empty LoadDef row does nothing on Enter; filled row requests load (:578-589)', () => {
+    st.usergame = true;
+    const loads: number[] = [];
+    menuSeams.requestLoadSlot = (slot) => loads.push(slot);
+    menuSeams.saveRows = () => rowsOf(null, 'ROUGE');
+    expect(press(st, KEY_F3)).toBe(true);
+    expect(menuState.currentMenuName()).toBe('LoadDef');
+    expect(menuState.itemOn()).toBe(0);
+    expect(press(st, KEY_ENTER)).toBe(true); // status-0 row: no fire (:1689)
+    expect(loads).toEqual([]);
+    expect(menuState.menuActive()).toBe(true);
+    press(st, KEY_DOWNARROW); // status 0 still takes the skull
+    expect(menuState.itemOn()).toBe(1);
+    expect(press(st, KEY_ENTER)).toBe(true);
+    expect(loads).toEqual([1]); // G_LoadGame half via the seam
+    expect(menuState.menuActive()).toBe(false); // M_ClearMenus (:589)
+  });
+
+  it('M_DrawSave draws the bordered rows + no draw stubs (:607-624)', () => {
+    vInit();
+    st.usergame = true;
+    menuSeams.saveRows = () => rowsOf('ROUGE');
+    press(st, KEY_F2);
+    resetMenuStubHits();
+    mDrawer();
+    expect(menuStubHits.byName.get('draw:M_SAVEG')).toBeUndefined();
+    expect(menuStubHits.byName.get('draw:M_LSLEFT')).toBeUndefined();
+    expect(menuStubHits.byName.get('draw:M_LSRGHT')).toBeUndefined();
+    const idx = screens[FG]!.data;
+    // text rows draw with the uniform-fill HU font (fixture: every
+    // STCFN glyph is solid 17) — row 0 “ROUGE” at (80,54), row 1
+    // “empty slot” at (80,70)
+    expect(px(idx, 80 + 2, 54 + 2)).toBe(17);
+    expect(px(idx, 80 + 2, 70 + 2)).toBe(17);
+    // border band M_LSCNTR at y+7 per row (:563-571), below the glyphs
+    expect(px(idx, 80 + 2, 54 + 7 + 2)).toBe(lumpFill('M_LSCNTR'));
+    expect(px(idx, 80 + 2, 70 + 7 + 2)).toBe(lumpFill('M_LSCNTR'));
+  });
+});
+
+describe('M11-03 guards + quickslot globals (:90/:631-746)', () => {
+  it('F2: !usergame ⇒ SAVEDEAD (:645-649); gamestate != GS_LEVEL ⇒ silent (:663-666)', () => {
+    st.usergame = false; // gInitGame boots TRUE (g_game.c:1440) — clear it
+    expect(press(st, KEY_F2)).toBe(true); // usergame false
+    expect(menuState.messageToPrint()).toBe(1);
+    expect(menuState.messageText()).toContain("aren't playing");
+    press(st, ord('x'));
+    st.usergame = true;
+    st.gamestate = GS.DEMOSCREEN;
+    expect(press(st, KEY_F2)).toBe(true);
+    expect(menuState.messageToPrint()).toBe(0); // the “// UNUSED” silence
+    expect(menuState.currentMenuName()).toBe('MainDef'); // panel only
+  });
+
+  it('F6: unset slot ⇒ SaveDef + quickSaveSlot -2; M_DoSave captures it', () => {
+    st.usergame = true;
+    expect(menuState.quickSaveSlot()).toBe(-1); // M_Init :1858
+    menuSeams.saveRows = () => rowsOf('ROUGE');
+    expect(press(st, KEY_F6)).toBe(true);
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+    expect(menuState.quickSaveSlot()).toBe(-2); // “pick a slot now” (:706)
+    press(st, KEY_ENTER); // row 0: editor arms over 'ROUGE'
+    expect(menuState.saveEdit()).toMatchObject({ enter: 1, slot: 0, index: 5 });
+    press(st, KEY_ENTER); // commit NON-EMPTY ⇒ M_DoSave (:1472-1473)
+    expect(menuState.menuActive()).toBe(false);
+    expect(menuState.quickSaveSlot()).toBe(0); // -2 ⇒ slot capture (:637-638)
+    gTicker(st); // sendsave packs…
+    gTicker(st); // …and the NEXT drain executes G_DoSaveGame (§0.3)
+    expect(saveFlow.savesDone).toBe(1);
+  });
+
+  it('F6 with a remembered slot ⇒ QSPROMPT over its name; y/n paths (:709-712)', () => {
+    st.usergame = true;
+    menuSeams.saveRows = () => rowsOf('ROUGE');
+    press(st, KEY_F6);
+    press(st, KEY_ENTER); // arm editor
+    press(st, KEY_ENTER); // capture slot 0 (arm #1)
+    gTicker(st);
+    gTicker(st); // pack + drain (§0.3)
+    expect(saveFlow.savesDone).toBe(1);
+    expect(press(st, KEY_F6)).toBe(true);
+    expect(menuState.messageToPrint()).toBe(1);
+    expect(menuState.messageText()).toContain("quicksave over your game named");
+    expect(menuState.messageText()).toContain("'ROUGE'"); // sprintf %s (:709)
+    expect(menuState.messageText()).toContain('press y or n.');
+    press(st, ord('n')); // NO ⇒ no second save
+    expect(menuState.menuActive()).toBe(false);
+    expect(press(st, KEY_F6)).toBe(true);
+    press(st, ord('y')); // M_QuickSaveResponse → M_DoSave (:679-687)
+    expect(menuState.menuActive()).toBe(false);
+    expect(menuState.quickSaveSlot()).toBe(0); // ≥0 does NOT re-capture
+    gTicker(st);
+    gTicker(st);
+    expect(saveFlow.savesDone).toBe(2);
+  });
+
+  it('F9: -1 ⇒ QSAVESPOT (:736-739); slot ⇒ QLPROMPT; y ⇒ load seam', () => {
+    st.usergame = true;
+    expect(press(st, KEY_F9)).toBe(true);
+    expect(menuState.messageText()).toContain("haven't picked");
+    press(st, ord('x')); // PRESSKEY: any key closes
+    // capture slot 0 first (F6 flow)
+    menuSeams.saveRows = () => rowsOf('ROUGE');
+    press(st, KEY_F6);
+    press(st, KEY_ENTER);
+    press(st, KEY_ENTER);
+    const loads: number[] = [];
+    menuSeams.requestLoadSlot = (slot) => loads.push(slot);
+    expect(press(st, KEY_F9)).toBe(true);
+    expect(menuState.messageText()).toContain('quickload the game named');
+    expect(menuState.messageText()).toContain("'ROUGE'"); // :741
+    press(st, ord('n')); // cancel keeps the slot
+    expect(loads).toEqual([]);
+    expect(press(st, KEY_F9)).toBe(true);
+    press(st, ord('y')); // M_QuickLoadResponse → M_LoadSelect (:719-725)
+    expect(loads).toEqual([0]);
+    expect(menuState.menuActive()).toBe(false);
+  });
+});
+
+describe('M11-03 save-name editor state machine (m_menu.c:1453-1490)', () => {
+  /** Open SaveDef and fire row 0’s M_SaveSelect (:644-654). */
+  const openEditor = (slotDesc: string | null): void => {
+    st.usergame = true;
+    menuSeams.saveRows = () => rowsOf(slotDesc);
+    expect(press(st, KEY_F2)).toBe(true);
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+    expect(press(st, KEY_ENTER)).toBe(true);
+    expect(menuState.saveEdit()).toMatchObject({ enter: 1, slot: 0 });
+  };
+
+  it('M_SaveSelect: EMPTYSTRING clears to "", snapshot kept for ESC (:644-654)', () => {
+    openEditor(null);
+    expect(menuState.saveStrings()[0]).toBe(''); // :651-652 clear
+    expect(menuState.saveEdit()).toMatchObject({ index: 0, old: 'empty slot' }); // :650/:653
+  });
+
+  it('chars: toupper + HU-font gate (32-95; { and ` rejected), all consumed', () => {
+    openEditor(null);
+    expect(press(st, ord('a'))).toBe(true); // :1477 toupper
+    expect(press(st, ord('z'))).toBe(true);
+    expect(press(st, ord('5'))).toBe(true);
+    expect(press(st, ord(' '))).toBe(true); // space excepted (:1479)
+    expect(press(st, ord('!'))).toBe(true); // HU_FONTSTART (:1480)
+    expect(press(st, ord('{'))).toBe(true); // 123 ⇒ font-gate REJECT
+    expect(press(st, 0x60)).toBe(true); // backtick ⇒ font-gate REJECT
+    expect(press(st, 128)).toBe(true); // non-printable ⇒ reject
+    expect(menuState.saveStrings()[0]).toBe('AZ5 !');
+    expect(menuState.saveEdit().index).toBe(5);
+  });
+
+  it('caps: 23 chars (SAVESTRINGSIZE-1 index bound; font-5px width cap inert)', () => {
+    openEditor(null);
+    for (let i = 0; i < 23; i++) press(st, ord('a'));
+    expect(menuState.saveStrings()[0]).toHaveLength(23);
+    press(st, ord('a')); // :1483 saveCharIndex < SAVESTRINGSIZE-1
+    expect(menuState.saveStrings()[0]).toHaveLength(23);
+    expect(menuState.saveEdit().index).toBe(23);
+  });
+
+  it('backspace truncates, never below 0; still consumes (:1457-1462)', () => {
+    openEditor(null);
+    press(st, ord('a'));
+    press(st, ord('b'));
+    press(st, KEY_BACKSPACE);
+    expect(menuState.saveStrings()[0]).toBe('A');
+    expect(menuState.saveEdit().index).toBe(1);
+    press(st, KEY_BACKSPACE);
+    press(st, KEY_BACKSPACE); // at 0: no-op, consumed
+    expect(menuState.saveStrings()[0]).toBe('');
+    expect(menuState.saveEdit().index).toBe(0);
+  });
+
+  it('ESC reverts to saveOldString and closes the editor, menu stays (:1464-1467)', () => {
+    openEditor(null);
+    press(st, ord('h'));
+    press(st, ord('i'));
+    expect(press(st, KEY_ESCAPE)).toBe(true);
+    expect(menuState.saveStrings()[0]).toBe('empty slot'); // strcpy revert
+    expect(menuState.saveEdit().enter).toBe(0);
+    expect(menuState.menuActive()).toBe(true);
+    expect(menuState.currentMenuName()).toBe('SaveDef');
+  });
+
+  it('Enter: EMPTY row exits without saving; non-empty saves + clears menus', () => {
+    openEditor(null);
+    expect(press(st, KEY_ENTER)).toBe(true); // [0] == 0 ⇒ break (:1472)
+    expect(menuState.saveEdit().enter).toBe(0);
+    expect(menuState.menuActive()).toBe(true); // NO M_DoSave
+    expect(saveFlow.savesDone).toBe(0);
+    mClearMenus(); // the panel must close before F2 re-opens MainDef
+    openEditor('NOTE'); // prefilled row
+    expect(press(st, KEY_ENTER)).toBe(true);
+    expect(menuState.menuActive()).toBe(false);
+    expect(saveFlow.savesDone).toBe(0); // the arm lands NEXT ticks
+    gTicker(st);
+    gTicker(st);
+    expect(saveFlow.savesDone).toBe(1);
+  });
+
+  it('editor preempts EVERYTHING: F5/arrows/letters never leak (:1490)', () => {
+    openEditor(null);
+    const det = menuState.detailLevel();
+    expect(press(st, KEY_F5)).toBe(true); // would toggle outside
+    expect(menuState.detailLevel()).toBe(det);
+    expect(press(st, KEY_DOWNARROW)).toBe(true);
+    expect(menuState.itemOn()).toBe(0); // skull never moved
+    expect(press(st, ord('y'))).toBe(true); // 'Y' is a CHARACTER here
+    expect(menuState.saveStrings()[0]).toBe('Y');
+    expect(menuState.messageToPrint()).toBe(0);
   });
 });

@@ -70,8 +70,9 @@ import { lumpPatch, vDrawPatchDirect, FG, type VPatch } from '../render/vvideo';
 import type { WadFile } from '../wad/wadfile';
 import { sfxSink } from '../sim/hooks';
 import { GAME_MODE } from '../sim/gamemode';
-import { gDeferedInitNew, gStartTitle, registerGameFlowHooks } from '../sim/game';
+import { gDeferedInitNew, gSaveGame, gStartTitle, GS, registerGameFlowHooks } from '../sim/game';
 import type { GameState } from '../sim/state';
+import { EMPTYSTRING, QLPROMPT, QSAVESPOT, QSPROMPT, SAVEDEAD } from './textdata';
 
 /* ------------------------------------------------------------------ */
 /* event alias (the queue's event_t; keyboard.ts packet shape)          */
@@ -121,10 +122,11 @@ const skullName = ['M_SKULL1', 'M_SKULL2'] as const;
 const PRESSKEY = 'press a key.'; // :39
 const PRESSYN = 'press y or n.'; // :40
 const QUITMSG = 'are you sure you want to\nquit this great game?'; // :41
-export const LOADNET = "you can't do load while in a net game!\n\n" + PRESSKEY; // :42
-export const QLOADNET = "you can't quickload during a netgame!\n\n" + PRESSKEY; // :43
-const QSAVESPOT = "you haven't picked a quicksave slot yet!\n\n" + PRESSKEY; // :44
-const SAVEDEAD = "you can't save if you aren't playing!\n\n" + PRESSKEY; // :45
+// M11-03: the save/load string block (LOADNET :42, QLOADNET :43,
+// QSAVESPOT :44, SAVEDEAD :45, QSPROMPT :46, QLPROMPT :47, EMPTYSTRING
+// :75, GGSAVED :135) lives in ./textdata.ts (plan §M11-03 ownership);
+// re-exported where the old in-file consts were consumed.
+export { EMPTYSTRING, GGSAVED, LOADNET, QLOADNET, QLPROMPT, QSAVESPOT, QSPROMPT, SAVEDEAD } from './textdata';
 export const NEWGAME =
   "you can't start a new game\nwhile in a network game.\n\n" + PRESSKEY; // :49-51
 const NIGHTMARE =
@@ -147,7 +149,6 @@ const gammamsg = [
   'Gamma correction level 3',
   'Gamma correction level 4',
 ] as const;
-const NOTYET = 'not yet implemented.\n\n' + PRESSKEY; // M11 slots (plan §M9-04)
 
 /** dstrings.c:35-79 endmsg[NUM_QUITMESSAGES+1] — DOOM1 block + the 22
  * id strings (language==english path, m_menu.c:1105). */
@@ -199,6 +200,22 @@ export interface MenuSeams {
   setPalette?: () => void;
   /** menuMouse arming sink: boxes on menu change, null ⇒ disarm. */
   mouseArm?: (boxes: readonly MenuItemBox[] | null, current: () => number) => void;
+  /** M11-03 save-slot read view (m_menu.c:511-536 M_ReadSaveStrings).
+   * The persist layer keeps a LAST-KNOWN SNAPSHOT warm (store.listSaves
+   * is async; the menu never awaits — D-11b), refreshed pre-open by the
+   * M11-05 glue. Absent ⇒ every row reads as a hole (EMPTYSTRING). */
+  saveRows?: () => readonly SaveRowView[];
+  /** M11-03 M_LoadSelect's G_LoadGame half (m_menu.c:583): the adapter
+   * decodes the slot and arms gRequestLoadGame (async, outside the
+   * menu). Absent ⇒ counted stub, the menu still closes (:589). */
+  requestLoadSlot?: (slot: number) => void;
+}
+
+/** One slot face of the injected read view (store.ts SaveRow mirror,
+ * structural so src/ui imports NOTHING from src/persist — zone rule). */
+export interface SaveRowView {
+  description: string;
+  empty: boolean;
 }
 
 /** Counted stub sites (sfx-free evidence + M10/M9-09 seam placeholders). */
@@ -236,7 +253,26 @@ let messageRoutine: ((ch: number) => void) | null = null; // :113
 let messageNeedsInput = false; // :115
 let messageLastMenuActive = false; // :114
 
-let quickSaveSlot = -1; // :120 (M11)
+let quickSaveSlot = -1; // :120 (M11: -1 unset, -2 “pick a slot now”, ≥0 last used)
+
+/* --- M11-03 save-slot strings + string editor (m_menu.c:89-132) ------ */
+
+/** g_game.c:75 SAVESTRINGSIZE (savegamestrings[10][24], m_menu.c:132). */
+const SAVESTRINGSIZE = 24;
+/** m_menu.c:460 `load_end` — the menu exposes SIX rows (§0.4: the
+ * brief’s “ten slots” corrected; the array is 10, only 0..5 are shown). */
+const LOAD_END = 6;
+
+/** savegamestrings[10][SAVESTRINGSIZE] (m_menu.c:132). JS strings stand
+ * in for the char rows (NUL termination ≡ truncation). */
+const savegamestrings: string[] = new Array(10).fill(EMPTYSTRING);
+
+/** m_menu.c:119-123 the string-editor state machine (see the
+ * mResponder branch :1453-1490 — the char switch lives there). */
+let saveStringEnter = 0; // :119
+let saveSlot = 0; // :120
+let saveCharIndex = 0; // :121
+let saveOldString = ''; // :123 char saveOldString[SAVESTRINGSIZE]
 
 /* option state (m_menu.c decls; defaults = m_misc.c:237/:279/:108)   */
 let screenSize = 6; // screenblocks - 3 (M_Init :1854)
@@ -328,6 +364,33 @@ export const ReadMenu2: MenuItem[] = [
   { status: 1, name: '', routine: mFinishReadThis, alphaKey: 0 },
 ];
 
+/**
+ * LoadMenu (m_menu.c:464-471): SIX rows (§0.4 — load_end = 6, :460;
+ * the savegamestrings ARRAY is 10 but the 1.10 menu exposes six). The
+ * name patch is "" — the row TEXT is savegamestrings[i], drawn text by
+ * M_DrawLoad (:549-552). M_ReadSaveStrings flips status 0/1 per hole
+ * (:530/:534) — a 0 row takes Enter nowhere (:1689 `status` guard).
+ */
+export const LoadMenu: MenuItem[] = [
+  { status: 1, name: '', routine: (c) => mLoadSelect(c), alphaKey: ord('1') },
+  { status: 1, name: '', routine: (c) => mLoadSelect(c), alphaKey: ord('2') },
+  { status: 1, name: '', routine: (c) => mLoadSelect(c), alphaKey: ord('3') },
+  { status: 1, name: '', routine: (c) => mLoadSelect(c), alphaKey: ord('4') },
+  { status: 1, name: '', routine: (c) => mLoadSelect(c), alphaKey: ord('5') },
+  { status: 1, name: '', routine: (c) => mLoadSelect(c), alphaKey: ord('6') },
+];
+
+/** SaveMenu (m_menu.c:487-494) — same shape; status stays 1 always
+ * (M_ReadSaveStrings only touches LoadMenu), alphaKeys '1'..'6'. */
+export const SaveMenu: MenuItem[] = [
+  { status: 1, name: '', routine: (c) => mSaveSelect(c), alphaKey: ord('1') },
+  { status: 1, name: '', routine: (c) => mSaveSelect(c), alphaKey: ord('2') },
+  { status: 1, name: '', routine: (c) => mSaveSelect(c), alphaKey: ord('3') },
+  { status: 1, name: '', routine: (c) => mSaveSelect(c), alphaKey: ord('4') },
+  { status: 1, name: '', routine: (c) => mSaveSelect(c), alphaKey: ord('5') },
+  { status: 1, name: '', routine: (c) => mSaveSelect(c), alphaKey: ord('6') },
+];
+
 /* menu_t defs — the prevMenu web is wired below (C's &-references). */
 export const MainDef = mkMenu('MainDef', 6, null, MainMenu, mDrawMainMenu, 97, 64, 0); // :259-266
 export const EpiDef = mkMenu('EpiDef', 4, MainDef, EpisodeMenu, mDrawEpisode, 48, 63, 0); // :291-299
@@ -336,6 +399,13 @@ export const OptionsDef = mkMenu('OptionsDef', 8, MainDef, OptionsMenu, mDrawOpt
 export const ReadDef1 = mkMenu('ReadDef1', 1, MainDef, ReadMenu1, mDrawReadThis1, 280, 185, 0); // :395-402
 export const ReadDef2 = mkMenu('ReadDef2', 1, ReadDef1, ReadMenu2, mDrawReadThis2, 330, 175, 0); // :410-417
 export const SoundDef = mkMenu('SoundDef', 4, OptionsDef, SoundMenu, mDrawSound, 80, 64, 0); // :434-441
+/** LoadDef (m_menu.c:473-482): numitems load_end(6), prevMenu MainDef,
+ * x=80 y=54 — M_DrawSaveLoadBorder places the row box at (x-8, y+7)
+ * from these coordinates (:563-571). */
+export const LoadDef = mkMenu('LoadDef', 6, MainDef, LoadMenu, mDrawLoad, 80, 54, 0);
+/** SaveDef (m_menu.c:496-505): identical geometry (M_DrawSave reuses
+ * LoadDef.x/.y at :615-617 — verbatim). */
+export const SaveDef = mkMenu('SaveDef', 6, MainDef, SaveMenu, mDrawSave, 80, 54, 0);
 
 function mkMenu(
   defName: string, numitems: number, prevMenu: Menu | null,
@@ -372,6 +442,13 @@ export const menuState = {
   detailLevel: () => detailLevel,
   sndVolumes: () => [sndSfxVolume, sndMusicVolume] as const,
   useGamma: () => usegamma,
+  /** m_menu.c:90 quickSaveSlot: -1 unset / -2 “pick a slot now” /
+   * ≥0 last-used (M_DoSave :637-638 captures the sentinel). */
+  quickSaveSlot: () => quickSaveSlot,
+  /** savegamestrings[] face (m_menu.c:132). */
+  saveStrings: () => savegamestrings.slice(),
+  /** string-editor state face (:119-123). */
+  saveEdit: () => ({ enter: saveStringEnter, slot: saveSlot, index: saveCharIndex, old: saveOldString }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -665,28 +742,190 @@ function mMusicVol(choice: number): void {
   menuStub('S_SetMusicVolume');
 }
 
-/* --- M11 slots: registered, "not yet" (plan §M9-04) ------------------ */
+/* --- M11-03 bodies (were the M9 “not yet” slots; addresses frozen) --- */
 
-function mLoadGame(): void {
-  menuStub('M_LoadGame');
-  mStartMessage(NOTYET, null, false);
+/**
+ * M_ReadSaveStrings (m_menu.c:511-536): vanilla opens doomsavN.dsg per
+ * row; the async-free port consumes the injected LAST-KNOWN snapshot
+ * (§M11-03: pre-opened by the M11-05 glue — the menu never awaits).
+ * Hole ⇒ EMPTYSTRING + the LoadMenu row goes status 0 (unselectable,
+ * :528-531); file ⇒ 24B description + status 1 (:532-534). load_end
+ * rows only — slots 6..9 never surface in the 1.10 menu.
+ */
+export function mReadSaveStrings(): void {
+  const rows = menuSeams.saveRows?.();
+  for (let i = 0; i < LOAD_END; i++) {
+    const r = rows?.[i];
+    if (r === undefined || r.empty) {
+      savegamestrings[i] = EMPTYSTRING; // :528
+      LoadMenu[i]!.status = 0; // :530
+    } else {
+      savegamestrings[i] = r.description.slice(0, SAVESTRINGSIZE - 1); // :532 (NUL-terminated 24B field)
+      LoadMenu[i]!.status = 1; // :534
+    }
+  }
 }
+
+/** M_DrawLoad (m_menu.c:543-555): M_LOADG title patch at (72,28) + the
+ * six bordered string rows. */
+function mDrawLoad(): void {
+  mDrawPatch('M_LOADG', 72, 28);
+  for (let i = 0; i < LOAD_END; i++) {
+    mDrawSaveLoadBorder(LoadDef.x, LoadDef.y + LINEHEIGHT * i);
+    mWriteText(LoadDef.x, LoadDef.y + LINEHEIGHT * i, savegamestrings[i]!);
+  }
+}
+
+/** M_DrawSave (m_menu.c:607-626): same geometry (vanilla reads
+ * LoadDef.x/.y verbatim at :615-617 — same values) + the CURSOR TRUTH:
+ * vanilla has no block cursor — while saveStringEnter it draws the
+ * text "_" at the string's right edge (:621-624). */
+function mDrawSave(): void {
+  mDrawPatch('M_SAVEG', 72, 28);
+  for (let i = 0; i < LOAD_END; i++) {
+    mDrawSaveLoadBorder(LoadDef.x, LoadDef.y + LINEHEIGHT * i);
+    mWriteText(LoadDef.x, LoadDef.y + LINEHEIGHT * i, savegamestrings[i]!);
+  }
+  if (saveStringEnter) {
+    const w = mStringWidth(savegamestrings[saveSlot]!);
+    mWriteText(LoadDef.x + w, LoadDef.y + LINEHEIGHT * saveSlot, '_');
+  }
+}
+
+/** M_DrawSaveLoadBorder (m_menu.c:559-572): M_LSLEFT at x-8, 24×
+ * M_LSCNTR advancing 8, M_LSRGHT — all at y+7. (Two-arg in 1.10 — the
+ * §0.4 “+24×M_LSCNTR” note describes this loop.) */
+function mDrawSaveLoadBorder(x: number, y: number): void {
+  mDrawPatch('M_LSLEFT', x - 8, y + 7);
+  let xx = x;
+  for (let i = 0; i < 24; i++) {
+    mDrawPatch('M_LSCNTR', xx, y + 7);
+    xx += 8;
+  }
+  mDrawPatch('M_LSRGHT', xx, y + 7);
+}
+
+/** M_LoadSelect (m_menu.c:578-586): G_LoadGame(doomsavN.dsg) — the
+ * browser half is async (decode → gRequestLoadGame, D-11b), mounted on
+ * seams.requestLoadSlot; then the menu closes unconditionally (:589). */
+function mLoadSelect(choice: number): void {
+  if (menuSeams.requestLoadSlot) menuSeams.requestLoadSlot(choice);
+  else menuStub('G_LoadGame'); // seam not mounted yet (M11-10 boot)
+  mClearMenus();
+}
+
+/** M_LoadGame (m_menu.c:590-601): netgame ⇒ LOADNET (compile-time
+ * false here, §4); SetupNextMenu(LoadDef) THEN M_ReadSaveStrings —
+ * verbatim order (:599-600). */
+function mLoadGame(choice: number): void {
+  void choice; // unused in 1.10 (MainDef passes itemOn=2, ignored)
+  mSetupNextMenu(LoadDef);
+  mReadSaveStrings();
+}
+
+/** M_DoSave (m_menu.c:631-639): the editor’s Enter + the quicksave
+ * confirm both land here. G_SaveGame is the two-stage deferral entry
+ * (§0.3, g_game.c:1256 — sendsave rides the next ticcmd); the quick-
+ * slot sentinel capture is the -2 → slot transition (:637-638). */
+export function mDoSave(slot: number): void {
+  gSaveGame(slot, savegamestrings[slot]!);
+  mClearMenus();
+  if (quickSaveSlot === -2) quickSaveSlot = slot; // PICK QUICKSAVE SLOT YET?
+}
+
+/** M_SaveSelect (m_menu.c:644-654): arm the char interceptor, snapshot
+ * the row for ESC-revert, and clear a fresh EMPTYSTRING to "" so the
+ * user types over it; saveCharIndex = strlen. (No quickSaveSlot
+ * capture here — M_DoSave owns it, :637.) */
+function mSaveSelect(choice: number): void {
+  saveStringEnter = 1; // "we are going to be intercepting all chars"
+  saveSlot = choice;
+  saveOldString = savegamestrings[choice]!;
+  if (savegamestrings[choice] === EMPTYSTRING) savegamestrings[choice] = '';
+  saveCharIndex = savegamestrings[choice]!.length;
+}
+
+/** M_SaveGame (m_menu.c:656-671): !usergame ⇒ SAVEDEAD (the “not
+ * playing” message — NOT sfx_oof, that half is M_QuickSave’s :691-695);
+ * gamestate != GS_LEVEL ⇒ silent return (:663-666, the “// UNUSED”
+ * SAVE-not-here guard); else SaveDef + the slot strings. */
 function mSaveGame(choice: number): void {
-  // M_SaveGame's !choice && !usergame ⇒ sfx_oof half (m_menu.c:640-643)
-  if (!choice && !gs?.usergame) {
+  void choice; // unused in 1.10 (F2 calls M_SaveGame(0))
+  if (!gs?.usergame) {
+    mStartMessage(SAVEDEAD, null, false);
+    return;
+  }
+  if (gs.gamestate !== GS.LEVEL) return; // :663-666
+  mSetupNextMenu(SaveDef);
+  mReadSaveStrings();
+}
+
+/** M_QuickSaveResponse (m_menu.c:679-688): the QSPROMPT y/n — 'y'
+ * fires M_DoSave on the remembered slot. DEVIATION (documented, sfx
+ * ledger): vanilla’s response-local S_StartSound(:686) is MERGED into
+ * the message branch’s same-tic sfx_swtchx emission (:1507, transcribed
+ * above) — same sound, same tic, one sink event (the M10-04 site
+ * ledger pins the emitter census). */
+function mQuickSaveResponse(ch: number): void {
+  if (ch !== ord('y')) return;
+  mDoSave(quickSaveSlot);
+}
+
+/**
+ * M_QuickSave (m_menu.c:689-714) — the F6 body. Truths (§0.4):
+ *  - !usergame ⇒ sfx_oof; gamestate != GS_LEVEL ⇒ SILENT return.
+ *  - quickSaveSlot < 0 (first F6 of the session, -1 from M_Init :1858
+ *    — the global is memory, never persisted, §0.8): open SaveDef and
+ *    arm quickSaveSlot = -2 “means to pick a slot now” (:706); the
+ *    capture happens later in M_DoSave (:637-638).
+ *  - else the QSPROMPT y/n over the slot’s name (sprintf %s, :709).
+ * The literal `quickSaveSlot == -2` QSPROMPT shape below the -2 branch
+ * is how 1.10 reads: a fresh -2 can only arrive via the < 0 branch,
+ * so the prompt fires for REAL slots (≥0) only — transcribed, not
+ * “fixed”.
+ */
+function mQuickSave(): void {
+  if (!gs?.usergame) {
     sfxSink('sfx_oof');
     return;
   }
-  menuStub('M_SaveGame');
-  mStartMessage(NOTYET, null, false);
+  if (gs.gamestate !== GS.LEVEL) return; // :697-700 silent
+  if (quickSaveSlot < 0) {
+    mStartControlPanel();
+    mReadSaveStrings();
+    mSetupNextMenu(SaveDef);
+    quickSaveSlot = -2; // means to pick a slot now (:706)
+    return;
+  }
+  mStartMessage(sprintf(QSPROMPT, savegamestrings[quickSaveSlot]!), mQuickSaveResponse, true);
 }
-function mQuickSave(): void {
-  menuStub('M_QuickSave');
-  mStartMessage(quickSaveSlot < 0 ? SAVEDEAD : NOTYET, null, false);
+
+/** M_QuickLoadResponse (m_menu.c:718-726): 'y' ⇒ M_LoadSelect on the
+ * remembered slot (its :723 S_StartSound merges into the message
+ * branch’s same-tic emission — see mQuickSaveResponse’s note). */
+function mQuickLoadResponse(ch: number): void {
+  if (ch !== ord('y')) return;
+  mLoadSelect(quickSaveSlot);
 }
+
+/**
+ * M_QuickLoad (m_menu.c:727-746) — the F9 body. netgame ⇒ QLOADNET
+ * (compile-time false, §4); quickSaveSlot < 0 ⇒ QSAVESPOT (:736-739,
+ * “QSAVESPOT if never saved” — -1 AND an unpicked -2 both land here);
+ * else the QLPROMPT y/n over the slot name (:741-742).
+ */
 function mQuickLoad(): void {
-  menuStub('M_QuickLoad');
-  mStartMessage(quickSaveSlot < 0 ? QSAVESPOT : NOTYET, null, false);
+  if (quickSaveSlot < 0) {
+    mStartMessage(QSAVESPOT, null, false);
+    return;
+  }
+  mStartMessage(sprintf(QLPROMPT, savegamestrings[quickSaveSlot]!), mQuickLoadResponse, true);
+}
+
+/** C sprintf stand-in for the two single-%s prompts (QSPROMPT/
+ * QLPROMPT, d_englsh.h:46-47). */
+function sprintf(fmt: string, s: string): string {
+  return fmt.replace('%s', s);
 }
 
 /* ------------------------------------------------------------------ */
@@ -924,8 +1163,47 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
 
   if (ch === -1) return false; // :1445-1447 — THE keyup-never-eaten line
 
-  // Save Game string input (:1450-1486) — M11 (saveStringEnter is never
-  // set by any registered slot), branch kept for shape.
+  // Save Game string input (:1453-1490) — M11-03: while M_SaveSelect
+  // armed the editor, EVERY keydown is consumed (the `return true` at
+  // :1490), before the message branch and before the alpha scan.
+  if (saveStringEnter) {
+    switch (ch) {
+      case KEY_BACKSPACE: // :1457-1462
+        if (saveCharIndex > 0) {
+          saveCharIndex--;
+          savegamestrings[saveSlot] = savegamestrings[saveSlot]!.slice(0, saveCharIndex); // [i] = 0
+        }
+        break;
+      case KEY_ESCAPE: // :1464-1467 — revert, menu stays open
+        saveStringEnter = 0;
+        savegamestrings[saveSlot] = saveOldString;
+        break;
+      case KEY_ENTER: // :1469-1474 — commit only a NON-EMPTY row
+        saveStringEnter = 0;
+        if (savegamestrings[saveSlot]!.length > 0) mDoSave(saveSlot);
+        break;
+      default: // :1476-1487 the char switch
+        // toupper, then the HU-font gate: printable 33..95 only —
+        // space (32) excepted (vanilla’s `if (ch != 32)` :1479-1481).
+        ch = upper(ch);
+        if (ch !== 32 && (ch - HU_FONTSTART < 0 || ch - HU_FONTSTART >= HU_FONTSIZE)) break;
+        // caps: index < SAVESTRINGSIZE-1 (23 — vanilla’s bound, NOT
+        // -2) AND the drawn width below (SAVESTRINGSIZE-2)*8 = 176 px
+        // (:1483-1485; with no WAD mounted M_StringWidth is 0 and the
+        // index cap alone binds — like a fontless vanilla).
+        if (
+          ch >= 32 && ch <= 127 &&
+          saveCharIndex < SAVESTRINGSIZE - 1 &&
+          mStringWidth(savegamestrings[saveSlot]!) < (SAVESTRINGSIZE - 2) * 8
+        ) {
+          savegamestrings[saveSlot] =
+            savegamestrings[saveSlot]!.slice(0, saveCharIndex) + String.fromCharCode(ch);
+          saveCharIndex++;
+        }
+        break;
+    }
+    return true; // :1490 — consume everything while editing
+  }
 
   // Take care of any messages that need input (:1489-1502)
   if (messageToPrint) {
@@ -979,10 +1257,10 @@ export function mResponder(state: GameState, ev: MenuEvent): boolean {
         armMouse();
         return true;
 
-      case KEY_F3: // Load (M11 slot)
+      case KEY_F3: // Load (M11-03 live)
         mStartControlPanel();
         sfxSink('sfx_swtchn');
-        mLoadGame();
+        mLoadGame(0);
         armMouse();
         return true;
 
@@ -1175,6 +1453,16 @@ export function mReset(w?: WadFile | null): void {
   sndSfxVolume = 8;
   sndMusicVolume = 8;
   epi = 0;
+  // M11-03 save/load statics (the C tables are static per-process too).
+  for (let i = 0; i < savegamestrings.length; i++) savegamestrings[i] = EMPTYSTRING;
+  for (const it of LoadMenu) it.status = 1; // M_ReadSaveStrings’ edits
+  quickSaveSlot = -1; // re-applied by mInit below (:1858)
+  saveStringEnter = 0;
+  saveSlot = 0;
+  saveCharIndex = 0;
+  saveOldString = '';
+  LoadDef.lastOn = 0;
+  SaveDef.lastOn = 0;
   gs = null;
   mInit(w);
 }

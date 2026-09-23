@@ -208,8 +208,8 @@ export const HU_WRITE_SITES: readonly HuWriteSite[] = [
   { file: 'src/sim/pswitch.ts', line: 365, writes: 'PD_BLUEO | PD_REDO | PD_YELLOWO', origin: 'p_switch.c:227/239/252 (refuse(), :339/:346/:353)' },
   { file: 'src/sim/pplayer.ts', line: 310, writes: "'' (clear)", origin: "P_SpawnPlayerFromStart — port-side clear (vanilla P_SpawnPlayer writes no message; the spawn-time wipe mirrors g_game.c:816's memset clearing message; line drifted 308→310 at M9-08 G_DoReborn merge)" },
   { file: 'src/sim/pplayer.ts', line: 367, writes: "'' (clear)", origin: 'G_PlayerReborn (g_game.c:800-831, the memset clears player->message; line drifted 365→367 at M9-08 reborn.ts split)' },
-  { file: 'src/ui/menu.ts', line: 534, writes: "MSGON 'Messages ON' | MSGOFF 'Messages OFF' (literals)", origin: 'M_ChangeMessages (m_menu.c:979-990, F8)' },
-  { file: 'src/ui/menu.ts', line: 1033, writes: 'gammamsg[usegamma] (literal)', origin: 'F11 gamma cycle (m_menu.c:1766-1777)' },
+  { file: 'src/ui/menu.ts', line: 611, writes: "MSGON 'Messages ON' | MSGOFF 'Messages OFF' (literals)", origin: 'M_ChangeMessages (m_menu.c:979-990, F8); line drifted 534→611 at M11-03 save/load bodies' },
+  { file: 'src/ui/menu.ts', line: 1311, writes: 'gammamsg[usegamma] (literal)', origin: 'F11 gamma cycle (m_menu.c:1766-1777); line drifted 1033→1311 at M11-03 save/load bodies' },
   { file: 'src/ui/humessage.ts', line: 0, writes: "'' (pop-clear, consumer side)", origin: 'HU_Ticker: plr->message = 0 (hu_stuff.c:525)' },
 ] as const;
 
