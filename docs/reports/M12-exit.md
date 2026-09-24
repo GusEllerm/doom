@@ -78,6 +78,9 @@ turn (marked RAN) or read from a committed artifact (marked CITED).
   **117 viewpoints + 9 montages = 126 golden entries**. The JOURNAL soak
   line says "15-min CI default, 60-min marathon"; RESULTS.md pins 10-min
   default / 30-min marathon (what was executed).
+- The release notes pointed at `docs/release/browser-matrix.md`, which
+  never existed — the matrix landed at
+  `docs/reports/M12-browser-matrix.md`; pointer fixed at closure.
 - The exit brief's D-12 lettering (a=E1-only, b=perf) conflicts with the
   plan of record + release notes, where **D-12a = measure-then-pin,
   D-12b = E1-only**. The DECISIONS ledger keeps the PLAN's letters and adds

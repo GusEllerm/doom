@@ -227,8 +227,8 @@ Nine contact sheets, 117 viewpoints (spawn / keydoor / exit / secret /
 tall / bright / busy / masked / door / lift / corridor families, all
 coordinates derived from WAD structure — grids + per-tile tables in
 `docs/reports/M12-montage.md`). Orchestrator D016 pass at the M12-02 merge
-turn: **PASS** (all 9 sheets clean; the two zero-light scenes are genuine
-map lighting, not renderer gaps — census shows the sectors sit at light 0).
+turn: **PASS** (all 9 sheets clean; the two zero-light scenes were read at
+that pass as genuine map lighting, not renderer gaps).
 **AWAITING HUMAN:** the same nine sheets deserve a second pair of eyes at
 leisure (the corpus tier where pixel-goldens cannot describe "looks
 wrong"), plus the two unsigned playtest checklists and the firefox/webkit
