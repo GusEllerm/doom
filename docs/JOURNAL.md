@@ -477,3 +477,4 @@ matrix exist precisely for what automation cannot sign.
 ## MILESTONE M12 COMPLETE — Full-episode hardening
 All of episode 1 is real: 9/9 maps censused zero-gap, 117-viewpoint × 9-map golden corpus (HOM=0, eyes-on PASS), 9/9 scripted exit routes with per-tic trigger ledgers, a 30-minute soak marathon with zero leaks, perf MEASURED then pinned (worst frame p95 2.4 ms vs 13 ms cap — zero optimization commits), an 181,516-byte gzipped production build with seams absent, and a GPL audit that runs on every check. B-11 died as all bugs should: measured, root-caused to the wrong switch in the probe, and pinned by tripwires (D-12g — engine faithful, p_spec.c:503). 3574 tests / 74 specs / 8 golden sets.
 12/12 — Phase 4: fidelity audits + playtest sweeps reuse these harnesses.
+- M12-10 merged + tagged v0.12.0 — BUILD COMPLETE 12/12. Phase 4 begins: human playtests (checklists in VISUAL-REVIEW), manual browser matrix, flake hunt.
