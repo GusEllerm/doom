@@ -3,6 +3,29 @@ import { defineConfig } from '@playwright/test';
 
 const BASE_URL = 'http://127.0.0.1:5173';
 
+// M12-08 (plan §M12-08, D-12e): CI stays chromium. The multi-engine projects
+// below are opt-in EXPERIMENTS, never part of the default `npm run e2e` run:
+//   PW_EXTRA_BROWSERS=firefox  npx playwright test   # firefox smoke, if installed
+//   PW_EXTRA_BROWSERS=firefox,webkit  npx playwright test
+// Only LIST engines you have already installed (`npx playwright install
+// firefox` / `… webkit`) — these are big downloads this project deliberately
+// never pulls in CI or on a plain `npm ci` (D-12e: "multi-engine CI triples
+// wall-time for near-zero signal"). Each added project runs the SMOKE subset
+// only (below) and is documented non-blocking in docs/reports/M12-browser-matrix.md.
+const EXTRA_ENGINES = ['firefox', 'webkit'] as const;
+type ExtraEngine = (typeof EXTRA_ENGINES)[number];
+const extraBrowsers: ExtraEngine[] = (process.env.PW_EXTRA_BROWSERS ?? '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter((s): s is ExtraEngine => (EXTRA_ENGINES as readonly string[]).includes(s));
+
+// Smoke subset: canvas.spec.ts = boot/titlepic render + zero-console-errors +
+// debug-seam presence (the raw engine surface); lifts.spec.ts = one
+// playstart-entered PLAY check (world ticks + canvas state) per engine.
+// Everything heavier (audio flags, build project, soak, perf budgets) is
+// chromium-pinned by design and excluded here.
+const EXTRA_SMOKE = /(canvas|lifts)\.spec\.ts/;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -63,7 +86,16 @@ export default defineConfig({
       name: 'build',
       use: { browserName: 'chromium' },
       testMatch: /build\.spec\.ts/
-    }
+    },
+    // M12-08 experimental engines (see header): absent from the array unless
+    // PW_EXTRA_BROWSERS names them, so the default project list — and every
+    // CI wall-clock — is unchanged.
+    ...extraBrowsers.map((engine) => ({
+      name: `experimental-${engine}`,
+      use: { browserName: engine },
+      testMatch: EXTRA_SMOKE,
+      retries: 1 as const // experimental: flaky-by-honesty, never blocking
+    }))
   ],
   webServer: {
     command: 'npm run dev',
