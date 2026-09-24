@@ -221,3 +221,30 @@ re-bless only with a source-explained cause.
 | mechanics/m8-infight.png (RE-BLESSED D018) | production sprites: imp+shotguy duel w/ KMALE/KMBST melee frames, correct scale/depth | PASS — first true-DOOM-pixel frame in motion evidence |
 | m9/bar-100-keys-arsenal.png | FULL classic layout: windowed view w/ FLOOR7_2 borders, blue numerics, ARMS grid, marine face, ARMOR 50%, 3 keys, ammo columns, caco in view | PASS — first full-screenshot-status frame in project history |
 | screens/m9-exit-montage.png | M9 pack 18 cells: TITLEPIC; menu over live world; 8-variant bar matrix (face states visibly distinct incl god/evil/death); green pickup msg; WI tallies 50%/par; finale text+HELP2; monster-pixels sb9; sb9-vs-sb11 border diff | PASS — M9 exit, 9/12 |
+
+## M12 exit pack (per-map montages + awaiting human)
+Nine contact sheets, 117 viewpoints (spawn / keydoor / exit / secret /
+tall / bright / busy / masked / door / lift / corridor families, all
+coordinates derived from WAD structure — grids + per-tile tables in
+`docs/reports/M12-montage.md`). Orchestrator D016 pass at the M12-02 merge
+turn: **PASS** (all 9 sheets clean; the two zero-light scenes are genuine
+map lighting, not renderer gaps — census shows the sectors sit at light 0).
+**AWAITING HUMAN:** the same nine sheets deserve a second pair of eyes at
+leisure (the corpus tier where pixel-goldens cannot describe "looks
+wrong"), plus the two unsigned playtest checklists and the firefox/webkit
+manual matrix rows:
+
+| image | content | verdict |
+|---|---|---|
+| goldens/maps/e1m1-montage.png | E1M1 — 13 viewpoints | PASS (M12-02 merge turn) — re-review: human |
+| goldens/maps/e1m2-montage.png | E1M2 — 12 viewpoints (incl. tag-14 slab + tag-5 panel country, the B-11 ground) | PASS — re-review: human |
+| goldens/maps/e1m3-montage.png | E1M3 — 12 viewpoints | PASS — re-review: human |
+| goldens/maps/e1m4-montage.png | E1M4 — 14 viewpoints | PASS — re-review: human |
+| goldens/maps/e1m5-montage.png | E1M5 — 14 viewpoints | PASS — re-review: human |
+| goldens/maps/e1m6-montage.png | E1M6 — 14 viewpoints | PASS — re-review: human |
+| goldens/maps/e1m7-montage.png | E1M7 — 14 viewpoints (heaviest map, 539 mobjs) | PASS — re-review: human |
+| goldens/maps/e1m8-montage.png | E1M8 — 11 viewpoints (boss ring) | PASS — re-review: human |
+| goldens/maps/e1m9-montage.png | E1M9 — 13 viewpoints (secret-map finale) | PASS — re-review: human |
+| docs/reports/M10-playtest.md | human ear session (MUSIC_TRIM, audible distance) | AWAITING USER |
+| docs/reports/M11-playtest.md | human hands session (saves/reload feel) | AWAITING USER |
+| docs/reports/M12-browser-matrix.md §manual script | firefox + safari 15-min manual matrix | AWAITING USER |
