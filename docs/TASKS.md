@@ -204,3 +204,19 @@ Future tasks will be added as architects decompose milestones.
 | M11-10 | Persistence boot + debug seams | M11 | 01/07/09 | done (merged c4b11aa — hydrate parallel-to-WAD, pre-first-tick; cheat responder wired) |
 | M11-11 | Reload-persistence e2e + playtest checklist | M11 | 08/10 | done (merged 1ce006c — SALVAGE #11 + finisher: 6/6 ×2; MONEY SHOT save→real reload→load = hash+12100px+trajectory identity; F6/F9 + demoend truths) |
 | M11-12 | Exit sweep + docs | M11 | 10/11 | done (this task — gates fresh green: check 179f/3380t, e2e 59, goldens 7 sets incl persist 12, all drift-free; M11 CLOSED) |
+
+## M12 tasks
+
+| ID | Title | Milestone | Deps | Status |
+|---|---|---|---|---|
+| M12-plan | Full-episode hardening plan | M12 | M11 | done (merged; plan of record docs/design/M12-plan.md) |
+| M12-01 | Nine-map census + live checks | M12 | — | done (merged be42c44 salvage; report d3e5778 — ZERO gaps 9/9; 37 live tests) |
+| M12-02 | All-maps L3 render corpus + montage pack | M12 | 01 | done (merged f354957 — 117 viewpoints × 9 maps + 9 montages, goldens set `maps` 126 entries, HOM=0, D016 PASS) |
+| M12-03 | Exit routes 9/9 + L4 playthroughs | M12 | 01 | done (merged 0bf3c54 — per-tic trigger ledgers, 19 tests ×2-run determinism, E1M1/E1M2/E1M8 playthroughs; E1M8 no-barons TRUTH) |
+| M12-04 | Perf measure-then-pin (node probe + browser rAF spec) | M12 | — | done (merged 7f5caec after mishap-correction d1acfc8 — sim p50 0.048 ms/tic, browser worst frame p95 2.4 ms, zero optimization commits, D-12a) |
+| M12-05 | Soak marathon + leak audit | M12 | — | done (merged 739eb79 salvage+finisher — 10-min CI default + 30-min marathon, 0 violations, heap flat, Δ0 reload bands) |
+| M12-06 | Production build + build-project e2e | M12 | — | done (merged ab1ce6e — game-only dist, 181,516 B gz / 500 KB cap, seam leakage CLEAN) |
+| M12-07 | License/credits audit as check-gate | M12 | — | done (merged 1aae142 — SPDX 374/374, blob/name gates, CREDITS + source offer) |
+| M12-08 | Browser matrix (chromium-only local + manual checklist) | M12 | 06 | done (merged f632f44 — honest no-op: firefox/webkit not installed; gated experimental projects + 15-min manual script, D-12e) |
+| M12-09 | Release docs (README + CONTROLS + notes skeleton) | M12 | 08 | done (merged 83a68f7 + verify-pass 1994470 — claims verified against code; 2 gaps flagged → M12-10 fix) |
+| M12-10 | Gapfix wave (menu sensitivity persistence) + exit sweep + docs | M12 | all | done (gapfix merged a76a4a5 — D-12h; B-11 elevator closed not-a-defect 94b8536/6434f8f — D-12g; exit sweep = this milestone close: docs/reports/M12-exit.md, gates fresh green) |

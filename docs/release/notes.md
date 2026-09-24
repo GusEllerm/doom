@@ -1,4 +1,4 @@
-# Release notes — v0.12.0 (skeleton; finalized with the tag by M12-10)
+# Release notes — v0.12.0 (finalized at the M12-11 exit sweep, 2026-09-23)
 
 A from-scratch TypeScript port of the 1993 DOOM engine (linuxdoom-1.10
 lineage) running in the browser. GPL-2.0-or-later; no id Software assets
@@ -31,6 +31,27 @@ cheats: `CONTROLS.md`.
   browser playthroughs, measured perf budget, soak/leak suites, license
   audit in `npm run check`, production-build e2e.
 
+## By the numbers (measured at exit; evidence: `docs/reports/M12-exit.md`)
+
+* **12 milestones** of the plan of record closed (M0 research → M12).
+* **3574 unit tests** green across 185 files (2 gated skips), incl. a
+  license-compliance audit inside `npm run check`.
+* **74 Playwright tests in 20 spec files** (chromium + audio-profile +
+  production-build projects; 8 golden sets drift-free, incl. the 126-entry
+  `maps` set: 117 viewpoints × 9 E1 maps + 9 montage sheets, HOM = 0).
+* **9 of 9 E1 maps** censused gap-free, rendered, and scripted to a
+  reachable exit; 3 browser playthroughs (E1M1/E1M2/E1M8) + the E1M9
+  finale chain.
+* **Perf (measured, then pinned — never tuned to pass):** heaviest map
+  (E1M7, 539 mobjs) sim p50 0.048 ms/tic, render p50 0.95 ms/frame;
+  browser real-rAF worst frame p95 **2.4 ms** against a pinned 8/13 ms
+  cap; 60.0 fps / 35.0 Hz sustained over 30 s scenes at 320×200.
+* **Bundle: 181,516 B gzipped** game JS (cap 500,000 B), debug seams
+  verified absent in the production build.
+* **Soak:** 30-sim-minute marathon (63,000 tics, 77 level rotations,
+  26 faithful level restarts): zero invariant violations, zero pool/heap
+  leaks (flat plateau, no slope).
+
 ## Known limitations (stated, not folklore)
 
 * **E1-only.** The shareware policy (`GAME_MODE = 'shareware'`) is
@@ -44,6 +65,6 @@ cheats: `CONTROLS.md`.
   is unclaimed (decision D-12c).
 * **Chromium-tested-first.** Automated tests run on Chromium; Firefox
   and Safari are covered by a manual matrix
-  (`docs/release/browser-matrix.md`, M12-08), not CI (decision D-12e).
+  (`docs/reports/M12-browser-matrix.md`, M12-08), not CI (decision D-12e).
 * **No offline app.** No service worker/PWA; the honest offline path is
   the file picker / `?wad=` (decision D-12f).
