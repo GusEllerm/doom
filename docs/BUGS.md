@@ -32,9 +32,33 @@ Class note: harness (game.ts + scripted runTics) says combat+AI work; the REAL r
 | B-09 | Turning left/right feels like gaining forward momentum | CLOSED: physics clean (mom-invariance theorems); rAF dx-batching fixed (per-tic apportionment, capture-time clamp) |
 | B-10 | Only ~1 enemy findable in E1M1 live; kill-door unopenable (user: "spawning outside the level"?) | NO DEFECT: browser census proves 32/32 spawn at WAD positions across all 5 skills; E1M1 hides most hostiles behind the blue-key route; kill-door needs 80% clears. Per-skill census specs added |
 
-## B-11 E1M2 blazing platform (tag 14, sector 124) never engages — OPEN (user-reported, ELEVATOR UNRESPONSIVE = PROGRESSION BLOCKER)
+## B-11 E1M2 blazing platform (tag 14, sector 124) never engages — RESOLVED (probe artifact; lift works via every live route)
 
 Reported: E1M2 elevator doesn't respond, level can't be completed.
+
+**Resolution (B-11 fixer):** the engine is FAITHFUL; the filed probe swapped
+the dispatchers. SOURCE TRUTH for the blaze family: `p_spec.c:492`
+(P_CrossSpecialLine — the function the probe's "enclosing-function question"
+was about) contains case 120 at p_spec.c:929 (GR, no clear) and case 121 at
+:754 (W1, clear); cases 122/123 live in P_UseSpecialLine (p_switch.c:276 —
+122 at :479 reuse-0 block, 123 at :616 reuse-1 block). So CROSS(350)/sp 123
+and USE(1287)/sp 120 are by-design no-ops (pCrossSpecialLine has no CROSS
+route for 123; pUseSpecialLine has no USE route for 120) — "sector NEVER
+moves, special stays 123" was measuring the wrong switch, not a defect.
+Registry specials-table.ts ids 120/121/122/123 already mirror the C; plat
+machinery (pplats.ts blazeDWUS: low=clamped lowest-surround −16, high=40,
+speed 8, wait 105 — p_plats.c) is correct. Verified live routes, all green
+in tests/headless/bug-b11-elevator.test.ts: walk-over of GR line 1287 (both
+directions) descends sector 124 to −16 and back to 40 incl. riding the slab;
+USE of SR line 350 from its FRONT sector 228 (and from corridor 60 through
+the non-special line 1337) engages the cycle; direct route-correct dispatch
+works. User-facing note: pressing USE never triggers the lift edge (line
+1287 is a WALK-over GR special — vanilla too); from spawn, one must release
+the use key for ≥1 tic before the first press fires (G_PlayerReborn arms
+usedown, g_game.c:797). Zero src change ⇒ zero PRNG-stream/golden movement.
+FOLLOW-UP (owned by the M12-03 route-corpus work, NOT here): E1M2's
+instance-level live routes were covered by no suite — census drives TYPE
+coverage, not per-map instances.
 
 Orchestrator triage (direct-dispatch probe, headless E1M2, deterministic):
 - Sector 124 (tag 14, floor=40, ceil=168, single tag14 sector) is a blazing DWUS lift.
