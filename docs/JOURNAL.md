@@ -444,3 +444,36 @@ Close-the-tab time travel: 10 save slots (+quick) through IndexedDB with a byte-
 - User screenshot (23 Sep) resolved: tag-5 platform (blue FLAT14 panel, sector 209 f244/c368, 4 GR-120 lip lines at 1360..1392/-1136..-1104; sec 47 = second plat 1632..1696/-1288..-1352). From the LOWER corridor (z184) the panel is a 56-high plinth with no reachable trigger — by design; only crossing a lip line (from the z240+ room, or monster crossing) cycles it. Same monster-cycle trap as B-11 applies (1.10 p_spec.c:503 — monsters DO trigger walk-overs, only missiles excluded; 120 GR never disarms). No engine defect. Source confirms: 120/121 walk (p_spec.c:929/:754), 123 use (p_switch.c:481).
 - B-11 agent's final branch merged (6434f8f): live cross/use/ride regression routes + dispatch-analysis. Suite green. Elevator saga fully closed — matches today's tag-5 finding (same GR semantics, both lifts faithful).
 - E1M2 tag-5 lift, final geometry truth: panel=sec209 (244/368, FLAT2), west face borders LOWER corridor sec196 (184/264), other 3 sides red room sec51 (240). Twin sec47 (304 pedestal in red room) shares tag 5 — both sink on any panel-edge crossing (GR 120 x4). Monster-delivery ambush by design; lower corridor has stair routes back to sec51 (flood-verified, 21 sectors) — no softlock, no engine defect.
+
+## 2026-09-23 — 🏁 M12 COMPLETE (full-episode hardening — the whole episode is real) — exit sweep M12-11
+THE STORY: the milestone that was all about GOING WHERE WE HADN'T — and
+finding almost nothing to fix, which after eleven milestones of violent
+discovery is itself the result. All nine E1 maps censused ZERO gaps (every
+special, sprite and lump they use is live), 117 analytically-derived
+viewpoints rendered twice-equal with HOM=0 into a 126-entry golden set (the
+9 contact sheets passed the D016 eyes-on), all nine maps scripted to
+reachable exits with per-tic trigger LEDGERS — the discipline that would
+have caught B-11 automatically, and did its job: B-11 closed NOT-A-DEFECT
+(D-12g: my probe crossed the walk/use dispatchers; the p_spec.c:503
+monster-trigger law is 1.10 truth, the ambush is level design; tripwire
+suites banked). PERF got measured before being believed (D-12a): sim p50
+0.048 ms/tic, browser worst frame p95 2.4 ms against a pinned 8/13 ms cap,
+60.0 fps / 35.0 Hz sustained, and — the rarest artifact in the project —
+ZERO optimization commits, because the profile said so; the 30-sim-minute
+soak marathon (63,000 tics, 77 rotations, 26 faithful reborns) leaked
+nothing, the production dist ships 181,516 gzipped bytes with the debug
+seams verifiably absent, and the GPL posture became a machine gate inside
+`npm run check`. The exit brief's own perf shorthand (0.204/0.514 ms)
+matched no committed artifact — corrected against the evidence files, exit
+report flags it; same for its D-12 lettering (the plan's letters won, late
+decisions became D-12g/h). Two honest gaps closed in-milestone: menu
+sensitivity persistence (D-12h, the law pump — ONE config law for all
+thermos) and the release docs' two flagged claims. EXIT GATE fresh: check
+185f/3574t, allMaps standalone 128, e2e 74 specs/20 files, goldens 8 sets
+drift-free incl. `maps`. M12 CLOSED (12/12). NEXT: Phase 4 fidelity audits
++ the human tier — playtest checklists and the firefox/webkit manual
+matrix exist precisely for what automation cannot sign.
+
+## MILESTONE M12 COMPLETE — Full-episode hardening
+All of episode 1 is real: 9/9 maps censused zero-gap, 117-viewpoint × 9-map golden corpus (HOM=0, eyes-on PASS), 9/9 scripted exit routes with per-tic trigger ledgers, a 30-minute soak marathon with zero leaks, perf MEASURED then pinned (worst frame p95 2.4 ms vs 13 ms cap — zero optimization commits), an 181,516-byte gzipped production build with seams absent, and a GPL audit that runs on every check. B-11 died as all bugs should: measured, root-caused to the wrong switch in the probe, and pinned by tripwires (D-12g — engine faithful, p_spec.c:503). 3574 tests / 74 specs / 8 golden sets.
+12/12 — Phase 4: fidelity audits + playtest sweeps reuse these harnesses.
