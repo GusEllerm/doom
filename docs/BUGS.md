@@ -60,6 +60,23 @@ FOLLOW-UP (owned by the M12-03 route-corpus work, NOT here): E1M2's
 instance-level live routes were covered by no suite — census drives TYPE
 coverage, not per-map instances.
 
+**Probe-misreport mechanism (per-tic re-test, M12-03 evidence @0bf3c54 +
+this suite):** the original probe sampled sector 124 only BEFORE/AFTER the
+fire+200-tic window. blazeDWUS completes its ENTIRE down-wait-up cycle in
+~7+105+7 = ~119 tics (< 200) — the cycle runs to completion BETWEEN the two
+samples, so floor@check reads 40 again and the lift "never moved". Per-tic
+sampling disproves it: tests/headless/bug-b11-elevator.test.ts asserts a
+PER-TIC minimum floor (the tripwire) — sector 124 walks 40→24→…→−16 and
+back to 40 on BOTH live routes (walk-over GR 1287 incl. riding the slab;
+USE SR 350 from reachable front/corridor positions), matching the merged
+M12-03 routes.test.ts / m12-playthrough.spec.ts ledgers. NOT-A-DEFECT:
+no src change; the only faithful no-ops are cross-of-123 and use-of-120
+(wrong-family dispatches — see SOURCE TRUTH above). Live-path checks that
+could have hidden a gap all pass: use-trace geometry from the ledge-60/
+slot-228 reachable positions reaches L350 through the non-special line
+1337 (no premature useNoWay), and L1287 needs no use at all (W/GR family
+are walk-triggered; USE on it is a vanilla no-op).
+
 Orchestrator triage (direct-dispatch probe, headless E1M2, deterministic):
 - Sector 124 (tag 14, floor=40, ceil=168, single tag14 sector) is a blazing DWUS lift.
 - Its trigger lines: 350 (sp 123, front 228 floor −16) and 1287 (sp 120, front 219 floor 48).
