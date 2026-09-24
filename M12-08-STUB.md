@@ -6,4 +6,4 @@ Owner: browser-matrix implementer (wave 3). Claims per docs/design/M12-plan.md Â
 - Optional `PW_EXTRA_BROWSERS`-gated experimental firefox/webkit playwright projects (patch onto playwright.config.ts per D-12e; CI stays chromium)
 - Never `src/**`
 
-Status: claimed; browser availability probe + matrix doc in progress.
+Status: DONE â€” matrix doc + env-gated experimental projects landed; chromium gate green; firefox/webkit not installed locally (documented skip).
