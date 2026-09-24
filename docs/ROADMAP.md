@@ -19,7 +19,7 @@ Refined by the Phase-2 architect; per-milestone leaf plans live in docs/design/M
 | M9 | Game flow & UI | Title→skill→play→exit→intermission tally→next map→end screen (all original/Freedoom text); menus keyboard+mouse operable (L4 real clicks/keys, zero console errors); status bar + face + messages (L3 goldens) | M7 | [x] |
 | M10 | Audio (SMF synth task per A-03; MUS behind flag) | SFX with priority/attenuation/panning (L1 mixer unit tests + offline-mix golden buffers); SMF music plays in e2e without console errors; volume settings take effect (L4) | M9 (any sim≥M7) | [x] |
 | M11 | Persistence & options (IndexedDB task per A-10) | F6/F9 + menu save/load round-trip in browser: `state().hash` equals pre-save (L4 in-browser IDB test); bindings/sensitivity/volumes persisted across reload; raw-buffer serialize/deserialize L1 goldens | M9 | [x] |
-| M12 | Full-episode hardening | Every Freedoom P1 map loads + renders at ≥8 sampled viewpoints with HOM=0 and no single-color/anomaly flags (L3 corpus); reachable exit per map (L2/L4 route); scripted playthrough of E1M1 + one map per episode (L4); perf log: 35 Hz sim + 60 fps on mid-range laptop | M1–M11 | [ ] |
+| M12 | Full-episode hardening | Every Freedoom P1 map loads + renders at ≥8 sampled viewpoints with HOM=0 and no single-color/anomaly flags (L3 corpus); reachable exit per map (L2/L4 route); scripted playthrough of E1M1 + one map per episode (L4); perf log: 35 Hz sim + 60 fps on mid-range laptop | M1–M11 | [x] |
 | P4 | Fidelity audits (see below) | ≥2 audit rounds; final round with zero high-severity findings; playtest sweep report clean | M12 | [ ] |
 | P5 | Release + stretch | DONE_REPORT.md maps every §3 criterion to evidence; README; then stretch milestones below | P4 | [ ] |
 
@@ -47,6 +47,13 @@ PRE-first-tick across reloads); demo record→replay hash identity (no checksum,
 like vanilla); the full source-verified 1.10 cheat set live on the real page
 (idmus slot consumed); attract unchanged (D023 reaffirmed). Two silent-death
 salvages (#10 M11-08, #11 M11-11) both closed green.
+
+## M12 — CLOSED (M12-11 exit sweep green; see STATUS "M12 exit state" + docs/reports/M12-exit.md)
+Nine maps censused zero-gap, 117-viewpoint × 9-map L3 corpus (HOM=0, D016
+reviewed), 9/9 scripted exit routes + L4 playthroughs, 30-min soak 0-leak,
+perf measured-then-pinned (worst browser frame p95 2.4 ms vs 13 ms cap, zero
+optimization commits), 181,516 B gz production build, license audit as a
+check-gate — Phase 4 (fidelity audits + playtests) is next.
 
 ## M12 preview (post-M11 carry-overs the exit sweep recorded)
 - **Every-map render corpus (THE milestone):** every Freedoom Phase 1 map
