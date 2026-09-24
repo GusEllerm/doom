@@ -24,7 +24,7 @@ vanilla-true.
 | `D` / `.` | strafe right | `key_straferight` = `'.'` (:248) |
 | `Right Ctrl` | fire weapon | `key_fire` = KEY_RCTRL (:250) |
 | `Space` | open doors / use switches | `key_use` = `' '` (:251) |
-| `Right Alt` (held) | strafe modifier (makes ↑/↓ strafe) | `key_strafe` = KEY_RALT (:252) |
+| `Right Alt` (held) | strafe modifier — makes `←`/`→` strafe instead of turn | `key_strafe` = KEY_RALT (:252) |
 | `Right Shift` (held) | speed / run | `key_speed` = KEY_RSHIFT (:253) |
 
 Turning has no key-repeat impulses: a held arrow/`←`/`→` is a held key

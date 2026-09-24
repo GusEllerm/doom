@@ -109,8 +109,9 @@ file-picker path above.
 
 **Browser support:** automated tests run against Chromium first. The
 release-time manual matrix for Firefox and Safari (known per-engine
-risks: IndexedDB in private mode, autoplay gestures, pointer-lock UX)
-lives in `docs/release/browser-matrix.md`.
+risks: IndexedDB in private mode, autoplay gestures, pointer-lock UX) is
+tracked in `docs/release/browser-matrix.md` (M12-08, landing with this
+milestone's release pack).
 
 ## Project layout
 

@@ -44,6 +44,6 @@ cheats: `CONTROLS.md`.
   is unclaimed (decision D-12c).
 * **Chromium-tested-first.** Automated tests run on Chromium; Firefox
   and Safari are covered by a manual matrix
-  (`docs/release/browser-matrix.md`), not CI (decision D-12e).
+  (`docs/release/browser-matrix.md`, M12-08), not CI (decision D-12e).
 * **No offline app.** No service worker/PWA; the honest offline path is
   the file picker / `?wad=` (decision D-12f).
