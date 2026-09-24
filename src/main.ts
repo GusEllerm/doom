@@ -587,6 +587,10 @@ function render(): void {
 
 function loop(nowMs: number): void {
   requestAnimationFrame(loop);
+  // M12-10: the sensitivity law pump rides the same rAF cadence the audio
+  // thermos pump uses when pumpMode==='raf' — a pure read + equality
+  // check until the Options thermo actually moves.
+  pumpMenuSensitivity();
   if (lastFrameMs === 0) lastFrameMs = nowMs;
   accumulator += nowMs - lastFrameMs;
   lastFrameMs = nowMs;
@@ -907,6 +911,36 @@ function applySettingsView(view: SettingsView, changed: readonly string[]): void
 // (e.g. sfx_volume 3) survives every later pump. The menu thermo DISPLAY
 // keeps showing the shipped row (follow-up: thermos display ← settings).
 pumpAudioWiring();
+
+/* M12-10 (gap fix): the mouse_sensitivity menu→settings law pump. The
+ * precedent is the M10-09 wiring.ts thermos law pump — a composer-side
+ * poller treating the menu row as the live truth, menu.ts read-only via
+ * menuState (menu.ts:441) — but pumped HERE, in the M11-10 composer
+ * region: sensitivity is an input-consumer var whose store half lives in
+ * settings.ts, not audio state (M11-10 composer ownership precedent).
+ * Write-on-change, same semantics as the volumes: every move of the
+ * Options thermo lands in default.cfg-equivalent storage (m_menu.c
+ * M_ChangeSensitivity :1112-1125 changes the SAME variable M_LoadDefaults
+ * saves — vanilla truth is persist). setVar's notify re-enters
+ * applySettingsView below ⇒ mountMouse REMOUNTS live with the new
+ * (sens+5)/10 (input/mouse.ts:7-8, g_game.c:579-580) — before this pump
+ * the menu row reached mouse.ts NOT AT ALL (menu-local only).
+ * The pumped value is primed at the menu's shipped 5, so hydrate raising
+ * settings to a stored row never echoes back and clobbers it (same
+ * priming law as pumpAudioWiring above; the menu DISPLAY showing the
+ * shipped row until touched is the same acknowledged thermo-display
+ * gap). The menu is unopenable before hydrate completes (afterLoad is
+ * gated on settingsHydrate below), so no pre-hydrate write can race. */
+let lastPumpedSensitivity = menuState.mouseSensitivity();
+function pumpMenuSensitivity(): void {
+  const sens = menuState.mouseSensitivity();
+  if (sens === lastPumpedSensitivity) return;
+  lastPumpedSensitivity = sens;
+  // Validate (0..9, m_menu.c:1118-1123), mark dirty + schedule the IDB
+  // write, and notify(['mouse_sensitivity']) ⇒ applySettingsView
+  // remounts mountMouse — store AND live in one call.
+  settings().setVar('mouse_sensitivity', sens);
+}
 
 applySettingsView(settings().view(), []); // defaults stand until hydrate
 let bindRemountDone = false;

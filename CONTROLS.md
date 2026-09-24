@@ -98,7 +98,7 @@ F6: F2/F3 open the save/load MENUS, they are not quicksave folklore.
 | `f` | follow player |
 | `g` | grid toggle |
 | `m` / `c` | mark / clear marks |
-| `iddt` | reveal the whole map (automap-open-only cheat, AM_Responder) |
+| `iddt` | map-reveal cycle — works ONLY with the automap OPEN: each completion advances the reveal mode `cheating=(cheating+1)%3` (0 normal → 1 → 2, showing lines the map normally hides; the keys are NOT eaten) (`am_map.c:287`/`:701`; `src/sim/amMap.ts` `chtCheckCheat`/`amResponder`) |
 
 ## Cheats
 
@@ -121,6 +121,6 @@ marks below are from that census of `linuxdoom-1.10`.
 | `idchoppers` | yes | chainsaw (+ one tick of invulnerability — the 1.10 `= true` quirk) |
 | `idmypos` | yes | debug position/angle message (hex) |
 | `idclev<ep><map>` | yes | warp (shareware guard: ep 2+ silently does nothing) |
-| `iddt` | yes (automap only) | map reveal, in `AM_Responder` |
+| `iddt` | yes — automap OPEN only | map-reveal cycle `cheating=(cheating+1)%3` in `AM_Responder`, event NOT eaten; never in ST (`am_map.c:287`/`:701-704`; `src/sim/amMap.ts`) — ledger row: M11-cheats.md |
 | `noclip` | **no** | folklore — does nothing |
 | `IDK`, `IDKDT`, `mypos`, `dtent`, `cockadoodledoo` | **no** | folklore — does nothing |
