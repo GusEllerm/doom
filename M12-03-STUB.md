@@ -11,4 +11,9 @@ Plan: docs/design/M12-plan.md §M12-03.
   ending WI/finale, zero console errors.
 - Routes sim-clocked in bulk (no rAF); CI-sane runtime.
 
-Status: STARTED. Rebase before finishing (B-11 fixer may move src/sim specials/plats).
+Status: DONE (this branch). Gates green: vitest tests/headless/routes (19/19),
+playwright e2e/m12-playthrough.spec.ts (3/3), npm run check. main NOT moved at
+exit (rebase checked: no new commits); B-11 fixer branch unmerged — tag-14 plat
+verified MOVING on current main by both L2 ledger and L4 (sec 124: 40 to 24).
+Secret-exit bonus: only E1M3 has one (sp-51 line 993) — asserted, documented.
+src/** untouched: zero edits, zero findings requiring fixes.
